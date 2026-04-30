@@ -1,3 +1,5 @@
+import re
+from pathlib import Path
 from typing import Any
 
 from financial_report_llm_extractor.evidence_index import build_evidence_index
@@ -256,6 +258,21 @@ def test_field_first_retrieval_prefers_numeric_density_without_statement_gate() 
 
     candidates = result["fields"][0]["candidates"]
     assert candidates[0]["evidence"]["block_id"] == "p0002_b0001"
+
+
+def test_field_first_validation_script_is_local_retrieval_only() -> None:
+    script_path = Path("scripts/run-field-first-validation.sh")
+
+    assert script_path.exists()
+    script = script_path.read_text(encoding="utf-8")
+
+    assert "quick-validate" in script
+    assert "field-first" in script
+    assert "discover-rows-llm" not in script
+    assert not re.search(
+        r"financial-report-llm-extractor\s+extract(?:\s|$)",
+        script,
+    )
 
 
 def test_field_first_retrieval_collapses_duplicate_block_candidates() -> None:
