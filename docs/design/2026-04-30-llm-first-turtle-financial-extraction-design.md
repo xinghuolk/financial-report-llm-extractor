@@ -328,7 +328,7 @@ normalized_value = value * unit_multiplier
 职责：
 
 - 解析 provider/model/base_url/api_key_env/timeout/retry。
-- 构造 OpenAI-compatible request。
+- 按 provider 构造 JSON completion request。
 - 保存 prompt payload。
 - 保存 raw response。
 - 解析 JSON response。
@@ -339,8 +339,16 @@ normalized_value = value * unit_multiplier
 - `LlmConfigResolver`
 - `LlmClient`
 - `OpenAICompatibleTransport`
+- `GeminiGenerateContentTransport`
 - `LlmResponseParser`
 - `FakeLlmClient`
+
+首批 provider：
+
+- `deepseek` 和 `ollama` 使用 OpenAI-compatible `/chat/completions`。
+- `gemini` 使用 `/models/<model>:generateContent`。
+- `ollama` 本地模式允许没有 API key，并在未设置 key 时省略 `Authorization`。
+- provider resolver 只选择 adapter，不做自动 provider fallback。
 
 关键要求：
 

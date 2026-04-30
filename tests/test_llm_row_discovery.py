@@ -52,8 +52,9 @@ def test_build_row_discovery_prompt_payload_is_statement_scoped() -> None:
 
 
 class FakeHttpTransport:
-    def __init__(self, content: str) -> None:
+    def __init__(self, content: str, *, response_kind: str = "openai") -> None:
         self.content = content
+        self.response_kind = response_kind
         self.requests: list[dict[str, object]] = []
 
     def post_json(
@@ -71,6 +72,8 @@ class FakeHttpTransport:
                 "timeout_seconds": timeout_seconds,
             }
         )
+        if self.response_kind == "gemini":
+            return {"candidates": [{"content": {"parts": [{"text": self.content}]}}]}
         return {"choices": [{"message": {"content": self.content}}]}
 
 
@@ -148,6 +151,54 @@ def test_write_llm_row_inventory_archives_error_for_malformed_json(
     assert not (tmp_path / "row_inventory_llm.json").exists()
 
 
+def test_write_llm_row_inventory_supports_gemini_config(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chunks_path, statement_map_path = _write_statement_inputs(tmp_path)
+    config_path = _write_config(
+        tmp_path,
+        {
+            "provider": "gemini",
+            "model": "gemini-1.5-flash",
+            "api_key_env": "GEMINI_API_KEY",
+        },
+    )
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-key")
+    transport = FakeHttpTransport(
+        json.dumps(
+            {
+                "rows": [
+                    {
+                        "row_label": "Revenue",
+                        "values": [{"period": "2025", "value_raw": "100"}],
+                        "evidence": [{"block_id": "p0134_b0002", "snippet": "Revenue 100"}],
+                    }
+                ]
+            }
+        ),
+        response_kind="gemini",
+    )
+
+    result = write_llm_row_inventory(
+        chunks_path,
+        statement_map_path,
+        config_path=config_path,
+        output_path=tmp_path / "row_inventory_llm.json",
+        prompt_dir=tmp_path / "prompt_payloads",
+        raw_response_dir=tmp_path / "raw_llm_responses",
+        parsed_response_dir=tmp_path / "parsed_llm_responses",
+        transport=transport,
+    )
+
+    assert result.row_count == 1
+    assert str(transport.requests[0]["url"]).endswith(
+        "/models/gemini-1.5-flash:generateContent"
+    )
+    headers = cast(dict[str, str], transport.requests[0]["headers"])
+    assert headers["x-goog-api-key"] == "gemini-key"
+
+
 def _write_statement_inputs(tmp_path: Path) -> tuple[Path, Path]:
     chunks_path = tmp_path / "chunks.jsonl"
     statement_map_path = tmp_path / "statement_map.json"
@@ -190,11 +241,15 @@ def _write_statement_inputs(tmp_path: Path) -> tuple[Path, Path]:
     return chunks_path, statement_map_path
 
 
-def _write_config(tmp_path: Path) -> Path:
+def _write_config(
+    tmp_path: Path,
+    payload: dict[str, object] | None = None,
+) -> Path:
     config_path = tmp_path / "llm_config.json"
     config_path.write_text(
         json.dumps(
-            {
+            payload
+            or {
                 "provider": "openai-compatible",
                 "model": "test-model",
                 "base_url": "https://example.com/v1",

@@ -304,8 +304,16 @@ LLM 只可提供：
 - `LlmConfigResolver`
 - `LlmClient`
 - `OpenAICompatibleTransport`
+- `GeminiGenerateContentTransport`
 - `LlmResponseParser`
 - `FakeLlmClient`
+
+首批必须支持的 provider：
+
+- `openai-compatible`：显式 `base_url`，使用 `OPENAI_API_KEY` 或配置中的 `api_key_env`。
+- `deepseek`：默认 `base_url=https://api.deepseek.com/v1`，默认 `api_key_env=DEEPSEEK_API_KEY`，走 OpenAI-compatible `/chat/completions`。
+- `ollama`：默认 `base_url=http://localhost:11434/v1`，默认 `api_key_env=OLLAMA_API_KEY`，走 OpenAI-compatible `/chat/completions`；本地无 key 时必须省略 `Authorization`。
+- `gemini`：默认 `base_url=https://generativelanguage.googleapis.com/v1beta`，默认 `api_key_env=GEMINI_API_KEY`，走 `/models/<model>:generateContent`；默认 env 缺失时可 fallback 到 `GOOGLE_API_KEY`。
 
 每次 run 必须记录：
 

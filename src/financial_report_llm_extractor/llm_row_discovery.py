@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -11,7 +10,7 @@ from typing import Any
 from financial_report_llm_extractor.llm_transport import (
     HttpTransport,
     LlmTransportConfig,
-    UrllibHttpTransport,
+    create_llm_client,
 )
 
 
@@ -99,7 +98,7 @@ def write_llm_row_inventory(
     transport: HttpTransport | None = None,
 ) -> LlmRowDiscoveryResult:
     config = LlmTransportConfig.from_json(config_path)
-    client = _RowDiscoveryClient(config, transport=transport)
+    client = create_llm_client(config, transport=transport)
     chunks = _read_chunks_by_id(chunks_path)
     statements = _read_statements(statement_map_path)
     rows: list[dict[str, Any]] = []
@@ -114,7 +113,13 @@ def write_llm_row_inventory(
             continue
         prompt_payload = build_row_discovery_prompt_payload(statement, chunk)
         _write_json(prompt_dir / f"prompt_{index:04d}.json", prompt_payload)
-        raw_response = client.complete(prompt_payload)
+        raw_response = client.complete_json(
+            system_prompt=(
+                "Return strict JSON with a rows array. Use only the "
+                "provided statement evidence blocks."
+            ),
+            user_payload=prompt_payload,
+        )
         _write_json(raw_response_dir / f"raw_response_{index:04d}.json", raw_response)
         try:
             parsed = _parse_row_response(raw_response)
@@ -135,57 +140,6 @@ def write_llm_row_inventory(
         prompt_count=len(statements),
         raw_response_count=len(statements),
     )
-
-
-class _RowDiscoveryClient:
-    def __init__(
-        self,
-        config: LlmTransportConfig,
-        *,
-        transport: HttpTransport | None = None,
-    ) -> None:
-        self.config = config
-        self.transport = transport or UrllibHttpTransport()
-
-    def complete(self, prompt_payload: dict[str, Any]) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "model": self.config.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "Return strict JSON with a rows array. Use only the "
-                        "provided statement evidence blocks."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        prompt_payload,
-                        ensure_ascii=False,
-                        sort_keys=True,
-                    ),
-                },
-            ],
-            "temperature": 0,
-            "response_format": {"type": "json_object"},
-        }
-        return self.transport.post_json(
-            f"{self.config.base_url.rstrip('/')}/chat/completions",
-            {
-                "Authorization": f"Bearer {_read_api_key(self.config.api_key_env)}",
-                "Content-Type": "application/json",
-            },
-            payload,
-            self.config.timeout_seconds,
-        )
-
-
-def _read_api_key(env_name: str) -> str:
-    value = os.environ.get(env_name)
-    if not value:
-        raise ValueError(f"missing API key environment variable: {env_name}")
-    return value
 
 
 def _read_chunks_by_id(chunks_path: Path) -> dict[str, dict[str, Any]]:
@@ -210,24 +164,50 @@ def _read_statements(statement_map_path: Path) -> list[dict[str, Any]]:
 
 def _parse_row_response(raw_response: dict[str, object]) -> dict[str, Any]:
     try:
-        choices = raw_response["choices"]
-        if not isinstance(choices, list) or not choices:
-            raise ValueError("LLM response missing choices")
-        first_choice = choices[0]
-        if not isinstance(first_choice, dict):
-            raise ValueError("LLM response choice must be an object")
-        message = first_choice["message"]
-        if not isinstance(message, dict):
-            raise ValueError("LLM response missing message")
-        content = message["content"]
-        if not isinstance(content, str):
-            raise ValueError("LLM response message content must be a string")
-        parsed = json.loads(content)
+        parsed = json.loads(_response_json_text(raw_response))
     except (KeyError, TypeError, json.JSONDecodeError) as error:
         raise ValueError("malformed LLM row discovery JSON") from error
     if not isinstance(parsed, dict) or not isinstance(parsed.get("rows"), list):
         raise ValueError("malformed LLM row discovery JSON")
     return parsed
+
+
+def _response_json_text(raw_response: dict[str, object]) -> str:
+    choices = raw_response.get("choices")
+    if isinstance(choices, list) and choices:
+        first_choice = choices[0]
+        if not isinstance(first_choice, dict):
+            raise ValueError("LLM response choice must be an object")
+        message = first_choice.get("message")
+        if not isinstance(message, dict):
+            raise ValueError("LLM response missing message")
+        content = message.get("content")
+        if not isinstance(content, str):
+            raise ValueError("LLM response message content must be a string")
+        return content
+
+    candidates = raw_response.get("candidates")
+    if isinstance(candidates, list) and candidates:
+        first_candidate = candidates[0]
+        if not isinstance(first_candidate, dict):
+            raise ValueError("Gemini response candidate must be an object")
+        content_obj = first_candidate.get("content")
+        if not isinstance(content_obj, dict):
+            raise ValueError("Gemini response missing content")
+        parts = content_obj.get("parts")
+        if not isinstance(parts, list) or not parts:
+            raise ValueError("Gemini response missing parts")
+        first_part = parts[0]
+        if not isinstance(first_part, dict):
+            raise ValueError("Gemini response part must be an object")
+        text = first_part.get("text")
+        if not isinstance(text, str):
+            raise ValueError("Gemini response part text must be a string")
+        return text
+
+    if choices is not None:
+        raise ValueError("LLM response missing choices")
+    raise ValueError("LLM response missing candidates")
 
 
 def _rows_with_statement_context(
