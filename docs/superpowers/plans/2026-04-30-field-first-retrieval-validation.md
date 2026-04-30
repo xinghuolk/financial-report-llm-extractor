@@ -16,7 +16,7 @@
 - Create: `src/financial_report_llm_extractor/evidence_index.py`
 - Create: `tests/test_field_first_retrieval.py`
 
-- [ ] Write a failing test that builds an evidence index from `chunks.jsonl` records.
+- [x] Write a failing test that builds an evidence index from `chunks.jsonl` records.
 
 Use a tiny fixture with block and chunk records:
 
@@ -47,9 +47,9 @@ def test_build_evidence_index_reads_block_level_evidence() -> None:
     assert block.year_count == 0
 ```
 
-- [ ] Run `uv run pytest tests/test_field_first_retrieval.py::test_build_evidence_index_reads_block_level_evidence -v`.
-- [ ] Implement `EvidenceBlock`, `EvidenceIndex`, and `build_evidence_index(records)`.
-- [ ] Run the same test and confirm it passes.
+- [x] Run `uv run pytest tests/test_field_first_retrieval.py::test_build_evidence_index_reads_block_level_evidence -v`.
+- [x] Implement `EvidenceBlock`, `EvidenceIndex`, and `build_evidence_index(records)`.
+- [x] Run the same test and confirm it passes.
 
 ### Task 2: Field-First Retriever
 
@@ -58,7 +58,7 @@ def test_build_evidence_index_reads_block_level_evidence() -> None:
 - Create: `src/financial_report_llm_extractor/field_first_retrieval.py`
 - Modify: `tests/test_field_first_retrieval.py`
 
-- [ ] Write a failing test where noisy MD&A text contains statement-like words but the real field rows are plain blocks.
+- [x] Write a failing test where noisy MD&A text contains statement-like words but the real field rows are plain blocks.
 
 The test should assert that selected fields are found without requiring `statement_kind`:
 
@@ -94,17 +94,17 @@ def test_field_first_retrieval_finds_core_fields_without_statement_gate() -> Non
         assert candidate["evidence"]["snippet"]
 ```
 
-- [ ] Run the test and confirm it fails because `retrieve_field_first` does not exist.
-- [ ] Implement `retrieve_field_first(index, selected_fields, top_k=8)`.
-- [ ] Scoring must use existing aliases from `retrieval.FIELD_HINTS`, numeric density, year/unit hints, and optional statement kind bonus.
-- [ ] Run `uv run pytest tests/test_field_first_retrieval.py -v`.
+- [x] Run the test and confirm it fails because `retrieve_field_first` does not exist.
+- [x] Implement `retrieve_field_first(index, selected_fields, top_k=8)`.
+- [x] Scoring must use existing aliases from `retrieval.FIELD_HINTS`, numeric density, year/unit hints, and optional statement kind bonus.
+- [x] Run `uv run pytest tests/test_field_first_retrieval.py -v`.
 
 ### Task 3: Statement-First Failure Contrast
 
 **Files:**
 - Modify: `tests/test_field_first_retrieval.py`
 
-- [ ] Add a test showing the same adversarial fixture is unsafe for statement-first gating.
+- [x] Add a test showing the same adversarial fixture is unsafe for statement-first gating.
 
 Expected assertion shape:
 
@@ -121,8 +121,8 @@ def test_adversarial_fixture_demonstrates_statement_first_risk() -> None:
     assert len(statement_chunks) < 3
 ```
 
-- [ ] Run `uv run pytest tests/test_field_first_retrieval.py -v`.
-- [ ] If this test is too tied to chunk internals, adjust fixture records rather than production statement discovery.
+- [x] Run `uv run pytest tests/test_field_first_retrieval.py -v`.
+- [x] If this test is too tied to chunk internals, adjust fixture records rather than production statement discovery.
 
 ### Task 4: Prompt Budget Metrics
 
@@ -130,9 +130,9 @@ def test_adversarial_fixture_demonstrates_statement_first_risk() -> None:
 - Modify: `src/financial_report_llm_extractor/field_first_retrieval.py`
 - Modify: `tests/test_field_first_retrieval.py`
 
-- [ ] Add `estimate_prompt_budget(result)` that returns per-field and total candidate text characters.
-- [ ] Write a test asserting top-k retrieval for the adversarial fixture stays below `12_000` characters.
-- [ ] Run `uv run pytest tests/test_field_first_retrieval.py -v`.
+- [x] Add `estimate_prompt_budget(result)` that returns per-field and total candidate text characters.
+- [x] Write a test asserting top-k retrieval for the adversarial fixture stays below `12_000` characters.
+- [x] Run `uv run pytest tests/test_field_first_retrieval.py -v`.
 
 ### Task 5: Optional Real-PDF Metrics Script
 
@@ -140,8 +140,8 @@ def test_adversarial_fixture_demonstrates_statement_first_risk() -> None:
 - Create: `scripts/run-field-first-validation.sh`
 - Modify: `tests/test_field_first_retrieval.py`
 
-- [ ] Add a test asserting the script exists and mentions `quick-validate`, `field-first`, and no LLM command.
-- [ ] Implement script defaults:
+- [x] Add a test asserting the script exists and mentions `quick-validate`, `field-first`, and no LLM command.
+- [x] Implement script defaults:
 
 ```bash
 PDF="${PDF:-downloads/hk_stocks/00001/annual/2025_annual_en.pdf}"
@@ -150,14 +150,14 @@ ROOT="${ROOT:-.}"
 SELECTED_FIELDS="${SELECTED_FIELDS:-revenue,net_profit,total_assets,total_liabilities,operating_cash_flow}"
 ```
 
-- [ ] Script should run `quick-validate`, then call a small Python one-liner/module to print:
+- [x] Script should run `quick-validate`, then call a small Python one-liner/module to print:
   - selected fields
   - status per field
   - top candidate page/block
   - per-field prompt chars
   - total prompt chars
-- [ ] It must not call `discover-rows-llm`, `extract`, or any network provider.
-- [ ] Run `bash -n scripts/run-field-first-validation.sh`.
+- [x] It must not call `discover-rows-llm`, `extract`, or any network provider.
+- [x] Run `bash -n scripts/run-field-first-validation.sh`.
 
 ### Task 6: Documentation
 
@@ -165,17 +165,17 @@ SELECTED_FIELDS="${SELECTED_FIELDS:-revenue,net_profit,total_assets,total_liabil
 - Modify: `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
 - Modify: `docs/design/2026-04-30-llm-first-turtle-financial-extraction-design.md`
 
-- [ ] Document that statement discovery is an optional ranking signal, not the required main gate, if validation passes.
-- [ ] Document that full PDF enters the local evidence index, while LLM prompts remain top-k bounded.
+- [x] Document that statement discovery is an optional ranking signal, not the required main gate, if validation passes.
+- [x] Document that full PDF enters the local evidence index, while LLM prompts remain top-k bounded.
 
 ### Task 7: Verification
 
-- [ ] Run `uv run pytest tests/test_field_first_retrieval.py -v`.
-- [ ] Run `uv run pytest -v`.
-- [ ] Run `uv run ruff check .`.
-- [ ] Run `uv run mypy src tests`.
-- [ ] Run `git diff --check`.
+- [x] Run `uv run pytest tests/test_field_first_retrieval.py -v`.
+- [x] Run `uv run pytest -v`.
+- [x] Run `uv run ruff check .`.
+- [x] Run `uv run mypy src tests`.
+- [x] Run `git diff --check`.
 
 ### Task 8: Commit
 
-- [ ] Commit with `test: validate field-first retrieval path`.
+- [x] Commit with `test: validate field-first retrieval path`.
