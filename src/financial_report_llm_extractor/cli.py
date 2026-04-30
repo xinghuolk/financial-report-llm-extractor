@@ -6,6 +6,10 @@ import argparse
 from pathlib import Path
 
 from financial_report_llm_extractor.chunking import build_chunk_store
+from financial_report_llm_extractor.document_map import (
+    write_document_map,
+    write_parser_capability_probe,
+)
 from financial_report_llm_extractor.evaluation import write_review_summary
 from financial_report_llm_extractor.extraction import run_fake_extraction
 from financial_report_llm_extractor.ingestion import ingest_pdf
@@ -25,6 +29,15 @@ def build_parser() -> argparse.ArgumentParser:
     chunk_parser.add_argument("--pages", required=True, type=Path)
     chunk_parser.add_argument("--metadata", required=True, type=Path)
     chunk_parser.add_argument("--out", type=Path)
+
+    probe_parser = subparsers.add_parser("probe-parser")
+    probe_parser.add_argument("--pages", required=True, type=Path)
+    probe_parser.add_argument("--metadata", required=True, type=Path)
+    probe_parser.add_argument("--out", type=Path)
+
+    map_document_parser = subparsers.add_parser("map-document")
+    map_document_parser.add_argument("--chunks", required=True, type=Path)
+    map_document_parser.add_argument("--out", type=Path)
 
     retrieve_parser = subparsers.add_parser("retrieve")
     retrieve_parser.add_argument("--catalog", required=True, type=Path)
@@ -68,6 +81,25 @@ def main(argv: list[str] | None = None) -> int:
         print(f"blocks={chunk_result.block_count}")
         print(f"chunks={chunk_result.chunk_count}")
         print(f"chunks_path={chunk_result.chunks_path}")
+        return 0
+
+    if args.command == "probe-parser":
+        parser_probe_result = write_parser_capability_probe(
+            args.pages,
+            args.metadata,
+            output_path=args.out,
+        )
+        print(f"pages={parser_probe_result.page_count}")
+        print(f"parser_capability_path={parser_probe_result.output_path}")
+        return 0
+
+    if args.command == "map-document":
+        document_map_result = write_document_map(
+            args.chunks,
+            output_path=args.out,
+        )
+        print(f"sections={document_map_result.section_count}")
+        print(f"document_map_path={document_map_result.output_path}")
         return 0
 
     if args.command == "retrieve":

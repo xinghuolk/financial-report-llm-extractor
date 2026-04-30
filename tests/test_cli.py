@@ -45,6 +45,18 @@ class FakeEvaluationResult:
     report_count: int
 
 
+@dataclass(frozen=True)
+class FakeParserCapabilityResult:
+    output_path: Path
+    page_count: int
+
+
+@dataclass(frozen=True)
+class FakeDocumentMapResult:
+    output_path: Path
+    section_count: int
+
+
 def test_ingest_command_calls_ingestion_layer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -262,3 +274,81 @@ def test_evaluate_command_calls_evaluation_layer(
 
     assert exit_code == 0
     assert calls == [(tmp_path, output_path)]
+
+
+def test_probe_parser_command_calls_document_map_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    pages_path = tmp_path / "pages.jsonl"
+    metadata_path = tmp_path / "run_metadata.json"
+    output_path = tmp_path / "parser_capability.json"
+    calls: list[tuple[Path, Path, Path | None]] = []
+
+    def fake_write_parser_capability_probe(
+        pages: Path,
+        metadata: Path,
+        *,
+        output_path: Path | None = None,
+    ) -> FakeParserCapabilityResult:
+        calls.append((pages, metadata, output_path))
+        return FakeParserCapabilityResult(
+            output_path=output_path or pages.parent / "parser_capability.json",
+            page_count=3,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "write_parser_capability_probe",
+        fake_write_parser_capability_probe,
+    )
+
+    exit_code = cli.main(
+        [
+            "probe-parser",
+            "--pages",
+            str(pages_path),
+            "--metadata",
+            str(metadata_path),
+            "--out",
+            str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(pages_path, metadata_path, output_path)]
+
+
+def test_map_document_command_calls_document_map_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chunks_path = tmp_path / "chunks.jsonl"
+    output_path = tmp_path / "document_map.json"
+    calls: list[tuple[Path, Path | None]] = []
+
+    def fake_write_document_map(
+        chunks: Path,
+        *,
+        output_path: Path | None = None,
+    ) -> FakeDocumentMapResult:
+        calls.append((chunks, output_path))
+        return FakeDocumentMapResult(
+            output_path=output_path or chunks.parent / "document_map.json",
+            section_count=6,
+        )
+
+    monkeypatch.setattr(cli, "write_document_map", fake_write_document_map)
+
+    exit_code = cli.main(
+        [
+            "map-document",
+            "--chunks",
+            str(chunks_path),
+            "--out",
+            str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(chunks_path, output_path)]
