@@ -6,6 +6,7 @@ from financial_report_llm_extractor.coverage_budget import (
     load_catalog_field_ids,
 )
 from financial_report_llm_extractor.coverage_budget import evaluate_coverage_gate
+from financial_report_llm_extractor.coverage_budget import write_coverage_budget_report
 
 
 def test_load_catalog_field_ids_reads_priorities(tmp_path: Path) -> None:
@@ -218,3 +219,69 @@ def test_evaluate_coverage_gate_allows_ready_metrics() -> None:
 
     assert gate["status"] == "ready_for_field_scoped_llm_probe"
     assert gate["blockers"] == []
+
+
+def test_write_coverage_budget_report_writes_json_and_markdown(tmp_path: Path) -> None:
+    metrics = [
+        {
+            "top_k": 3,
+            "total_fields": 2,
+            "covered_fields": 1,
+            "missing_fields": ["net_profit"],
+            "coverage_ratio": 0.5,
+            "total_candidate_text_chars": 100,
+            "rough_token_estimate": 25,
+            "fields": [
+                {
+                    "field_id": "revenue",
+                    "status": "candidates_found",
+                    "candidate_count": 1,
+                    "candidate_text_chars": 100,
+                    "top_evidence": {
+                        "page": 1,
+                        "chunk_id": "page_p0001",
+                        "block_id": "p0001_b0001",
+                        "snippet": "Revenue 100",
+                    },
+                },
+                {
+                    "field_id": "net_profit",
+                    "status": "missing",
+                    "candidate_count": 0,
+                    "candidate_text_chars": 0,
+                    "top_evidence": {
+                        "page": None,
+                        "chunk_id": None,
+                        "block_id": None,
+                        "snippet": None,
+                    },
+                },
+            ],
+        }
+    ]
+    gate = {
+        "status": "blocked_by_missing_fields",
+        "required_top_k": 3,
+        "max_total_chars": 40_000,
+        "max_field_chars": 8_000,
+        "blockers": ["net_profit"],
+    }
+
+    result = write_coverage_budget_report(
+        output_dir=tmp_path,
+        report_id="demo_report",
+        catalog_id="demo_catalog",
+        priorities=("P0", "P1"),
+        selected_fields=("revenue", "net_profit"),
+        top_k_values=(3,),
+        metrics=metrics,
+        gate=gate,
+    )
+
+    payload = json.loads(result["json"].read_text(encoding="utf-8"))
+    assert payload["report_id"] == "demo_report"
+    assert payload["gate"]["status"] == "blocked_by_missing_fields"
+    markdown = result["markdown"].read_text(encoding="utf-8")
+    assert "blocked_by_missing_fields" in markdown
+    assert "net_profit" in markdown
+    assert "Revenue 100" in markdown

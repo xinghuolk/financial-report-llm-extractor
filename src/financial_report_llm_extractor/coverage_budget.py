@@ -127,6 +127,79 @@ def evaluate_coverage_gate(
     }
 
 
+def write_coverage_budget_report(
+    *,
+    output_dir: Path,
+    report_id: str,
+    catalog_id: str,
+    priorities: tuple[str, ...],
+    selected_fields: tuple[str, ...],
+    top_k_values: tuple[int, ...],
+    metrics: list[dict[str, Any]],
+    gate: dict[str, Any],
+) -> dict[str, Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / "coverage_budget.json"
+    markdown_path = output_dir / "coverage_budget.md"
+    payload = {
+        "report_id": report_id,
+        "catalog_id": catalog_id,
+        "priorities": list(priorities),
+        "selected_fields": list(selected_fields),
+        "top_k_values": list(top_k_values),
+        "gate": gate,
+        "metrics": metrics,
+    }
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    markdown_path.write_text(_coverage_markdown(payload), encoding="utf-8")
+    return {"json": json_path, "markdown": markdown_path}
+
+
+def _coverage_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        f"# Coverage Budget: {payload['report_id']}",
+        "",
+        f"- gate: `{payload['gate']['status']}`",
+        f"- priorities: `{','.join(payload['priorities'])}`",
+        f"- blockers: `{', '.join(payload['gate'].get('blockers', []))}`",
+        "",
+        "| top_k | covered | total | coverage | chars | tokens_est |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for metric in payload["metrics"]:
+        lines.append(
+            "| {top_k} | {covered_fields} | {total_fields} | {coverage_ratio:.4f} | "
+            "{total_candidate_text_chars} | {rough_token_estimate} |".format(**metric)
+        )
+    required_top_k = payload["gate"]["required_top_k"]
+    selected = _metric_for_top_k(payload["metrics"], required_top_k)
+    lines.extend(["", "## Missing Fields", ""])
+    missing = selected.get("missing_fields", [])
+    lines.extend(f"- `{field_id}`" for field_id in missing)
+    lines.extend(["", "## Largest Fields", ""])
+    largest = sorted(
+        selected.get("fields", []),
+        key=lambda field: int(field.get("candidate_text_chars", 0)),
+        reverse=True,
+    )[:20]
+    lines.extend(
+        f"- `{field['field_id']}`: {field['candidate_text_chars']} chars, "
+        f"{field['candidate_count']} candidates"
+        for field in largest
+    )
+    lines.extend(["", "## Evidence", ""])
+    for field in selected.get("fields", []):
+        evidence = field.get("top_evidence", {})
+        lines.append(
+            f"- `{field['field_id']}` {field['status']} page={evidence.get('page')} "
+            f"block={evidence.get('block_id')} snippet={evidence.get('snippet')}"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def _missing_coverage_evidence_blockers(
     selected_metric: dict[str, Any],
     fields: list[dict[str, Any]],
