@@ -392,6 +392,11 @@ def test_real_pdf_script_is_local_and_no_llm() -> None:
     )
 
     assert 'cd "${ROOT}"' in script
+    assert 'RUN_ROOT="."' in script
+    assert '--root "${RUN_ROOT}"' in script
+    assert '--root "${ROOT}"' not in script
+    assert 'run_dir="${ROOT%/}' not in script
+    assert 'out_dir="${ROOT%/}' not in script
     assert "quick-validate" in script
     assert "coverage-budget" in script
     assert "discover-rows-llm" not in script

@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="${ROOT:-.}"
 cd "${ROOT}"
+RUN_ROOT="."
 CATALOG="${CATALOG:-field_catalog/turtle_v015_priority_fields.json}"
 PRIORITIES="${PRIORITIES:-P0,P1}"
 TOP_K_VALUES="${TOP_K_VALUES:-1,3,5,8}"
@@ -15,9 +16,9 @@ IFS=',' read -r -a report_specs <<< "${REPORTS}"
 for report_spec in "${report_specs[@]}"; do
   report_id="${report_spec%%=*}"
   pdf="${report_spec#*=}"
-  run_dir="${ROOT%/}/tmp/runs/quick_validation/${report_id}"
+  run_dir="${RUN_ROOT%/}/tmp/runs/quick_validation/${report_id}"
   chunks="${run_dir}/chunks.jsonl"
-  out_dir="${ROOT%/}/tmp/runs/coverage_budget/${report_id}"
+  out_dir="${RUN_ROOT%/}/tmp/runs/coverage_budget/${report_id}"
 
   if [[ ! -f "${pdf}" ]]; then
     echo "Missing PDF: ${pdf}" >&2
@@ -27,7 +28,7 @@ for report_spec in "${report_specs[@]}"; do
   uv run financial-report-llm-extractor quick-validate \
     --pdf "${pdf}" \
     --report-id "${report_id}" \
-    --root "${ROOT}"
+    --root "${RUN_ROOT}"
 
   uv run financial-report-llm-extractor coverage-budget \
     --chunks "${chunks}" \
