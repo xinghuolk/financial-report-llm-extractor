@@ -22,13 +22,13 @@ def adversarial_field_first_records() -> list[dict[str, Any]]:
             "block_texts": {
                 "p0001_b0001": (
                     "Management discussion mentions balance sheet, income statement, "
-                    "cash flow, revenue, net profit, total assets and total liabilities "
+                    "cash flow, revenue, profit attributable, total assets and total liabilities "
                     "as planning themes without presenting the audited field rows."
                 )
             },
             "text": (
                 "Management discussion mentions balance sheet, income statement, "
-                "cash flow, revenue, net profit, total assets and total liabilities "
+                "cash flow, revenue, profit attributable, total assets and total liabilities "
                 "as planning themes without presenting the audited field rows."
             ),
         },
@@ -42,11 +42,13 @@ def adversarial_field_first_records() -> list[dict[str, Any]]:
             "block_ids": ["p0002_b0001", "p0002_b0002"],
             "block_texts": {
                 "p0002_b0001": "Revenue 2025 RMB million 125,000 2024 110,000",
-                "p0002_b0002": "Net profit 2025 RMB million 46,000 2024 41,000",
+                "p0002_b0002": (
+                    "Profit attributable to shareholders 2025 RMB million 46,000 2024 41,000"
+                ),
             },
             "text": (
                 "Revenue 2025 RMB million 125,000 2024 110,000\n"
-                "Net profit 2025 RMB million 46,000 2024 41,000"
+                "Profit attributable to shareholders 2025 RMB million 46,000 2024 41,000"
             ),
         },
         {
@@ -149,7 +151,9 @@ def test_field_first_retrieval_finds_core_fields_without_statement_gate() -> Non
             "page": 2,
             "chunk_id": "page_p0002",
             "block_id": "p0002_b0002",
-            "snippet": "Net profit 2025 RMB million 46,000 2024 41,000",
+            "snippet": (
+                "Profit attributable to shareholders 2025 RMB million 46,000 2024 41,000"
+            ),
         },
         "total_assets": {
             "page": 3,
