@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from financial_report_llm_extractor.chunking import build_chunk_store
+from financial_report_llm_extractor.coverage_budget import (
+    build_coverage_metrics,
+    evaluate_coverage_gate,
+    load_catalog_field_ids,
+    write_coverage_budget_report,
+)
 from financial_report_llm_extractor.document_map import (
     write_document_map,
     write_parser_capability_probe,
@@ -85,6 +92,18 @@ def build_parser() -> argparse.ArgumentParser:
     quick_validate_parser.add_argument("--pdf", required=True, type=Path)
     quick_validate_parser.add_argument("--report-id", required=True)
     quick_validate_parser.add_argument("--root", required=True, type=Path)
+
+    coverage_budget_parser = subparsers.add_parser("coverage-budget")
+    coverage_budget_parser.add_argument("--chunks", required=True, type=Path)
+    coverage_budget_parser.add_argument("--catalog", required=True, type=Path)
+    coverage_budget_parser.add_argument("--report-id", required=True)
+    coverage_budget_parser.add_argument("--priorities", default="P0,P1")
+    coverage_budget_parser.add_argument("--fields", default="")
+    coverage_budget_parser.add_argument("--top-k-values", default="1,3,5,8")
+    coverage_budget_parser.add_argument("--required-top-k", default=3, type=int)
+    coverage_budget_parser.add_argument("--max-total-chars", default=40_000, type=int)
+    coverage_budget_parser.add_argument("--max-field-chars", default=8_000, type=int)
+    coverage_budget_parser.add_argument("--out-dir", required=True, type=Path)
 
     discover_rows_llm_parser = subparsers.add_parser("discover-rows-llm")
     discover_rows_llm_parser.add_argument("--chunks", required=True, type=Path)
@@ -223,6 +242,57 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"run_dir={quick_validation_result.run_dir}")
         print(f"summary_path={quick_validation_result.artifacts['summary']}")
+        return 0
+
+    if args.command == "coverage-budget":
+        priorities = tuple(
+            priority.strip() for priority in args.priorities.split(",") if priority.strip()
+        )
+        explicit_fields = tuple(
+            field.strip() for field in args.fields.split(",") if field.strip()
+        )
+        top_k_values = tuple(
+            int(value.strip()) for value in args.top_k_values.split(",") if value.strip()
+        )
+        selected_fields = load_catalog_field_ids(
+            args.catalog,
+            priorities=priorities,
+            explicit_fields=explicit_fields,
+        )
+        records = [
+            json.loads(line)
+            for line in args.chunks.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        metrics = build_coverage_metrics(
+            records,
+            selected_fields=selected_fields,
+            top_k_values=top_k_values,
+        )
+        gate = evaluate_coverage_gate(
+            metrics,
+            required_top_k=args.required_top_k,
+            max_total_chars=args.max_total_chars,
+            max_field_chars=args.max_field_chars,
+        )
+        report = write_coverage_budget_report(
+            output_dir=args.out_dir,
+            report_id=args.report_id,
+            catalog_id=args.catalog.stem,
+            priorities=priorities,
+            selected_fields=selected_fields,
+            top_k_values=top_k_values,
+            metrics=metrics,
+            gate=gate,
+        )
+        selected_metric = next(
+            metric for metric in metrics if metric["top_k"] == args.required_top_k
+        )
+        print(f"fields={selected_metric['total_fields']}")
+        print(f"covered={selected_metric['covered_fields']}")
+        print(f"gate={gate['status']}")
+        print(f"coverage_budget_json={report['json']}")
+        print(f"coverage_budget_markdown={report['markdown']}")
         return 0
 
     if args.command == "discover-rows-llm":

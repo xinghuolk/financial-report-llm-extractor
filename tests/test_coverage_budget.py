@@ -7,6 +7,7 @@ from financial_report_llm_extractor.coverage_budget import (
 )
 from financial_report_llm_extractor.coverage_budget import evaluate_coverage_gate
 from financial_report_llm_extractor.coverage_budget import write_coverage_budget_report
+from financial_report_llm_extractor.cli import build_parser
 
 
 def test_load_catalog_field_ids_reads_priorities(tmp_path: Path) -> None:
@@ -285,3 +286,44 @@ def test_write_coverage_budget_report_writes_json_and_markdown(tmp_path: Path) -
     assert "blocked_by_missing_fields" in markdown
     assert "net_profit" in markdown
     assert "Revenue 100" in markdown
+
+
+def test_cli_parses_coverage_budget_command() -> None:
+    args = build_parser().parse_args(
+        [
+            "coverage-budget",
+            "--chunks",
+            "tmp/runs/quick_validation/demo/chunks.jsonl",
+            "--catalog",
+            "field_catalog/turtle_v015_priority_fields.json",
+            "--report-id",
+            "demo",
+            "--priorities",
+            "P0,P1",
+            "--top-k-values",
+            "1,3,5,8",
+            "--required-top-k",
+            "3",
+            "--max-total-chars",
+            "40000",
+            "--max-field-chars",
+            "8000",
+            "--out-dir",
+            "tmp/runs/coverage_budget/demo",
+        ]
+    )
+
+    assert args.command == "coverage-budget"
+    assert str(args.chunks).endswith("chunks.jsonl")
+    assert args.priorities == "P0,P1"
+
+
+def test_real_pdf_script_is_local_and_no_llm() -> None:
+    script = Path("scripts/run-turtle-field-coverage-budget.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "quick-validate" in script
+    assert "coverage-budget" in script
+    assert "discover-rows-llm" not in script
+    assert "extract --" not in script
