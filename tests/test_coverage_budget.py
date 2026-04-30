@@ -8,6 +8,7 @@ from financial_report_llm_extractor.coverage_budget import (
 from financial_report_llm_extractor.coverage_budget import evaluate_coverage_gate
 from financial_report_llm_extractor.coverage_budget import write_coverage_budget_report
 from financial_report_llm_extractor.cli import build_parser
+from financial_report_llm_extractor.cli import main
 
 
 def test_load_catalog_field_ids_reads_priorities(tmp_path: Path) -> None:
@@ -318,11 +319,79 @@ def test_cli_parses_coverage_budget_command() -> None:
     assert args.priorities == "P0,P1"
 
 
+def test_cli_coverage_budget_returns_zero_when_gate_is_blocked(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo",
+                "version": "2026-04-30",
+                "priorities": [
+                    {"priority": "P0", "fields": ["revenue", "net_profit"]}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    chunks_path = tmp_path / "chunks.jsonl"
+    chunks_path.write_text(
+        json.dumps(
+            {
+                "record_type": "chunk",
+                "chunk_id": "page_p0001",
+                "kind": "page_text",
+                "statement_kind": None,
+                "page_start": 1,
+                "page_end": 1,
+                "block_ids": ["p0001_b0001"],
+                "block_texts": {"p0001_b0001": "Revenue 2025 HK$ million 100"},
+                "text": "Revenue 2025 HK$ million 100",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "coverage_budget"
+
+    return_code = main(
+        [
+            "coverage-budget",
+            "--chunks",
+            str(chunks_path),
+            "--catalog",
+            str(catalog_path),
+            "--report-id",
+            "demo",
+            "--priorities",
+            "P0",
+            "--top-k-values",
+            "1,3",
+            "--required-top-k",
+            "3",
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
+
+    stdout = capsys.readouterr().out
+    report_path = out_dir / "coverage_budget.json"
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    assert return_code == 0
+    assert report_path.exists()
+    assert payload["gate"]["status"] == "blocked_by_missing_fields"
+    assert "net_profit" in payload["gate"]["blockers"]
+    assert "gate=blocked_by_missing_fields" in stdout
+
+
 def test_real_pdf_script_is_local_and_no_llm() -> None:
     script = Path("scripts/run-turtle-field-coverage-budget.sh").read_text(
         encoding="utf-8"
     )
 
+    assert 'cd "${ROOT}"' in script
     assert "quick-validate" in script
     assert "coverage-budget" in script
     assert "discover-rows-llm" not in script

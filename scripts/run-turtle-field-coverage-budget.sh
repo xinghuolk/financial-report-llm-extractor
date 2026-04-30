@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="${ROOT:-.}"
+cd "${ROOT}"
 CATALOG="${CATALOG:-field_catalog/turtle_v015_priority_fields.json}"
 PRIORITIES="${PRIORITIES:-P0,P1}"
 TOP_K_VALUES="${TOP_K_VALUES:-1,3,5,8}"
