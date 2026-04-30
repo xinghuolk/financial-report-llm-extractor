@@ -27,10 +27,10 @@ Do not manually run real network calls in automated tests.
 - Modify: `src/financial_report_llm_extractor/ingestion.py`
 - Create or modify: `tests/test_ingestion.py`
 
-- [ ] Write a failing test for fallback parser selection when `pdftotext` is unavailable.
-- [ ] Implement a parser resolver that prefers `PdftotextParser` and can accept or select a Python fallback parser.
-- [ ] If adding a dependency is avoided, design the fallback behind an injectable parser interface and keep tests fixture-based.
-- [ ] Run `uv run pytest tests/test_ingestion.py -v`.
+- [x] Write a failing test for fallback parser selection when `pdftotext` is unavailable.
+- [x] Implement a parser resolver that prefers `PdftotextParser` and can accept or select a Python fallback parser.
+- [x] If adding a dependency is avoided, design the fallback behind an injectable parser interface and keep tests fixture-based.
+- [x] Run `uv run pytest tests/test_ingestion.py -v`.
 
 ### Task 2: Quick Validation Orchestrator
 
@@ -40,21 +40,21 @@ Do not manually run real network calls in automated tests.
 - Modify: `src/financial_report_llm_extractor/cli.py`
 - Modify: `tests/test_cli.py`
 
-- [ ] Write a failing test for running a no-network quick validation with an injected parser.
-- [ ] The test should assert creation of `pages.jsonl`, `chunks.jsonl`, `parser_capability.json`, `document_map.json`, `statement_map.json`, `row_inventory.json`, `catalog_mapping.json`, and `quick_validation_summary.json`.
-- [ ] Implement `run_quick_validation(pdf_path, report_id, root_dir, parser=None, selected_fields=...)`.
-- [ ] Add CLI command `quick-validate --pdf --report-id --root`.
-- [ ] Run `uv run pytest tests/test_quick_validation_runner.py tests/test_cli.py -v`.
+- [x] Write a failing test for running a no-network quick validation with an injected parser.
+- [x] The test should assert creation of `pages.jsonl`, `chunks.jsonl`, `parser_capability.json`, `document_map.json`, `statement_map.json`, `row_inventory.json`, `catalog_mapping.json`, and `quick_validation_summary.json`.
+- [x] Implement `run_quick_validation(pdf_path, report_id, root_dir, parser=None, selected_fields=...)`.
+- [x] Add CLI command `quick-validate --pdf --report-id --root`.
+- [x] Run `uv run pytest tests/test_quick_validation_runner.py tests/test_cli.py -v`.
 
 ### Task 3: Real PDF Manual Probe
 
 **Files:**
 - No production files required unless Phase 12 exposes a real parser gap.
 
-- [ ] Run `quick-validate` against `downloads/hk_stocks/00001/annual/2025_annual_en.pdf`.
-- [ ] Inspect `parser_capability.json` and `quick_validation_summary.json`.
-- [ ] If ingestion fails because no parser backend is available, stop and implement the smallest acceptable fallback.
-- [ ] If document/statement map produces no formal statements, stop and improve rule detection before Phase 13.
+- [x] Run `quick-validate` against `downloads/hk_stocks/00001/annual/2025_annual_en.pdf`.
+- [x] Inspect `parser_capability.json` and `quick_validation_summary.json`.
+- [x] If ingestion fails because no parser backend is available, stop and implement the smallest acceptable fallback.
+- [x] If document/statement map produces no formal statements, stop and improve rule detection before Phase 13.
 
 Expected command:
 
@@ -68,10 +68,10 @@ uv run financial-report-llm-extractor quick-validate --pdf downloads/hk_stocks/0
 - Modify: `src/financial_report_llm_extractor/statement_discovery.py` or create `src/financial_report_llm_extractor/llm_row_discovery.py`
 - Create: `tests/test_llm_row_discovery.py`
 
-- [ ] Write a failing test that builds a prompt payload from one statement map entry and its chunk.
-- [ ] Assert the prompt contains statement-scoped block evidence only.
-- [ ] Implement prompt payload construction with prompt/schema version fields.
-- [ ] Run `uv run pytest tests/test_llm_row_discovery.py -v`.
+- [x] Write a failing test that builds a prompt payload from one statement map entry and its chunk.
+- [x] Assert the prompt contains statement-scoped block evidence only.
+- [x] Implement prompt payload construction with prompt/schema version fields.
+- [x] Run `uv run pytest tests/test_llm_row_discovery.py -v`.
 
 ### Task 5: LLM Row Discovery Transport
 
@@ -79,11 +79,11 @@ uv run financial-report-llm-extractor quick-validate --pdf downloads/hk_stocks/0
 - Modify: `src/financial_report_llm_extractor/llm_row_discovery.py`
 - Modify: `tests/test_llm_row_discovery.py`
 
-- [ ] Write a failing injected-transport test for `write_llm_row_inventory()`.
-- [ ] Assert prompt payload, raw response, parsed response, and `row_inventory_llm.json` are written.
-- [ ] Assert malformed JSON archives raw response and structured error.
-- [ ] Implement the minimal OpenAI-compatible row discovery call, reusing existing config style.
-- [ ] Run `uv run pytest tests/test_llm_row_discovery.py -v`.
+- [x] Write a failing injected-transport test for `write_llm_row_inventory()`.
+- [x] Assert prompt payload, raw response, parsed response, and `row_inventory_llm.json` are written.
+- [x] Assert malformed JSON archives raw response and structured error.
+- [x] Implement the minimal OpenAI-compatible row discovery call, reusing existing config style.
+- [x] Run `uv run pytest tests/test_llm_row_discovery.py -v`.
 
 ### Task 6: LLM Row Discovery CLI
 
@@ -91,20 +91,20 @@ uv run financial-report-llm-extractor quick-validate --pdf downloads/hk_stocks/0
 - Modify: `src/financial_report_llm_extractor/cli.py`
 - Modify: `tests/test_cli.py`
 
-- [ ] Write a failing CLI delegation test for `discover-rows-llm`.
-- [ ] Add CLI args: `--chunks`, `--statement-map`, `--config`, `--out`, `--prompt-dir`, `--raw-response-dir`, `--parsed-response-dir`.
-- [ ] Run `uv run pytest tests/test_cli.py tests/test_llm_row_discovery.py -v`.
+- [x] Write a failing CLI delegation test for `discover-rows-llm`.
+- [x] Add CLI args: `--chunks`, `--statement-map`, `--config`, `--out`, `--prompt-dir`, `--raw-response-dir`, `--parsed-response-dir`.
+- [x] Run `uv run pytest tests/test_cli.py tests/test_llm_row_discovery.py -v`.
 
 ### Task 7: Verification
 
-- [ ] Run `uv run pytest -v`.
-- [ ] Run `uv run ruff check .`.
-- [ ] Run `uv run mypy src tests`.
-- [ ] Run `git diff --check`.
+- [x] Run `uv run pytest -v`.
+- [x] Run `uv run ruff check .`.
+- [x] Run `uv run mypy src tests`.
+- [x] Run `git diff --check`.
 
 ### Task 8: Commit
 
-- [ ] Commit with `feat: validate real pdf and llm row discovery`.
+- [x] Commit with `feat: validate real pdf and llm row discovery`.
 
 ---
 

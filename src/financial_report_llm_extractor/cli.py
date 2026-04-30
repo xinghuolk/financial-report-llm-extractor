@@ -13,7 +13,9 @@ from financial_report_llm_extractor.document_map import (
 from financial_report_llm_extractor.evaluation import write_review_summary
 from financial_report_llm_extractor.extraction import run_fake_extraction
 from financial_report_llm_extractor.ingestion import ingest_pdf
+from financial_report_llm_extractor.llm_row_discovery import write_llm_row_inventory
 from financial_report_llm_extractor.llm_transport import run_real_transport_probe
+from financial_report_llm_extractor.quick_validation_runner import run_quick_validation
 from financial_report_llm_extractor.retrieval import write_retrieval_probe
 from financial_report_llm_extractor.statement_discovery import (
     write_catalog_mapping,
@@ -78,6 +80,20 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser = subparsers.add_parser("evaluate")
     evaluate_parser.add_argument("--root", required=True, type=Path)
     evaluate_parser.add_argument("--out", type=Path)
+
+    quick_validate_parser = subparsers.add_parser("quick-validate")
+    quick_validate_parser.add_argument("--pdf", required=True, type=Path)
+    quick_validate_parser.add_argument("--report-id", required=True)
+    quick_validate_parser.add_argument("--root", required=True, type=Path)
+
+    discover_rows_llm_parser = subparsers.add_parser("discover-rows-llm")
+    discover_rows_llm_parser.add_argument("--chunks", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--statement-map", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--config", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--out", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--prompt-dir", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--raw-response-dir", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--parsed-response-dir", required=True, type=Path)
 
     return parser
 
@@ -197,6 +213,32 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"reports={evaluation_result.report_count}")
         print(f"evaluation_summary_path={evaluation_result.output_path}")
+        return 0
+
+    if args.command == "quick-validate":
+        quick_validation_result = run_quick_validation(
+            pdf_path=args.pdf,
+            report_id=args.report_id,
+            root_dir=args.root,
+        )
+        print(f"run_dir={quick_validation_result.run_dir}")
+        print(f"summary_path={quick_validation_result.artifacts['summary']}")
+        return 0
+
+    if args.command == "discover-rows-llm":
+        llm_row_result = write_llm_row_inventory(
+            args.chunks,
+            args.statement_map,
+            config_path=args.config,
+            output_path=args.out,
+            prompt_dir=args.prompt_dir,
+            raw_response_dir=args.raw_response_dir,
+            parsed_response_dir=args.parsed_response_dir,
+        )
+        print(f"rows={llm_row_result.row_count}")
+        print(f"prompts={llm_row_result.prompt_count}")
+        print(f"raw_responses={llm_row_result.raw_response_count}")
+        print(f"row_inventory_llm_path={llm_row_result.output_path}")
         return 0
 
     raise ValueError(f"unknown command: {args.command}")

@@ -75,6 +75,20 @@ class FakeCatalogMappingResult:
     mapping_count: int
 
 
+@dataclass(frozen=True)
+class FakeQuickValidationResult:
+    run_dir: Path
+    artifacts: dict[str, Path]
+
+
+@dataclass(frozen=True)
+class FakeLlmRowDiscoveryResult:
+    output_path: Path
+    row_count: int
+    prompt_count: int
+    raw_response_count: int
+
+
 def test_ingest_command_calls_ingestion_layer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -486,3 +500,118 @@ def test_map_fields_command_calls_statement_discovery_layer(
 
     assert exit_code == 0
     assert calls == [(row_inventory_path, ("revenue", "total_assets"), output_path)]
+
+
+def test_quick_validate_command_calls_runner(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    pdf_path = tmp_path / "report.pdf"
+    calls: list[tuple[Path, str, Path]] = []
+
+    def fake_run_quick_validation(
+        *,
+        pdf_path: Path,
+        report_id: str,
+        root_dir: Path,
+    ) -> FakeQuickValidationResult:
+        calls.append((pdf_path, report_id, root_dir))
+        run_dir = root_dir / "tmp" / "runs" / "quick_validation" / report_id
+        return FakeQuickValidationResult(
+            run_dir=run_dir,
+            artifacts={"summary": run_dir / "quick_validation_summary.json"},
+        )
+
+    monkeypatch.setattr(cli, "run_quick_validation", fake_run_quick_validation)
+
+    exit_code = cli.main(
+        [
+            "quick-validate",
+            "--pdf",
+            str(pdf_path),
+            "--report-id",
+            "00001_2025_en",
+            "--root",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(pdf_path, "00001_2025_en", tmp_path)]
+
+
+def test_discover_rows_llm_command_calls_row_discovery_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chunks_path = tmp_path / "chunks.jsonl"
+    statement_map_path = tmp_path / "statement_map.json"
+    config_path = tmp_path / "llm_config.json"
+    output_path = tmp_path / "row_inventory_llm.json"
+    prompt_dir = tmp_path / "prompt_payloads"
+    raw_dir = tmp_path / "raw_llm_responses"
+    parsed_dir = tmp_path / "parsed_llm_responses"
+    calls: list[tuple[Path, Path, Path, Path, Path, Path, Path]] = []
+
+    def fake_write_llm_row_inventory(
+        chunks: Path,
+        statement_map: Path,
+        *,
+        config_path: Path,
+        output_path: Path,
+        prompt_dir: Path,
+        raw_response_dir: Path,
+        parsed_response_dir: Path,
+    ) -> FakeLlmRowDiscoveryResult:
+        calls.append(
+            (
+                chunks,
+                statement_map,
+                config_path,
+                output_path,
+                prompt_dir,
+                raw_response_dir,
+                parsed_response_dir,
+            )
+        )
+        return FakeLlmRowDiscoveryResult(
+            output_path=output_path,
+            row_count=2,
+            prompt_count=1,
+            raw_response_count=1,
+        )
+
+    monkeypatch.setattr(cli, "write_llm_row_inventory", fake_write_llm_row_inventory)
+
+    exit_code = cli.main(
+        [
+            "discover-rows-llm",
+            "--chunks",
+            str(chunks_path),
+            "--statement-map",
+            str(statement_map_path),
+            "--config",
+            str(config_path),
+            "--out",
+            str(output_path),
+            "--prompt-dir",
+            str(prompt_dir),
+            "--raw-response-dir",
+            str(raw_dir),
+            "--parsed-response-dir",
+            str(parsed_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [
+        (
+            chunks_path,
+            statement_map_path,
+            config_path,
+            output_path,
+            prompt_dir,
+            raw_dir,
+            parsed_dir,
+        )
+    ]

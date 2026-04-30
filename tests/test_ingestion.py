@@ -6,6 +6,7 @@ from pathlib import Path
 from financial_report_llm_extractor.ingestion import (
     compute_sha256,
     ingest_pdf,
+    resolve_pdf_text_parser,
     split_pdftotext_pages,
 )
 
@@ -61,3 +62,21 @@ def test_ingest_pdf_writes_pages_and_metadata(tmp_path: Path) -> None:
         "pages": str(output_dir / "pages.jsonl"),
         "metadata": str(output_dir / "run_metadata.json"),
     }
+
+
+def test_resolve_pdf_text_parser_prefers_pdftotext_when_available() -> None:
+    parser = resolve_pdf_text_parser(
+        fallback_parser=FakeParser(),
+        pdftotext_path="/usr/bin/pdftotext",
+    )
+
+    assert parser.name == "pdftotext"
+
+
+def test_resolve_pdf_text_parser_uses_fallback_when_pdftotext_unavailable() -> None:
+    parser = resolve_pdf_text_parser(
+        fallback_parser=FakeParser(),
+        pdftotext_path="",
+    )
+
+    assert parser.name == "fake-parser"
