@@ -27,6 +27,28 @@
   - src/financial_report_llm_extractor/ingestion.py 包含 pdftotext 文本分页、PDF SHA-256、pages.jsonl 和 run_metadata.json 写入。
   - src/financial_report_llm_extractor/cli.py 提供 ingest 命令。
   - pyproject.toml 注册脚本 financial-report-llm-extractor。
+- Phase 2 logical chunks foundation 已完成。
+  - src/financial_report_llm_extractor/chunking.py 包含 BlockRecord、LogicalChunkRecord、ChunkStore、build_chunk_store()。
+  - tests/test_chunking.py 覆盖稳定 block_id、CN/HK statement title detection、page/statement chunks、chunks.jsonl artifact。
+  - src/financial_report_llm_extractor/cli.py 提供 chunk 命令。
+  - chunker_version 为 phase2-logical-chunks-v1。
+- Phase 3 retrieval probe foundation 已完成。
+  - src/financial_report_llm_extractor/retrieval.py 包含 FieldSpec、RetrievalCandidate、load_field_specs()、retrieve_candidates()、write_retrieval_probe()。
+  - tests/test_retrieval.py 覆盖 P0/P1 catalog loading、seed aliases、statement hints、candidate scoring、missing status、retrieval_probe.json。
+  - src/financial_report_llm_extractor/cli.py 提供 retrieve 命令。
+- Phase 4 money normalizer foundation 已完成。
+  - src/financial_report_llm_extractor/money.py 包含 MoneyNormalizationError、parse_numeric_value()、resolve_money_unit()、normalize_money()。
+  - tests/test_money.py 覆盖 commas、parentheses negatives、minus signs、dash missing values、CNY/HKD/USD 和基础 scale units。
+  - normalize_money() 返回现有 MoneyAmount 合同并调用 validate()。
+- Phase 5 fake extraction pipeline foundation 已完成。
+  - src/financial_report_llm_extractor/extraction.py 包含 PromptRequest、LlmExtractedField、LlmResponse、FakeLlmClient、run_fake_extraction()。
+  - tests/test_extraction.py 覆盖 fake client、retrieval_probe -> extraction_result、money normalization、present without evidence 降级。
+  - src/financial_report_llm_extractor/cli.py 提供 extract-fake 命令。
+- Phase 6 real LLM transport foundation 已完成。
+  - src/financial_report_llm_extractor/llm_transport.py 包含 LlmTransportConfig、OpenAiCompatibleClient、run_real_transport_probe()。
+  - tests/test_llm_transport.py 覆盖 config loading、OpenAI-compatible request、timeout/retry、raw response artifacts。
+  - src/financial_report_llm_extractor/cli.py 提供 extract 命令。
+  - 测试使用 injected transport，不需要真实网络。
 - field_catalog/turtle_v015_priority_fields.json 已包含 P0-P4 字段优先级。
 - tests/ 下已有 test_models.py、test_ingestion.py、test_cli.py、test_field_catalog.py。
 
@@ -38,21 +60,19 @@
 - 金额、币种、单位倍率要显式建模，不能把 “HKD million” 这类单位丢成裸数字。
 - 缺失、歧义、不可用、抽取失败必须显式状态化，不要静默填 0 或 None 当成成功。
 
-推荐下一步：从 roadmap 的 Phase 2 开始。
+推荐下一步：继续 roadmap 的 Phase 6 follow-up，或进入 Phase 7 前补齐真实报告评估准备。
 
-Phase 2 目标：
+Phase 2 已完成的基础能力：
 - 在现有 page-level artifacts 之上建立 statement/evidence-block logical chunks。
 - 识别或构造稳定 block_id，用于 Evidence.block_id。
-- 为后续 retrieval 和 LLM 抽取提供 chunk store。
+- 为后续 retrieval 和 LLM 抽取提供 chunks.jsonl。
 
 建议实施顺序：
 1. 先写测试，再实现。
-2. 新增或扩展 ingestion/chunking 相关模块，避免把 retrieval 或 LLM 逻辑提前塞进 ingestion.py。
-3. 为 pages.jsonl -> blocks/chunks 的转换设计小合同，例如：
-   - BlockRecord: block_id, page, kind, text, optional bbox/table/cell metadata
-   - Chunk: chunk_id, kind, page_start, page_end, block_ids, text
-4. 生成 artifact 时使用稳定、可复现的 ID，不要依赖运行时随机数。
-5. 先支持文本块和主表附近窗口，表格结构恢复可以分阶段增强。
+2. 添加 llm_config.example.json。
+3. 记录 latency、usage 和 structured transport errors。
+4. provider fallback 必须显式且默认关闭。
+5. 增加 opt-in integration smoke test，默认测试不能依赖外网。
 6. 每个新 artifact 都要带 source_pdf_hash 或可追溯到 run_metadata。
 
 测试与验证命令：
@@ -71,4 +91,3 @@ Phase 2 目标：
 
 请在开始实现前先用 git status 查看工作区，避免覆盖用户未提交修改。
 ```
-
