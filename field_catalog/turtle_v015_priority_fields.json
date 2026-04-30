@@ -1,0 +1,99 @@
+{
+  "catalog_id": "turtle_v015_priority_fields",
+  "version": "2026-04-30",
+  "priorities": [
+    {
+      "priority": "P0",
+      "name": "Turtle core statement fields",
+      "fields": [
+        "revenue",
+        "operating_cost",
+        "operating_profit",
+        "net_profit",
+        "total_assets",
+        "total_liabilities",
+        "equity_attributable_to_owners",
+        "operating_cash_flow",
+        "investing_cash_flow",
+        "financing_cash_flow",
+        "cash",
+        "money_cap",
+        "st_borr",
+        "lt_borr",
+        "bond_payable",
+        "accounts_receiv",
+        "acct_payable",
+        "inventories",
+        "fix_assets",
+        "cip",
+        "rd_exp",
+        "invest_income"
+      ]
+    },
+    {
+      "priority": "P1",
+      "name": "High-value statement enhancements",
+      "fields": [
+        "gross_profit",
+        "selling_general_administrative",
+        "fv_value_chg_gain",
+        "non_oper_income",
+        "non_oper_exp",
+        "total_cur_assets",
+        "other_cur_assets",
+        "total_cur_liab",
+        "defer_tax_assets",
+        "defer_tax_liab",
+        "minority_int"
+      ]
+    },
+    {
+      "priority": "P2",
+      "name": "Cash-flow enhancements",
+      "fields": [
+        "stock_based_compensation",
+        "change_in_receivables",
+        "change_in_payables",
+        "change_in_inventory",
+        "receiv_tax_refund",
+        "repurchase_of_stock",
+        "dividends_paid",
+        "capital_expenditures",
+        "depreciation_amortization"
+      ]
+    },
+    {
+      "priority": "P3",
+      "name": "Note and announcement bridge signals",
+      "fields": [
+        "dps",
+        "dividend_plan",
+        "buyback_cancellation_progress",
+        "capitalized_rd",
+        "capitalized_interest",
+        "receivables_aging",
+        "bad_debt_provision",
+        "related_party_receivables_payables",
+        "contingent_liabilities_commitments",
+        "lease_liability_maturity",
+        "segment_revenue_profit",
+        "restricted_cash",
+        "time_deposits_or_wealth_products",
+        "interest_paid_cash"
+      ]
+    },
+    {
+      "priority": "P4",
+      "name": "Text review artifacts",
+      "fields": [
+        "mda_business_review",
+        "mda_forward_guidance",
+        "mda_risk_factors",
+        "dividend_policy_text",
+        "audit_opinion",
+        "auditor_change_history"
+      ]
+    }
+  ]
+}
+

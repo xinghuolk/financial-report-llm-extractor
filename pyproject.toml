@@ -1,0 +1,34 @@
+[project]
+name = "financial-report-llm-extractor"
+version = "0.1.0"
+description = "LLM-first evidence-grounded financial report extraction."
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+financial-report-llm-extractor = "financial_report_llm_extractor.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "ruff>=0.6",
+  "mypy>=1.10",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unused_configs = true
