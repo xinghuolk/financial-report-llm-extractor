@@ -34,6 +34,8 @@ PDF
 
 这不是“整份 PDF 给 LLM 直接抽字段”的架构。整份 PDF 只进入本地 evidence index；LLM 只能看到字段级 top-k bounded evidence、可选 statement/window context 和明确的 schema。每一步都要有可审计的中间 artifact。
 
+当前真实 PDF field-first 验证对 `00001_2025_en` 的结果是：五个 selected fields 都能在本地 evidence index 中找到候选，但合计 top-k prompt text 约 54k characters。因此 field-first 召回方向成立后，进入生产 LLM extraction 前仍必须继续压缩 ranking/window 策略，避免 prompt budget 过大。
+
 关键设计修正：
 
 - Statement/document localization 不能作为硬 gate。它只能为候选召回提供 ranking bonus、负样本信号或 row discovery context。
@@ -122,7 +124,8 @@ chunk 不是最终证据。chunk 只提供上下文；最终 `present` item 必�
 
 - index 是本地派生产物，可重建。
 - 全 PDF 可以进入 index，但 LLM prompt 只能使用 top-k evidence blocks。
-- statement kind 只能加分，不能作为必需条件。
+- statement kind / statement discovery 只能作为 ranking signal、review signal 或 row discovery context，不能作为字段召回和抽取的必需 main gate。
+- top-k 仍需受 prompt budget 约束；找到字段候选不等于可以把大量候选窗口直接交给生产 LLM。
 
 ### 3.4 Document Map
 

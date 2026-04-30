@@ -35,16 +35,21 @@ reconstruction must not become a prerequisite for extracting a field.
 Required direction:
 
 - Use an evidence-block-first pipeline:
-  `PDF -> page text/layout blocks -> statement or section logical chunks ->
-  field-scoped retrieval -> LLM extraction -> deterministic normalization and
-  validation`.
+  `PDF -> page text/layout blocks -> full-PDF local evidence index ->
+  field-scoped top-k retrieval -> LLM extraction -> deterministic
+  normalization and validation`.
 - Treat table rows, cells, and bounding boxes as evidence enrichment, not as
   the only path to a valid result.
-- Extract by field or small field group, scoped to statement/section context.
-  Do not ask the LLM to extract the whole document or the whole P0/P1 catalog in
-  one request.
-- Retrieval must be statement-aware and section-aware. Pure vector retrieval
-  over the whole document is not enough for first-slice reliability.
+- Extract by field or small field group, scoped to bounded top-k evidence and
+  optional statement/section context. Do not ask the LLM to extract the whole
+  document or the whole P0/P1 catalog in one request.
+- The full PDF may enter the local evidence index, but prompt payloads must
+  remain bounded to selected top-k evidence windows.
+- Statement and section discovery are optional ranking/review signals, not the
+  required main gate for field retrieval when field-first validation passes.
+  Pure vector retrieval over the whole document is not enough for first-slice
+  reliability either; deterministic aliases, layout signals, period/scope/unit
+  context, and statement hints should all contribute to ranking.
 - Prompt instructions are not a trust boundary. Schema validation, evidence
   checks, currency/unit normalization, and derivation checks must run in code.
 - The field catalog must carry extraction semantics: aliases, statement hints,
@@ -450,7 +455,8 @@ The quick validation path is:
 ```text
 contract fixes
 -> parser/document-map demo
--> statement/row-discovery to selected-field extraction demo
+-> field-first retrieval with optional statement/row signals
+-> selected-field extraction demo
 ```
 
 This is not a whole-document LLM extraction plan. The LLM may help with
@@ -525,11 +531,12 @@ Exit criteria:
   producing empty maps.
 - Document-map artifacts include evidence blocks for section decisions.
 
-### Phase 11: Statement/Row Discovery To Selected-Field Extraction Demo
+### Phase 11: Field-First Retrieval To Selected-Field Extraction Demo
 
-Goal: prove the revised pipeline can discover statement rows and extract a
-small selected field set without asking the LLM to process the whole PDF as a
-final extractor.
+Goal: prove the revised pipeline can find and extract a small selected field
+set through field-first top-k retrieval, while using statement and row discovery
+only as optional ranking/review signals. The LLM must not process the whole PDF
+as a final extractor.
 
 Selected fields for the demo:
 
@@ -541,15 +548,18 @@ Selected fields for the demo:
 
 Deliverables:
 
-- `statement_map.json` for formal income statement, balance sheet / statement
-  of financial position, and cash-flow statement.
-- LLM-assisted or fake-LLM `row_inventory.json` for statement chunks, including
-  row labels, raw values by period, unit/currency context, and row-level
-  evidence refs.
+- `retrieval_probe.json` showing selected-field candidates from the full-PDF
+  local evidence index, bounded to top-k evidence windows for prompt use.
+- Optional `statement_map.json` for formal income statement, balance sheet /
+  statement of financial position, and cash-flow statement. It is a
+  ranking/review artifact, not a required extraction gate.
+- Optional LLM-assisted or fake-LLM `row_inventory.json` for trusted, small
+  statement chunks, including row labels, raw values by period, unit/currency
+  context, and row-level evidence refs.
 - `catalog_mapping.json` mapping discovered rows to selected Turtle fields with
-  confidence, reason, and ambiguity status.
-- Selected-field extraction that feeds only mapped rows, neighbor headers, and
-  unit/period/scope context to the LLM.
+  confidence, reason, and ambiguity status when row discovery is available.
+- Selected-field extraction that feeds only top-k field candidates, optional
+  mapped rows, neighbor headers, and unit/period/scope context to the LLM.
 - Deterministic money normalization for the selected monetary fields.
 - `quick_validation_summary.json` and optional Markdown summary reporting:
   present/missing/ambiguous/extraction_failed, evidence gaps, normalization
@@ -558,12 +568,17 @@ Deliverables:
 Exit criteria:
 
 - For one HK English sample, the demo can move from PDF artifacts to
-  `row_inventory.json`, `catalog_mapping.json`, and selected-field
-  `extraction_result.json`.
+  selected-field `retrieval_probe.json` and `extraction_result.json`, with
+  optional `row_inventory.json` / `catalog_mapping.json` when statement windows
+  are reliable and small enough.
 - Every `present` selected field has page/chunk/block/snippet evidence.
 - Values from financial summary or MD&A are not silently accepted as formal
   statement values unless explicitly marked as non-formal evidence.
 - Ambiguous field mapping or money context is visible in the output.
+- Current real-PDF field-first validation on `00001_2025_en` found all five
+  selected fields locally, but the combined top-k candidate text was about 54k
+  prompt characters. Before production LLM extraction, ranking and evidence
+  windowing must reduce prompt budget further.
 
 ## 7. Non-Goals For The First Roadmap
 
@@ -586,7 +601,7 @@ These remain intentionally out of scope:
 | Risk | Guardrail |
 | --- | --- |
 | Table-driven-first implementation fails on heterogeneous report layouts. | Use evidence-block-first extraction; table/cell/bbox metadata is enrichment only. |
-| Whole-document RAG retrieves plausible but wrong context. | Use statement-aware and field-scoped retrieval with concrete evidence blocks. |
+| Whole-document RAG retrieves plausible but wrong context. | Put the full PDF in the local evidence index, but use field-scoped top-k retrieval with concrete evidence blocks and optional statement ranking signals. |
 | LLM returns normalized values that look valid but use the wrong unit or currency. | Let LLM extract raw value/context only; deterministic normalizer computes final money fields. |
 | Prompt instructions are treated as validation. | Enforce schema, evidence, money, derivation, period, and scope checks in code. |
 | Field catalog remains a priority list and cannot guide retrieval. | Extend it into an extraction catalog with aliases, hints, units, and derivations. |
@@ -594,7 +609,7 @@ These remain intentionally out of scope:
 | Cross-page context is lost or evidence becomes too coarse. | Store logical chunks for context but require page/block/snippet evidence for each value. |
 | HK English dual-currency or side-by-side layouts mix columns. | Split by layout region, record selected currency column, and mark ambiguity when unclear. |
 | Real-PDF problems appear too late. | Use `600519`, `00001`, and `01113` from Phase 1 onward as validation samples. |
-| Cost and latency grow quickly. | Batch only small field groups by statement/section; record token usage and support selected-field reruns. |
+| Cost and latency grow quickly. | Batch only small field groups by bounded top-k evidence windows; record token usage and support selected-field reruns. |
 | Raw artifacts are not reproducible. | Persist page/chunk/retrieval/LLM/raw/normalized/run metadata artifacts for every run. |
 | Product scope expands before extraction is proven. | Keep first slice to CLI + JSON, one PDF, P0/P1, and reviewable artifacts. |
 
@@ -605,14 +620,15 @@ The next detailed implementation plan should cover Phases 9 through 11 only:
 ```text
 contract fixes and demo run layout
 -> parser capability probe and document map
--> statement map, row discovery, catalog mapping, selected-field extraction
+-> field-first retrieval, optional statement/row signals, selected-field extraction
 ```
 
 Do not broaden immediately into all P0/P1 fields, full table reconstruction, a
-batch system, or a UI. The highest-risk assumption now is whether the revised
-document-map / row-discovery architecture can produce reviewable intermediate
-artifacts and selected-field extraction on real reports. Prove that first with a
-small selected field set and explicit evidence.
+batch system, or a UI. The highest-risk assumption now is whether full-PDF local
+evidence indexing plus field-first top-k retrieval can produce reviewable
+selected-field extraction on real reports without using statement discovery as a
+hard gate. Prove that first with a small selected field set, explicit evidence,
+and measured prompt budgets.
 
 ## 10. Open Decisions
 
