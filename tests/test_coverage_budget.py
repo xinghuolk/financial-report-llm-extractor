@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from pytest import CaptureFixture
+
 from financial_report_llm_extractor.coverage_budget import (
     build_coverage_metrics,
     load_catalog_field_ids,
@@ -321,7 +323,7 @@ def test_cli_parses_coverage_budget_command() -> None:
 
 def test_cli_coverage_budget_returns_zero_when_gate_is_blocked(
     tmp_path: Path,
-    capsys,
+    capsys: CaptureFixture[str],
 ) -> None:
     catalog_path = tmp_path / "catalog.json"
     catalog_path.write_text(
