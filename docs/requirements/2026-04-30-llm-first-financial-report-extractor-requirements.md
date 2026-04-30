@@ -1,366 +1,122 @@
-# LLM-First 财报抽取器需求文档
+# LLM-First 财报抽取器总需求 SPEC
+
+> 日期：2026-04-30
+> 状态：总需求
+> 范围：构建一个独立的 LLM-first 财报抽取器，从年报 PDF 中生成带证据、可审计、可复跑的 Turtle 风格 JSON。
 
 ## 1. 背景
 
-当前 `financial-report-analysis` 采用 deterministic-first 架构，通过表格结构恢复、
-指标映射、事实治理、P5 dataset、Turtle export 和 recompute audit 提供高确定性
-财报事实。这套架构适合稳定字段、长期回归测试和可治理输出。
+`financial-report-llm-extractor` 是一个独立项目，不依赖现有 deterministic
+`financial-report-analysis` 的 canonical facts、metric lifecycle、P5 dataset、
+recompute audit 或 registry 治理流程。
 
-但在新增公司、新市场、新财报格式和新增字段时，现有路径经常需要补充结构恢复、
-row label mapping、negative controls 和 focused specs。对于“尽快从陌生财报中拿到
-Turtle v0.15 所需数据”的目标，这条路线太重。
+现有 deterministic-first 路径适合长期稳定字段和严格回归，但在新增公司、新市场、新报告格式、新字段时，通常需要补充大量结构恢复、row label mapping、negative controls 和 focused specs。这个项目的目标不同：它要更快地从陌生年报中生成可 review 的候选财务字段，并把证据、歧义和失败原因显式暴露出来。
 
-因此新项目应作为独立应用建设，不复用现有 canonical facts、metric lifecycle、
-P5 recompute 或 deterministic registry。
+## 2. 核心目标
 
-## 2. 目标
+系统应支持：
 
-建设一个独立的 LLM-first 财报抽取应用，从 PDF 年报中按 Turtle v0.15 字段清单抽取
-结构化数据，并为每个结果保留证据。
+- 从单份年报 PDF 建立 page/block/chunk 证据存储。
+- 建立 document map 和 statement map，识别正式财务报表区域，而不是只按字段关键词搜索全文。
+- 使用 LLM 辅助发现 statement row labels 和候选 raw values。
+- 将发现到的行项目映射到 Turtle v0.15 P0/P1 字段。
+- 对字段或小字段组执行小范围 LLM 抽取。
+- 使用代码执行金额、币种、单位、期间、scope、evidence 和派生值校验。
+- 输出 JSON-first artifacts，便于人工 review、回归比较和后续分析。
 
-核心目标：
+系统不应：
 
-- 面向新公司、新格式时减少手写规则和 registry 扩展。
-- 按字段优先级抽取，而不是一次性尝试理解整份财报。
-- 每个 `present` 结果必须有页码、chunk/block id 和原文证据；若可获得 table id、
-  row/cell/bbox，也应作为附加 evidence metadata 保存，但 `table_id` 不是必需字段。
-- 支持 `missing`、`ambiguous`、`not_applicable` 和 `extraction_failed`，避免
-  LLM 为了填空而编造。
-- 产出独立 JSON，可用于人工 review、投资分析或与 deterministic 结果对比。
+- 让 LLM 一次性读取整份 PDF 并直接输出最终 P0/P1 字段。
+- 让 prompt 成为信任边界。
+- 信任 LLM 返回的 normalized money。
+- 在币种、期间、scope 或候选值不明确时静默选择一个值。
+- 把完整表格重建作为字段抽取的前置硬依赖。
+- 把 Codex/Claude skill 当成业务核心。skill 只能是薄封装。
 
-### 2.1 架构护栏
-
-第一阶段必须避免退回旧项目中风险最高的“表格驱动优先”路线。财报表格在不同公司、
-不同市场、不同 PDF 生成方式下差异很大，完整恢复表格结构不应成为字段抽取的前置条件。
+## 3. 总体主路径
 
 推荐主路径：
 
 ```text
 PDF
-  -> page text / layout evidence blocks
-  -> statement or section logical chunks
-  -> field-scoped retrieval
-  -> LLM extracts raw candidate values and evidence
-  -> deterministic money/unit normalizer
-  -> schema/evidence/derivation validator
-  -> reviewable JSON
+-> parser capability probe
+-> page/block evidence store
+-> document map
+-> statement map
+-> LLM-assisted row discovery
+-> catalog mapping
+-> field-scoped extraction
+-> deterministic money/unit normalization
+-> schema/evidence/period/scope/derivation validation
+-> reviewable JSON artifacts
 ```
 
-硬性约束：
+这条路径比单纯 field-scoped retrieval 多了三层：
 
-- Evidence-block-first：先保证页文本、布局行、段落、statement line、section window
-  可追溯；table row/cell/bbox 是增强信息，不是必需主路径。
-- 不要求完整 table stitching 后才能抽取字段。只要证据 block、单位上下文、期间和 scope
-  足够清晰，就可以进入检索和 LLM 抽取；置信度和 ambiguity 由 validator/reviewer 管理。
-- 不做 whole-document extraction。LLM 调用应按字段或小字段组，并限制在相关 statement/section
-  logical chunks 内。
-- 不依赖纯向量 RAG。第一阶段 retrieval 必须结合 field alias、statement hint、period、scope、
-  unit/currency context 和邻近块。
-- Prompt 不是可信边界。schema validation、evidence enforcement、金额归一化、推导字段校验、
-  period/scope consistency 必须由代码执行。
-- LLM 不负责最终金额归一化。LLM 只抽取 `value_raw`、`unit_context`、`currency_hint`
-  和 evidence；最终 `currency`、`unit_multiplier`、`normalized_value` 由 deterministic
-  normalizer 计算。
-- 不隐式做汇率换算，不静默混合币种，不在多候选值中强行选一个。
-- 市场/版式级规则可以存在，例如 A 股中文报表、港股英文双栏、多币种列；第一阶段应避免发行人
-  专属 patch。
-- 每次运行必须保存 page/chunk/retrieval/raw LLM/parsed response/normalized result/run metadata，
-  便于复现和 review。
-- 开发期和分析期生成的中间产物默认写入当前项目内 `tmp/`，不要写入系统 `/tmp`。`tmp/`
-  下内容应可由源 PDF 和代码重建。
+- `document map`：识别目录、审计报告、正式财务报表、notes、MD&A、financial summary 等区域。
+- `statement map`：识别 income statement、balance sheet、cash flow statement 及其 page range、unit、currency、period columns、scope。
+- `row discovery`：在 statement chunk 内发现行项目，而不是假设所有公司都使用 catalog 里的固定别名。
 
-对应的反目标：
+## 4. LLM 使用边界
 
-- 不把完整表格恢复作为第一阶段成败标准。
-- 不把 `PdfTableStructureAdapter` 式确定性表格分类器作为新系统核心。
-- 不让 agent skill 替代 parser、normalizer、validator 或 artifact store。
-- 不在抽取阶段生成整篇投资分析报告。
+LLM 可以参与：
 
-## 3. 产品形态决策：独立应用优先，Skills 作为薄封装
+- 判断候选页面是否属于正式财务报表区域。
+- 从目录、审计报告引用和标题上下文中辅助建立 document map。
+- 对 statement chunk 做 row inventory。
+- 给 discovered row 提供候选语义解释。
+- 在字段级 prompt 中抽取 `value_raw`、`unit_context`、`currency_hint`、period、scope、confidence 和 evidence refs。
 
-这个项目不应该只写成 Codex 或 Claude Code skill。推荐形态是：
+LLM 不可以：
+
+- 直接从整篇 PDF 输出最终 Turtle P0/P1。
+- 绕过 page/chunk/block/snippet evidence。
+- 决定最终 `normalized_value`。
+- 做隐式 FX conversion。
+- 在多个币种、期间、scope 或候选行之间无证据地强行选择。
+
+禁止模式：
 
 ```text
-独立应用 / Python package / CLI / API
-+ 可选 Codex skill
-+ 可选 Claude Code skill
+whole PDF text
+-> LLM
+-> final P0/P1 extracted fields
 ```
 
-### 3.1 为什么核心不应只是 skill
-
-Skill 更适合作为“告诉 LLM 怎么做”的工作流说明，不适合作为长期承载抽取系统的主体。
-
-如果只做 skill，会遇到几个问题：
-
-- 状态难管理：PDF chunks、embedding index、extraction runs、评估结果需要持久化。
-- 可重复性弱：同一份财报、同一字段、同一 prompt/schema 版本需要可复现输出。
-- 测试边界弱：字段 catalog、检索、schema validation、evidence enforcement 都应由代码测试。
-- 供应商耦合：Codex skill 和 Claude Code skill 的格式不同，不应让业务核心绑定某个 agent。
-- 批处理困难：后续要支持多 PDF、多公司、多年度、重跑和对比，应用边界更自然。
-
-### 3.2 Skill 适合做什么
-
-Skill 适合做 agent 入口和操作手册，而不是核心抽取引擎。
-
-Codex/Claude Code skill 可以负责：
-
-- 指导 agent 调用本项目 CLI/API。
-- 解释 Turtle 字段优先级。
-- 约束 agent 不要接受无证据的 `present` 结果。
-- 帮用户选择字段范围，例如 P0、P0+P1、或指定字段。
-- 帮用户阅读 extraction report，生成 review 总结。
-- 在人工确认后生成后续分析 prompt。
-
-Skill 不应该负责：
-
-- 直接解析 PDF。
-- 手写一次性 prompt 后把结果当事实。
-- 保存最终事实库。
-- 管理 embedding index。
-- 替代 schema validation。
-- 绕过 evidence requirement。
-- 替代金额、币种和单位归一化逻辑。
-
-### 3.3 推荐边界
+允许模式：
 
 ```text
-financial-report-llm-extractor
-  负责解析、切片、检索、LLM 调用、schema 校验、结果存储、测试。
-
-codex/claude skill
-  负责教 agent 如何调用 extractor，以及如何 review extractor 输出。
+statement chunk + headers + neighbor blocks
+-> LLM row discovery or field extraction
+-> deterministic validator
 ```
 
-这样保留两个优势：
+## 5. Evidence Contract
 
-- 应用提供可测试、可重复、可批处理的工程基础。
-- Skill 提供低摩擦的人机协作入口，让 Codex/Claude Code 能自然使用这个工具。
+每个 `present` item 必须有证据：
 
-## 4. 用户场景
+- `page`
+- `chunk_id`
+- `block_id`
+- `snippet`
 
-### 4.1 单份年报抽取
+证据必须指向真实存在的 page/block/chunk。若 logical chunk 跨页，最终 evidence 仍必须落到具体 page 和 block。
 
-用户提供一个 PDF 路径和字段优先级，例如 `P0+P1`。系统解析 PDF，构建 chunks，
-逐字段检索证据并调用 LLM，输出结构化 JSON。
+review 中已暴露出的合同风险必须优先修复：
 
-### 4.2 指定字段补抽
+- retrieval evidence 不能总是使用 candidate chunk 的第一个 `block_id`。当 matched alias 或 snippet 出现在 chunk 后续 block 时，evidence 必须指向包含该文本的 block。
+- raw LLM response 即使无法 parse，也必须归档到 artifacts，不能因为 JSON malformed 或 provider schema 异常而丢失原始响应。
+- chunk 输出路径若是嵌套目录，CLI 必须自动创建父目录。
 
-用户发现某些字段缺失，例如 `total_cur_assets`、`defer_tax_liab`，可以只针对这些
-字段重新检索和抽取。
+## 6. Page/Block/Chunk Store
 
-### 4.3 结果 review
+证据存储至少包含三层：
 
-用户或 agent 查看每个字段的 value、unit、period、scope、confidence 和 evidence。
-无证据字段不得显示为 `present`。
+- `page atom`：PDF 单页文本和页码。
+- `block atom`：页内段落、标题、layout line、statement line、table fragment 或 table row。
+- `logical chunk`：面向 document map、retrieval 和 LLM 的上下文窗口，可跨页。
 
-### 4.4 与 deterministic 系统对比
-
-后续可以把 LLM 抽取结果与现有 deterministic availability 或 Turtle dataset 对比，
-发现 deterministic 缺口或 LLM 可疑项。但对比结果不自动写回旧系统。
-
-## 5. 字段范围与优先级
-
-字段来源以 Turtle v0.15 gap analysis 为准，落地到
-`field_catalog/turtle_v015_priority_fields.json`。
-
-### P0：Turtle 核心数据包
-
-三大表主表和投资分析反复消费的核心字段。第一阶段即使 deterministic 系统已有，
-LLM-first 也应独立抽取一遍，作为替代路径的完整性验证。
-
-### P1：高价值主表增强
-
-利润增强、流动资产/负债、递延税项、少数股东权益等字段。它们是第一版之后最重要的
-增强对象。
-
-### P2：现金流增强
-
-现金流附表和补充披露中常见，但格式变化更大的字段。建议在 P0/P1 稳定后推进。
-
-### P3：附注 / 公告桥接
-
-分红、回购、资本化研发、资本化利息、账龄坏账、关联方应收应付、或有负债、租赁负债
-分层、分部收入利润等。它们应作为 reviewable signal，而不是强行变成标准事实。
-
-### P4：文本型 review artifact
-
-MD&A、审计意见、股息政策、风险因素等。用于投资分析素材和 review，不进入数值事实层。
-
-## 6. 输出合同
-
-每个字段输出一个或多个 extracted item：
-
-```json
-{
-  "field_id": "total_cur_assets",
-  "status": "present",
-  "value": 123456,
-  "value_raw": "123,456",
-  "currency": "CNY",
-  "unit": "CNY thousand",
-  "unit_multiplier": 1000,
-  "normalized_value": 123456000,
-  "normalized_unit": "CNY",
-  "period": "2025 FY",
-  "scope": "consolidated",
-  "confidence": 0.91,
-  "evidence": [
-    {
-      "page": 88,
-      "chunk_id": "p88_table_1",
-      "block_id": "p88_table_1_r12",
-      "snippet": "流动资产合计 ..."
-    }
-  ]
-}
-```
-
-状态枚举：
-
-- `present`
-- `missing`
-- `ambiguous`
-- `not_applicable`
-- `extraction_failed`
-
-硬性规则：
-
-- `present` 必须有 evidence。
-- `value` 必须能从 evidence 中定位或推导，不能只来自 LLM 总结。
-- `unit`、`period`、`scope` 不确定时必须显式标记为 `unknown` 或 `ambiguous`。
-- 同一字段存在多个候选值时，不应静默选择，应输出 ambiguity 或候选列表。
-- 金额字段必须保留原始展示值、币种、单位倍率和归一化值；不能只保存一个无上下文数字。
-
-### 6.1 货币、单位与倍率
-
-财报里常见多种币种和展示单位，例如人民币、港币、美元，以及 `元`、`千元`、`万元`、
-`百万元`、`RMB'000`、`HK$ million`、`US$ million`、`$ Million`、`k`、`m`。
-系统必须把“原始展示值”和“归一化值”分开管理。
-
-推荐金额结构：
-
-```json
-{
-  "value_raw": "280,036",
-  "value": 280036,
-  "currency": "HKD",
-  "unit": "HKD million",
-  "unit_multiplier": 1000000,
-  "normalized_value": 280036000000,
-  "normalized_unit": "HKD"
-}
-```
-
-规则：
-
-- `value_raw` 保存 evidence 中的原始数字文本。
-- `value` 是按原始展示单位解析出的数值，不乘倍率。
-- `currency` 使用 ISO 风格代码：`CNY`、`HKD`、`USD`、`unknown` 或 `ambiguous`。
-- `unit_multiplier` 表示展示单位相对基础币种单位的倍率，例如 `元=1`、`千元=1000`、
-  `万元=10000`、`million=1000000`。
-- `normalized_value = value * unit_multiplier`，只做同一币种下的倍率归一化。
-- 抽取层不做汇率换算。跨币种比较、换算为人民币或美元，应由后续分析层显式执行并记录汇率来源。
-- 如果币种或倍率无法从证据中确定，金额字段应标记 `ambiguous`，或把对应字段设为
-  `unknown`，不得默认假设。
-- 金额归一化不能只由 LLM 或 agent skill 完成。LLM 可以抽取 `value_raw`、候选单位上下文、
-  currency hint 和 evidence；最终 `currency`、`unit_multiplier`、`normalized_value` 必须由
-  本项目的确定性 normalizer/validator 计算和校验。
-
-币种和单位解析优先级：
-
-1. 表格标题附近的单位行，例如 `单位：元 币种：人民币`、`HK$ million`。
-2. 列标题或表头，例如 `2025 HK$ million`、`US$ million`。
-3. 行内标记或脚注。
-4. 报告全局 reporting currency metadata。
-5. 无法确认时标记 `unknown` 或 `ambiguous`。
-
-多币种列处理：
-
-- 如果同一表同时出现 `US$ million` 和 `HK$ million`，应优先选择报表正式 reporting
-  currency 列，并在 metadata 中记录被选择的列。
-- 不能把不同币种列混合用于同一字段。
-- 如果字段来自推导计算，参与计算的所有 evidence 必须使用同一币种和倍率；否则输出
-  `ambiguous`。
-
-英文缩写处理：
-
-- `k` / `K` 只有在金额上下文明确时才解释为 thousand。
-- `m` / `M` / `mn` 只有在金额上下文明确时才解释为 million。
-- `$` 不能单独确定币种，必须结合报告市场、表头、单位行或 metadata。
-
-推荐处理流：
-
-```text
-LLM extraction
-  -> value_raw / unit_context / currency_hint / evidence
-money normalizer
-  -> value / currency / unit_multiplier / normalized_value / normalized_unit
-validator
-  -> schema check / evidence check / currency-unit consistency
-```
-
-如果 normalizer 无法确定币种或倍率，应返回结构化错误，由 extraction result 标记为
-`ambiguous`、`missing` 或 `extraction_failed`，而不是要求 LLM 猜测。
-
-### 6.2 财报字段语义与推导字段
-
-不同市场的报表命名不同。字段 catalog 应支持中英文别名和 statement hints，例如：
-
-- `资产负债表` / `Consolidated Statement of Financial Position`
-- `利润表` / `Consolidated Income Statement` / `Consolidated Statement of Profit or Loss`
-- `现金流量表` / `Consolidated Statement of Cash Flows`
-- `归属于母公司股东的净利润` / `Profit attributable to ordinary shareholders`
-- `货币资金` / `Cash and cash equivalents` / `Bank balances and deposits`
-
-部分字段在港股英文报表中可能不是单行展示，例如 `total_assets`、`total_liabilities`。
-第一阶段允许 evidence-backed derived value，但必须满足：
-
-- 输出标记 `derivation`，说明计算公式。
-- evidence 列出所有参与计算的行。
-- 所有参与行的币种、倍率、期间和 scope 必须一致。
-- 如果缺少任一参与行，或口径不一致，应输出 `ambiguous` 或 `missing`。
-
-示例：
-
-```json
-{
-  "field_id": "total_assets",
-  "status": "present",
-  "value": 1155673,
-  "currency": "HKD",
-  "unit": "HKD million",
-  "unit_multiplier": 1000000,
-  "normalized_value": 1155673000000,
-  "derivation": {
-    "formula": "non_current_assets + current_assets",
-    "inputs": ["non_current_assets", "current_assets"]
-  },
-  "evidence": [
-    {"page": 136, "block_id": "p136_row_non_current_assets", "snippet": "Non-current assets ... 942,930"},
-    {"page": 136, "block_id": "p136_row_current_assets", "snippet": "Current assets ... 212,743"}
-  ]
-}
-```
-
-## 7. RAG / Chunk Store 合同
-
-财报 PDF 的表格和关键文字经常跨页。系统不应只按单页切片，也不应把相邻页粗暴拼成
-不可追溯的大文本。推荐采用“原子证据 + 逻辑切片”两层结构：
-
-- `page atom`：按页保存原始文本，是最小可回放来源。
-- `block atom`：页内段落、标题、表格片段或表格行，保留 page、block id、文本和可选 layout metadata。
-- `logical chunk`：面向 RAG/LLM 的上下文，可以跨页，例如一张跨页的合并现金流量表或一个跨页段落。
-
-硬性规则：
-
-- RAG chunk 可以跨页，但 evidence atom 必须保持页级和 block 级可追溯。
-- `chunk_id` 可以指向跨页 logical chunk；`page`、`block_id`、`snippet` 必须指向具体证据位置。
-- chunk store 是 evidence lookup 的来源；embedding/vector index 是可重建派生物，不是事实源。
-- 同一 PDF、同一 parser/chunker 版本下，chunk id 应尽量稳定，便于 diff 和重跑。
-- parser version、chunker version、embedding model/version、source PDF hash 必须写入 metadata。
-- PDF、parser 或 chunker 版本变化时，应重建 chunk store 和 retrieval index。
-
-推荐第一阶段 chunk 类型：
+第一阶段推荐 chunk kinds：
 
 - `page_text`
 - `paragraph`
@@ -371,185 +127,264 @@ validator
 - `statement_table`
 - `table_row`
 
-跨页 statement / 表格处理：
+要求：
 
-- 遇到“合并资产负债表”“合并利润表”“合并现金流量表”等标题时，开启 statement section。
-- 下一页如果没有新的大标题，且列结构或表格语义延续，应并入同一个 `statement_table` logical chunk。
-- 遇到“母公司资产负债表”“公司负责人”或新报表标题等结束信号时，关闭当前 logical chunk。
-- 表头、单位、期间列和每个字段行都应尽量保留独立 block，可用于 evidence。
-- 如果 PDF backend 无法稳定产出 table row/cell，系统仍应从 layout line、statement line 和邻近
-  unit/context block 构建可 review 的 evidence。完整表格恢复不是抽取前置条件。
-- 港股英文年报常见双栏或多栏页面。chunker 应尽量按 layout column 或 statement region 切分，
-  避免把左侧财务状况表和右侧权益变动表交错成一个不可审计 block。
+- chunk store 是 durable evidence source。
+- embedding/vector index 只能是可重建派生产物。
+- parser version、chunker version、source PDF hash 必须进入 metadata。
+- table/cell/bbox 是 evidence enrichment，不是主路径硬依赖。
 
-跨页文字处理：
+## 7. Document Map
 
-- 按章节标题建立 section，例如审计报告、管理层讨论与分析、财务报表附注。
-- 页末段落如果没有自然终止符，下一页开头又不是新标题，应合并为跨页 paragraph logical chunk。
-- 长章节不应整体塞给 LLM，应使用 section window 或 sliding window，把命中 block 的相邻上下文一起提供。
+Document map 应识别：
 
-LLM 抽取字段时可以读取跨页 logical chunk，但输出证据必须落到具体页和 block：
+- 目录页。
+- 审计报告页。
+- 正式财务报表 page range。
+- notes page range。
+- MD&A / 管理层讨论范围。
+- 五年摘要 / financial summary 范围。
+- 报告语言、市场、报告期、公司名。
+
+Document map 输出应是结构化 artifact，并带 evidence：
 
 ```json
 {
-  "field_id": "operating_cash_flow",
-  "status": "present",
-  "value": 61522204989.35,
-  "unit": "CNY",
-  "period": "2025 FY",
-  "scope": "consolidated",
-  "evidence": [
+  "sections": [
     {
-      "page": 65,
-      "chunk_id": "stmt_cashflow_consolidated_2025_p64_p66",
-      "block_id": "p65_table_cashflow_r_operating_cash_flow",
-      "snippet": "经营活动产生的现金流量净额 61,522,204,989.35 92,463,692,168.43"
+      "kind": "audited_financial_statements",
+      "page_start": 132,
+      "page_end": 346,
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "page": 129,
+          "block_id": "p0129_b0003",
+          "snippet": "financial statements ... set out on pages 132 to 346"
+        }
+      ]
     }
   ]
 }
 ```
 
-## 8. LLM 配置与通信层
+## 8. Statement Map
 
-第一阶段必须包含明确的 LLM 配置和通信边界，不能只在抽取逻辑里临时调用某个 SDK。
-可以参考 `../hermes-agent` 的成熟做法：配置文件管理 model/provider/base_url，密钥从环境变量读取，
-通信层负责 provider 解析、请求参数组装、超时、重试和响应归一化。
+Statement map 应识别：
 
-但本项目和 agent 类应用的目标不同。财报抽取结果需要可复现、可审计，因此第一阶段不应默认启用
-“自动换 provider 继续抽取”。如果发生 provider、model 或 endpoint 变化，必须记录到 extraction run
-metadata 中；可选 fallback 也只能显式开启。
+- income statement / statement of comprehensive income。
+- balance sheet / statement of financial position。
+- cash flow statement。
+- statement of changes in equity。
+- consolidated vs parent/company。
+- current year and prior year columns。
+- unit and currency context。
 
-### 8.1 配置来源
+输出示例：
 
-推荐使用项目级配置文件，例如：
-
-```yaml
-llm:
-  default:
-    provider: openai_compatible
-    model: gpt-4.1
-    base_url: https://api.openai.com/v1
-    api_key_env: OPENAI_API_KEY
-    temperature: 0
-    max_output_tokens: 4096
-    timeout_seconds: 120
-    retry_count: 2
-    retry_backoff_seconds: 2
-    structured_output_mode: json_schema
-  tasks:
-    field_extraction:
-      model: gpt-4.1
-      temperature: 0
-    response_repair:
-      model: gpt-4.1-mini
-      temperature: 0
+```json
+{
+  "statements": [
+    {
+      "statement_kind": "income_statement",
+      "scope": "consolidated",
+      "page_start": 70,
+      "page_end": 70,
+      "title": "CONSOLIDATED INCOME STATEMENT",
+      "unit_context": "$ Million",
+      "period_columns": ["2025", "2024"],
+      "evidence_blocks": ["p0070_b0001", "p0070_b0002"]
+    }
+  ]
+}
 ```
 
-配置优先级：
+## 9. Row Discovery
 
-1. CLI/API 显式参数。
-2. 项目配置文件。
-3. 环境变量中的密钥和 endpoint override。
-4. 内置默认值。
+Row discovery 的目标是在 statement chunk 中列出可映射的财务行项目。
 
-API key 不应写入 extraction output，只记录 `api_key_env` 名称和 provider/model/base_url。
+LLM 输入应包含：
 
-### 8.2 通信层职责
+- statement title。
+- scope。
+- period columns。
+- unit/currency context。
+- statement blocks。
+- 必要 neighbor blocks。
 
-通信层应提供 provider-neutral 接口：
+LLM 输出 row inventory，而不是最终 extracted items：
 
-- `LlmConfigResolver`：解析任务级配置、环境变量和运行时 override。
-- `LlmClient`：暴露 `extract_field(request) -> response` 或更通用的 `complete_json(request)`。
-- `LlmTransport`：封装具体协议，例如 OpenAI-compatible chat completions。
-- `LlmResponseParser`：从 provider response 中提取 JSON、usage、latency、finish reason 和 raw text。
-- `FakeLlmClient`：用于测试 schema validation、evidence enforcement 和 error path。
+```json
+{
+  "rows": [
+    {
+      "row_label": "Group revenue",
+      "candidate_meaning": "group revenue",
+      "values": [{"period": "2025", "value_raw": "57,935"}],
+      "unit_context": "$ Million",
+      "currency_hint": "HKD",
+      "evidence": [
+        {
+          "page": 70,
+          "block_id": "p0070_b0002",
+          "snippet": "Group revenue 57,935 45,529"
+        }
+      ]
+    }
+  ]
+}
+```
 
-第一阶段可以只实现 OpenAI-compatible endpoint，但接口必须允许后续增加 Anthropic、OpenRouter、
-本地 vLLM/Ollama 或其他 provider。
+Row inventory 只是中间 artifact。最终字段仍需 catalog mapping、field-scoped extraction 和 validator。
 
-### 8.3 错误处理
+## 10. Field Catalog And Mapping
 
-LLM 通信层至少要区分：
+字段目录来源为 `field_catalog/turtle_v015_priority_fields.json`，后续应扩展为 extraction catalog。
 
-- 配置错误：缺少 API key、base_url 无效、model 为空。
-- 网络错误：timeout、connection error。
-- provider 错误：401/403、429、5xx、content filter、输出截断。
-- 响应错误：非 JSON、schema validation failed、缺少 required fields。
+每个 catalog entry 应包含：
 
-网络和 429/5xx 可以有限重试。认证错误、schema 长期不匹配、无证据 `present` 不应无限重试；
-它们应进入 `extraction_failed` 或触发一次可记录的 repair pass。
+- `field_id`
+- priority：P0/P1/P2/P3/P4
+- value type：money、number、percent、text、derived
+- Chinese aliases
+- English aliases
+- statement hints
+- scope hints
+- period expectations
+- unit/currency expectations
+- derivation metadata when applicable
 
-### 8.4 结构化输出与证据校验边界
+Catalog mapping 输入：
 
-LLM 可以被要求按 JSON schema 输出，但最终可信边界在本项目代码中：
+- discovered row label。
+- statement kind。
+- scope。
+- period。
+- unit/currency context。
+- field catalog aliases and hints。
 
-- schema validation 由本项目执行。
-- `present` evidence enforcement 由本项目执行。
-- value 是否可从 evidence snippet 定位或推导，由 validator/reviewer 标记。
-- 原始 LLM 响应和 parsed JSON 应保存到 run artifact，便于审计和复现。
+低置信度、多候选、口径冲突时，输出 `ambiguous`，不能硬选。
 
-## 9. 第一阶段范围
+## 11. Money And Unit Normalization
 
-第一阶段只做最小可用闭环：
+LLM 只可提供：
 
-- 单份年度 PDF。
-- P0 + P1 字段。
-- PDF text + layout evidence blocks + optional table/cell metadata。
-- 本地 JSON chunk store，包含 page atoms、block atoms 和可跨页 logical chunks。
-- 本项目内 `tmp/runs/<run_id>/...` 作为默认中间产物目录，保存 pages、chunks、retrieval、
-  LLM raw/parsed response、extraction result 和 run metadata。
-- 三大表跨页 statement chunk 识别，以及 P0/P1 字段的 concrete evidence blocks。
-- 金额字段的币种、单位倍率、归一化值和多币种列选择。
-- 中英文 statement/field aliases，以及少量 evidence-backed derived value。
-- statement-aware、field-scoped 关键词/规则检索；embedding 或混合检索可以作为后续增强。
-- LLM 配置解析、provider-neutral 通信接口和 OpenAI-compatible transport。
-- JSON 输出。
-- 基础测试：field catalog、schema validation、evidence enforcement、LLM config resolver、FakeLlmClient。
+- `value_raw`
+- `unit_context`
+- `currency_hint`
+- evidence refs
 
-暂不做：
+代码必须计算：
 
-- UI。
-- 多用户。
-- async job workflow。
-- 数据库产品化。
-- 自动下载财报。
-- 写回 deterministic 系统。
-- 技术指标、行情、WebSearch 行业信息。
+- `value`
+- `currency`
+- `unit`
+- `unit_multiplier`
+- `normalized_value`
+- `normalized_unit`
 
-## 10. 后续演进
+需支持：
 
-第二阶段可以增加：
+- CNY/RMB、HKD、USD、unknown、ambiguous。
+- `元`、`千元`、`万元`、`亿元`、`RMB'000`、`RMB in thousands`、`RMB in millions`、`HK$'000`、`HK$ million`、`US$ million`、`$ million`、`k`、`m`、`mn`。
+- parentheses negatives、minus signs、commas、dash missing values。
 
-- 多 PDF / 多年度 batch。
-- extraction run 持久化。
-- prompt/schema versioning。
-- review feedback 数据集。
-- 对比 deterministic 输出的 diff report。
-- Codex skill / Claude Code skill。
-- 可选 HTTP API。
-- 多 provider transport 和显式 fallback policy。
-- 更强的跨页表格结构恢复、bbox/cell-level evidence 和复杂附注合并；这些仍应作为 evidence
-  enrichment，不应替代 evidence-block-first 主路径。
+规则：
 
-第三阶段再考虑：
+- `normalized_value = value * unit_multiplier`。
+- 不做 FX conversion。
+- `$` 不能单独决定币种。
+- 多币种列必须选择明确 reporting-currency column，无法确定则 `ambiguous`。
+- derived value 的所有输入必须 period、scope、currency、unit 一致。
 
-- Agentic extraction planning。
-- 表格跨页恢复增强。
-- 复杂附注检索。
-- 投资分析报告生成。
-- export adapter。
+## 12. LLM Config And Transport
 
-## 11. 成功标准
+系统必须有 provider-neutral LLM boundary：
+
+- `LlmConfigResolver`
+- `LlmClient`
+- `OpenAICompatibleTransport`
+- `LlmResponseParser`
+- `FakeLlmClient`
+
+每次 run 必须记录：
+
+- provider
+- model
+- base_url
+- prompt version
+- schema version
+- latency when available
+- usage when available
+- finish reason when available
+- structured transport/parse errors
+
+API key 只能从环境变量读取，不得写入 artifacts。可记录 `api_key_env` 名称。
+
+provider fallback 默认关闭。若后续支持 fallback，必须显式开启，并记录每次 provider/model/base_url 的变化。
+
+## 13. Output Artifacts
+
+默认使用仓库内 `tmp/`，而不是系统 `/tmp`。
+
+推荐 run layout：
+
+```text
+tmp/
+  runs/
+    <run_id>/
+      pages.jsonl
+      chunks.jsonl
+      document_map.json
+      statement_map.json
+      row_inventory.json
+      catalog_mapping.json
+      retrieval_probe.json
+      prompt_payloads/
+      raw_llm_responses/
+      parsed_llm_responses/
+      extraction_result.json
+      run_metadata.json
+      review_summary.json
+```
+
+## 14. First Slice Scope
+
+第一可用切片：
+
+- 单份 annual PDF。
+- P0 + P1 核心字段。
+- CLI + JSON artifacts。
+- fake LLM mode 必须可离线跑。
+- real LLM mode 必须通过显式 config 启用。
+- 默认不需要 UI、数据库、批处理队列或自动下载。
+
+优先验证样本：
+
+- `downloads/cn_stocks/600519/annual/2025_年度报告.pdf`
+- `downloads/hk_stocks/00001/annual/2025_annual_en.pdf`
+- `downloads/hk_stocks/01113/annual/2025_annual_en.pdf`
+
+扩展验证样本：
+
+- `300750`
+- `601919`
+- `688008`
+- `01810`
+- `02498`
+- `06862`
+- `09987`
+
+## 15. Success Criteria
 
 第一阶段成功标准：
 
-- 能对一份陌生年报抽取 P0+P1 字段。
-- 每个 `present` 字段都有可读证据。
-- 跨页表格或跨页文字中的字段可以被抽取，并能回指到具体页和 block。
-- 人民币、港币、美元以及 `元`、`千元`、`万元`、`HK$ million`、`US$ million`
-  等单位能被统一解析，且不做隐式汇率换算。
-- 港股英文年报中的 reporting currency 列、双栏表格和派生字段能被明确处理或标记为 ambiguous。
-- 缺失字段能明确标记，不编造。
-- 同一字段的抽取过程可重跑、可比较。
-- 每次 extraction run 记录实际使用的 provider、model、base_url、prompt/schema 版本和 LLM error metadata。
-- 用户可以根据 JSON 结果判断是否值得继续扩展 P2/P3/P4。
+- 可以对陌生 annual PDF 生成 document map、statement map、row inventory 和 selected P0/P1 extraction result。
+- 每个 `present` 字段都有可读 evidence。
+- 正式报表与目录、五年摘要、MD&A、notes 能被区分。
+- 跨页 statement 或跨页文字中的字段可以追溯到具体 page/block。
+- CNY/HKD/USD 和常见中英文单位能 deterministic normalize。
+- HK English 年报中的 reporting currency、双列/多列、derived fields 能处理或显式标记 ambiguous。
+- 缺失字段明确标记，不编造。
+- 同一字段抽取过程可复跑、可比较。
+- 每次 run 记录 provider/model/base_url/prompt/schema/errors。

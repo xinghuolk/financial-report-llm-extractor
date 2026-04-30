@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from financial_report_llm_extractor.chunking import build_chunk_store
+from financial_report_llm_extractor.evaluation import write_review_summary
 from financial_report_llm_extractor.extraction import run_fake_extraction
 from financial_report_llm_extractor.ingestion import ingest_pdf
 from financial_report_llm_extractor.llm_transport import run_real_transport_probe
@@ -40,6 +41,10 @@ def build_parser() -> argparse.ArgumentParser:
     extract_parser.add_argument("--config", required=True, type=Path)
     extract_parser.add_argument("--out", type=Path)
     extract_parser.add_argument("--raw-response-dir", type=Path)
+
+    evaluate_parser = subparsers.add_parser("evaluate")
+    evaluate_parser.add_argument("--root", required=True, type=Path)
+    evaluate_parser.add_argument("--out", type=Path)
 
     return parser
 
@@ -99,6 +104,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"items={real_result.item_count}")
         print(f"raw_responses={real_result.raw_response_count}")
         print(f"extraction_result_path={real_result.output_path}")
+        return 0
+
+    if args.command == "evaluate":
+        evaluation_result = write_review_summary(
+            args.root,
+            output_path=args.out,
+        )
+        print(f"reports={evaluation_result.report_count}")
+        print(f"evaluation_summary_path={evaluation_result.output_path}")
         return 0
 
     raise ValueError(f"unknown command: {args.command}")

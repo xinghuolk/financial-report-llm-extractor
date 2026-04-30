@@ -1,313 +1,528 @@
-# LLM-First Turtle Financial Extraction Design
+# LLM-First Turtle 财报抽取总设计
 
-## Goal
+> 日期：2026-04-30
+> 状态：总设计
+> 关联需求：`docs/requirements/2026-04-30-llm-first-financial-report-extractor-requirements.md`
 
-Build an independent extraction path for Turtle-style financial report inputs.
-The system should adapt to new companies and report formats without extending
-the deterministic metric registry for every field variant.
+## 1. 设计目标
 
-The product requirements are documented in
-`docs/requirements/2026-04-30-llm-first-financial-report-extractor-requirements.md`.
+本项目要构建一个独立的财报抽取系统。它从年报 PDF 中生成 Turtle 风格的结构化 JSON，但不写入 canonical fact store，也不复用 deterministic `financial-report-analysis` 的 metric lifecycle、P5 dataset 或 recompute 机制。
 
-## Architecture
+系统要解决的核心问题是：不同公司、不同市场、不同语言的年报表达差异很大。单纯依靠固定字段别名做 retrieval 容易漏召回，也容易把目录、五年摘要、MD&A、notes 中的值误当作正式财务报表值。因此，系统必须先理解文档结构和正式报表区域，再发现报表行项目，最后才映射到 Turtle 字段并执行字段级抽取。
+
+## 2. 总体架构
+
+主路径：
 
 ```text
 PDF
--> document parser
--> page text / layout evidence blocks / optional table metadata
--> chunk builder
--> chunk store: page atoms + block atoms + logical chunks
--> retrieval index
--> Turtle field catalog
--> field-scoped retrieval
--> prompt builder
--> LLM config resolver
--> LLM client / transport
--> LLM structured extraction
--> structured response parser
--> money/unit normalizer
--> schema validator + evidence enforcer
--> evidence-grounded extracted items
+-> parser capability probe
+-> page/block evidence store
+-> document map
+-> statement map
+-> LLM-assisted row discovery
+-> catalog mapping
+-> field-scoped extraction
+-> deterministic money/unit normalization
+-> schema/evidence/period/scope/derivation validation
 -> review/export JSON
 ```
 
-The retrieval index stores source chunks and evidence pointers. It is not the
-final fact store. Final outputs are stored as extraction-run items with their
-own status, confidence, and evidence.
+这不是“整份 PDF 给 LLM 直接抽字段”的架构。LLM 可以参与 discovery 和局部抽取，但每一步都要有可审计的中间 artifact。
 
-The primary path is evidence-block-first, not table-driven-first. Page text,
-layout lines, statement lines, paragraphs, and section windows must be enough
-to drive retrieval and LLM extraction. Table rows, cells, and bounding boxes
-are valuable evidence enrichment when a PDF backend can recover them, but a
-field should not be blocked solely because the full table could not be
-reconstructed.
+## 3. 核心模块
 
-## Chunking And Cross-Page Context
+### 3.1 Parser Capability Probe
 
-Annual reports frequently split both tables and important narrative text across
-page boundaries. The system should preserve page-level evidence while building
-larger logical chunks for retrieval and LLM extraction.
+职责：
 
-The chunk store has three layers:
+- 检查当前 PDF backend 对样本报告的文本抽取质量。
+- 记录 parser name/version、source PDF hash、page count。
+- 识别中文 A 股 PDF、港股英文 PDF、扫描/字体编码异常 PDF 的基本可用性。
 
-- `page atom`: raw extracted text for one PDF page.
-- `block atom`: a page-local paragraph, heading, layout line, statement line,
-  table fragment, or table row when available.
-- `logical chunk`: a retrieval/LLM context that can reference blocks from one
-  or more pages.
+输出：
 
-RAG chunks may cross pages. Evidence must remain page/block specific. For
-example, a cash-flow statement logical chunk may span pages 64-66, while the
-`operating_cash_flow` evidence points to the exact row on page 65.
+- parser metadata。
+- page extraction quality signals。
+- 可继续处理或需要 fallback 的状态。
 
-Recommended first-slice chunk kinds:
+设计理由：
 
-- `page_text`
-- `paragraph`
-- `section_window`
+本地样本验证显示，某些 backend 对 A 股中文年报无法抽出可搜索中文文本。系统不能假设一个 PDF parser 对所有市场都可靠。
+
+### 3.2 Page/Block Evidence Store
+
+职责：
+
+- 将 PDF 转成 page atoms。
+- 将 page text 切成 block atoms。
+- 为每个 block 生成稳定 `block_id`。
+- 保留 page、text、kind、optional layout/table metadata。
+
+最小 block kinds：
+
 - `layout_line`
+- `paragraph`
 - `statement_line`
 - `table_fragment`
-- `statement_table`
 - `table_row`
+- `section_heading`
 
-Statement and table continuation rules:
+要求：
 
-- Start a logical `statement_table` when a statement title is detected, such as
-  consolidated balance sheet, consolidated income statement, or consolidated
-  cash-flow statement.
-- Continue the chunk on following pages when there is no new major title and
-  the table structure or statement semantics continues.
-- Stop when a new statement starts, a parent-company statement starts, or a
-  report-signature/footer marker indicates the table ended.
-- Preserve row-level blocks when available with page, row label, column labels,
-  period, unit, and optional layout metadata.
-- When row-level table structure is unavailable, preserve line-level statement
-  blocks plus nearby unit, period, scope, and heading context. Extraction may
-  proceed from these blocks with lower confidence instead of failing early.
-- For Hong Kong English annual reports, split by layout column or statement
-  region when pages contain side-by-side statements. A block should not mix
-  unrelated rows from the left and right columns.
+- evidence store 是事实来源。
+- 后续 retrieval、row discovery、field extraction 都必须引用这里的 block。
+- chunk 可以跨页，但最终 evidence 必须落到具体 page/block/snippet。
 
-Narrative continuation rules:
+### 3.3 Chunk Builder
 
-- Build section windows from report headings such as audit report, MD&A, and
-  financial statement notes.
-- Merge page-break paragraphs only when the previous page ends without a
-  natural terminator and the next page does not start with a heading.
-- For long sections, retrieve a focused window around the matched block rather
-  than sending the whole section to the LLM.
+职责：
 
-The chunk store is the durable evidence source. Embedding/vector indexes are
-derived artifacts and should be rebuildable from the chunk store plus parser,
-chunker, embedding model, and source PDF metadata.
+- 从 blocks 构建 logical chunks。
+- 支持 page chunks、section windows、statement chunks。
+- 保留 chunk 到 block 的映射。
 
-## Money And Unit Normalization
+chunk kinds：
 
-Financial reports present numbers with different currencies and scale units:
-RMB/CNY, HKD, USD, `元`, `千元`, `万元`, `RMB'000`, `HK$ million`,
-`US$ million`, `$ Million`, `k`, and `m`. Extraction must preserve the raw
-displayed value and separately compute a same-currency normalized value.
+- `page_text`
+- `section_window`
+- `statement_table`
+- `statement_window`
 
-Recommended money fields on numeric extracted items:
+chunk 不是最终证据。chunk 只提供上下文；最终 `present` item 必须引用 block。
 
-- `value_raw`: source text number exactly as shown in evidence.
-- `value`: parsed numeric value before applying the scale multiplier.
-- `currency`: `CNY`, `HKD`, `USD`, `unknown`, or `ambiguous`.
-- `unit`: human-readable combined unit, such as `HKD million`.
-- `unit_multiplier`: multiplier to the base currency unit.
-- `normalized_value`: `value * unit_multiplier`.
-- `normalized_unit`: base currency unit, such as `HKD`.
+### 3.4 Document Map
 
-The extractor must not perform FX conversion. Currency conversion belongs to a
-later analysis layer with an explicit exchange-rate source and date.
+职责：
 
-Money normalization is a deterministic project component, not an LLM or skill
-responsibility. The LLM may identify `value_raw`, nearby unit context,
-currency hints, and evidence blocks. The normalizer computes `value`,
-`currency`, `unit_multiplier`, `normalized_value`, and `normalized_unit`.
-The validator then checks schema, evidence, and currency/unit consistency.
+- 识别报告结构。
+- 区分目录、五年摘要、MD&A、审计报告、正式财务报表、notes。
+- 找到正式财务报表 page range。
 
-```text
-LLM extraction
--> value_raw / unit_context / currency_hint / evidence
-money normalizer
--> value / currency / unit_multiplier / normalized_value / normalized_unit
-validator
--> schema check / evidence check / currency-unit consistency
+输入：
+
+- page/block store。
+- 目录页候选。
+- 标题候选。
+- 审计报告中对财务报表页码的引用。
+
+可用方法：
+
+- 规则：标题关键词、目录页、页码范围、审计报告引用。
+- LLM：对候选页面/标题窗口做语义判断。
+
+输出：
+
+```json
+{
+  "sections": [
+    {
+      "kind": "audited_financial_statements",
+      "page_start": 132,
+      "page_end": 346,
+      "confidence": 0.92,
+      "evidence": [
+        {
+          "page": 129,
+          "block_id": "p0129_b0003",
+          "snippet": "financial statements ... set out on pages 132 to 346"
+        }
+      ]
+    }
+  ]
+}
 ```
 
-If the normalizer cannot determine currency or multiplier, it should return a
-structured error that becomes `ambiguous`, `missing`, or `extraction_failed`.
-The system should not ask the LLM to guess a normalized amount.
+### 3.5 Statement Map
 
-Unit resolution should use this precedence:
+职责：
 
-1. Statement/table unit line, for example `单位：元 币种：人民币` or
-   `HK$ million`.
-2. Column header, for example `2025 HK$ million`.
-3. Row label or footnote.
-4. Report-level metadata.
-5. `unknown` or `ambiguous` when unresolved.
+- 在 document map 中识别正式 statements。
+- 解析 statement kind、scope、period columns、unit/currency context。
+- 避免把 financial summary 或 MD&A 表格误当正式报表。
 
-When a statement contains multiple currency columns, such as US dollars and
-Hong Kong dollars in the same table, the field extractor should select the
-reporting-currency column and record the selected column metadata. It must not
-mix currencies inside one extracted value or derived calculation.
+statement kinds：
 
-Short scale suffixes require context:
+- `income_statement`
+- `balance_sheet`
+- `cash_flow`
+- `changes_in_equity`
+- `notes`
 
-- `k` means thousand only in an explicit monetary context.
-- `m`, `M`, or `mn` means million only in an explicit monetary context.
-- `$` alone does not determine currency.
+scope：
 
-## Field Semantics And Derived Values
+- `consolidated`
+- `parent`
+- `company`
+- `unknown`
 
-The field catalog should support aliases and statement hints across Chinese and
-English reports. Examples:
+输出：
 
-- Balance sheet: `资产负债表`, `Consolidated Statement of Financial Position`.
-- Income statement: `利润表`, `Consolidated Income Statement`,
-  `Consolidated Statement of Profit or Loss`.
-- Cash-flow statement: `现金流量表`, `Consolidated Statement of Cash Flows`.
-- Net profit attributable to owners: `归属于母公司股东的净利润`,
-  `Profit attributable to ordinary shareholders`.
-- Cash: `货币资金`, `Cash and cash equivalents`, `Bank balances and deposits`.
-
-Some reports do not expose every Turtle field as a single line. The first slice
-may support evidence-backed derived values for simple statement totals such as
-`total_assets` or `total_liabilities`.
-
-Derived value rules:
-
-- Store a `derivation` object with formula and input field names.
-- Cite evidence for every input row.
-- Require matching currency, unit multiplier, period, and scope across inputs.
-- Return `ambiguous` or `missing` when any input is absent or mismatched.
-
-## LLM Configuration And Communication
-
-The LLM layer should follow the same broad separation used by mature agent
-projects such as `../hermes-agent`: configuration resolution, provider/client
-construction, request building, response normalization, timeout/retry handling,
-and test doubles should be separate from business extraction logic.
-
-This project should not copy Hermes Agent's full runtime. Hermes optimizes for
-interactive agent availability and can fall back across providers. Financial
-report extraction optimizes for reproducibility and auditability, so automatic
-provider fallback must be disabled by default. The resolved provider, model,
-base URL, prompt version, schema version, latency, usage, finish reason, and
-error metadata should be recorded with each extraction run.
-
-Recommended first-slice components:
-
-- `LlmConfigResolver`: resolves CLI/API overrides, project config, and
-  environment variables into an effective task config.
-- `LlmClient`: provider-neutral interface for structured JSON completion.
-- `LlmTransport`: protocol adapter, with OpenAI-compatible chat completions as
-  the first implementation.
-- `LlmResponseParser`: extracts raw text, parsed JSON, usage, latency, and
-  provider metadata.
-- `FakeLlmClient`: deterministic test double for validation and error-path
-  tests.
-
-Recommended minimal config shape:
-
-```yaml
-llm:
-  default:
-    provider: openai_compatible
-    model: gpt-4.1
-    base_url: https://api.openai.com/v1
-    api_key_env: OPENAI_API_KEY
-    temperature: 0
-    max_output_tokens: 4096
-    timeout_seconds: 120
-    retry_count: 2
-    structured_output_mode: json_schema
-  tasks:
-    field_extraction:
-      model: gpt-4.1
-      temperature: 0
-    response_repair:
-      model: gpt-4.1-mini
-      temperature: 0
+```json
+{
+  "statements": [
+    {
+      "statement_kind": "income_statement",
+      "scope": "consolidated",
+      "page_start": 70,
+      "page_end": 70,
+      "title": "CONSOLIDATED INCOME STATEMENT",
+      "unit_context": "$ Million",
+      "period_columns": ["2025", "2024"],
+      "evidence_blocks": ["p0070_b0001", "p0070_b0002"]
+    }
+  ]
+}
 ```
 
-The API key value should never be written to extraction artifacts. Store the
-environment variable name and the resolved non-secret runtime metadata instead.
+### 3.6 LLM-Assisted Row Discovery
 
-The trust boundary remains inside this project. Even when a provider supports
-JSON schema or structured outputs, the repository must still validate the
-parsed response and enforce that every `present` item has page/chunk/snippet
-evidence.
+职责：
 
-LLM calls may receive cross-page logical chunks. The model must still return
-specific evidence pointers. A valid field extraction can cite a cross-page
-`chunk_id`, but it must also include the concrete `page`, `block_id`, and
-`snippet` where the value appears.
+- 在一个 statement chunk 内发现 row labels、raw values 和上下文。
+- 解决不同公司字段叫法不同的问题。
+- 生成 row inventory，而不是最终 Turtle items。
 
-## Field Priority
+输入 prompt 应限制在：
 
-The first implementation should use the field catalog in
-`field_catalog/turtle_v015_priority_fields.json`.
+- statement title。
+- statement kind。
+- scope。
+- period columns。
+- unit/currency context。
+- statement blocks。
+- 必要 neighbor blocks。
 
-- P0: Turtle core statement fields.
-- P1: high-value statement enhancement fields.
-- P2: cash-flow enhancement fields.
-- P3: note and announcement bridge signals.
-- P4: text review artifacts.
+输出：
 
-The first slice should extract P0 and P1 for one annual-report PDF.
+```json
+{
+  "rows": [
+    {
+      "row_label": "Group revenue",
+      "candidate_meaning": "group revenue",
+      "values": [{"period": "2025", "value_raw": "57,935"}],
+      "unit_context": "$ Million",
+      "currency_hint": "HKD",
+      "evidence": [
+        {
+          "page": 70,
+          "block_id": "p0070_b0002",
+          "snippet": "Group revenue 57,935 45,529"
+        }
+      ]
+    }
+  ]
+}
+```
 
-## Extraction Contract
+Row discovery 的输出只能作为中间 artifact。它不能绕过 catalog mapping 和 validator。
 
-Each extracted item should include:
+### 3.7 Field Catalog And Catalog Mapping
+
+职责：
+
+- 将 discovered rows 映射到 Turtle 字段。
+- 结合 row label、statement kind、scope、period、unit/currency context 和 field catalog。
+- 给出 mapping confidence 和 reason。
+
+字段目录应从 priority list 扩展为 extraction catalog：
 
 - `field_id`
-- `status`: `present`, `missing`, `ambiguous`, `not_applicable`, or
-  `extraction_failed`
-- `value`, when applicable
-- `value_raw`, `currency`, `unit_multiplier`, `normalized_value`, and
-  `normalized_unit` for monetary values
-- `unit`, when applicable
+- priority
+- value type
+- Chinese aliases
+- English aliases
+- statement hints
+- scope hints
+- period expectations
+- unit/currency expectations
+- derivation metadata
+
+输出：
+
+```json
+{
+  "field_id": "revenue",
+  "source_row_label": "Group revenue",
+  "mapping_confidence": 0.86,
+  "mapping_reason": "row appears in consolidated income statement and matches revenue aliases",
+  "status": "mapped"
+}
+```
+
+低置信度、多候选、scope 冲突或币种冲突时，返回 `ambiguous`。
+
+### 3.8 Field-Scoped Extraction
+
+职责：
+
+- 对一个字段或小字段组执行最终 LLM extraction。
+- 输入只包含已映射 row、对应 evidence blocks、headers、unit/period/scope context。
+- 输出 raw candidate，不输出可信 normalized money。
+
+LLM 允许返回：
+
+- `status`
+- `value_raw`
+- `unit_context`
+- `currency_hint`
 - `period`
-- `scope`: for example `consolidated`, `parent`, or `unknown`
+- `scope`
 - `confidence`
-- `evidence`: page, chunk id, block id, and source snippet
-- `derivation`, when the value is calculated from multiple evidence rows
+- evidence refs
 
-Every `present` item must have evidence. An item without evidence must be
-`missing`, `ambiguous`, or `extraction_failed`.
+LLM 不允许决定：
 
-## Independence From Existing System
+- final `normalized_value`
+- final currency conversion
+- derived value validity
+- evidence contract validity
 
-This project does not write canonical facts, lifecycle decisions, P5 datasets,
-or deterministic recompute artifacts. A later export adapter may produce a
-Turtle-like JSON file for comparison, but that adapter must remain optional.
+### 3.9 Money Normalizer
 
-The core should be a standalone application/package with CLI/API boundaries.
-Codex or Claude Code skills may be added later as thin workflow wrappers that
-call this project, but the extraction engine, persistence, validation, and tests
-should live in this repository.
+职责：
 
-## First Milestone
+- 将 LLM 抽取的 raw value 和上下文转换成 deterministic money。
+- 在无法确认币种或单位时返回 structured ambiguity。
 
-1. Define field catalog and result schema.
-2. Implement PDF-to-chunk ingestion.
-3. Implement page/block atoms and first-slice cross-page logical chunks for the
-   three core financial statements.
-4. Implement field-scoped retrieval that returns logical chunks plus concrete
-   evidence blocks.
-5. Implement money/unit normalization for CNY, HKD, USD and common Chinese /
-   English scale units.
-6. Implement field aliases and simple evidence-backed derived values for
-   statement totals.
-7. Implement LLM config resolution and an OpenAI-compatible transport behind a
-   provider-neutral client interface.
-8. Implement prompt building, structured response parsing, schema validation,
-   and evidence enforcement.
-9. Add fixture-based tests for cross-page statement chunks, multi-column HK
-   English statements, money/unit normalization, derived values, config
-   resolution, FakeLlmClient extraction, malformed LLM responses, and
-   evidence-required JSON output.
+支持：
+
+- CNY/RMB、HKD、USD、unknown、ambiguous。
+- `元`、`千元`、`万元`、`亿元`。
+- `RMB'000`、`RMB in thousands`、`RMB in millions`。
+- `HK$'000`、`HK$ million`。
+- `US$ million`、`$ million`。
+- `k`、`m`、`mn`。
+- commas、parentheses negatives、minus signs、dash missing values。
+
+计算规则：
+
+```text
+normalized_value = value * unit_multiplier
+```
+
+不做 FX conversion。
+
+### 3.10 Validator
+
+职责：
+
+- schema validation。
+- evidence existence validation。
+- evidence snippet/block consistency validation。
+- money normalization validation。
+- period/scope/currency/unit consistency validation。
+- derived value validation。
+
+硬规则：
+
+- `present` 必须有 evidence。
+- evidence 必须指向真实 block。
+- matched snippet 应位于 evidence block 或可解释的邻近 block 中。
+- monetary `present` 必须有 normalized money 或 structured ambiguity。
+- derived value 必须列出所有 input evidence，且 inputs 的 period/scope/currency/unit 一致。
+
+### 3.11 LLM Config And Transport
+
+职责：
+
+- 解析 provider/model/base_url/api_key_env/timeout/retry。
+- 构造 OpenAI-compatible request。
+- 保存 prompt payload。
+- 保存 raw response。
+- 解析 JSON response。
+- 记录 usage、latency、finish reason 和 structured errors。
+
+组件：
+
+- `LlmConfigResolver`
+- `LlmClient`
+- `OpenAICompatibleTransport`
+- `LlmResponseParser`
+- `FakeLlmClient`
+
+关键要求：
+
+- API key value 不得写入 artifact。
+- raw response 即使无法 parse 也必须归档。
+- provider fallback 默认关闭。
+- fake mode 和 real mode 应尽量共享命令形态。
+
+## 4. Artifact Layout
+
+推荐目录：
+
+```text
+tmp/
+  runs/
+    <run_id>/
+      pages.jsonl
+      chunks.jsonl
+      document_map.json
+      statement_map.json
+      row_inventory.json
+      catalog_mapping.json
+      retrieval_probe.json
+      prompt_payloads/
+      raw_llm_responses/
+      parsed_llm_responses/
+      extraction_result.json
+      run_metadata.json
+      review_summary.json
+```
+
+所有 artifacts 都应能从 source PDF、代码版本、parser/chunker/prompt/schema/config metadata 重建或解释。
+
+## 5. Extraction Output Contract
+
+示例：
+
+```json
+{
+  "field_id": "revenue",
+  "status": "present",
+  "value_raw": "57,935",
+  "value": 57935,
+  "currency": "HKD",
+  "unit": "HKD million",
+  "unit_multiplier": 1000000,
+  "normalized_value": 57935000000,
+  "normalized_unit": "HKD",
+  "period": "2025 FY",
+  "scope": "consolidated",
+  "confidence": 0.86,
+  "evidence": [
+    {
+      "page": 70,
+      "chunk_id": "stmt_income_statement_p0070_p0070",
+      "block_id": "p0070_b0002",
+      "snippet": "Group revenue 57,935 45,529"
+    }
+  ]
+}
+```
+
+状态：
+
+- `present`
+- `missing`
+- `ambiguous`
+- `not_applicable`
+- `extraction_failed`
+
+## 6. CLI/API Shape
+
+第一阶段以 CLI + JSON 为主。推荐命令形态：
+
+```text
+financial-report-llm-extractor ingest --pdf <pdf> --out <run_dir>
+financial-report-llm-extractor chunk --pages <pages.jsonl> --metadata <run_metadata.json> --out <chunks.jsonl>
+financial-report-llm-extractor map-document --chunks <chunks.jsonl> --out <document_map.json>
+financial-report-llm-extractor map-statements --chunks <chunks.jsonl> --document-map <document_map.json> --out <statement_map.json>
+financial-report-llm-extractor discover-rows --chunks <chunks.jsonl> --statement-map <statement_map.json> --config <llm_config.json> --out <row_inventory.json>
+financial-report-llm-extractor map-fields --catalog <catalog.json> --row-inventory <row_inventory.json> --out <catalog_mapping.json>
+financial-report-llm-extractor extract --chunks <chunks.jsonl> --mapping <catalog_mapping.json> --config <llm_config.json> --out <extraction_result.json>
+financial-report-llm-extractor evaluate --root <repo-root> --out <evaluation_summary.json>
+```
+
+实际实现可以分阶段落地，不要求一次完成全部命令。
+
+## 7. 测试策略
+
+优先测试：
+
+- nested artifact output directory creation。
+- evidence 指向包含 matched alias/snippet 的 block。
+- malformed raw LLM response 仍被归档。
+- document map 能区分目录、financial summary、MD&A 和正式报表。
+- statement map 能识别不同英文标题变体。
+- row discovery fake fixture 输出 row inventory。
+- catalog mapping 对多候选返回 ambiguous。
+- money normalizer 支持中英文单位和多币种 ambiguity。
+- validator 拒绝 present without evidence。
+
+真实样本：
+
+- `600519_2025`：中文 A 股。
+- `00001_2025_en`：港股英文大型综合公司。
+- `01113_2025_en`：港股英文地产/综合，含多页与多区域结构。
+
+扩展样本：
+
+- `300750`
+- `601919`
+- `688008`
+- `01810`
+- `02498`
+- `06862`
+- `09987`
+
+默认测试不得依赖真实网络。真实 LLM smoke test 必须 opt-in。
+
+## 8. 近期五阶段计划
+
+### Phase 9: Evidence Contract 修复
+
+- 修复 retrieval evidence 指错 block。
+- 修复 chunk 输出目录不自动创建。
+- 修复 raw LLM response parse 失败时不归档。
+- 加 focused tests。
+
+### Phase 10: Parser Capability Probe And Document Map Demo
+
+- 验证 PDF backend 对 A 股和港股样本的文本抽取能力。
+- 生成 document map。
+- 区分正式报表和摘要/MD&A/notes。
+
+### Phase 11: Statement Map And Row Discovery
+
+- 建立 statement map。
+- 用 fake/real LLM 对 statement chunk 生成 row inventory。
+- 保留 row-level evidence refs。
+
+### Phase 12: Catalog Mapping And Field-Scoped Extraction
+
+- 扩展 field catalog。
+- 将 discovered rows 映射到 Turtle P0/P1。
+- 对 selected fields 做小范围 extraction。
+
+### Phase 13: Money/Scope Validation And Evaluation Loop
+
+- 增强 money/unit/scope/period validation。
+- 标准化 `tmp/runs/evaluation/<report_id>/`。
+- 生成 JSON/Markdown review summary。
+- 从真实报告 hard cases 沉淀 regression fixtures。
+
+## 9. 非目标
+
+第一阶段不做：
+
+- UI。
+- 数据库产品化。
+- 多用户工作流。
+- 自动下载财报。
+- canonical fact promotion。
+- deterministic recompute。
+- FX conversion。
+- 整篇投资分析报告生成。
+- issuer-specific patch。
+- full table reconstruction as a hard dependency。
+
+## 10. 设计结论
+
+后续架构应避免两个极端：
+
+- 只靠固定 field aliases 做 retrieval，导致不同公司字段叫法变化时漏召回。
+- 让 LLM 整篇读取 PDF 并直接输出最终字段，导致不可审计、不可复跑、难以定位错误。
+
+正确方向是：
+
+```text
+先发现文档结构
+再发现正式报表行项目
+再映射 Turtle 字段
+最后做字段级抽取和代码验证
+```
+
+这让 LLM 用在它擅长的语义发现上，同时把 evidence、money、period、scope 和 derivation 的信任边界保留在代码里。

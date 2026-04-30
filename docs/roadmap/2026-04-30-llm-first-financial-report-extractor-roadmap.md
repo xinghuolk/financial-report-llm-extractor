@@ -437,7 +437,135 @@ Exit criteria:
 - Skill never parses PDFs, normalizes money, validates evidence, or stores final
   facts.
 
-## 6. Non-Goals For The First Roadmap
+## 6. Quick Validation Roadmap
+
+> Status: updated after the document-map / row-discovery design review.
+> Purpose: validate the revised pipeline quickly before broadening the product
+> scope. These phases are intentionally smaller than the full roadmap. The goal
+> is to prove that the system can go from a real PDF to document structure, row
+> discovery, catalog mapping, and evidence-grounded selected-field extraction.
+
+The quick validation path is:
+
+```text
+contract fixes
+-> parser/document-map demo
+-> statement/row-discovery to selected-field extraction demo
+```
+
+This is not a whole-document LLM extraction plan. The LLM may help with
+document/statement/row discovery, but final extracted fields still require
+page/chunk/block/snippet evidence and deterministic validation.
+
+### Phase 9: Contract Fixes And Demo Run Skeleton
+
+Goal: remove known evidence/artifact contract bugs so the validation demo does
+not stand on unreliable outputs.
+
+Deliverables:
+
+- Fix retrieval evidence selection so the evidence `block_id` points to the
+  block containing the matched alias/snippet when a statement chunk spans
+  multiple blocks.
+- Ensure custom chunk output paths create parent directories, matching the
+  behavior of ingestion and retrieval artifacts.
+- Ensure raw LLM responses are archived even when parsing fails or provider
+  schemas are unexpected.
+- Add focused tests for the three review findings.
+- Define a conventional quick-demo run layout under
+  `tmp/runs/quick_validation/<report_id>/`.
+- Add or document a no-network fake/demo path that can exercise artifacts
+  without a real API key.
+
+Exit criteria:
+
+- Known evidence and raw-artifact review findings are fixed.
+- `pages.jsonl`, `chunks.jsonl`, retrieval/demo artifacts, raw responses,
+  parsed responses, final result, and metadata can all be written under a
+  nested quick-validation run directory.
+- Fake mode can run the skeleton without network.
+
+### Phase 10: Parser Capability Probe And Document Map Demo
+
+Goal: verify that the pipeline can identify useful document structure on
+different real reports before attempting final field extraction.
+
+Validation samples:
+
+- A-share Chinese: `downloads/cn_stocks/600519/annual/2025_年度报告.pdf`.
+- HK English with large report structure:
+  `downloads/hk_stocks/00001/annual/2025_annual_en.pdf`.
+- HK English with compact statement pages:
+  `downloads/hk_stocks/01113/annual/2025_annual_en.pdf`.
+
+Deliverables:
+
+- Parser capability probe artifact that records parser backend, page count,
+  extraction quality signals, and any text extraction warnings.
+- `document_map.json` that distinguishes at least:
+  - contents / table of contents
+  - financial summary
+  - MD&A / management discussion
+  - independent auditor report
+  - audited financial statements
+  - notes to financial statements
+- Rule-first detection using page titles, contents pages, and auditor-report
+  page references.
+- Optional LLM-assisted document-map judgement for ambiguous candidate pages,
+  saving prompt payloads, raw responses, parsed responses, and errors.
+- Tests using synthetic page/block fixtures so CI does not depend on external
+  PDF tools or network.
+
+Exit criteria:
+
+- The demo can produce a reviewable `document_map.json` for at least one real
+  HK English PDF with the formal financial statement range separated from
+  financial summary and MD&A.
+- A-share parser limitations are recorded explicitly instead of silently
+  producing empty maps.
+- Document-map artifacts include evidence blocks for section decisions.
+
+### Phase 11: Statement/Row Discovery To Selected-Field Extraction Demo
+
+Goal: prove the revised pipeline can discover statement rows and extract a
+small selected field set without asking the LLM to process the whole PDF as a
+final extractor.
+
+Selected fields for the demo:
+
+- `revenue`
+- `net_profit` or profit attributable to owners/shareholders
+- `total_assets`
+- `total_liabilities`
+- `operating_cash_flow`
+
+Deliverables:
+
+- `statement_map.json` for formal income statement, balance sheet / statement
+  of financial position, and cash-flow statement.
+- LLM-assisted or fake-LLM `row_inventory.json` for statement chunks, including
+  row labels, raw values by period, unit/currency context, and row-level
+  evidence refs.
+- `catalog_mapping.json` mapping discovered rows to selected Turtle fields with
+  confidence, reason, and ambiguity status.
+- Selected-field extraction that feeds only mapped rows, neighbor headers, and
+  unit/period/scope context to the LLM.
+- Deterministic money normalization for the selected monetary fields.
+- `quick_validation_summary.json` and optional Markdown summary reporting:
+  present/missing/ambiguous/extraction_failed, evidence gaps, normalization
+  gaps, and raw LLM parse errors.
+
+Exit criteria:
+
+- For one HK English sample, the demo can move from PDF artifacts to
+  `row_inventory.json`, `catalog_mapping.json`, and selected-field
+  `extraction_result.json`.
+- Every `present` selected field has page/chunk/block/snippet evidence.
+- Values from financial summary or MD&A are not silently accepted as formal
+  statement values unless explicitly marked as non-formal evidence.
+- Ambiguous field mapping or money context is visible in the output.
+
+## 7. Non-Goals For The First Roadmap
 
 These remain intentionally out of scope:
 
@@ -453,7 +581,7 @@ These remain intentionally out of scope:
 - Prompt-only extraction without code-level validation.
 - Issuer-specific one-off extraction patches.
 
-## 7. Risk Register
+## 8. Risk Register
 
 | Risk | Guardrail |
 | --- | --- |
@@ -470,24 +598,23 @@ These remain intentionally out of scope:
 | Raw artifacts are not reproducible. | Persist page/chunk/retrieval/LLM/raw/normalized/run metadata artifacts for every run. |
 | Product scope expands before extraction is proven. | Keep first slice to CLI + JSON, one PDF, P0/P1, and reviewable artifacts. |
 
-## 8. Recommended First Implementation Plan
+## 9. Recommended Next Implementation Plan
 
-The first detailed implementation plan should cover Phases 0 through 2 only:
+The next detailed implementation plan should cover Phases 9 through 11 only:
 
 ```text
-contracts
--> page ingestion
--> chunk store
--> statement and evidence-block logical chunks
--> real PDF probe artifacts
+contract fixes and demo run layout
+-> parser capability probe and document map
+-> statement map, row discovery, catalog mapping, selected-field extraction
 ```
 
-Do not start with real LLM calls or a full table-reconstruction engine. The
-highest-risk assumptions are PDF text/layout quality, cross-page evidence,
-money units, and HK English side-by-side statements. Those should be proven with
-deterministic evidence artifacts before adding model variability.
+Do not broaden immediately into all P0/P1 fields, full table reconstruction, a
+batch system, or a UI. The highest-risk assumption now is whether the revised
+document-map / row-discovery architecture can produce reviewable intermediate
+artifacts and selected-field extraction on real reports. Prove that first with a
+small selected field set and explicit evidence.
 
-## 9. Open Decisions
+## 10. Open Decisions
 
 These decisions can be made during implementation planning:
 
@@ -497,3 +624,7 @@ These decisions can be made during implementation planning:
   delayed until text/layout evidence blocks are stable.
 - Exact CLI names and output directory conventions.
 - Whether field aliases live in the existing catalog file or a companion file.
+- Whether Phase 10 document-map LLM judgement should be opt-in only or enabled
+  by the same real-LLM demo config used in Phase 11.
+- Whether quick-validation summaries should include Markdown output in Phase 11
+  or wait until the evaluation loop is expanded.

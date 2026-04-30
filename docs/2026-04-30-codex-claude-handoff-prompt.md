@@ -49,6 +49,14 @@
   - tests/test_llm_transport.py 覆盖 config loading、OpenAI-compatible request、timeout/retry、raw response artifacts。
   - src/financial_report_llm_extractor/cli.py 提供 extract 命令。
   - 测试使用 injected transport，不需要真实网络。
+- Phase 7 real report evaluation foundation 已完成。
+  - src/financial_report_llm_extractor/evaluation.py 包含 EvaluationFixture、build_evaluation_matrix()、summarize_extraction_result()、write_review_summary()。
+  - tests/test_evaluation.py 覆盖 roadmap 三份真实报告矩阵、PDF availability、status summary、evidence/normalized money review checks。
+  - src/financial_report_llm_extractor/cli.py 提供 evaluate 命令。
+- Phase 8 thin skill wrapper foundation 已完成。
+  - docs/skills/financial-report-extractor/SKILL.md 提供 repo-contained optional skill wrapper。
+  - docs/skills/financial-report-extractor/references/review-checklist.md 提供 extraction output review checklist。
+  - tests/test_skill_wrapper.py 覆盖 frontmatter、CLI command usage、guardrails、checklist link。
 - field_catalog/turtle_v015_priority_fields.json 已包含 P0-P4 字段优先级。
 - tests/ 下已有 test_models.py、test_ingestion.py、test_cli.py、test_field_catalog.py。
 
@@ -60,7 +68,7 @@
 - 金额、币种、单位倍率要显式建模，不能把 “HKD million” 这类单位丢成裸数字。
 - 缺失、歧义、不可用、抽取失败必须显式状态化，不要静默填 0 或 None 当成成功。
 
-推荐下一步：继续 roadmap 的 Phase 6 follow-up，或进入 Phase 7 前补齐真实报告评估准备。
+推荐下一步：继续 Phase 7/8 follow-up，对三份真实 PDF 跑 artifacts，并决定是否把 repo-contained skill 安装到 $CODEX_HOME/skills。
 
 Phase 2 已完成的基础能力：
 - 在现有 page-level artifacts 之上建立 statement/evidence-block logical chunks。
@@ -69,10 +77,10 @@ Phase 2 已完成的基础能力：
 
 建议实施顺序：
 1. 先写测试，再实现。
-2. 添加 llm_config.example.json。
-3. 记录 latency、usage 和 structured transport errors。
-4. provider fallback 必须显式且默认关闭。
-5. 增加 opt-in integration smoke test，默认测试不能依赖外网。
+2. 明确真实评估输出目录，例如 runs/evaluation/<report_id>/。
+3. 对 600519、00001、01113 运行 ingest/chunk/retrieve/extract。
+4. 用 evaluate 汇总 extraction_result.json，生成 JSON 和后续 Markdown review summary。
+5. 如需安装 skill，再把 docs/skills/financial-report-extractor 复制/安装到 $CODEX_HOME/skills 并补 agents/openai.yaml。
 6. 每个新 artifact 都要带 source_pdf_hash 或可追溯到 run_metadata。
 
 测试与验证命令：

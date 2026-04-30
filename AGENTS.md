@@ -94,7 +94,21 @@ Phase 6 foundation 已完成：
 - 测试通过 injected transport，不需要真实网络。
 - CLI 命令：`financial-report-llm-extractor extract --retrieval-probe <retrieval_probe.json> --config <llm_config.json> --out <extraction_result.json> --raw-response-dir <dir>`。
 
-推荐下一步继续 Phase 6 follow-up：增加 `llm_config.example.json`、记录 latency/errors、显式 provider fallback、opt-in integration smoke test。
+Phase 7 foundation 已完成：
+- `src/financial_report_llm_extractor/evaluation.py`
+- `tests/test_evaluation.py`
+- 已定义真实报告评估矩阵：`600519_2025`、`00001_2025_en`、`01113_2025_en`。
+- 已支持 extraction result review summary：status counts、present without evidence、present money without normalized value。
+- CLI 命令：`financial-report-llm-extractor evaluate --root <repo-root> --out <evaluation_summary.json>`。
+
+Phase 8 foundation 已完成：
+- `docs/skills/financial-report-extractor/SKILL.md`
+- `docs/skills/financial-report-extractor/references/review-checklist.md`
+- `tests/test_skill_wrapper.py`
+- 已提供 repo-contained optional skill wrapper，指导 Codex/Claude 调用 CLI。
+- Skill wrapper 明确不得解析 PDF、归一化金额、验证合同或存储最终事实。
+
+推荐下一步继续 Phase 7/8 follow-up：对三份真实 PDF 跑完整 artifacts，沉淀 hard-case regression fixtures，并决定是否安装 repo skill 到 `$CODEX_HOME/skills`。
 
 ## Architecture Guardrails
 
@@ -228,6 +242,36 @@ Phase 6 foundation 已经实现 real LLM transport boundary：
 - provider fallback 保持显式且默认关闭。
 - 支持更多 provider adapter。
 - 增加 opt-in integration smoke test。
+
+## Phase 7 Direction
+
+Phase 7 foundation 已经实现 evaluation harness：
+- `DEFAULT_EVALUATION_FIXTURES` 包含 roadmap 指定的三份真实报告。
+- `build_evaluation_matrix()` 检查 PDF 是否可用。
+- `summarize_extraction_result()` 统计 present/missing/ambiguous/extraction_failed 等状态。
+- summary 会显式列出 present without evidence 和 present money without normalized value。
+- `write_review_summary()` 写出 `evaluation_summary.json`。
+
+后续增强优先考虑：
+- 对 `600519`、`00001`、`01113` 跑真实 artifacts。
+- 明确真实评估输出目录约定。
+- 增加 Markdown review summary。
+- 从真实输出中提取 known hard cases 加回归测试。
+- 可选真实 LLM evaluation 必须显式配置，默认测试不能依赖外网。
+
+## Phase 8 Direction
+
+Phase 8 foundation 已经实现 thin skill wrapper：
+- Skill 文件位于 `docs/skills/financial-report-extractor/SKILL.md`。
+- Review checklist 位于 `docs/skills/financial-report-extractor/references/review-checklist.md`。
+- Wrapper 只指导调用 CLI，不承载业务逻辑。
+- Tests 确认 frontmatter、CLI 命令、guardrails 和 checklist link。
+
+后续增强优先考虑：
+- 决定是否安装到 `$CODEX_HOME/skills`。
+- 如果要作为一等 Codex skill 安装，再添加 `agents/openai.yaml`。
+- CLI 参数变化时同步更新 wrapper。
+- 真实 Phase 7 artifacts 存在后补充 example prompts。
 
 ## Output Contract Reminders
 

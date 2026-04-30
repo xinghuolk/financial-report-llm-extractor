@@ -39,6 +39,12 @@ class FakeRealExtractionResult:
     raw_response_count: int
 
 
+@dataclass(frozen=True)
+class FakeEvaluationResult:
+    output_path: Path
+    report_count: int
+
+
 def test_ingest_command_calls_ingestion_layer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -222,3 +228,37 @@ def test_extract_command_calls_real_transport_layer(
 
     assert exit_code == 0
     assert calls == [(retrieval_probe_path, config_path, output_path, raw_dir)]
+
+
+def test_evaluate_command_calls_evaluation_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output_path = tmp_path / "evaluation_summary.json"
+    calls: list[tuple[Path, Path | None]] = []
+
+    def fake_write_review_summary(
+        root_dir: Path,
+        *,
+        output_path: Path | None = None,
+    ) -> FakeEvaluationResult:
+        calls.append((root_dir, output_path))
+        return FakeEvaluationResult(
+            output_path=output_path or root_dir / "evaluation_summary.json",
+            report_count=3,
+        )
+
+    monkeypatch.setattr(cli, "write_review_summary", fake_write_review_summary)
+
+    exit_code = cli.main(
+        [
+            "evaluate",
+            "--root",
+            str(tmp_path),
+            "--out",
+            str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(tmp_path, output_path)]
