@@ -1,7 +1,10 @@
 from typing import Any
 
 from financial_report_llm_extractor.evidence_index import build_evidence_index
-from financial_report_llm_extractor.field_first_retrieval import retrieve_field_first
+from financial_report_llm_extractor.field_first_retrieval import (
+    estimate_prompt_budget,
+    retrieve_field_first,
+)
 
 
 def adversarial_field_first_records() -> list[dict[str, Any]]:
@@ -184,6 +187,28 @@ def test_adversarial_fixture_demonstrates_statement_first_risk() -> None:
     ]
 
     assert len(statement_chunks) < 3
+
+
+def test_field_first_retrieval_prompt_budget_stays_bounded() -> None:
+    selected_fields = (
+        "revenue",
+        "net_profit",
+        "total_assets",
+        "total_liabilities",
+        "operating_cash_flow",
+    )
+    records = adversarial_field_first_records()
+    index = build_evidence_index(records)
+
+    result = retrieve_field_first(index, selected_fields=selected_fields, top_k=3)
+    budget = estimate_prompt_budget(result)
+
+    assert budget["total_candidate_text_chars"] < 12_000
+    fields_by_id = {field["field_id"]: field for field in budget["fields"]}
+    assert set(fields_by_id) == set(selected_fields)
+    for field_id in selected_fields:
+        assert fields_by_id[field_id]["candidate_count"] <= 3
+        assert fields_by_id[field_id]["candidate_text_chars"] > 0
 
 
 def test_field_first_retrieval_prefers_numeric_density_without_statement_gate() -> None:

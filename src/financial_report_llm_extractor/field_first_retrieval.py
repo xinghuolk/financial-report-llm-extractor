@@ -42,6 +42,28 @@ def retrieve_field_first(
     return {"fields": fields}
 
 
+def estimate_prompt_budget(result: dict[str, Any]) -> dict[str, Any]:
+    fields = []
+    total_candidate_text_chars = 0
+    for field in result.get("fields", []):
+        candidates = field.get("candidates", [])
+        candidate_text_chars = sum(
+            len(str(candidate.get("text", ""))) for candidate in candidates
+        )
+        total_candidate_text_chars += candidate_text_chars
+        fields.append(
+            {
+                "field_id": str(field.get("field_id", "")),
+                "candidate_text_chars": candidate_text_chars,
+                "candidate_count": len(candidates),
+            }
+        )
+    return {
+        "total_candidate_text_chars": total_candidate_text_chars,
+        "fields": fields,
+    }
+
+
 def _retrieve_block_candidates(
     *,
     field_id: str,
