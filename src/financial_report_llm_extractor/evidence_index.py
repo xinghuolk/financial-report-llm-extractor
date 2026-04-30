@@ -8,6 +8,7 @@ NUMERIC_TOKEN_RE = re.compile(
     rf"(?<![\w.,])(?:\(-?{NUMBER_BODY_RE}\)|-{NUMBER_BODY_RE}|{NUMBER_BODY_RE})(?![\w.,])"
 )
 YEAR_TOKEN_RE = re.compile(r"\b20\d{2}\b")
+TOKEN_RE = re.compile(r"\S+")
 
 
 @dataclass(frozen=True)
@@ -15,7 +16,9 @@ class EvidenceBlock:
     block_id: str
     page: int
     chunk_id: str
+    statement_kind: str | None
     text: str
+    token_count: int
     numeric_token_count: int
     year_count: int
 
@@ -57,7 +60,9 @@ def build_evidence_index(records: list[dict[str, Any]]) -> EvidenceIndex:
                     block_id=block_id_text,
                     page=page,
                     chunk_id=chunk_id,
+                    statement_kind=record.get("statement_kind"),
                     text=text,
+                    token_count=len(TOKEN_RE.findall(text)),
                     numeric_token_count=len(NUMERIC_TOKEN_RE.findall(text)),
                     year_count=len(YEAR_TOKEN_RE.findall(text)),
                 )
