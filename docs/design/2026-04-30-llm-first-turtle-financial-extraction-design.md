@@ -134,11 +134,13 @@ budget validation. The validation is local and deterministic: it loads the
 configured Turtle field set, retrieves top-k evidence from the full-PDF evidence
 index, and writes covered/missing fields plus prompt-character metrics.
 
-If any required field is missing, downstream LLM extraction is blocked. If
-coverage passes but total or per-field chars exceed the configured budget,
-ranking/window reduction work comes first. This prevents later LLM, money
-normalization, and review work from depending on a retrieval path that already
-fails locally.
+If any required field is missing, broad production/all-required-field LLM
+extraction is blocked. If coverage passes but total or per-field chars exceed
+the configured budget, ranking/window reduction work comes first. Selected-field
+probes may still run to diagnose retrieval, prompt, or regression issues, but
+their results cannot be treated as broad extraction readiness until this gate
+passes. This prevents later broad LLM, money normalization, and review work from
+depending on a retrieval path that already fails locally.
 
 ### 3.4 Document Map
 
