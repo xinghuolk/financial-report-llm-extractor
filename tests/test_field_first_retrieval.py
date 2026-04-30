@@ -174,6 +174,18 @@ def test_field_first_retrieval_finds_core_fields_without_statement_gate() -> Non
         assert candidate["evidence"]["snippet"]
 
 
+def test_adversarial_fixture_demonstrates_statement_first_risk() -> None:
+    records = adversarial_field_first_records()
+    statement_chunks = [
+        record
+        for record in records
+        if record.get("record_type") == "chunk"
+        and record.get("kind") == "statement_table"
+    ]
+
+    assert len(statement_chunks) < 3
+
+
 def test_field_first_retrieval_prefers_numeric_density_without_statement_gate() -> None:
     records: list[dict[str, Any]] = [
         {
