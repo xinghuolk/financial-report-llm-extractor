@@ -57,6 +57,24 @@ class FakeDocumentMapResult:
     section_count: int
 
 
+@dataclass(frozen=True)
+class FakeStatementMapResult:
+    output_path: Path
+    statement_count: int
+
+
+@dataclass(frozen=True)
+class FakeRowInventoryResult:
+    output_path: Path
+    row_count: int
+
+
+@dataclass(frozen=True)
+class FakeCatalogMappingResult:
+    output_path: Path
+    mapping_count: int
+
+
 def test_ingest_command_calls_ingestion_layer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -352,3 +370,119 @@ def test_map_document_command_calls_document_map_layer(
 
     assert exit_code == 0
     assert calls == [(chunks_path, output_path)]
+
+
+def test_map_statements_command_calls_statement_discovery_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chunks_path = tmp_path / "chunks.jsonl"
+    document_map_path = tmp_path / "document_map.json"
+    output_path = tmp_path / "statement_map.json"
+    calls: list[tuple[Path, Path, Path | None]] = []
+
+    def fake_write_statement_map(
+        chunks: Path,
+        document_map: Path,
+        *,
+        output_path: Path | None = None,
+    ) -> FakeStatementMapResult:
+        calls.append((chunks, document_map, output_path))
+        return FakeStatementMapResult(
+            output_path=output_path or chunks.parent / "statement_map.json",
+            statement_count=3,
+        )
+
+    monkeypatch.setattr(cli, "write_statement_map", fake_write_statement_map)
+
+    exit_code = cli.main(
+        [
+            "map-statements",
+            "--chunks",
+            str(chunks_path),
+            "--document-map",
+            str(document_map_path),
+            "--out",
+            str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(chunks_path, document_map_path, output_path)]
+
+
+def test_discover_rows_command_calls_statement_discovery_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chunks_path = tmp_path / "chunks.jsonl"
+    statement_map_path = tmp_path / "statement_map.json"
+    output_path = tmp_path / "row_inventory.json"
+    calls: list[tuple[Path, Path, Path | None]] = []
+
+    def fake_write_row_inventory(
+        chunks: Path,
+        statement_map: Path,
+        *,
+        output_path: Path | None = None,
+    ) -> FakeRowInventoryResult:
+        calls.append((chunks, statement_map, output_path))
+        return FakeRowInventoryResult(
+            output_path=output_path or chunks.parent / "row_inventory.json",
+            row_count=5,
+        )
+
+    monkeypatch.setattr(cli, "write_row_inventory", fake_write_row_inventory)
+
+    exit_code = cli.main(
+        [
+            "discover-rows",
+            "--chunks",
+            str(chunks_path),
+            "--statement-map",
+            str(statement_map_path),
+            "--out",
+            str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(chunks_path, statement_map_path, output_path)]
+
+
+def test_map_fields_command_calls_statement_discovery_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    row_inventory_path = tmp_path / "row_inventory.json"
+    output_path = tmp_path / "catalog_mapping.json"
+    calls: list[tuple[Path, tuple[str, ...], Path | None]] = []
+
+    def fake_write_catalog_mapping(
+        row_inventory: Path,
+        *,
+        selected_fields: tuple[str, ...],
+        output_path: Path | None = None,
+    ) -> FakeCatalogMappingResult:
+        calls.append((row_inventory, selected_fields, output_path))
+        return FakeCatalogMappingResult(
+            output_path=output_path or row_inventory.parent / "catalog_mapping.json",
+            mapping_count=2,
+        )
+
+    monkeypatch.setattr(cli, "write_catalog_mapping", fake_write_catalog_mapping)
+
+    exit_code = cli.main(
+        [
+            "map-fields",
+            "--row-inventory",
+            str(row_inventory_path),
+            "--fields",
+            "revenue,total_assets",
+            "--out",
+            str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(row_inventory_path, ("revenue", "total_assets"), output_path)]

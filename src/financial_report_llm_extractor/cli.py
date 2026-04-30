@@ -15,6 +15,11 @@ from financial_report_llm_extractor.extraction import run_fake_extraction
 from financial_report_llm_extractor.ingestion import ingest_pdf
 from financial_report_llm_extractor.llm_transport import run_real_transport_probe
 from financial_report_llm_extractor.retrieval import write_retrieval_probe
+from financial_report_llm_extractor.statement_discovery import (
+    write_catalog_mapping,
+    write_row_inventory,
+    write_statement_map,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -38,6 +43,21 @@ def build_parser() -> argparse.ArgumentParser:
     map_document_parser = subparsers.add_parser("map-document")
     map_document_parser.add_argument("--chunks", required=True, type=Path)
     map_document_parser.add_argument("--out", type=Path)
+
+    map_statements_parser = subparsers.add_parser("map-statements")
+    map_statements_parser.add_argument("--chunks", required=True, type=Path)
+    map_statements_parser.add_argument("--document-map", required=True, type=Path)
+    map_statements_parser.add_argument("--out", type=Path)
+
+    discover_rows_parser = subparsers.add_parser("discover-rows")
+    discover_rows_parser.add_argument("--chunks", required=True, type=Path)
+    discover_rows_parser.add_argument("--statement-map", required=True, type=Path)
+    discover_rows_parser.add_argument("--out", type=Path)
+
+    map_fields_parser = subparsers.add_parser("map-fields")
+    map_fields_parser.add_argument("--row-inventory", required=True, type=Path)
+    map_fields_parser.add_argument("--fields", required=True)
+    map_fields_parser.add_argument("--out", type=Path)
 
     retrieve_parser = subparsers.add_parser("retrieve")
     retrieve_parser.add_argument("--catalog", required=True, type=Path)
@@ -100,6 +120,38 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"sections={document_map_result.section_count}")
         print(f"document_map_path={document_map_result.output_path}")
+        return 0
+
+    if args.command == "map-statements":
+        statement_map_result = write_statement_map(
+            args.chunks,
+            args.document_map,
+            output_path=args.out,
+        )
+        print(f"statements={statement_map_result.statement_count}")
+        print(f"statement_map_path={statement_map_result.output_path}")
+        return 0
+
+    if args.command == "discover-rows":
+        row_inventory_result = write_row_inventory(
+            args.chunks,
+            args.statement_map,
+            output_path=args.out,
+        )
+        print(f"rows={row_inventory_result.row_count}")
+        print(f"row_inventory_path={row_inventory_result.output_path}")
+        return 0
+
+    if args.command == "map-fields":
+        catalog_mapping_result = write_catalog_mapping(
+            args.row_inventory,
+            selected_fields=tuple(
+                field.strip() for field in args.fields.split(",") if field.strip()
+            ),
+            output_path=args.out,
+        )
+        print(f"mappings={catalog_mapping_result.mapping_count}")
+        print(f"catalog_mapping_path={catalog_mapping_result.output_path}")
         return 0
 
     if args.command == "retrieve":
