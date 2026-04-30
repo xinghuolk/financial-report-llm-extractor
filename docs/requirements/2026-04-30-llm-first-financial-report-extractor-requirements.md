@@ -17,9 +17,11 @@ recompute audit 或 registry 治理流程。
 系统应支持：
 
 - 从单份年报 PDF 建立 page/block/chunk 证据存储。
-- 建立 document map 和 statement map，识别正式财务报表区域，而不是只按字段关键词搜索全文。
-- 使用 LLM 辅助发现 statement row labels 和候选 raw values。
-- 将发现到的行项目映射到 Turtle v0.15 P0/P1 字段。
+- 建立 full-PDF evidence index，让全部 page/block 都可被字段级检索和审计引用。
+- 使用 field-first retrieval 为每个 Turtle 字段召回 top-k 证据候选。
+- 建立 document map 和 statement map 作为候选来源和 ranking signal，但不能作为字段抽取的硬前置 gate。
+- 可选地使用 LLM 辅助发现 statement row labels 和候选 raw values。
+- 将发现到的行项目或 field-first candidates 映射到 Turtle v0.15 P0/P1 字段。
 - 对字段或小字段组执行小范围 LLM 抽取。
 - 使用代码执行金额、币种、单位、期间、scope、evidence 和派生值校验。
 - 输出 JSON-first artifacts，便于人工 review、回归比较和后续分析。
@@ -31,6 +33,7 @@ recompute audit 或 registry 治理流程。
 - 信任 LLM 返回的 normalized money。
 - 在币种、期间、scope 或候选值不明确时静默选择一个值。
 - 把完整表格重建作为字段抽取的前置硬依赖。
+- 把 document map、statement map 或 formal statement localization 作为字段抽取的单点硬依赖。
 - 把 Codex/Claude skill 当成业务核心。skill 只能是薄封装。
 
 ## 3. 总体主路径
@@ -41,21 +44,29 @@ recompute audit 或 registry 治理流程。
 PDF
 -> parser capability probe
 -> page/block evidence store
+-> full-PDF evidence index
+-> field-first retrieval top-k candidates
 -> document map
 -> statement map
--> LLM-assisted row discovery
--> catalog mapping
+-> optional LLM-assisted row discovery
+-> candidate reconciliation / catalog mapping
 -> field-scoped extraction
 -> deterministic money/unit normalization
 -> schema/evidence/period/scope/derivation validation
 -> reviewable JSON artifacts
 ```
 
-这条路径比单纯 field-scoped retrieval 多了三层：
+关键约束：
 
-- `document map`：识别目录、审计报告、正式财务报表、notes、MD&A、financial summary 等区域。
-- `statement map`：识别 income statement、balance sheet、cash flow statement 及其 page range、unit、currency、period columns、scope。
-- `row discovery`：在 statement chunk 内发现行项目，而不是假设所有公司都使用 catalog 里的固定别名。
+- full-PDF evidence index 是主检索入口。全部 PDF block 都可进入索引，但 LLM prompt 只能接收 top-k bounded evidence，不允许整份 PDF 投喂。
+- `document map` 和 `statement map` 识别目录、审计报告、正式财务报表、notes、MD&A、financial summary 等区域，但它们只能提供候选、过滤建议和 ranking bonus。
+- `row discovery` 是增强路径：当 statement chunk 可信时，在 chunk 内发现行项目；当 statement localization 缺失或噪声过大时，field-first retrieval 仍必须能从 evidence index 召回字段候选。
+
+已知架构风险：
+
+- 如果把“通用定位层”设计成硬 gate，不同公司、不同语言、不同披露风格会导致两种失败：规则过宽时把 MD&A、notes、Outlook、financial summary 大量送入 LLM；规则过窄时漏掉正式字段。
+- 因此 formal statement localization 不能决定“哪些字段可以被抽取”。它只能作为召回信号之一。
+- 不采用“整份 PDF 一次发给 LLM”来规避定位问题；正确边界是“整份 PDF 本地索引，LLM 只看 top-k evidence”。
 
 ## 4. LLM 使用边界
 
@@ -65,7 +76,7 @@ LLM 可以参与：
 - 从目录、审计报告引用和标题上下文中辅助建立 document map。
 - 对 statement chunk 做 row inventory。
 - 给 discovered row 提供候选语义解释。
-- 在字段级 prompt 中抽取 `value_raw`、`unit_context`、`currency_hint`、period、scope、confidence 和 evidence refs。
+- 在字段级 prompt 中，从 top-k evidence candidates 抽取 `value_raw`、`unit_context`、`currency_hint`、period、scope、confidence 和 evidence refs。
 
 LLM 不可以：
 
@@ -86,7 +97,7 @@ whole PDF text
 允许模式：
 
 ```text
-statement chunk + headers + neighbor blocks
+top-k field evidence blocks, optionally boosted by statement/document signals
 -> LLM row discovery or field extraction
 -> deterministic validator
 ```
@@ -256,8 +267,9 @@ Row inventory 只是中间 artifact。最终字段仍需 catalog mapping、field
 
 Catalog mapping 输入：
 
-- discovered row label。
-- statement kind。
+- field-first evidence candidates。
+- optional discovered row label。
+- optional statement kind。
 - scope。
 - period。
 - unit/currency context。
@@ -387,9 +399,10 @@ tmp/
 
 第一阶段成功标准：
 
-- 可以对陌生 annual PDF 生成 document map、statement map、row inventory 和 selected P0/P1 extraction result。
+- 可以对陌生 annual PDF 生成 full-PDF evidence index、field-first retrieval candidates 和 selected P0/P1 extraction result。
+- 可以生成 document map、statement map、row inventory 作为 reviewable enhancement artifacts，但字段抽取不依赖它们全部成功。
 - 每个 `present` 字段都有可读 evidence。
-- 正式报表与目录、五年摘要、MD&A、notes 能被区分。
+- 正式报表、目录、五年摘要、MD&A、notes 的定位结果可作为 ranking/review 信号；定位失败不得阻断字段级候选召回。
 - 跨页 statement 或跨页文字中的字段可以追溯到具体 page/block。
 - CNY/HKD/USD 和常见中英文单位能 deterministic normalize。
 - HK English 年报中的 reporting currency、双列/多列、derived fields 能处理或显式标记 ambiguous。
