@@ -5,6 +5,7 @@ from financial_report_llm_extractor.coverage_budget import (
     build_coverage_metrics,
     load_catalog_field_ids,
 )
+from financial_report_llm_extractor.coverage_budget import evaluate_coverage_gate
 
 
 def test_load_catalog_field_ids_reads_priorities(tmp_path: Path) -> None:
@@ -82,3 +83,69 @@ def test_build_coverage_metrics_reports_missing_and_prompt_chars() -> None:
     assert fields["revenue"]["candidate_count"] == 1
     assert fields["revenue"]["top_evidence"]["block_id"] == "p0001_b0001"
     assert fields["net_profit"]["status"] == "missing"
+
+
+def test_evaluate_coverage_gate_blocks_missing_fields() -> None:
+    metrics = [
+        {
+            "top_k": 3,
+            "missing_fields": ["net_profit"],
+            "total_candidate_text_chars": 100,
+            "fields": [
+                {"field_id": "revenue", "candidate_text_chars": 100},
+                {"field_id": "net_profit", "candidate_text_chars": 0},
+            ],
+        }
+    ]
+
+    gate = evaluate_coverage_gate(
+        metrics,
+        required_top_k=3,
+        max_total_chars=40_000,
+        max_field_chars=8_000,
+    )
+
+    assert gate["status"] == "blocked_by_missing_fields"
+    assert gate["blockers"] == ["net_profit"]
+
+
+def test_evaluate_coverage_gate_blocks_prompt_budget() -> None:
+    metrics = [
+        {
+            "top_k": 3,
+            "missing_fields": [],
+            "total_candidate_text_chars": 50_000,
+            "fields": [{"field_id": "revenue", "candidate_text_chars": 50_000}],
+        }
+    ]
+
+    gate = evaluate_coverage_gate(
+        metrics,
+        required_top_k=3,
+        max_total_chars=40_000,
+        max_field_chars=8_000,
+    )
+
+    assert gate["status"] == "blocked_by_prompt_budget"
+    assert gate["blockers"] == ["total_candidate_text_chars", "revenue"]
+
+
+def test_evaluate_coverage_gate_allows_ready_metrics() -> None:
+    metrics = [
+        {
+            "top_k": 3,
+            "missing_fields": [],
+            "total_candidate_text_chars": 10_000,
+            "fields": [{"field_id": "revenue", "candidate_text_chars": 1_000}],
+        }
+    ]
+
+    gate = evaluate_coverage_gate(
+        metrics,
+        required_top_k=3,
+        max_total_chars=40_000,
+        max_field_chars=8_000,
+    )
+
+    assert gate["status"] == "ready_for_field_scoped_llm_probe"
+    assert gate["blockers"] == []

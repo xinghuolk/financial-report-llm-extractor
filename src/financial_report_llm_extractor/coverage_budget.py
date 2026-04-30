@@ -74,6 +74,48 @@ def build_coverage_metrics(
     return metrics
 
 
+def evaluate_coverage_gate(
+    metrics: list[dict[str, Any]],
+    *,
+    required_top_k: int,
+    max_total_chars: int,
+    max_field_chars: int,
+) -> dict[str, Any]:
+    selected_metric = _metric_for_top_k(metrics, required_top_k)
+    missing_fields = list(selected_metric.get("missing_fields", []))
+    if missing_fields:
+        return {
+            "status": "blocked_by_missing_fields",
+            "required_top_k": required_top_k,
+            "max_total_chars": max_total_chars,
+            "max_field_chars": max_field_chars,
+            "blockers": missing_fields,
+        }
+
+    blockers: list[str] = []
+    if int(selected_metric.get("total_candidate_text_chars", 0)) > max_total_chars:
+        blockers.append("total_candidate_text_chars")
+    for field in selected_metric.get("fields", []):
+        if int(field.get("candidate_text_chars", 0)) > max_field_chars:
+            blockers.append(str(field.get("field_id", "")))
+    if blockers:
+        return {
+            "status": "blocked_by_prompt_budget",
+            "required_top_k": required_top_k,
+            "max_total_chars": max_total_chars,
+            "max_field_chars": max_field_chars,
+            "blockers": blockers,
+        }
+
+    return {
+        "status": "ready_for_field_scoped_llm_probe",
+        "required_top_k": required_top_k,
+        "max_total_chars": max_total_chars,
+        "max_field_chars": max_field_chars,
+        "blockers": [],
+    }
+
+
 def _field_metric(
     field: dict[str, Any],
     budget_field: dict[str, Any],
@@ -94,6 +136,13 @@ def _field_metric(
             "snippet": evidence.get("snippet"),
         },
     }
+
+
+def _metric_for_top_k(metrics: list[dict[str, Any]], required_top_k: int) -> dict[str, Any]:
+    for metric in metrics:
+        if metric.get("top_k") == required_top_k:
+            return metric
+    raise ValueError(f"missing metrics for top_k={required_top_k}")
 
 
 def _dedupe(values: tuple[str, ...]) -> tuple[str, ...]:
