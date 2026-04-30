@@ -127,6 +127,19 @@ chunk 不是最终证据。chunk 只提供上下文；最终 `present` item 必�
 - statement kind / statement discovery 只能作为 ranking signal、review signal 或 row discovery context，不能作为字段召回和抽取的必需 main gate。
 - top-k 仍需受 prompt budget 约束；找到字段候选不等于可以把大量候选窗口直接交给生产 LLM。
 
+### Turtle Field Coverage Budget Gate
+
+Before broad real LLM extraction, run the Turtle field coverage and prompt
+budget validation. The validation is local and deterministic: it loads the
+configured Turtle field set, retrieves top-k evidence from the full-PDF evidence
+index, and writes covered/missing fields plus prompt-character metrics.
+
+If any required field is missing, downstream LLM extraction is blocked. If
+coverage passes but total or per-field chars exceed the configured budget,
+ranking/window reduction work comes first. This prevents later LLM, money
+normalization, and review work from depending on a retrieval path that already
+fails locally.
+
 ### 3.4 Document Map
 
 职责：

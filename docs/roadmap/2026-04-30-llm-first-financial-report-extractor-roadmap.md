@@ -580,6 +580,20 @@ Exit criteria:
   prompt characters. Before production LLM extraction, ranking and evidence
   windowing must reduce prompt budget further.
 
+### Phase 12: Turtle Field Coverage Budget Gate
+
+Goal: prevent broad field-scoped extraction from depending on retrieval output
+that already fails deterministic local coverage or prompt-budget checks.
+
+Deliverables:
+
+- Before field-scoped LLM extraction, run
+  `scripts/run-turtle-field-coverage-budget.sh` for the required Turtle field
+  set.
+- Treat missing required fields or prompt-budget overflow as a roadmap blocker.
+  Extend catalog aliases, evidence ranking, or window reduction before adding
+  more real LLM extraction paths.
+
 ## 7. Non-Goals For The First Roadmap
 
 These remain intentionally out of scope:
