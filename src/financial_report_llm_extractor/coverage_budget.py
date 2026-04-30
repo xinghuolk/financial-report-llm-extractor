@@ -92,10 +92,21 @@ def evaluate_coverage_gate(
             "blockers": missing_fields,
         }
 
+    fields = list(selected_metric.get("fields", []))
+    evidence_blockers = _missing_coverage_evidence_blockers(selected_metric, fields)
+    if evidence_blockers:
+        return {
+            "status": "blocked_by_missing_fields",
+            "required_top_k": required_top_k,
+            "max_total_chars": max_total_chars,
+            "max_field_chars": max_field_chars,
+            "blockers": evidence_blockers,
+        }
+
     blockers: list[str] = []
     if int(selected_metric.get("total_candidate_text_chars", 0)) > max_total_chars:
         blockers.append("total_candidate_text_chars")
-    for field in selected_metric.get("fields", []):
+    for field in fields:
         if int(field.get("candidate_text_chars", 0)) > max_field_chars:
             blockers.append(str(field.get("field_id", "")))
     if blockers:
@@ -114,6 +125,30 @@ def evaluate_coverage_gate(
         "max_field_chars": max_field_chars,
         "blockers": [],
     }
+
+
+def _missing_coverage_evidence_blockers(
+    selected_metric: dict[str, Any],
+    fields: list[dict[str, Any]],
+) -> list[str]:
+    if int(selected_metric.get("total_fields", len(fields))) == 0 or not fields:
+        return ["__empty_field_set__"]
+
+    blockers: list[str] = []
+    for field in fields:
+        if field.get("status") != "candidates_found":
+            continue
+        evidence = field.get("top_evidence", {})
+        if not isinstance(evidence, dict) or any(
+            not _has_concrete_evidence_value(evidence.get(key))
+            for key in ("page", "chunk_id", "block_id", "snippet")
+        ):
+            blockers.append(str(field.get("field_id", "")))
+    return blockers
+
+
+def _has_concrete_evidence_value(value: Any) -> bool:
+    return value is not None and value != ""
 
 
 def _field_metric(

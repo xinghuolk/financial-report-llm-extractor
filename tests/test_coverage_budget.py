@@ -109,6 +109,62 @@ def test_evaluate_coverage_gate_blocks_missing_fields() -> None:
     assert gate["blockers"] == ["net_profit"]
 
 
+def test_evaluate_coverage_gate_blocks_empty_field_set() -> None:
+    metrics = [
+        {
+            "top_k": 3,
+            "total_fields": 0,
+            "missing_fields": [],
+            "total_candidate_text_chars": 0,
+            "fields": [],
+        }
+    ]
+
+    gate = evaluate_coverage_gate(
+        metrics,
+        required_top_k=3,
+        max_total_chars=40_000,
+        max_field_chars=8_000,
+    )
+
+    assert gate["status"] == "blocked_by_missing_fields"
+    assert gate["blockers"] == ["__empty_field_set__"]
+
+
+def test_evaluate_coverage_gate_blocks_missing_evidence_refs() -> None:
+    metrics = [
+        {
+            "top_k": 3,
+            "total_fields": 1,
+            "missing_fields": [],
+            "total_candidate_text_chars": 100,
+            "fields": [
+                {
+                    "field_id": "revenue",
+                    "status": "candidates_found",
+                    "candidate_text_chars": 100,
+                    "top_evidence": {
+                        "page": 1,
+                        "chunk_id": "page_p0001",
+                        "block_id": None,
+                        "snippet": "Revenue 100",
+                    },
+                }
+            ],
+        }
+    ]
+
+    gate = evaluate_coverage_gate(
+        metrics,
+        required_top_k=3,
+        max_total_chars=40_000,
+        max_field_chars=8_000,
+    )
+
+    assert gate["status"] == "blocked_by_missing_fields"
+    assert gate["blockers"] == ["revenue"]
+
+
 def test_evaluate_coverage_gate_blocks_prompt_budget() -> None:
     metrics = [
         {
@@ -134,9 +190,22 @@ def test_evaluate_coverage_gate_allows_ready_metrics() -> None:
     metrics = [
         {
             "top_k": 3,
+            "total_fields": 1,
             "missing_fields": [],
             "total_candidate_text_chars": 10_000,
-            "fields": [{"field_id": "revenue", "candidate_text_chars": 1_000}],
+            "fields": [
+                {
+                    "field_id": "revenue",
+                    "status": "candidates_found",
+                    "candidate_text_chars": 1_000,
+                    "top_evidence": {
+                        "page": 1,
+                        "chunk_id": "page_p0001",
+                        "block_id": "p0001_b0001",
+                        "snippet": "Revenue 100",
+                    },
+                }
+            ],
         }
     ]
 
