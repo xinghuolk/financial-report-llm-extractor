@@ -1,0 +1,208 @@
+from decimal import Decimal
+import json
+from pathlib import Path
+
+from financial_report_llm_extractor.models import Evidence
+from financial_report_llm_extractor.structured_sources.export import (
+    build_source_first_export,
+    write_source_first_export_artifacts,
+)
+from financial_report_llm_extractor.structured_sources.mapping import (
+    MappedTurtleField,
+    TurtleMappingCandidate,
+    TurtleMappingResult,
+)
+from financial_report_llm_extractor.structured_sources.models import (
+    SourceEvidence,
+    SourceName,
+)
+from financial_report_llm_extractor.structured_sources.reconciliation import (
+    reconcile_mapped_fields,
+)
+
+
+def test_source_only_export_keeps_source_evidence_separate() -> None:
+    mapping = _mapping(
+        "revenue",
+        MappedTurtleField(
+            field_id="revenue",
+            status="present",
+            value=Decimal("100"),
+            normalized_value=Decimal("100"),
+            currency="CNY",
+            unit="yuan",
+            period="2024-12-31",
+            scope="consolidated",
+            candidates=(_candidate("akshare", Decimal("100")),),
+            source_evidence=(_source_evidence("akshare"),),
+        ),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    result = build_source_first_export(mapping, reconciliation, profile="source_only")
+
+    item = result.items["revenue"]
+    assert item.status == "present"
+    assert item.source_evidence[0].source == "akshare"
+    assert item.pdf_evidence == ()
+    assert result.summary["status_counts"] == {"present": 1}
+
+
+def test_source_export_marks_reconciliation_conflict() -> None:
+    mapping = _mapping(
+        "revenue",
+        MappedTurtleField(
+            field_id="revenue",
+            status="ambiguous",
+            candidates=(
+                _candidate("akshare", Decimal("100")),
+                _candidate("yahoo", Decimal("101")),
+            ),
+        ),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    result = build_source_first_export(mapping, reconciliation, profile="source_only")
+
+    item = result.items["revenue"]
+    assert item.status == "conflict"
+    assert item.reconciliation_status == "conflict"
+    assert result.summary["conflict_fields"] == ["revenue"]
+
+
+def test_pdf_required_export_lists_fields_needing_pdf_evidence() -> None:
+    mapping = _mapping(
+        "cash",
+        MappedTurtleField(
+            field_id="cash",
+            status="present",
+            value=Decimal("20"),
+            normalized_value=Decimal("20"),
+            currency="CNY",
+            unit="yuan",
+            period="2024-12-31",
+            scope="consolidated",
+            candidates=(_candidate("akshare", Decimal("20")),),
+            source_evidence=(_source_evidence("akshare"),),
+        ),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    result = build_source_first_export(mapping, reconciliation, profile="pdf_required")
+
+    assert result.items["cash"].status == "needs_pdf_evidence"
+    assert result.summary["fields_requiring_pdf_evidence"] == ["cash"]
+
+
+def test_pdf_required_export_accepts_separate_pdf_evidence() -> None:
+    mapping = _mapping(
+        "cash",
+        MappedTurtleField(
+            field_id="cash",
+            status="present",
+            value=Decimal("20"),
+            normalized_value=Decimal("20"),
+            currency="CNY",
+            unit="yuan",
+            period="2024-12-31",
+            scope="consolidated",
+            candidates=(_candidate("akshare", Decimal("20")),),
+            source_evidence=(_source_evidence("akshare"),),
+        ),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+    pdf_evidence = Evidence(
+        page=10,
+        chunk_id="chunk-10",
+        block_id="p0010_b0001",
+        snippet="Cash and cash equivalents 20",
+    )
+
+    result = build_source_first_export(
+        mapping,
+        reconciliation,
+        profile="pdf_required",
+        pdf_evidence_by_field={"cash": (pdf_evidence,)},
+    )
+
+    item = result.items["cash"]
+    assert item.status == "present"
+    assert item.pdf_evidence == (pdf_evidence,)
+    assert item.source_evidence[0].raw_field_name == "Revenue"
+    assert result.summary["fields_requiring_pdf_evidence"] == []
+
+
+def test_write_source_first_export_artifacts_writes_review_files(
+    tmp_path: Path,
+) -> None:
+    mapping = _mapping(
+        "revenue",
+        MappedTurtleField(
+            field_id="revenue",
+            status="present",
+            value=Decimal("100"),
+            normalized_value=Decimal("100"),
+            currency="CNY",
+            unit="yuan",
+            period="2024-12-31",
+            scope="consolidated",
+            candidates=(_candidate("akshare", Decimal("100")),),
+            source_evidence=(_source_evidence("akshare"),),
+        ),
+    )
+    result = build_source_first_export(
+        mapping,
+        reconcile_mapped_fields(mapping),
+        profile="source_only",
+    )
+
+    paths = write_source_first_export_artifacts(result, tmp_path)
+
+    extraction_payload = json.loads(
+        paths["extraction_result"].read_text(encoding="utf-8")
+    )
+    summary_payload = json.loads(paths["review_summary"].read_text(encoding="utf-8"))
+
+    assert paths["extraction_result"].name == "extraction_result.json"
+    assert paths["review_summary"].name == "review_summary.json"
+    assert extraction_payload["profile"] == "source_only"
+    assert extraction_payload["items"]["revenue"]["source_evidence"][0]["source"] == "akshare"
+    assert summary_payload["status_counts"] == {"present": 1}
+
+
+def _mapping(field_id: str, field: MappedTurtleField) -> TurtleMappingResult:
+    return TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={field_id: field},
+    )
+
+
+def _candidate(
+    source: SourceName,
+    normalized_value: Decimal,
+) -> TurtleMappingCandidate:
+    return TurtleMappingCandidate(
+        source=source,
+        raw_field_name="Revenue",
+        raw_field_code=None,
+        raw_value=str(normalized_value),
+        value=normalized_value,
+        normalized_value=normalized_value,
+        currency="CNY",
+        unit="yuan",
+        period="2024-12-31",
+        scope="consolidated",
+        source_evidence=(_source_evidence(source),),
+    )
+
+
+def _source_evidence(source: SourceName) -> SourceEvidence:
+    return SourceEvidence(
+        source=source,
+        adapter=source,
+        function="fixture",
+        artifact_id=f"{source}_artifact",
+        raw_record_id=f"{source}:revenue",
+        raw_field_name="Revenue",
+    )
