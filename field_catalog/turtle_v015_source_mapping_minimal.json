@@ -1,0 +1,128 @@
+{
+  "catalog_id": "turtle_v015_source_mapping_minimal",
+  "version": "2026-05-01",
+  "priorities": [
+    {
+      "priority": "P0",
+      "name": "Source-first Turtle core fields",
+      "fields": [
+        "revenue",
+        "net_profit",
+        "total_assets",
+        "total_liabilities",
+        "cash",
+        "operating_cash_flow"
+      ]
+    },
+    {
+      "priority": "P1",
+      "name": "Source-first high-value enhancements",
+      "fields": [
+        "gross_profit",
+        "total_cur_assets",
+        "total_cur_liab"
+      ]
+    }
+  ],
+  "source_mappings": {
+    "revenue": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["营业收入", "营业总收入", "Total revenue", "Revenue"],
+        "yahoo": ["Total Revenue", "Operating Revenue"]
+      },
+      "pdf_aliases": ["revenue", "营业收入"]
+    },
+    "net_profit": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["净利润", "归属于母公司股东的净利润", "Profit attributable to shareholders"],
+        "yahoo": ["Net Income", "Net Income Common Stockholders"]
+      },
+      "pdf_aliases": ["net profit", "profit attributable", "净利润"]
+    },
+    "total_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["资产总计", "总资产", "Total assets"],
+        "yahoo": ["Total Assets"]
+      },
+      "pdf_aliases": ["total assets", "资产总计"]
+    },
+    "total_liabilities": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["负债合计", "总负债", "Total liabilities"],
+        "yahoo": ["Total Liabilities Net Minority Interest", "Total Liabilities"]
+      },
+      "pdf_aliases": ["total liabilities", "负债合计"]
+    },
+    "cash": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["货币资金", "Cash and cash equivalents"],
+        "yahoo": ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"]
+      },
+      "pdf_aliases": ["cash and cash equivalents", "货币资金"]
+    },
+    "operating_cash_flow": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["经营活动产生的现金流量净额", "经营活动现金流量净额", "Net cash generated from operating activities"],
+        "yahoo": ["Operating Cash Flow", "Total Cash From Operating Activities"]
+      },
+      "pdf_aliases": ["operating cash flow", "经营活动产生的现金流量净额"]
+    },
+    "gross_profit": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["毛利", "Gross profit"],
+        "yahoo": ["Gross Profit"]
+      },
+      "pdf_aliases": ["gross profit", "毛利"]
+    },
+    "total_cur_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["流动资产合计", "Total current assets"],
+        "yahoo": ["Current Assets", "Total Current Assets"]
+      },
+      "pdf_aliases": ["current assets", "流动资产合计"]
+    },
+    "total_cur_liab": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "source_aliases": {
+        "akshare": ["流动负债合计", "Total current liabilities"],
+        "yahoo": ["Current Liabilities", "Total Current Liabilities"]
+      },
+      "pdf_aliases": ["current liabilities", "流动负债合计"]
+    }
+  }
+}

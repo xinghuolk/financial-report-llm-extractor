@@ -1,290 +1,243 @@
-# LLM-First 财报抽取器总需求 SPEC
+# Source-First Turtle 财报抽取器总需求 SPEC
 
-> 日期：2026-04-30
-> 状态：总需求
-> 范围：构建一个独立的 LLM-first 财报抽取器，从年报 PDF 中生成带证据、可审计、可复跑的 Turtle 风格 JSON。
+> 日期：2026-05-01
+> 状态：总需求修订
+> 范围：构建一个独立的 source-first 财报抽取器，优先从 AKShare 和 Yahoo/yfinance 获取结构化财务数据，映射到 Turtle v0.15 字段，再用 PDF/LLM 做缺失、冲突、歧义和年报证据补充。
 
 ## 1. 背景
 
-`financial-report-llm-extractor` 是一个独立项目，不依赖现有 deterministic
-`financial-report-analysis` 的 canonical facts、metric lifecycle、P5 dataset、
-recompute audit 或 registry 治理流程。
+`financial-report-llm-extractor` 最初定位为 LLM-first PDF 财报抽取器：从年报 PDF 中构建 page/block/chunk evidence，再对 Turtle v0.15 P0/P1 字段做 field-first retrieval 和 LLM extraction。
 
-现有 deterministic-first 路径适合长期稳定字段和严格回归，但在新增公司、新市场、新报告格式、新字段时，通常需要补充大量结构恢复、row label mapping、negative controls 和 focused specs。这个项目的目标不同：它要更快地从陌生年报中生成可 review 的候选财务字段，并把证据、歧义和失败原因显式暴露出来。
+真实 PDF 验证后，路线需要修订。当前 Turtle coverage budget 在港股英文报告上只覆盖约四分之一 P0/P1 required fields；继续扩大 PDF alias、statement localization 和 row discovery 会重新陷入不同公司、不同语言、不同表格结构的通用定位问题。
+
+新的产品方向是 source-first：
+
+```text
+AKShare
+-> Yahoo/yfinance
+-> source field inventory
+-> Turtle source mapping / derivation
+-> currency/unit normalization
+-> coverage and conflict gate
+-> selected PDF financial report analysis
+-> LLM-assisted evidence / ambiguity review
+-> reviewable JSON artifacts
+```
+
+PDF 和 LLM 不再是第一轮全字段抽取主路径。它们保留为最后阶段的 evidence supplement、consistency review 和 hard-case fallback。
 
 ## 2. 核心目标
 
 系统应支持：
 
-- 从单份年报 PDF 建立 page/block/chunk 证据存储。
-- 建立 full-PDF evidence index，让全部 page/block 都可被字段级检索和审计引用。
-- 使用 field-first retrieval 为每个 Turtle 字段召回 top-k 证据候选。
-- 建立 document map 和 statement map 作为候选来源和 ranking signal，但不能作为字段抽取的硬前置 gate。
-- 可选地使用 LLM 辅助发现 statement row labels 和候选 raw values。
-- 将发现到的行项目或 field-first candidates 映射到 Turtle v0.15 P0/P1 字段。
-- 对字段或小字段组执行小范围 LLM 抽取。
-- 使用代码执行金额、币种、单位、期间、scope、evidence 和派生值校验。
+- 定义 Turtle v0.15 P0/P1 字段的 source mapping contract。
+- 通过 AKShare 获取 A 股、港股和可用美股的结构化财报数据。
+- 通过 Yahoo/yfinance 获取港股、美股和标准化字段补充数据。
+- 保存每次 source call 的 raw artifacts，保证可复跑、可审计、可对比。
+- 将 source rows 映射到 Turtle 字段，保留 raw field、raw value、period、scope、currency、unit 和 source evidence。
+- 对 AKShare 和 Yahoo/yfinance 输出单源 coverage 和组合 coverage。
+- 对同一字段的多 source 结果做 period、scope、currency、unit、value reconciliation。
+- 用代码执行货币、单位、倍率、派生字段、缺失和冲突校验。
+- 只对 missing、ambiguous、conflict 或需要年报页码证据的字段进入 PDF/LLM fallback。
 - 输出 JSON-first artifacts，便于人工 review、回归比较和后续分析。
 
 系统不应：
 
-- 让 LLM 一次性读取整份 PDF 并直接输出最终 P0/P1 字段。
+- 先从 PDF 做 broad P0/P1 extraction，再用结构化数据补漏。
+- 让 LLM 作为生产主路径自由调用 MCP 获取财务数据。
 - 让 prompt 成为信任边界。
-- 信任 LLM 返回的 normalized money。
-- 在币种、期间、scope 或候选值不明确时静默选择一个值。
-- 把完整表格重建作为字段抽取的前置硬依赖。
-- 把 document map、statement map 或 formal statement localization 作为字段抽取的单点硬依赖。
-- 把 Codex/Claude skill 当成业务核心。skill 只能是薄封装。
+- 信任 source 或 LLM 返回的 normalized money，而不做代码校验。
+- 在币种、单位、期间、scope 或 source 冲突时静默选择。
+- 把 AKShare、Yahoo 或 Tushare 返回值直接提升为 canonical facts。
+- 复制 TradingAgents-CN、report-collector 或旧 `financial-report-analysis` 的数据库、worker、metric lifecycle、P5、recompute 或 governance 架构。
 
-## 3. 总体主路径
+## 3. 第一阶段主路径
 
-推荐主路径：
+第一阶段主路径是结构化数据源优先：
 
 ```text
-PDF
--> parser capability probe
--> page/block evidence store
--> full-PDF evidence index
--> field-first retrieval top-k candidates
--> document map
--> statement map
--> optional LLM-assisted row discovery
--> candidate reconciliation / catalog mapping
--> field-scoped extraction
+Turtle P0/P1 source mapping contract
+-> AKShare raw adapter
+-> Yahoo/yfinance raw adapter
+-> source inventory artifacts
+-> source-to-Turtle mapping
 -> deterministic money/unit normalization
--> schema/evidence/period/scope/derivation validation
--> reviewable JSON artifacts
+-> source coverage gate
+-> cross-source reconciliation
+-> selected PDF/LLM fallback
+-> review/export JSON
 ```
 
 关键约束：
 
-- full-PDF evidence index 是主检索入口。全部 PDF block 都可进入索引，但 LLM prompt 只能接收 top-k bounded evidence，不允许整份 PDF 投喂。
-- `document map` 和 `statement map` 识别目录、审计报告、正式财务报表、notes、MD&A、financial summary 等区域，但它们只能提供候选、过滤建议和 ranking bonus。
-- `row discovery` 是增强路径：当 statement chunk 可信时，在 chunk 内发现行项目；当 statement localization 缺失或噪声过大时，field-first retrieval 仍必须能从 evidence index 召回字段候选。
+- AKShare 是第一优先级 source。
+- Yahoo/yfinance 是第二优先级 source，用于补充和交叉验证。
+- PDF 财报分析不参与第一轮 broad field coverage，只处理结构化来源无法稳定解决的问题。
+- LLM 可用于解释字段语义、辅助 ambiguous mapping、补 PDF evidence 和做 consistency review，但不能绕过 adapter、raw artifacts、coverage gate 和 deterministic validation。
 
-已知架构风险：
+## 4. Turtle Source Mapping Contract
 
-- 如果把“通用定位层”设计成硬 gate，不同公司、不同语言、不同披露风格会导致两种失败：规则过宽时把 MD&A、notes、Outlook、financial summary 大量送入 LLM；规则过窄时漏掉正式字段。
-- 因此 formal statement localization 不能决定“哪些字段可以被抽取”。它只能作为召回信号之一。
-- 不采用“整份 PDF 一次发给 LLM”来规避定位问题；正确边界是“整份 PDF 本地索引，LLM 只看 top-k evidence”。
+字段目录来源为 `field_catalog/turtle_v015_priority_fields.json`，需要扩展为 source mapping catalog。
 
-## 4. LLM 使用边界
+每个 Turtle entry 应包含：
 
-LLM 可以参与：
+- `field_id`
+- priority：P0、P1、P2、P3、P4
+- value type：money、number、percent、text、derived
+- statement type：income statement、balance sheet、cash flow、equity、notes、unknown
+- period expectation：annual、quarterly、point-in-time、duration
+- scope expectation：consolidated、parent/company、unknown
+- currency requirement：required、optional、not_applicable
+- unit requirement：required、optional、not_applicable
+- source aliases：AKShare raw field names/codes、Yahoo/yfinance field names
+- PDF aliases：仅用于 fallback 和 evidence supplement
+- derivation metadata：公式、输入字段、输入一致性要求
+- fallback policy：source_required、pdf_allowed、llm_review_required
 
-- 判断候选页面是否属于正式财务报表区域。
-- 从目录、审计报告引用和标题上下文中辅助建立 document map。
-- 对 statement chunk 做 row inventory。
-- 给 discovered row 提供候选语义解释。
-- 在字段级 prompt 中，从 top-k evidence candidates 抽取 `value_raw`、`unit_context`、`currency_hint`、period、scope、confidence 和 evidence refs。
+最小 P0/P1 source-first spike 必须覆盖这些字段类别：
 
-LLM 不可以：
+- revenue / operating revenue
+- net income / profit attributable to shareholders
+- total assets
+- total liabilities
+- total equity / shareholders equity
+- cash and cash equivalents
+- operating cash flow
+- capital expenditure or capex candidate
+- debt / borrowings candidate
+- per-share 或 ratio 字段，如果 P0/P1 catalog 中要求
 
-- 直接从整篇 PDF 输出最终 Turtle P0/P1。
-- 绕过 page/chunk/block/snippet evidence。
-- 决定最终 `normalized_value`。
-- 做隐式 FX conversion。
-- 在多个币种、期间、scope 或候选行之间无证据地强行选择。
+## 5. Source Evidence Contract
 
-禁止模式：
+结构化来源的 evidence 和 PDF evidence 必须区分。
 
-```text
-whole PDF text
--> LLM
--> final P0/P1 extracted fields
+`source_evidence` 至少包含：
+
+- `source`：akshare、yahoo
+- `adapter`
+- `function` 或 endpoint/tool name
+- `artifact_id`
+- `raw_record_id`
+- `raw_field_name`
+- `raw_field_code` when available
+- `retrieved_at`
+- `provider_version` when available
+
+示例：
+
+```json
+{
+  "source": "akshare",
+  "adapter": "akshare",
+  "function": "stock_financial_hk_report_em",
+  "artifact_id": "akshare_00001_hk_balance_20240501.json",
+  "raw_record_id": "00001:balance_sheet:2024-12-31:STD_ITEM_CODE",
+  "raw_field_name": "STD_ITEM_NAME",
+  "raw_field_code": "STD_ITEM_CODE"
+}
 ```
 
-允许模式：
-
-```text
-top-k field evidence blocks, optionally boosted by statement/document signals
--> LLM row discovery or field extraction
--> deterministic validator
-```
-
-## 5. Evidence Contract
-
-每个 `present` item 必须有证据：
+`pdf_evidence` 沿用现有合同：
 
 - `page`
 - `chunk_id`
 - `block_id`
 - `snippet`
 
-证据必须指向真实存在的 page/block/chunk。若 logical chunk 跨页，最终 evidence 仍必须落到具体 page 和 block。
+规则：
 
-review 中已暴露出的合同风险必须优先修复：
+- source-first coverage 可由 `source_evidence` 支撑。
+- 需要年报页码证据的 final export/profile 才要求补 `pdf_evidence`。
+- `present` 字段必须至少有一种 evidence；若字段 profile 要求 PDF evidence，则缺 PDF evidence 时不得通过该 profile。
 
-- retrieval evidence 不能总是使用 candidate chunk 的第一个 `block_id`。当 matched alias 或 snippet 出现在 chunk 后续 block 时，evidence 必须指向包含该文本的 block。
-- raw LLM response 即使无法 parse，也必须归档到 artifacts，不能因为 JSON malformed 或 provider schema 异常而丢失原始响应。
-- chunk 输出路径若是嵌套目录，CLI 必须自动创建父目录。
+## 6. AKShare Requirements
 
-## 6. Page/Block/Chunk Store
+AKShare adapter 必须：
 
-证据存储至少包含三层：
+- 显式声明并固定 AKShare 版本。
+- 调用 AKShare 公共函数，不复制 site-packages 源码。
+- 支持 A 股三大表和摘要指标。
+- 支持港股三大表和主要指标。
+- 保存 raw response artifact。
+- 输出 source inventory rows。
+- 对港股补 metadata join，保留 `CURRENCY`、`ACCOUNT_STANDARD`、`REPORT_TYPE`。
+- 记录 source function、symbol、market、statement type、report type、period、raw columns。
+- 对接口异常输出结构化错误，不静默返回空成功。
 
-- `page atom`：PDF 单页文本和页码。
-- `block atom`：页内段落、标题、layout line、statement line、table fragment 或 table row。
-- `logical chunk`：面向 document map、retrieval 和 LLM 的上下文窗口，可跨页。
+第一批参考接口：
 
-第一阶段推荐 chunk kinds：
+- `stock_balance_sheet_by_report_em`
+- `stock_profit_sheet_by_report_em`
+- `stock_cash_flow_sheet_by_report_em`
+- `stock_financial_report_sina`
+- `stock_financial_abstract`
+- `stock_financial_hk_report_em`
+- `stock_financial_hk_analysis_indicator_em`
 
-- `page_text`
-- `paragraph`
-- `section_window`
-- `layout_line`
-- `statement_line`
-- `table_fragment`
-- `statement_table`
-- `table_row`
+## 7. Yahoo/yfinance Requirements
 
-要求：
+Yahoo/yfinance adapter 必须：
 
-- chunk store 是 durable evidence source。
-- embedding/vector index 只能是可重建派生产物。
-- parser version、chunker version、source PDF hash 必须进入 metadata。
-- table/cell/bbox 是 evidence enrichment，不是主路径硬依赖。
+- 作为第二优先级结构化 source。
+- 支持 income statement、balance sheet、cash flow 和 stock info。
+- 保存 raw JSON artifact。
+- 输出 source inventory rows。
+- 记录 ticker、market suffix、period、statement type、raw field name、raw value。
+- 明确标记 Yahoo 字段为标准化字段，不等同于年报原始披露字段。
+- 对年份不足、字段缺失、接口失败输出结构化状态。
 
-## 7. Document Map
+Yahoo Finance 没有稳定官方公开 HTTP API；实现上可以直接使用 yfinance，也可以包装 `../yahoo-finance-mcp/` 中的确定性接口。但生产主路径不应让 LLM 自由调用 MCP。
 
-Document map 应识别：
+## 8. Source Inventory
 
-- 目录页。
-- 审计报告页。
-- 正式财务报表 page range。
-- notes page range。
-- MD&A / 管理层讨论范围。
-- 五年摘要 / financial summary 范围。
-- 报告语言、市场、报告期、公司名。
+source inventory 是 raw source 到 Turtle mapping 的中间 artifact。
 
-Document map 输出应是结构化 artifact，并带 evidence：
+每条记录至少包含：
 
-```json
-{
-  "sections": [
-    {
-      "kind": "audited_financial_statements",
-      "page_start": 132,
-      "page_end": 346,
-      "confidence": 0.92,
-      "evidence": [
-        {
-          "page": 129,
-          "block_id": "p0129_b0003",
-          "snippet": "financial statements ... set out on pages 132 to 346"
-        }
-      ]
-    }
-  ]
-}
-```
+- source
+- market
+- ticker
+- company identifier when available
+- statement type
+- report type
+- period
+- fiscal year when available
+- scope when available
+- account standard when available
+- currency
+- unit
+- raw field name
+- raw field code when available
+- raw value
+- parsed numeric value when applicable
+- source evidence
+- source status：present、missing、ambiguous、source_error、unsupported
 
-## 8. Statement Map
+inventory 不做最终 Turtle 判断。它只表达 source 中存在什么。
 
-Statement map 应识别：
+## 9. Turtle Mapping And Reconciliation
 
-- income statement / statement of comprehensive income。
-- balance sheet / statement of financial position。
-- cash flow statement。
-- statement of changes in equity。
-- consolidated vs parent/company。
-- current year and prior year columns。
-- unit and currency context。
-
-输出示例：
-
-```json
-{
-  "statements": [
-    {
-      "statement_kind": "income_statement",
-      "scope": "consolidated",
-      "page_start": 70,
-      "page_end": 70,
-      "title": "CONSOLIDATED INCOME STATEMENT",
-      "unit_context": "$ Million",
-      "period_columns": ["2025", "2024"],
-      "evidence_blocks": ["p0070_b0001", "p0070_b0002"]
-    }
-  ]
-}
-```
-
-## 9. Row Discovery
-
-Row discovery 的目标是在 statement chunk 中列出可映射的财务行项目。
-
-LLM 输入应包含：
-
-- statement title。
-- scope。
-- period columns。
-- unit/currency context。
-- statement blocks。
-- 必要 neighbor blocks。
-
-LLM 输出 row inventory，而不是最终 extracted items：
-
-```json
-{
-  "rows": [
-    {
-      "row_label": "Group revenue",
-      "candidate_meaning": "group revenue",
-      "values": [{"period": "2025", "value_raw": "57,935"}],
-      "unit_context": "$ Million",
-      "currency_hint": "HKD",
-      "evidence": [
-        {
-          "page": 70,
-          "block_id": "p0070_b0002",
-          "snippet": "Group revenue 57,935 45,529"
-        }
-      ]
-    }
-  ]
-}
-```
-
-Row inventory 只是中间 artifact。最终字段仍需 catalog mapping、field-scoped extraction 和 validator。
-
-## 10. Field Catalog And Mapping
-
-字段目录来源为 `field_catalog/turtle_v015_priority_fields.json`，后续应扩展为 extraction catalog。
-
-每个 catalog entry 应包含：
+mapping 输出应表达：
 
 - `field_id`
-- priority：P0/P1/P2/P3/P4
-- value type：money、number、percent、text、derived
-- Chinese aliases
-- English aliases
-- statement hints
-- scope hints
-- period expectations
-- unit/currency expectations
-- derivation metadata when applicable
+- source candidate list
+- selected source candidate when unambiguous
+- mapping rule id
+- mapping confidence
+- mapping status：present、missing、ambiguous、conflict、derived、unsupported
+- period/scope/currency/unit decision
+- source evidence list
+- errors/warnings
 
-Catalog mapping 输入：
+规则：
 
-- field-first evidence candidates。
-- optional discovered row label。
-- optional statement kind。
-- scope。
-- period。
-- unit/currency context。
-- field catalog aliases and hints。
+- AKShare 和 Yahoo 均有候选时，必须比较 period、currency、unit 和 normalized value。
+- source 值一致或差异在明确 tolerance 内，才可自动选择。
+- source 语义不一致或差异无法解释时，输出 `conflict`。
+- derived fields 必须保留所有输入字段 lineage。
+- 低置信度、多候选、口径冲突时输出 `ambiguous`，不能硬选。
 
-低置信度、多候选、口径冲突时，输出 `ambiguous`，不能硬选。
-
-## 11. Money And Unit Normalization
-
-LLM 只可提供：
-
-- `value_raw`
-- `unit_context`
-- `currency_hint`
-- evidence refs
+## 10. Money And Unit Normalization
 
 代码必须计算：
 
@@ -301,17 +254,74 @@ LLM 只可提供：
 - `元`、`千元`、`万元`、`亿元`、`RMB'000`、`RMB in thousands`、`RMB in millions`、`HK$'000`、`HK$ million`、`US$ million`、`$ million`、`k`、`m`、`mn`。
 - parentheses negatives、minus signs、commas、dash missing values。
 
+优先级：
+
+```text
+AKShare explicit metadata
+> Yahoo/yfinance explicit metadata
+> source report/statement metadata
+> PDF table header / PDF evidence
+> market default heuristic
+> unknown/ambiguous
+```
+
 规则：
 
 - `normalized_value = value * unit_multiplier`。
 - 不做 FX conversion。
 - `$` 不能单独决定币种。
-- 多币种列必须选择明确 reporting-currency column，无法确定则 `ambiguous`。
-- derived value 的所有输入必须 period、scope、currency、unit 一致。
+- market default heuristic 只能用于 review 提示，不能自动生成 present money。
+- 多币种或单位不明时输出 `ambiguous` 或 `unknown_unit`。
 
-## 12. LLM Config And Transport
+## 11. Coverage Gate
 
-系统必须有 provider-neutral LLM boundary：
+coverage gate 必须能回答：
+
+- AKShare 单独覆盖多少 Turtle P0/P1 fields。
+- Yahoo/yfinance 单独覆盖多少 Turtle P0/P1 fields。
+- AKShare + Yahoo/yfinance 组合覆盖多少 fields。
+- 哪些字段 missing。
+- 哪些字段 ambiguous。
+- 哪些字段 conflict。
+- 哪些字段需要 PDF evidence supplement。
+- 哪些字段需要 LLM review。
+
+第一阶段 gate 阻断条件：
+
+- required source field missing。
+- present money 缺 currency 或 unit。
+- source conflict 未解决。
+- derived field 缺输入 lineage。
+- output profile 要求 PDF evidence 但没有对应 PDF evidence。
+
+## 12. PDF/LLM Fallback Boundary
+
+PDF/LLM fallback 只处理：
+
+- source missing。
+- source ambiguous。
+- source conflict。
+- source 有值但需要年报 page/block/snippet evidence。
+- source 字段语义无法自动映射到 Turtle 字段。
+- 需要从 notes 或管理层文字中解释的非标准字段。
+
+PDF/LLM fallback 不应：
+
+- 重新作为全字段主抽取路径。
+- 对所有 Turtle P0/P1 字段 broad scan。
+- 代替 source adapter 或 source coverage gate。
+- 直接产出 normalized money。
+
+LLM 合适角色：
+
+- 解释 source field 与 Turtle field 的语义关系。
+- 对 ambiguous mapping 给候选和理由。
+- 从 selected PDF evidence 中补 page/block/snippet。
+- 对 source result 和 PDF snippet 做 consistency review。
+
+## 13. LLM Config And Transport
+
+系统保留 provider-neutral LLM boundary：
 
 - `LlmConfigResolver`
 - `LlmClient`
@@ -320,32 +330,20 @@ LLM 只可提供：
 - `LlmResponseParser`
 - `FakeLlmClient`
 
-首批必须支持的 provider：
+首批 provider：
 
-- `openai-compatible`：显式 `base_url`，使用 `OPENAI_API_KEY` 或配置中的 `api_key_env`。
-- `deepseek`：默认 `base_url=https://api.deepseek.com/v1`，默认 `api_key_env=DEEPSEEK_API_KEY`，走 OpenAI-compatible `/chat/completions`。
-- `ollama`：默认 `base_url=http://localhost:11434/v1`，默认 `api_key_env=OLLAMA_API_KEY`，走 OpenAI-compatible `/chat/completions`；本地无 key 时必须省略 `Authorization`。
-- `gemini`：默认 `base_url=https://generativelanguage.googleapis.com/v1beta`，默认 `api_key_env=GEMINI_API_KEY`，走 `/models/<model>:generateContent`；默认 env 缺失时可 fallback 到 `GOOGLE_API_KEY`。
+- `deepseek`
+- `gemini`
+- `ollama`
+- generic `openai-compatible`
 
-每次 run 必须记录：
+provider fallback 默认关闭。LLM 只在 fallback/review 阶段调用；source-first adapter 和 coverage gate 不依赖 LLM。
 
-- provider
-- model
-- base_url
-- prompt version
-- schema version
-- latency when available
-- usage when available
-- finish reason when available
-- structured transport/parse errors
+每次 LLM run 必须记录 provider、model、base URL、prompt/schema version、latency、usage、finish reason 和 structured errors。API key 只能从环境变量读取，不得写入 artifacts。
 
-API key 只能从环境变量读取，不得写入 artifacts。可记录 `api_key_env` 名称。
+## 14. Output Artifacts
 
-provider fallback 默认关闭。若后续支持 fallback，必须显式开启，并记录每次 provider/model/base_url 的变化。
-
-## 13. Output Artifacts
-
-默认使用仓库内 `tmp/`，而不是系统 `/tmp`。
+默认使用仓库内 `tmp/`。
 
 推荐 run layout：
 
@@ -353,59 +351,57 @@ provider fallback 默认关闭。若后续支持 fallback，必须显式开启�
 tmp/
   runs/
     <run_id>/
+      source_artifacts/
+        akshare/
+        yahoo/
+      source_inventory.jsonl
+      turtle_mapping.json
+      source_coverage_summary.json
+      reconciliation_report.json
       pages.jsonl
       chunks.jsonl
-      document_map.json
-      statement_map.json
-      row_inventory.json
-      catalog_mapping.json
       retrieval_probe.json
+      pdf_evidence_supplement.json
       prompt_payloads/
       raw_llm_responses/
       parsed_llm_responses/
       extraction_result.json
-      run_metadata.json
       review_summary.json
+      run_metadata.json
 ```
 
-## 14. First Slice Scope
+PDF artifacts 只在 fallback/supplement 阶段生成。source artifacts 是第一阶段默认产物。
+
+## 15. First Slice Scope
 
 第一可用切片：
 
-- 单份 annual PDF。
-- P0 + P1 核心字段。
-- CLI + JSON artifacts。
-- fake LLM mode 必须可离线跑。
-- real LLM mode 必须通过显式 config 启用。
-- 默认不需要 UI、数据库、批处理队列或自动下载。
+- Turtle P0/P1 source mapping contract。
+- AKShare raw adapter。
+- Yahoo/yfinance raw adapter。
+- source inventory artifacts。
+- 最小 Turtle mapping。
+- money/unit normalization。
+- source coverage gate。
+- conflict/reconciliation report。
+- selected PDF/LLM fallback 设计和 fake path。
 
 优先验证样本：
 
-- `downloads/cn_stocks/600519/annual/2025_年度报告.pdf`
-- `downloads/hk_stocks/00001/annual/2025_annual_en.pdf`
-- `downloads/hk_stocks/01113/annual/2025_annual_en.pdf`
+- `600519` / A 股 / AKShare。
+- `00001` / 港股 / AKShare + Yahoo/yfinance。
+- `01113` / 港股 / AKShare + Yahoo/yfinance。
 
-扩展验证样本：
-
-- `300750`
-- `601919`
-- `688008`
-- `01810`
-- `02498`
-- `06862`
-- `09987`
-
-## 15. Success Criteria
+## 16. Success Criteria
 
 第一阶段成功标准：
 
-- 可以对陌生 annual PDF 生成 full-PDF evidence index、field-first retrieval candidates 和 selected P0/P1 extraction result。
-- 可以生成 document map、statement map、row inventory 作为 reviewable enhancement artifacts，但字段抽取不依赖它们全部成功。
-- 每个 `present` 字段都有可读 evidence。
-- 正式报表、目录、五年摘要、MD&A、notes 的定位结果可作为 ranking/review 信号；定位失败不得阻断字段级候选召回。
-- 跨页 statement 或跨页文字中的字段可以追溯到具体 page/block。
-- CNY/HKD/USD 和常见中英文单位能 deterministic normalize。
-- HK English 年报中的 reporting currency、双列/多列、derived fields 能处理或显式标记 ambiguous。
-- 缺失字段明确标记，不编造。
-- 同一字段抽取过程可复跑、可比较。
-- 每次 run 记录 provider/model/base_url/prompt/schema/errors。
+- 能对 `600519`、`00001`、`01113` 生成 AKShare/Yahoo raw source artifacts。
+- 能生成 source inventory，并可审查每个 raw field 和 raw value。
+- 能将最小 Turtle P0/P1 字段映射到 source candidates。
+- 能输出 AKShare、Yahoo 和组合 coverage summary。
+- 能识别 missing、ambiguous、conflict、unsupported。
+- 能 deterministic normalize CNY/HKD/USD 和常见单位。
+- 能阻断单位/币种不明的 present money。
+- 能明确列出哪些字段需要 PDF/LLM fallback。
+- 不依赖 PDF broad extraction 即可判断结构化 source route 是否可行。
