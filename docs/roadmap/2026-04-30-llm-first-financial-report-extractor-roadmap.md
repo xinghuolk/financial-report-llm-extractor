@@ -442,6 +442,12 @@ Exit criteria:
 - Source-first combined coverage is materially better than the current PDF retrieval coverage.
 - Remaining gaps are explicit and assigned to source mapping, source availability, PDF supplement, or LLM review.
 
+Implementation note:
+
+- Phase J now includes a fixture-driven no-network evaluation harness and `scripts/run-source-first-e2e-evaluation.sh`.
+- The harness writes per-report artifacts and compares AKShare-only, Yahoo-only, combined, and combined-plus-PDF-supplement coverage.
+- The default fixtures cover the three validation report IDs: `600519`, `00001`, and `01113`.
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:
