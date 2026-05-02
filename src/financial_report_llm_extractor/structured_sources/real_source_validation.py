@@ -449,13 +449,43 @@ def _select_latest_annual_records(
     )
 
 
+def _select_latest_annual_period_records(
+    records: tuple[SourceInventoryRecord, ...],
+    *,
+    limit: int,
+) -> tuple[SourceInventoryRecord, ...]:
+    annual_periods = {
+        record.period
+        for record in records
+        if record.source_status == "present"
+        and record.period is not None
+        and _is_annual_period(record.period)
+    }
+    if annual_periods:
+        target_periods = set(sorted(annual_periods)[-limit:])
+    else:
+        present_periods = {
+            record.period
+            for record in records
+            if record.source_status == "present" and record.period is not None
+        }
+        if not present_periods:
+            return records
+        target_periods = set(sorted(present_periods)[-limit:])
+    return tuple(
+        record
+        for record in records
+        if record.source_status != "present" or record.period in target_periods
+    )
+
+
 def _records_for_sample(
     records: tuple[SourceInventoryRecord, ...],
     *,
     sample_set: str,
 ) -> tuple[SourceInventoryRecord, ...]:
     if sample_set == "provider_field_baseline":
-        return records
+        return _select_latest_annual_period_records(records, limit=5)
     return _select_latest_annual_records(records)
 
 

@@ -247,6 +247,65 @@ def test_provider_field_baseline_preserves_all_returned_period_fields(
     assert "2024-12-31" in inventory_lines
 
 
+def test_provider_field_baseline_keeps_latest_five_annual_periods(
+    tmp_path: Path,
+) -> None:
+    class ManyPeriodAkshareClient(FakeAkshareClient):
+        def stock_profit_sheet_by_report_em(
+            self,
+            *,
+            symbol: str,
+        ) -> list[dict[str, object]]:
+            assert symbol == "SH600519"
+            return [
+                {
+                    "REPORT_DATE": period,
+                    "STD_ITEM_CODE": "OPERATE_INCOME",
+                    "STD_ITEM_NAME": "营业收入",
+                    "AMOUNT": str(index),
+                }
+                for index, period in enumerate(
+                    (
+                        "2019-12-31",
+                        "2020-12-31",
+                        "2021-12-31",
+                        "2022-12-31",
+                        "2023-12-31",
+                        "2024-12-31",
+                        "2025-09-30",
+                    ),
+                    start=1,
+                )
+            ]
+
+    result = run_real_source_validation(
+        samples=(
+            RealSourceValidationSample(
+                provider="akshare",
+                market="CN",
+                ticker="600519",
+                statement_type="income_statement",
+                currency="CNY",
+                unit="yuan",
+                exchange="SH",
+            ),
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path,
+        sample_set="provider_field_baseline",
+        akshare_client=ManyPeriodAkshareClient(),
+    )
+
+    assert result.summary["record_count"] == 5
+    assert [record.period for record in result.records] == [
+        "2020-12-31",
+        "2021-12-31",
+        "2022-12-31",
+        "2023-12-31",
+        "2024-12-31",
+    ]
+
+
 def test_real_source_validation_records_source_errors_without_aborting(
     tmp_path: Path,
 ) -> None:

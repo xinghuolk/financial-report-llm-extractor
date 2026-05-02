@@ -51,6 +51,8 @@ The capture baseline covers the current validation companies and the three core 
 
 The company id is the stable validation id. The provider ticker is the actual input to the provider adapter.
 
+The baseline is not a full historical archive. For each provider/company/statement target, inventory rows should keep the latest five annual reporting periods by default. Within those five annual periods, the capture must preserve every provider-returned raw field, including fields that are not mapped to Turtle yet. If a provider does not expose annual period strings, the fallback is the latest five available periods. Source error, missing, and unsupported records should remain visible even when they have no period.
+
 ## 5. Artifact Contract
 
 Each successful capture run should write:
@@ -122,6 +124,7 @@ Normal tests must use fake injected clients only. They should prove:
 - The capture target matrix contains the expected 18 provider/company/statement targets.
 - The field inventory summary preserves unmapped raw fields.
 - Adapter-backed validation writes the field inventory summary.
+- `provider_field_baseline` keeps the latest five annual periods while preserving all fields inside those periods.
 - Captured inventory replay can produce the same field inventory summary without clients.
 - The script forwards `SAMPLE_SET=provider_field_baseline` to the Python entrypoint.
 
@@ -132,6 +135,7 @@ Tests must not import AKShare, yfinance, or make network calls.
 This stage is complete when:
 
 - The provider field baseline sample set is available from the validation CLI/script.
+- Baseline inventory is bounded to the latest five annual periods per provider/company/statement target, rather than all historical periods.
 - `provider_field_inventory_summary.json` is written for adapter-backed and captured validation runs.
 - A real capture command can run once and archive raw artifacts, manifest, inventory, and summary under `tmp/runs/...`.
 - Successful captured outputs can be promoted into `tests/fixtures/provider_captures/provider_field_baseline/`.
