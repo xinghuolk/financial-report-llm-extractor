@@ -134,13 +134,14 @@ def run_real_source_validation(
     for sample in samples:
         try:
             records.extend(
-                _select_latest_annual_records(
+                _records_for_sample(
                     _fetch_sample_records(
                         sample,
                         artifact_store,
                         akshare_client=akshare_client,
                         yahoo_client=yahoo_client,
-                    )
+                    ),
+                    sample_set=sample_set,
                 )
             )
         except Exception as exc:  # noqa: BLE001 - validation must archive failures
@@ -446,6 +447,16 @@ def _select_latest_annual_records(
         for record in records
         if record.source_status != "present" or record.period == target_period
     )
+
+
+def _records_for_sample(
+    records: tuple[SourceInventoryRecord, ...],
+    *,
+    sample_set: str,
+) -> tuple[SourceInventoryRecord, ...]:
+    if sample_set == "provider_field_baseline":
+        return records
+    return _select_latest_annual_records(records)
 
 
 def _is_annual_period(period: str) -> bool:

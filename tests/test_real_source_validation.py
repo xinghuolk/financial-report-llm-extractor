@@ -184,6 +184,69 @@ def test_real_source_validation_writes_provider_field_inventory_summary(
     assert payload["targets"][0]["raw_field_names"] == ["营业收入"]
 
 
+def test_provider_field_baseline_preserves_all_returned_period_fields(
+    tmp_path: Path,
+) -> None:
+    class BaselineAkshareClient(FakeAkshareClient):
+        def stock_profit_sheet_by_report_em(
+            self,
+            *,
+            symbol: str,
+        ) -> list[dict[str, object]]:
+            assert symbol == "SH600519"
+            return [
+                {
+                    "REPORT_DATE": "2023-12-31",
+                    "STD_ITEM_CODE": "ADMIN_EXPENSE",
+                    "STD_ITEM_NAME": "管理费用",
+                    "AMOUNT": "20",
+                },
+                {
+                    "REPORT_DATE": "2024-12-31",
+                    "STD_ITEM_CODE": "OPERATE_INCOME",
+                    "STD_ITEM_NAME": "营业收入",
+                    "AMOUNT": "100",
+                },
+            ]
+
+    result = run_real_source_validation(
+        samples=(
+            RealSourceValidationSample(
+                provider="akshare",
+                market="CN",
+                ticker="600519",
+                statement_type="income_statement",
+                currency="CNY",
+                unit="yuan",
+                exchange="SH",
+            ),
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path,
+        sample_set="provider_field_baseline",
+        akshare_client=BaselineAkshareClient(),
+    )
+
+    assert result.summary["record_count"] == 2
+
+    summary_payload = json.loads(
+        (tmp_path / "provider_field_inventory_summary.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    target = summary_payload["targets"][0]
+    assert target["raw_field_names"] == ["管理费用", "营业收入"]
+    assert target["periods"] == ["2023-12-31", "2024-12-31"]
+
+    inventory_lines = (tmp_path / "source_inventory.jsonl").read_text(
+        encoding="utf-8"
+    )
+    assert "管理费用" in inventory_lines
+    assert "营业收入" in inventory_lines
+    assert "2023-12-31" in inventory_lines
+    assert "2024-12-31" in inventory_lines
+
+
 def test_real_source_validation_records_source_errors_without_aborting(
     tmp_path: Path,
 ) -> None:
