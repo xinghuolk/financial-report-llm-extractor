@@ -7,6 +7,7 @@ plugged in later; unit tests use fixture clients to avoid consuming API traffic.
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+import math
 from typing import Protocol
 
 from financial_report_llm_extractor.models import Currency
@@ -337,9 +338,10 @@ def _parse_decimal(value: object) -> Decimal | None:
     if value is None:
         return None
     try:
-        return Decimal(str(value).replace(",", ""))
+        parsed = Decimal(str(value).replace(",", ""))
     except (InvalidOperation, ValueError):
         return None
+    return parsed if parsed.is_finite() else None
 
 
 def _optional_str(value: object) -> str | None:
@@ -350,6 +352,8 @@ def _optional_str(value: object) -> str | None:
 
 
 def _raw_value(value: object) -> str | int | float | None:
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
     if value is None or isinstance(value, (str, int, float)):
         return value
     return str(value)

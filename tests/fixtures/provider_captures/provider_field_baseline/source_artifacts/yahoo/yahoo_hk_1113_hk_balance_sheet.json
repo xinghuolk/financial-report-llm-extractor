@@ -1,0 +1,1323 @@
+{
+  "metadata": {
+    "currency": "HKD",
+    "report_type": "annual"
+  },
+  "rows": [
+    {
+      "field": "Ordinary Shares Number",
+      "period": "2025-12-31",
+      "value": "3499778333.0"
+    },
+    {
+      "field": "Ordinary Shares Number",
+      "period": "2024-12-31",
+      "value": "3499778333.0"
+    },
+    {
+      "field": "Ordinary Shares Number",
+      "period": "2023-12-31",
+      "value": "3548684333.0"
+    },
+    {
+      "field": "Ordinary Shares Number",
+      "period": "2022-12-31",
+      "value": "3605190333.0"
+    },
+    {
+      "field": "Share Issued",
+      "period": "2025-12-31",
+      "value": "3499778333.0"
+    },
+    {
+      "field": "Share Issued",
+      "period": "2024-12-31",
+      "value": "3499778333.0"
+    },
+    {
+      "field": "Share Issued",
+      "period": "2023-12-31",
+      "value": "3548684333.0"
+    },
+    {
+      "field": "Share Issued",
+      "period": "2022-12-31",
+      "value": "3605190333.0"
+    },
+    {
+      "field": "Net Debt",
+      "period": "2025-12-31",
+      "value": "9617000000.0"
+    },
+    {
+      "field": "Net Debt",
+      "period": "2024-12-31",
+      "value": "16647000000.0"
+    },
+    {
+      "field": "Net Debt",
+      "period": "2023-12-31",
+      "value": "12388000000.0"
+    },
+    {
+      "field": "Net Debt",
+      "period": "2021-12-31",
+      "value": "33103000000.0"
+    },
+    {
+      "field": "Total Debt",
+      "period": "2025-12-31",
+      "value": "56609000000.0"
+    },
+    {
+      "field": "Total Debt",
+      "period": "2024-12-31",
+      "value": "57632000000.0"
+    },
+    {
+      "field": "Total Debt",
+      "period": "2023-12-31",
+      "value": "60720000000.0"
+    },
+    {
+      "field": "Total Debt",
+      "period": "2022-12-31",
+      "value": "54093000000.0"
+    },
+    {
+      "field": "Tangible Book Value",
+      "period": "2025-12-31",
+      "value": "401656000000.0"
+    },
+    {
+      "field": "Tangible Book Value",
+      "period": "2024-12-31",
+      "value": "393088000000.0"
+    },
+    {
+      "field": "Tangible Book Value",
+      "period": "2023-12-31",
+      "value": "391200000000.0"
+    },
+    {
+      "field": "Tangible Book Value",
+      "period": "2022-12-31",
+      "value": "383252000000.0"
+    },
+    {
+      "field": "Invested Capital",
+      "period": "2025-12-31",
+      "value": "455731000000.0"
+    },
+    {
+      "field": "Invested Capital",
+      "period": "2024-12-31",
+      "value": "448320000000.0"
+    },
+    {
+      "field": "Invested Capital",
+      "period": "2023-12-31",
+      "value": "448642000000.0"
+    },
+    {
+      "field": "Invested Capital",
+      "period": "2022-12-31",
+      "value": "436097000000.0"
+    },
+    {
+      "field": "Working Capital",
+      "period": "2025-12-31",
+      "value": "135034000000.0"
+    },
+    {
+      "field": "Working Capital",
+      "period": "2024-12-31",
+      "value": "134585000000.0"
+    },
+    {
+      "field": "Working Capital",
+      "period": "2023-12-31",
+      "value": "130666000000.0"
+    },
+    {
+      "field": "Working Capital",
+      "period": "2022-12-31",
+      "value": "154899000000.0"
+    },
+    {
+      "field": "Net Tangible Assets",
+      "period": "2025-12-31",
+      "value": "401656000000.0"
+    },
+    {
+      "field": "Net Tangible Assets",
+      "period": "2024-12-31",
+      "value": "393088000000.0"
+    },
+    {
+      "field": "Net Tangible Assets",
+      "period": "2023-12-31",
+      "value": "391200000000.0"
+    },
+    {
+      "field": "Net Tangible Assets",
+      "period": "2022-12-31",
+      "value": "383252000000.0"
+    },
+    {
+      "field": "Capital Lease Obligations",
+      "period": "2025-12-31",
+      "value": "5249000000.0"
+    },
+    {
+      "field": "Capital Lease Obligations",
+      "period": "2024-12-31",
+      "value": "4916000000.0"
+    },
+    {
+      "field": "Capital Lease Obligations",
+      "period": "2023-12-31",
+      "value": "5851000000.0"
+    },
+    {
+      "field": "Capital Lease Obligations",
+      "period": "2022-12-31",
+      "value": "5556000000.0"
+    },
+    {
+      "field": "Common Stock Equity",
+      "period": "2025-12-31",
+      "value": "404371000000.0"
+    },
+    {
+      "field": "Common Stock Equity",
+      "period": "2024-12-31",
+      "value": "395604000000.0"
+    },
+    {
+      "field": "Common Stock Equity",
+      "period": "2023-12-31",
+      "value": "393773000000.0"
+    },
+    {
+      "field": "Common Stock Equity",
+      "period": "2022-12-31",
+      "value": "387560000000.0"
+    },
+    {
+      "field": "Total Capitalization",
+      "period": "2025-12-31",
+      "value": "444088000000.0"
+    },
+    {
+      "field": "Total Capitalization",
+      "period": "2024-12-31",
+      "value": "437181000000.0"
+    },
+    {
+      "field": "Total Capitalization",
+      "period": "2023-12-31",
+      "value": "430843000000.0"
+    },
+    {
+      "field": "Total Capitalization",
+      "period": "2022-12-31",
+      "value": "433662000000.0"
+    },
+    {
+      "field": "Total Equity Gross Minority Interest",
+      "period": "2025-12-31",
+      "value": "408681000000.0"
+    },
+    {
+      "field": "Total Equity Gross Minority Interest",
+      "period": "2024-12-31",
+      "value": "400200000000.0"
+    },
+    {
+      "field": "Total Equity Gross Minority Interest",
+      "period": "2023-12-31",
+      "value": "399436000000.0"
+    },
+    {
+      "field": "Total Equity Gross Minority Interest",
+      "period": "2022-12-31",
+      "value": "393707000000.0"
+    },
+    {
+      "field": "Minority Interest",
+      "period": "2025-12-31",
+      "value": "4310000000.0"
+    },
+    {
+      "field": "Minority Interest",
+      "period": "2024-12-31",
+      "value": "4596000000.0"
+    },
+    {
+      "field": "Minority Interest",
+      "period": "2023-12-31",
+      "value": "5663000000.0"
+    },
+    {
+      "field": "Minority Interest",
+      "period": "2022-12-31",
+      "value": "6147000000.0"
+    },
+    {
+      "field": "Stockholders Equity",
+      "period": "2025-12-31",
+      "value": "404371000000.0"
+    },
+    {
+      "field": "Stockholders Equity",
+      "period": "2024-12-31",
+      "value": "395604000000.0"
+    },
+    {
+      "field": "Stockholders Equity",
+      "period": "2023-12-31",
+      "value": "393773000000.0"
+    },
+    {
+      "field": "Stockholders Equity",
+      "period": "2022-12-31",
+      "value": "387560000000.0"
+    },
+    {
+      "field": "Other Equity Interest",
+      "period": "2025-12-31",
+      "value": "7929000000.0"
+    },
+    {
+      "field": "Other Equity Interest",
+      "period": "2024-12-31",
+      "value": "7929000000.0"
+    },
+    {
+      "field": "Other Equity Interest",
+      "period": "2023-12-31",
+      "value": "7929000000.0"
+    },
+    {
+      "field": "Other Equity Interest",
+      "period": "2022-12-31",
+      "value": "7929000000.0"
+    },
+    {
+      "field": "Retained Earnings",
+      "period": "2022-12-31",
+      "value": "209022000000.0"
+    },
+    {
+      "field": "Retained Earnings",
+      "period": "2021-12-31",
+      "value": "195636000000.0"
+    },
+    {
+      "field": "Additional Paid In Capital",
+      "period": "2024-12-31",
+      "value": "232971000000.0"
+    },
+    {
+      "field": "Additional Paid In Capital",
+      "period": "2023-12-31",
+      "value": "234522000000.0"
+    },
+    {
+      "field": "Additional Paid In Capital",
+      "period": "2022-12-31",
+      "value": "236497000000.0"
+    },
+    {
+      "field": "Additional Paid In Capital",
+      "period": "2021-12-31",
+      "value": "239524000000.0"
+    },
+    {
+      "field": "Capital Stock",
+      "period": "2025-12-31",
+      "value": "236471000000.0"
+    },
+    {
+      "field": "Capital Stock",
+      "period": "2024-12-31",
+      "value": "236471000000.0"
+    },
+    {
+      "field": "Capital Stock",
+      "period": "2023-12-31",
+      "value": "3549000000.0"
+    },
+    {
+      "field": "Capital Stock",
+      "period": "2022-12-31",
+      "value": "3605000000.0"
+    },
+    {
+      "field": "Common Stock",
+      "period": "2025-12-31",
+      "value": "236471000000.0"
+    },
+    {
+      "field": "Common Stock",
+      "period": "2024-12-31",
+      "value": "236471000000.0"
+    },
+    {
+      "field": "Common Stock",
+      "period": "2023-12-31",
+      "value": "3549000000.0"
+    },
+    {
+      "field": "Common Stock",
+      "period": "2022-12-31",
+      "value": "3605000000.0"
+    },
+    {
+      "field": "Total Liabilities Net Minority Interest",
+      "period": "2025-12-31",
+      "value": "100817000000.0"
+    },
+    {
+      "field": "Total Liabilities Net Minority Interest",
+      "period": "2024-12-31",
+      "value": "101581000000.0"
+    },
+    {
+      "field": "Total Liabilities Net Minority Interest",
+      "period": "2023-12-31",
+      "value": "109449000000.0"
+    },
+    {
+      "field": "Total Liabilities Net Minority Interest",
+      "period": "2022-12-31",
+      "value": "121114000000.0"
+    },
+    {
+      "field": "Total Non Current Liabilities Net Minority Interest",
+      "period": "2025-12-31",
+      "value": "61745000000.0"
+    },
+    {
+      "field": "Total Non Current Liabilities Net Minority Interest",
+      "period": "2024-12-31",
+      "value": "60249000000.0"
+    },
+    {
+      "field": "Total Non Current Liabilities Net Minority Interest",
+      "period": "2023-12-31",
+      "value": "57649000000.0"
+    },
+    {
+      "field": "Total Non Current Liabilities Net Minority Interest",
+      "period": "2022-12-31",
+      "value": "66134000000.0"
+    },
+    {
+      "field": "Derivative Product Liabilities",
+      "period": "2025-12-31",
+      "value": "2283000000.0"
+    },
+    {
+      "field": "Derivative Product Liabilities",
+      "period": "2024-12-31",
+      "value": "223000000.0"
+    },
+    {
+      "field": "Derivative Product Liabilities",
+      "period": "2023-12-31",
+      "value": "895000000.0"
+    },
+    {
+      "field": "Derivative Product Liabilities",
+      "period": "2022-12-31",
+      "value": "723000000.0"
+    },
+    {
+      "field": "Non Current Pension And Other Postretirement Benefit Plans",
+      "period": "2025-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Non Current Pension And Other Postretirement Benefit Plans",
+      "period": "2024-12-31",
+      "value": "10000000.0"
+    },
+    {
+      "field": "Non Current Pension And Other Postretirement Benefit Plans",
+      "period": "2023-12-31",
+      "value": "88000000.0"
+    },
+    {
+      "field": "Non Current Pension And Other Postretirement Benefit Plans",
+      "period": "2022-12-31",
+      "value": "93000000.0"
+    },
+    {
+      "field": "Non Current Deferred Taxes Liabilities",
+      "period": "2025-12-31",
+      "value": "14889000000.0"
+    },
+    {
+      "field": "Non Current Deferred Taxes Liabilities",
+      "period": "2024-12-31",
+      "value": "13791000000.0"
+    },
+    {
+      "field": "Non Current Deferred Taxes Liabilities",
+      "period": "2023-12-31",
+      "value": "14041000000.0"
+    },
+    {
+      "field": "Non Current Deferred Taxes Liabilities",
+      "period": "2022-12-31",
+      "value": "13940000000.0"
+    },
+    {
+      "field": "Long Term Debt And Capital Lease Obligation",
+      "period": "2025-12-31",
+      "value": "44573000000.0"
+    },
+    {
+      "field": "Long Term Debt And Capital Lease Obligation",
+      "period": "2024-12-31",
+      "value": "46225000000.0"
+    },
+    {
+      "field": "Long Term Debt And Capital Lease Obligation",
+      "period": "2023-12-31",
+      "value": "42625000000.0"
+    },
+    {
+      "field": "Long Term Debt And Capital Lease Obligation",
+      "period": "2022-12-31",
+      "value": "51378000000.0"
+    },
+    {
+      "field": "Long Term Capital Lease Obligation",
+      "period": "2025-12-31",
+      "value": "4856000000.0"
+    },
+    {
+      "field": "Long Term Capital Lease Obligation",
+      "period": "2024-12-31",
+      "value": "4648000000.0"
+    },
+    {
+      "field": "Long Term Capital Lease Obligation",
+      "period": "2023-12-31",
+      "value": "5555000000.0"
+    },
+    {
+      "field": "Long Term Capital Lease Obligation",
+      "period": "2022-12-31",
+      "value": "5276000000.0"
+    },
+    {
+      "field": "Long Term Debt",
+      "period": "2025-12-31",
+      "value": "39717000000.0"
+    },
+    {
+      "field": "Long Term Debt",
+      "period": "2024-12-31",
+      "value": "41577000000.0"
+    },
+    {
+      "field": "Long Term Debt",
+      "period": "2023-12-31",
+      "value": "37070000000.0"
+    },
+    {
+      "field": "Long Term Debt",
+      "period": "2022-12-31",
+      "value": "46102000000.0"
+    },
+    {
+      "field": "Current Liabilities",
+      "period": "2025-12-31",
+      "value": "39072000000.0"
+    },
+    {
+      "field": "Current Liabilities",
+      "period": "2024-12-31",
+      "value": "41332000000.0"
+    },
+    {
+      "field": "Current Liabilities",
+      "period": "2023-12-31",
+      "value": "51800000000.0"
+    },
+    {
+      "field": "Current Liabilities",
+      "period": "2022-12-31",
+      "value": "54980000000.0"
+    },
+    {
+      "field": "Current Deferred Taxes Liabilities",
+      "period": "2025-12-31",
+      "value": "1189000000.0"
+    },
+    {
+      "field": "Current Deferred Taxes Liabilities",
+      "period": "2024-12-31",
+      "value": "714000000.0"
+    },
+    {
+      "field": "Current Deferred Taxes Liabilities",
+      "period": "2023-12-31",
+      "value": "2658000000.0"
+    },
+    {
+      "field": "Current Deferred Taxes Liabilities",
+      "period": "2022-12-31",
+      "value": "5026000000.0"
+    },
+    {
+      "field": "Current Debt And Capital Lease Obligation",
+      "period": "2025-12-31",
+      "value": "12036000000.0"
+    },
+    {
+      "field": "Current Debt And Capital Lease Obligation",
+      "period": "2024-12-31",
+      "value": "11407000000.0"
+    },
+    {
+      "field": "Current Debt And Capital Lease Obligation",
+      "period": "2023-12-31",
+      "value": "18095000000.0"
+    },
+    {
+      "field": "Current Debt And Capital Lease Obligation",
+      "period": "2022-12-31",
+      "value": "2715000000.0"
+    },
+    {
+      "field": "Current Capital Lease Obligation",
+      "period": "2025-12-31",
+      "value": "393000000.0"
+    },
+    {
+      "field": "Current Capital Lease Obligation",
+      "period": "2024-12-31",
+      "value": "268000000.0"
+    },
+    {
+      "field": "Current Capital Lease Obligation",
+      "period": "2023-12-31",
+      "value": "296000000.0"
+    },
+    {
+      "field": "Current Capital Lease Obligation",
+      "period": "2022-12-31",
+      "value": "280000000.0"
+    },
+    {
+      "field": "Current Debt",
+      "period": "2025-12-31",
+      "value": "11643000000.0"
+    },
+    {
+      "field": "Current Debt",
+      "period": "2024-12-31",
+      "value": "11139000000.0"
+    },
+    {
+      "field": "Current Debt",
+      "period": "2023-12-31",
+      "value": "17799000000.0"
+    },
+    {
+      "field": "Current Debt",
+      "period": "2022-12-31",
+      "value": "2435000000.0"
+    },
+    {
+      "field": "Payables",
+      "period": "2025-12-31",
+      "value": "3607000000.0"
+    },
+    {
+      "field": "Payables",
+      "period": "2024-12-31",
+      "value": "3715000000.0"
+    },
+    {
+      "field": "Payables",
+      "period": "2023-12-31",
+      "value": "4176000000.0"
+    },
+    {
+      "field": "Payables",
+      "period": "2022-12-31",
+      "value": "14207000000.0"
+    },
+    {
+      "field": "Accounts Payable",
+      "period": "2025-12-31",
+      "value": "3607000000.0"
+    },
+    {
+      "field": "Accounts Payable",
+      "period": "2024-12-31",
+      "value": "3715000000.0"
+    },
+    {
+      "field": "Accounts Payable",
+      "period": "2023-12-31",
+      "value": "4176000000.0"
+    },
+    {
+      "field": "Accounts Payable",
+      "period": "2022-12-31",
+      "value": "14207000000.0"
+    },
+    {
+      "field": "Total Assets",
+      "period": "2025-12-31",
+      "value": "509498000000.0"
+    },
+    {
+      "field": "Total Assets",
+      "period": "2024-12-31",
+      "value": "501781000000.0"
+    },
+    {
+      "field": "Total Assets",
+      "period": "2023-12-31",
+      "value": "508885000000.0"
+    },
+    {
+      "field": "Total Assets",
+      "period": "2022-12-31",
+      "value": "514821000000.0"
+    },
+    {
+      "field": "Total Non Current Assets",
+      "period": "2025-12-31",
+      "value": "335392000000.0"
+    },
+    {
+      "field": "Total Non Current Assets",
+      "period": "2024-12-31",
+      "value": "325864000000.0"
+    },
+    {
+      "field": "Total Non Current Assets",
+      "period": "2023-12-31",
+      "value": "326419000000.0"
+    },
+    {
+      "field": "Total Non Current Assets",
+      "period": "2022-12-31",
+      "value": "304942000000.0"
+    },
+    {
+      "field": "Other Non Current Assets",
+      "period": "2025-12-31",
+      "value": "544000000.0"
+    },
+    {
+      "field": "Other Non Current Assets",
+      "period": "2024-12-31",
+      "value": "563000000.0"
+    },
+    {
+      "field": "Other Non Current Assets",
+      "period": "2023-12-31",
+      "value": "634000000.0"
+    },
+    {
+      "field": "Other Non Current Assets",
+      "period": "2022-12-31",
+      "value": "658000000.0"
+    },
+    {
+      "field": "Defined Pension Benefit",
+      "period": "2025-12-31",
+      "value": "626000000.0"
+    },
+    {
+      "field": "Defined Pension Benefit",
+      "period": "2024-12-31",
+      "value": "470000000.0"
+    },
+    {
+      "field": "Defined Pension Benefit",
+      "period": "2023-12-31",
+      "value": "642000000.0"
+    },
+    {
+      "field": "Defined Pension Benefit",
+      "period": "2022-12-31",
+      "value": "521000000.0"
+    },
+    {
+      "field": "Non Current Deferred Taxes Assets",
+      "period": "2025-12-31",
+      "value": "3132000000.0"
+    },
+    {
+      "field": "Non Current Deferred Taxes Assets",
+      "period": "2024-12-31",
+      "value": "2906000000.0"
+    },
+    {
+      "field": "Non Current Deferred Taxes Assets",
+      "period": "2023-12-31",
+      "value": "2677000000.0"
+    },
+    {
+      "field": "Non Current Deferred Taxes Assets",
+      "period": "2022-12-31",
+      "value": "2522000000.0"
+    },
+    {
+      "field": "Financial Assets",
+      "period": "2025-12-31",
+      "value": "2636000000.0"
+    },
+    {
+      "field": "Financial Assets",
+      "period": "2024-12-31",
+      "value": "6940000000.0"
+    },
+    {
+      "field": "Financial Assets",
+      "period": "2023-12-31",
+      "value": "4985000000.0"
+    },
+    {
+      "field": "Financial Assets",
+      "period": "2022-12-31",
+      "value": "8159000000.0"
+    },
+    {
+      "field": "Other Investments",
+      "period": "2022-12-31",
+      "value": "10436000000.0"
+    },
+    {
+      "field": "Other Investments",
+      "period": "2021-12-31",
+      "value": "12104000000.0"
+    },
+    {
+      "field": "Investmentin Financial Assets",
+      "period": "2025-12-31",
+      "value": "7123000000.0"
+    },
+    {
+      "field": "Investmentin Financial Assets",
+      "period": "2024-12-31",
+      "value": "4545000000.0"
+    },
+    {
+      "field": "Investmentin Financial Assets",
+      "period": "2023-12-31",
+      "value": "6422000000.0"
+    },
+    {
+      "field": "Investmentin Financial Assets",
+      "period": "2022-12-31",
+      "value": "10436000000.0"
+    },
+    {
+      "field": "Available For Sale Securities",
+      "period": "2021-12-31",
+      "value": "16000000.0"
+    },
+    {
+      "field": "Financial Assets Designatedas Fair Value Through Profitor Loss Total",
+      "period": "2025-12-31",
+      "value": "7123000000.0"
+    },
+    {
+      "field": "Financial Assets Designatedas Fair Value Through Profitor Loss Total",
+      "period": "2024-12-31",
+      "value": "4545000000.0"
+    },
+    {
+      "field": "Financial Assets Designatedas Fair Value Through Profitor Loss Total",
+      "period": "2023-12-31",
+      "value": "6422000000.0"
+    },
+    {
+      "field": "Financial Assets Designatedas Fair Value Through Profitor Loss Total",
+      "period": "2022-12-31",
+      "value": "10436000000.0"
+    },
+    {
+      "field": "Long Term Equity Investment",
+      "period": "2025-12-31",
+      "value": "93466000000.0"
+    },
+    {
+      "field": "Long Term Equity Investment",
+      "period": "2024-12-31",
+      "value": "85997000000.0"
+    },
+    {
+      "field": "Long Term Equity Investment",
+      "period": "2023-12-31",
+      "value": "86953000000.0"
+    },
+    {
+      "field": "Long Term Equity Investment",
+      "period": "2022-12-31",
+      "value": "81743000000.0"
+    },
+    {
+      "field": "Investmentsin Joint Venturesat Cost",
+      "period": "2025-12-31",
+      "value": "86348000000.0"
+    },
+    {
+      "field": "Investmentsin Joint Venturesat Cost",
+      "period": "2024-12-31",
+      "value": "78998000000.0"
+    },
+    {
+      "field": "Investmentsin Joint Venturesat Cost",
+      "period": "2023-12-31",
+      "value": "79992000000.0"
+    },
+    {
+      "field": "Investmentsin Joint Venturesat Cost",
+      "period": "2022-12-31",
+      "value": "74685000000.0"
+    },
+    {
+      "field": "Investmentsin Associatesat Cost",
+      "period": "2025-12-31",
+      "value": "7118000000.0"
+    },
+    {
+      "field": "Investmentsin Associatesat Cost",
+      "period": "2024-12-31",
+      "value": "6999000000.0"
+    },
+    {
+      "field": "Investmentsin Associatesat Cost",
+      "period": "2023-12-31",
+      "value": "6961000000.0"
+    },
+    {
+      "field": "Investmentsin Associatesat Cost",
+      "period": "2022-12-31",
+      "value": "7058000000.0"
+    },
+    {
+      "field": "Investment Properties",
+      "period": "2025-12-31",
+      "value": "151694000000.0"
+    },
+    {
+      "field": "Investment Properties",
+      "period": "2024-12-31",
+      "value": "150708000000.0"
+    },
+    {
+      "field": "Investment Properties",
+      "period": "2023-12-31",
+      "value": "147223000000.0"
+    },
+    {
+      "field": "Investment Properties",
+      "period": "2022-12-31",
+      "value": "125186000000.0"
+    },
+    {
+      "field": "Goodwill And Other Intangible Assets",
+      "period": "2025-12-31",
+      "value": "2715000000.0"
+    },
+    {
+      "field": "Goodwill And Other Intangible Assets",
+      "period": "2024-12-31",
+      "value": "2516000000.0"
+    },
+    {
+      "field": "Goodwill And Other Intangible Assets",
+      "period": "2023-12-31",
+      "value": "2573000000.0"
+    },
+    {
+      "field": "Goodwill And Other Intangible Assets",
+      "period": "2022-12-31",
+      "value": "4308000000.0"
+    },
+    {
+      "field": "Goodwill",
+      "period": "2025-12-31",
+      "value": "2715000000.0"
+    },
+    {
+      "field": "Goodwill",
+      "period": "2024-12-31",
+      "value": "2516000000.0"
+    },
+    {
+      "field": "Goodwill",
+      "period": "2023-12-31",
+      "value": "2573000000.0"
+    },
+    {
+      "field": "Goodwill",
+      "period": "2022-12-31",
+      "value": "4308000000.0"
+    },
+    {
+      "field": "Net PPE",
+      "period": "2025-12-31",
+      "value": "72868000000.0"
+    },
+    {
+      "field": "Net PPE",
+      "period": "2024-12-31",
+      "value": "70209000000.0"
+    },
+    {
+      "field": "Net PPE",
+      "period": "2023-12-31",
+      "value": "73027000000.0"
+    },
+    {
+      "field": "Net PPE",
+      "period": "2022-12-31",
+      "value": "70267000000.0"
+    },
+    {
+      "field": "Accumulated Depreciation",
+      "period": "2025-12-31",
+      "value": "-26550000000.0"
+    },
+    {
+      "field": "Accumulated Depreciation",
+      "period": "2024-12-31",
+      "value": "-22033000000.0"
+    },
+    {
+      "field": "Accumulated Depreciation",
+      "period": "2023-12-31",
+      "value": "-19734000000.0"
+    },
+    {
+      "field": "Accumulated Depreciation",
+      "period": "2022-12-31",
+      "value": "-18263000000.0"
+    },
+    {
+      "field": "Gross PPE",
+      "period": "2025-12-31",
+      "value": "99418000000.0"
+    },
+    {
+      "field": "Gross PPE",
+      "period": "2024-12-31",
+      "value": "92242000000.0"
+    },
+    {
+      "field": "Gross PPE",
+      "period": "2023-12-31",
+      "value": "92761000000.0"
+    },
+    {
+      "field": "Gross PPE",
+      "period": "2022-12-31",
+      "value": "88530000000.0"
+    },
+    {
+      "field": "Other Properties",
+      "period": "2025-12-31",
+      "value": "16644000000.0"
+    },
+    {
+      "field": "Other Properties",
+      "period": "2024-12-31",
+      "value": "14182000000.0"
+    },
+    {
+      "field": "Other Properties",
+      "period": "2023-12-31",
+      "value": "13236000000.0"
+    },
+    {
+      "field": "Other Properties",
+      "period": "2022-12-31",
+      "value": "11197000000.0"
+    },
+    {
+      "field": "Machinery Furniture Equipment",
+      "period": "2022-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Machinery Furniture Equipment",
+      "period": "2021-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Buildings And Improvements",
+      "period": "2025-12-31",
+      "value": "7836000000.0"
+    },
+    {
+      "field": "Buildings And Improvements",
+      "period": "2024-12-31",
+      "value": "7128000000.0"
+    },
+    {
+      "field": "Buildings And Improvements",
+      "period": "2023-12-31",
+      "value": "7932000000.0"
+    },
+    {
+      "field": "Buildings And Improvements",
+      "period": "2022-12-31",
+      "value": "7405000000.0"
+    },
+    {
+      "field": "Land And Improvements",
+      "period": "2025-12-31",
+      "value": "74938000000.0"
+    },
+    {
+      "field": "Land And Improvements",
+      "period": "2024-12-31",
+      "value": "70932000000.0"
+    },
+    {
+      "field": "Land And Improvements",
+      "period": "2023-12-31",
+      "value": "71593000000.0"
+    },
+    {
+      "field": "Land And Improvements",
+      "period": "2022-12-31",
+      "value": "69928000000.0"
+    },
+    {
+      "field": "Properties",
+      "period": "2025-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Properties",
+      "period": "2024-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Properties",
+      "period": "2023-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Properties",
+      "period": "2022-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Current Assets",
+      "period": "2025-12-31",
+      "value": "174106000000.0"
+    },
+    {
+      "field": "Current Assets",
+      "period": "2024-12-31",
+      "value": "175917000000.0"
+    },
+    {
+      "field": "Current Assets",
+      "period": "2023-12-31",
+      "value": "182466000000.0"
+    },
+    {
+      "field": "Current Assets",
+      "period": "2022-12-31",
+      "value": "209879000000.0"
+    },
+    {
+      "field": "Other Current Assets",
+      "period": "2025-12-31",
+      "value": "3287000000.0"
+    },
+    {
+      "field": "Other Current Assets",
+      "period": "2024-12-31",
+      "value": "4035000000.0"
+    },
+    {
+      "field": "Other Current Assets",
+      "period": "2023-12-31",
+      "value": "4802000000.0"
+    },
+    {
+      "field": "Other Current Assets",
+      "period": "2022-12-31",
+      "value": "5560000000.0"
+    },
+    {
+      "field": "Hedging Assets Current",
+      "period": "2025-12-31",
+      "value": "2164000000.0"
+    },
+    {
+      "field": "Hedging Assets Current",
+      "period": "2024-12-31",
+      "value": "1752000000.0"
+    },
+    {
+      "field": "Hedging Assets Current",
+      "period": "2023-12-31",
+      "value": "1139000000.0"
+    },
+    {
+      "field": "Hedging Assets Current",
+      "period": "2022-12-31",
+      "value": "2991000000.0"
+    },
+    {
+      "field": "Assets Held For Sale Current",
+      "period": "2022-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Assets Held For Sale Current",
+      "period": "2021-12-31",
+      "value": "31748000000.0"
+    },
+    {
+      "field": "Prepaid Assets",
+      "period": "2022-12-31",
+      "value": "5560000000.0"
+    },
+    {
+      "field": "Prepaid Assets",
+      "period": "2021-12-31",
+      "value": "5058000000.0"
+    },
+    {
+      "field": "Inventory",
+      "period": "2025-12-31",
+      "value": "122799000000.0"
+    },
+    {
+      "field": "Inventory",
+      "period": "2024-12-31",
+      "value": "129776000000.0"
+    },
+    {
+      "field": "Inventory",
+      "period": "2023-12-31",
+      "value": "130101000000.0"
+    },
+    {
+      "field": "Inventory",
+      "period": "2022-12-31",
+      "value": "136446000000.0"
+    },
+    {
+      "field": "Finished Goods",
+      "period": "2025-12-31",
+      "value": "122799000000.0"
+    },
+    {
+      "field": "Finished Goods",
+      "period": "2024-12-31",
+      "value": "129776000000.0"
+    },
+    {
+      "field": "Finished Goods",
+      "period": "2023-12-31",
+      "value": "130101000000.0"
+    },
+    {
+      "field": "Finished Goods",
+      "period": "2022-12-31",
+      "value": "136446000000.0"
+    },
+    {
+      "field": "Other Receivables",
+      "period": "2025-12-31",
+      "value": "2085000000.0"
+    },
+    {
+      "field": "Other Receivables",
+      "period": "2024-12-31",
+      "value": "2171000000.0"
+    },
+    {
+      "field": "Other Receivables",
+      "period": "2023-12-31",
+      "value": "2393000000.0"
+    },
+    {
+      "field": "Other Receivables",
+      "period": "2022-12-31",
+      "value": "2267000000.0"
+    },
+    {
+      "field": "Accounts Receivable",
+      "period": "2025-12-31",
+      "value": "2028000000.0"
+    },
+    {
+      "field": "Accounts Receivable",
+      "period": "2024-12-31",
+      "value": "2114000000.0"
+    },
+    {
+      "field": "Accounts Receivable",
+      "period": "2023-12-31",
+      "value": "1550000000.0"
+    },
+    {
+      "field": "Accounts Receivable",
+      "period": "2022-12-31",
+      "value": "1417000000.0"
+    },
+    {
+      "field": "Cash Cash Equivalents And Short Term Investments",
+      "period": "2025-12-31",
+      "value": "41743000000.0"
+    },
+    {
+      "field": "Cash Cash Equivalents And Short Term Investments",
+      "period": "2024-12-31",
+      "value": "36069000000.0"
+    },
+    {
+      "field": "Cash Cash Equivalents And Short Term Investments",
+      "period": "2023-12-31",
+      "value": "42481000000.0"
+    },
+    {
+      "field": "Cash Cash Equivalents And Short Term Investments",
+      "period": "2022-12-31",
+      "value": "61198000000.0"
+    },
+    {
+      "field": "Cash And Cash Equivalents",
+      "period": "2025-12-31",
+      "value": "41743000000.0"
+    },
+    {
+      "field": "Cash And Cash Equivalents",
+      "period": "2024-12-31",
+      "value": "36069000000.0"
+    },
+    {
+      "field": "Cash And Cash Equivalents",
+      "period": "2023-12-31",
+      "value": "42481000000.0"
+    },
+    {
+      "field": "Cash And Cash Equivalents",
+      "period": "2022-12-31",
+      "value": "61198000000.0"
+    }
+  ]
+}

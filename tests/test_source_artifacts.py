@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 import json
 from decimal import Decimal
@@ -83,6 +84,21 @@ def test_source_artifact_store_tracks_written_artifacts(tmp_path: Path) -> None:
     assert store.artifacts == (artifact,)
 
 
+def test_source_artifact_store_writes_non_finite_numbers_as_null(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+
+    artifact = store.write_json(
+        source="akshare",
+        artifact_id="akshare_cn_600519_balance_sheet",
+        payload={"rows": [{"AMOUNT": float("nan")}]},
+    )
+
+    payload = json.loads((tmp_path / artifact.path).read_text(encoding="utf-8"))
+    assert payload == {"rows": [{"AMOUNT": None}]}
+
+
 def test_build_artifact_id_rejects_parts_that_slug_to_empty() -> None:
     with pytest.raises(ValueError, match="market cannot be converted to artifact id"):
         build_artifact_id(
@@ -138,6 +154,36 @@ def test_source_inventory_jsonl_roundtrip_preserves_decimal_and_evidence(
     assert len(records) == 1
     assert records[0].parsed_numeric_value == Decimal("100")
     assert records[0].source_evidence[0].raw_field_code == "STD_ITEM_CODE"
+
+
+def test_read_source_inventory_supports_gzip_jsonl(tmp_path: Path) -> None:
+    path = tmp_path / "source_inventory.jsonl.gz"
+    payload = _valid_source_inventory_payload()
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload) + "\n")
+
+    records = read_source_inventory(path)
+
+    assert len(records) == 1
+    assert records[0].raw_field_name == "Total assets"
+    assert records[0].parsed_numeric_value == Decimal("100")
+
+
+def test_provider_field_baseline_fixture_replays_compressed_inventory() -> None:
+    fixture_root = Path("tests/fixtures/provider_captures/provider_field_baseline")
+
+    records = read_source_inventory(fixture_root / "source_inventory.jsonl.gz")
+    manifest = read_source_artifact_manifest(
+        fixture_root / "source_artifact_manifest.json"
+    )
+
+    assert len(records) == 6771
+    assert len(manifest.artifacts) == 18
+    validate_source_inventory_artifacts(
+        manifest,
+        records,
+        fixture_root / "source_artifacts",
+    )
 
 
 def test_read_source_inventory_rejects_non_object_line_with_line_number(

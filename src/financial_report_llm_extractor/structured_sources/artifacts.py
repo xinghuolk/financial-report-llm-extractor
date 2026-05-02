@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import math
@@ -121,7 +122,14 @@ class SourceArtifactStore:
         full_path = self.root / relative_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            json.dumps(
+                _jsonable_payload(payload),
+                allow_nan=False,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
             encoding="utf-8",
         )
         artifact = SourceArtifact(
@@ -237,7 +245,12 @@ def write_source_inventory(
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        json.dumps(_record_to_jsonable(record), ensure_ascii=False, sort_keys=True)
+        json.dumps(
+            _record_to_jsonable(record),
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
         for record in records
     ]
     path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
@@ -245,7 +258,7 @@ def write_source_inventory(
 
 def read_source_inventory(path: Path) -> tuple[SourceInventoryRecord, ...]:
     records: list[SourceInventoryRecord] = []
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for line_number, line in enumerate(_read_inventory_lines(path), start=1):
         if not line.strip():
             continue
         label = f"source inventory line {line_number}"
@@ -266,6 +279,23 @@ def read_source_inventory(path: Path) -> tuple[SourceInventoryRecord, ...]:
                 raise
             raise ValueError(f"{label}: {message}") from exc
     return tuple(records)
+
+
+def _read_inventory_lines(path: Path) -> tuple[str, ...]:
+    if path.suffix == ".gz":
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            return tuple(handle.read().splitlines())
+    return tuple(path.read_text(encoding="utf-8").splitlines())
+
+
+def _jsonable_payload(value: Any) -> Any:
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {key: _jsonable_payload(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable_payload(item) for item in value]
+    return value
 
 
 def _manifest_entry_from_artifact(

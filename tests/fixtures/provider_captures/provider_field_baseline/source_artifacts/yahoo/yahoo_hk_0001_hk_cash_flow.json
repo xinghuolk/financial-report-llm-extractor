@@ -1,0 +1,958 @@
+{
+  "metadata": {
+    "currency": "HKD",
+    "report_type": "annual"
+  },
+  "rows": [
+    {
+      "field": "Free Cash Flow",
+      "period": "2025-12-31",
+      "value": "41732000000.0"
+    },
+    {
+      "field": "Free Cash Flow",
+      "period": "2024-12-31",
+      "value": "31878000000.0"
+    },
+    {
+      "field": "Free Cash Flow",
+      "period": "2023-12-31",
+      "value": "26136000000.0"
+    },
+    {
+      "field": "Free Cash Flow",
+      "period": "2022-12-31",
+      "value": "30862000000.0"
+    },
+    {
+      "field": "Repurchase Of Capital Stock",
+      "period": "2023-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Repurchase Of Capital Stock",
+      "period": "2022-12-31",
+      "value": "-197000000.0"
+    },
+    {
+      "field": "Repurchase Of Capital Stock",
+      "period": "2021-12-31",
+      "value": "-1239000000.0"
+    },
+    {
+      "field": "Repayment Of Debt",
+      "period": "2025-12-31",
+      "value": "-41415000000.0"
+    },
+    {
+      "field": "Repayment Of Debt",
+      "period": "2024-12-31",
+      "value": "-60201000000.0"
+    },
+    {
+      "field": "Repayment Of Debt",
+      "period": "2023-12-31",
+      "value": "-75361000000.0"
+    },
+    {
+      "field": "Repayment Of Debt",
+      "period": "2022-12-31",
+      "value": "-68063000000.0"
+    },
+    {
+      "field": "Issuance Of Debt",
+      "period": "2025-12-31",
+      "value": "36080000000.0"
+    },
+    {
+      "field": "Issuance Of Debt",
+      "period": "2024-12-31",
+      "value": "55060000000.0"
+    },
+    {
+      "field": "Issuance Of Debt",
+      "period": "2023-12-31",
+      "value": "58738000000.0"
+    },
+    {
+      "field": "Issuance Of Debt",
+      "period": "2022-12-31",
+      "value": "39265000000.0"
+    },
+    {
+      "field": "Capital Expenditure",
+      "period": "2025-12-31",
+      "value": "-20835000000.0"
+    },
+    {
+      "field": "Capital Expenditure",
+      "period": "2024-12-31",
+      "value": "-22350000000.0"
+    },
+    {
+      "field": "Capital Expenditure",
+      "period": "2023-12-31",
+      "value": "-25301000000.0"
+    },
+    {
+      "field": "Capital Expenditure",
+      "period": "2022-12-31",
+      "value": "-25852000000.0"
+    },
+    {
+      "field": "End Cash Position",
+      "period": "2025-12-31",
+      "value": "143748000000.0"
+    },
+    {
+      "field": "End Cash Position",
+      "period": "2024-12-31",
+      "value": "121303000000.0"
+    },
+    {
+      "field": "End Cash Position",
+      "period": "2023-12-31",
+      "value": "127323000000.0"
+    },
+    {
+      "field": "End Cash Position",
+      "period": "2022-12-31",
+      "value": "138085000000.0"
+    },
+    {
+      "field": "Beginning Cash Position",
+      "period": "2025-12-31",
+      "value": "121303000000.0"
+    },
+    {
+      "field": "Beginning Cash Position",
+      "period": "2024-12-31",
+      "value": "127323000000.0"
+    },
+    {
+      "field": "Beginning Cash Position",
+      "period": "2023-12-31",
+      "value": "138085000000.0"
+    },
+    {
+      "field": "Beginning Cash Position",
+      "period": "2022-12-31",
+      "value": "153133000000.0"
+    },
+    {
+      "field": "Changes In Cash",
+      "period": "2025-12-31",
+      "value": "22445000000.0"
+    },
+    {
+      "field": "Changes In Cash",
+      "period": "2024-12-31",
+      "value": "-6020000000.0"
+    },
+    {
+      "field": "Changes In Cash",
+      "period": "2023-12-31",
+      "value": "-10762000000.0"
+    },
+    {
+      "field": "Changes In Cash",
+      "period": "2022-12-31",
+      "value": "-15048000000.0"
+    },
+    {
+      "field": "Financing Cash Flow",
+      "period": "2025-12-31",
+      "value": "-33434000000.0"
+    },
+    {
+      "field": "Financing Cash Flow",
+      "period": "2024-12-31",
+      "value": "-40346000000.0"
+    },
+    {
+      "field": "Financing Cash Flow",
+      "period": "2023-12-31",
+      "value": "-46784000000.0"
+    },
+    {
+      "field": "Financing Cash Flow",
+      "period": "2022-12-31",
+      "value": "-67406000000.0"
+    },
+    {
+      "field": "Net Other Financing Charges",
+      "period": "2025-12-31",
+      "value": "311000000.0"
+    },
+    {
+      "field": "Net Other Financing Charges",
+      "period": "2024-12-31",
+      "value": "-3718000000.0"
+    },
+    {
+      "field": "Net Other Financing Charges",
+      "period": "2023-12-31",
+      "value": "-106000000.0"
+    },
+    {
+      "field": "Net Other Financing Charges",
+      "period": "2022-12-31",
+      "value": "-8935000000.0"
+    },
+    {
+      "field": "Cash Dividends Paid",
+      "period": "2025-12-31",
+      "value": "-8518000000.0"
+    },
+    {
+      "field": "Cash Dividends Paid",
+      "period": "2024-12-31",
+      "value": "-9433000000.0"
+    },
+    {
+      "field": "Cash Dividends Paid",
+      "period": "2023-12-31",
+      "value": "-10885000000.0"
+    },
+    {
+      "field": "Cash Dividends Paid",
+      "period": "2022-12-31",
+      "value": "-10353000000.0"
+    },
+    {
+      "field": "Common Stock Dividend Paid",
+      "period": "2025-12-31",
+      "value": "-8518000000.0"
+    },
+    {
+      "field": "Common Stock Dividend Paid",
+      "period": "2024-12-31",
+      "value": "-9433000000.0"
+    },
+    {
+      "field": "Common Stock Dividend Paid",
+      "period": "2023-12-31",
+      "value": "-10885000000.0"
+    },
+    {
+      "field": "Common Stock Dividend Paid",
+      "period": "2022-12-31",
+      "value": "-10353000000.0"
+    },
+    {
+      "field": "Net Common Stock Issuance",
+      "period": "2023-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Net Common Stock Issuance",
+      "period": "2022-12-31",
+      "value": "-197000000.0"
+    },
+    {
+      "field": "Net Common Stock Issuance",
+      "period": "2021-12-31",
+      "value": "-1239000000.0"
+    },
+    {
+      "field": "Common Stock Payments",
+      "period": "2023-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Common Stock Payments",
+      "period": "2022-12-31",
+      "value": "-197000000.0"
+    },
+    {
+      "field": "Common Stock Payments",
+      "period": "2021-12-31",
+      "value": "-1239000000.0"
+    },
+    {
+      "field": "Net Issuance Payments Of Debt",
+      "period": "2025-12-31",
+      "value": "-5335000000.0"
+    },
+    {
+      "field": "Net Issuance Payments Of Debt",
+      "period": "2024-12-31",
+      "value": "-5141000000.0"
+    },
+    {
+      "field": "Net Issuance Payments Of Debt",
+      "period": "2023-12-31",
+      "value": "-16623000000.0"
+    },
+    {
+      "field": "Net Issuance Payments Of Debt",
+      "period": "2022-12-31",
+      "value": "-28798000000.0"
+    },
+    {
+      "field": "Net Long Term Debt Issuance",
+      "period": "2025-12-31",
+      "value": "-5335000000.0"
+    },
+    {
+      "field": "Net Long Term Debt Issuance",
+      "period": "2024-12-31",
+      "value": "-5141000000.0"
+    },
+    {
+      "field": "Net Long Term Debt Issuance",
+      "period": "2023-12-31",
+      "value": "-16623000000.0"
+    },
+    {
+      "field": "Net Long Term Debt Issuance",
+      "period": "2022-12-31",
+      "value": "-28798000000.0"
+    },
+    {
+      "field": "Long Term Debt Payments",
+      "period": "2025-12-31",
+      "value": "-41415000000.0"
+    },
+    {
+      "field": "Long Term Debt Payments",
+      "period": "2024-12-31",
+      "value": "-60201000000.0"
+    },
+    {
+      "field": "Long Term Debt Payments",
+      "period": "2023-12-31",
+      "value": "-75361000000.0"
+    },
+    {
+      "field": "Long Term Debt Payments",
+      "period": "2022-12-31",
+      "value": "-68063000000.0"
+    },
+    {
+      "field": "Long Term Debt Issuance",
+      "period": "2025-12-31",
+      "value": "36080000000.0"
+    },
+    {
+      "field": "Long Term Debt Issuance",
+      "period": "2024-12-31",
+      "value": "55060000000.0"
+    },
+    {
+      "field": "Long Term Debt Issuance",
+      "period": "2023-12-31",
+      "value": "58738000000.0"
+    },
+    {
+      "field": "Long Term Debt Issuance",
+      "period": "2022-12-31",
+      "value": "39265000000.0"
+    },
+    {
+      "field": "Investing Cash Flow",
+      "period": "2025-12-31",
+      "value": "-6688000000.0"
+    },
+    {
+      "field": "Investing Cash Flow",
+      "period": "2024-12-31",
+      "value": "-19902000000.0"
+    },
+    {
+      "field": "Investing Cash Flow",
+      "period": "2023-12-31",
+      "value": "-15415000000.0"
+    },
+    {
+      "field": "Investing Cash Flow",
+      "period": "2022-12-31",
+      "value": "-4356000000.0"
+    },
+    {
+      "field": "Net Investment Purchase And Sale",
+      "period": "2025-12-31",
+      "value": "-3495000000.0"
+    },
+    {
+      "field": "Net Investment Purchase And Sale",
+      "period": "2024-12-31",
+      "value": "7132000000.0"
+    },
+    {
+      "field": "Net Investment Purchase And Sale",
+      "period": "2023-12-31",
+      "value": "4466000000.0"
+    },
+    {
+      "field": "Net Investment Purchase And Sale",
+      "period": "2022-12-31",
+      "value": "1929000000.0"
+    },
+    {
+      "field": "Sale Of Investment",
+      "period": "2025-12-31",
+      "value": "1297000000.0"
+    },
+    {
+      "field": "Sale Of Investment",
+      "period": "2024-12-31",
+      "value": "7438000000.0"
+    },
+    {
+      "field": "Sale Of Investment",
+      "period": "2023-12-31",
+      "value": "4613000000.0"
+    },
+    {
+      "field": "Sale Of Investment",
+      "period": "2022-12-31",
+      "value": "2493000000.0"
+    },
+    {
+      "field": "Purchase Of Investment",
+      "period": "2025-12-31",
+      "value": "-4792000000.0"
+    },
+    {
+      "field": "Purchase Of Investment",
+      "period": "2024-12-31",
+      "value": "-306000000.0"
+    },
+    {
+      "field": "Purchase Of Investment",
+      "period": "2023-12-31",
+      "value": "-147000000.0"
+    },
+    {
+      "field": "Purchase Of Investment",
+      "period": "2022-12-31",
+      "value": "-564000000.0"
+    },
+    {
+      "field": "Net Business Purchase And Sale",
+      "period": "2025-12-31",
+      "value": "14257000000.0"
+    },
+    {
+      "field": "Net Business Purchase And Sale",
+      "period": "2024-12-31",
+      "value": "-6072000000.0"
+    },
+    {
+      "field": "Net Business Purchase And Sale",
+      "period": "2023-12-31",
+      "value": "2423000000.0"
+    },
+    {
+      "field": "Net Business Purchase And Sale",
+      "period": "2022-12-31",
+      "value": "18858000000.0"
+    },
+    {
+      "field": "Sale Of Business",
+      "period": "2025-12-31",
+      "value": "15801000000.0"
+    },
+    {
+      "field": "Sale Of Business",
+      "period": "2024-12-31",
+      "value": "512000000.0"
+    },
+    {
+      "field": "Sale Of Business",
+      "period": "2023-12-31",
+      "value": "3297000000.0"
+    },
+    {
+      "field": "Sale Of Business",
+      "period": "2022-12-31",
+      "value": "22322000000.0"
+    },
+    {
+      "field": "Purchase Of Business",
+      "period": "2025-12-31",
+      "value": "-1544000000.0"
+    },
+    {
+      "field": "Purchase Of Business",
+      "period": "2024-12-31",
+      "value": "-6584000000.0"
+    },
+    {
+      "field": "Purchase Of Business",
+      "period": "2023-12-31",
+      "value": "-874000000.0"
+    },
+    {
+      "field": "Purchase Of Business",
+      "period": "2022-12-31",
+      "value": "-3464000000.0"
+    },
+    {
+      "field": "Net Intangibles Purchase And Sale",
+      "period": "2025-12-31",
+      "value": "-2092000000.0"
+    },
+    {
+      "field": "Net Intangibles Purchase And Sale",
+      "period": "2024-12-31",
+      "value": "-1985000000.0"
+    },
+    {
+      "field": "Net Intangibles Purchase And Sale",
+      "period": "2023-12-31",
+      "value": "-3631000000.0"
+    },
+    {
+      "field": "Net Intangibles Purchase And Sale",
+      "period": "2022-12-31",
+      "value": "-1967000000.0"
+    },
+    {
+      "field": "Purchase Of Intangibles",
+      "period": "2025-12-31",
+      "value": "-2092000000.0"
+    },
+    {
+      "field": "Purchase Of Intangibles",
+      "period": "2024-12-31",
+      "value": "-1985000000.0"
+    },
+    {
+      "field": "Purchase Of Intangibles",
+      "period": "2023-12-31",
+      "value": "-3631000000.0"
+    },
+    {
+      "field": "Purchase Of Intangibles",
+      "period": "2022-12-31",
+      "value": "-1967000000.0"
+    },
+    {
+      "field": "Net PPE Purchase And Sale",
+      "period": "2025-12-31",
+      "value": "-18665000000.0"
+    },
+    {
+      "field": "Net PPE Purchase And Sale",
+      "period": "2024-12-31",
+      "value": "-20219000000.0"
+    },
+    {
+      "field": "Net PPE Purchase And Sale",
+      "period": "2023-12-31",
+      "value": "-21502000000.0"
+    },
+    {
+      "field": "Net PPE Purchase And Sale",
+      "period": "2022-12-31",
+      "value": "-23550000000.0"
+    },
+    {
+      "field": "Sale Of PPE",
+      "period": "2025-12-31",
+      "value": "78000000.0"
+    },
+    {
+      "field": "Sale Of PPE",
+      "period": "2024-12-31",
+      "value": "146000000.0"
+    },
+    {
+      "field": "Sale Of PPE",
+      "period": "2023-12-31",
+      "value": "168000000.0"
+    },
+    {
+      "field": "Sale Of PPE",
+      "period": "2022-12-31",
+      "value": "335000000.0"
+    },
+    {
+      "field": "Purchase Of PPE",
+      "period": "2025-12-31",
+      "value": "-18743000000.0"
+    },
+    {
+      "field": "Purchase Of PPE",
+      "period": "2024-12-31",
+      "value": "-20365000000.0"
+    },
+    {
+      "field": "Purchase Of PPE",
+      "period": "2023-12-31",
+      "value": "-21670000000.0"
+    },
+    {
+      "field": "Purchase Of PPE",
+      "period": "2022-12-31",
+      "value": "-23885000000.0"
+    },
+    {
+      "field": "Operating Cash Flow",
+      "period": "2025-12-31",
+      "value": "62567000000.0"
+    },
+    {
+      "field": "Operating Cash Flow",
+      "period": "2024-12-31",
+      "value": "54228000000.0"
+    },
+    {
+      "field": "Operating Cash Flow",
+      "period": "2023-12-31",
+      "value": "51437000000.0"
+    },
+    {
+      "field": "Operating Cash Flow",
+      "period": "2022-12-31",
+      "value": "56714000000.0"
+    },
+    {
+      "field": "Taxes Refund Paid",
+      "period": "2025-12-31",
+      "value": "-5571000000.0"
+    },
+    {
+      "field": "Taxes Refund Paid",
+      "period": "2024-12-31",
+      "value": "-4652000000.0"
+    },
+    {
+      "field": "Taxes Refund Paid",
+      "period": "2023-12-31",
+      "value": "-3931000000.0"
+    },
+    {
+      "field": "Taxes Refund Paid",
+      "period": "2022-12-31",
+      "value": "-3552000000.0"
+    },
+    {
+      "field": "Interest Paid Cfo",
+      "period": "2025-12-31",
+      "value": "-12229000000.0"
+    },
+    {
+      "field": "Interest Paid Cfo",
+      "period": "2024-12-31",
+      "value": "-13267000000.0"
+    },
+    {
+      "field": "Interest Paid Cfo",
+      "period": "2023-12-31",
+      "value": "-12083000000.0"
+    },
+    {
+      "field": "Interest Paid Cfo",
+      "period": "2022-12-31",
+      "value": "-9051000000.0"
+    },
+    {
+      "field": "Dividend Received Cfo",
+      "period": "2025-12-31",
+      "value": "12303000000.0"
+    },
+    {
+      "field": "Dividend Received Cfo",
+      "period": "2024-12-31",
+      "value": "11509000000.0"
+    },
+    {
+      "field": "Dividend Received Cfo",
+      "period": "2023-12-31",
+      "value": "11388000000.0"
+    },
+    {
+      "field": "Dividend Received Cfo",
+      "period": "2022-12-31",
+      "value": "12783000000.0"
+    },
+    {
+      "field": "Change In Working Capital",
+      "period": "2025-12-31",
+      "value": "3722000000.0"
+    },
+    {
+      "field": "Change In Working Capital",
+      "period": "2024-12-31",
+      "value": "-2983000000.0"
+    },
+    {
+      "field": "Change In Working Capital",
+      "period": "2023-12-31",
+      "value": "-7965000000.0"
+    },
+    {
+      "field": "Change In Working Capital",
+      "period": "2022-12-31",
+      "value": "-4580000000.0"
+    },
+    {
+      "field": "Change In Other Current Assets",
+      "period": "2025-12-31",
+      "value": "7621000000.0"
+    },
+    {
+      "field": "Change In Other Current Assets",
+      "period": "2024-12-31",
+      "value": "-1040000000.0"
+    },
+    {
+      "field": "Change In Other Current Assets",
+      "period": "2023-12-31",
+      "value": "1829000000.0"
+    },
+    {
+      "field": "Change In Other Current Assets",
+      "period": "2022-12-31",
+      "value": "-105000000.0"
+    },
+    {
+      "field": "Change In Payable",
+      "period": "2025-12-31",
+      "value": "-2289000000.0"
+    },
+    {
+      "field": "Change In Payable",
+      "period": "2024-12-31",
+      "value": "-1535000000.0"
+    },
+    {
+      "field": "Change In Payable",
+      "period": "2023-12-31",
+      "value": "-3767000000.0"
+    },
+    {
+      "field": "Change In Payable",
+      "period": "2022-12-31",
+      "value": "-2581000000.0"
+    },
+    {
+      "field": "Change In Inventory",
+      "period": "2025-12-31",
+      "value": "-685000000.0"
+    },
+    {
+      "field": "Change In Inventory",
+      "period": "2024-12-31",
+      "value": "-1536000000.0"
+    },
+    {
+      "field": "Change In Inventory",
+      "period": "2023-12-31",
+      "value": "-1005000000.0"
+    },
+    {
+      "field": "Change In Inventory",
+      "period": "2022-12-31",
+      "value": "-1401000000.0"
+    },
+    {
+      "field": "Change In Receivables",
+      "period": "2025-12-31",
+      "value": "-925000000.0"
+    },
+    {
+      "field": "Change In Receivables",
+      "period": "2024-12-31",
+      "value": "1128000000.0"
+    },
+    {
+      "field": "Change In Receivables",
+      "period": "2023-12-31",
+      "value": "-5022000000.0"
+    },
+    {
+      "field": "Change In Receivables",
+      "period": "2022-12-31",
+      "value": "-493000000.0"
+    },
+    {
+      "field": "Other Non Cash Items",
+      "period": "2025-12-31",
+      "value": "9621000000.0"
+    },
+    {
+      "field": "Other Non Cash Items",
+      "period": "2024-12-31",
+      "value": "9723000000.0"
+    },
+    {
+      "field": "Other Non Cash Items",
+      "period": "2023-12-31",
+      "value": "8429000000.0"
+    },
+    {
+      "field": "Other Non Cash Items",
+      "period": "2022-12-31",
+      "value": "4132000000.0"
+    },
+    {
+      "field": "Deferred Tax",
+      "period": "2025-12-31",
+      "value": "7237000000.0"
+    },
+    {
+      "field": "Deferred Tax",
+      "period": "2024-12-31",
+      "value": "4717000000.0"
+    },
+    {
+      "field": "Deferred Tax",
+      "period": "2023-12-31",
+      "value": "3003000000.0"
+    },
+    {
+      "field": "Deferred Tax",
+      "period": "2022-12-31",
+      "value": "8274000000.0"
+    },
+    {
+      "field": "Depreciation And Amortization",
+      "period": "2025-12-31",
+      "value": "38391000000.0"
+    },
+    {
+      "field": "Depreciation And Amortization",
+      "period": "2024-12-31",
+      "value": "40460000000.0"
+    },
+    {
+      "field": "Depreciation And Amortization",
+      "period": "2023-12-31",
+      "value": "40083000000.0"
+    },
+    {
+      "field": "Depreciation And Amortization",
+      "period": "2022-12-31",
+      "value": "39788000000.0"
+    },
+    {
+      "field": "Amortization Cash Flow",
+      "period": "2025-12-31",
+      "value": "8087000000.0"
+    },
+    {
+      "field": "Amortization Cash Flow",
+      "period": "2024-12-31",
+      "value": "7967000000.0"
+    },
+    {
+      "field": "Amortization Cash Flow",
+      "period": "2023-12-31",
+      "value": "7882000000.0"
+    },
+    {
+      "field": "Amortization Cash Flow",
+      "period": "2022-12-31",
+      "value": "7691000000.0"
+    },
+    {
+      "field": "Depreciation",
+      "period": "2025-12-31",
+      "value": "30304000000.0"
+    },
+    {
+      "field": "Depreciation",
+      "period": "2024-12-31",
+      "value": "32493000000.0"
+    },
+    {
+      "field": "Depreciation",
+      "period": "2023-12-31",
+      "value": "32201000000.0"
+    },
+    {
+      "field": "Depreciation",
+      "period": "2022-12-31",
+      "value": "32097000000.0"
+    },
+    {
+      "field": "Gain Loss On Investment Securities",
+      "period": "2024-12-31",
+      "value": "-78000000.0"
+    },
+    {
+      "field": "Gain Loss On Investment Securities",
+      "period": "2023-12-31",
+      "value": "-1829000000.0"
+    },
+    {
+      "field": "Gain Loss On Investment Securities",
+      "period": "2022-12-31",
+      "value": "-515000000.0"
+    },
+    {
+      "field": "Net Foreign Currency Exchange Gain Loss",
+      "period": "2022-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Net Foreign Currency Exchange Gain Loss",
+      "period": "2021-12-31",
+      "value": "3514000000.0"
+    },
+    {
+      "field": "Gain Loss On Sale Of PPE",
+      "period": "2025-12-31",
+      "value": "60000000.0"
+    },
+    {
+      "field": "Gain Loss On Sale Of PPE",
+      "period": "2024-12-31",
+      "value": "97000000.0"
+    },
+    {
+      "field": "Gain Loss On Sale Of PPE",
+      "period": "2023-12-31",
+      "value": "169000000.0"
+    },
+    {
+      "field": "Gain Loss On Sale Of PPE",
+      "period": "2022-12-31",
+      "value": "196000000.0"
+    },
+    {
+      "field": "Gain Loss On Sale Of Business",
+      "period": "2025-12-31",
+      "value": "9637000000.0"
+    },
+    {
+      "field": "Gain Loss On Sale Of Business",
+      "period": "2024-12-31",
+      "value": "-350000000.0"
+    },
+    {
+      "field": "Gain Loss On Sale Of Business",
+      "period": "2023-12-31",
+      "value": "-250000000.0"
+    },
+    {
+      "field": "Gain Loss On Sale Of Business",
+      "period": "2022-12-31",
+      "value": "-27215000000.0"
+    },
+    {
+      "field": "Net Income From Continuing Operations",
+      "period": "2025-12-31",
+      "value": "19370000000.0"
+    },
+    {
+      "field": "Net Income From Continuing Operations",
+      "period": "2024-12-31",
+      "value": "23853000000.0"
+    },
+    {
+      "field": "Net Income From Continuing Operations",
+      "period": "2023-12-31",
+      "value": "30551000000.0"
+    },
+    {
+      "field": "Net Income From Continuing Operations",
+      "period": "2022-12-31",
+      "value": "43659000000.0"
+    }
+  ]
+}

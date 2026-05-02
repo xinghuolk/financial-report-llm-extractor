@@ -1,5 +1,6 @@
 from decimal import Decimal
 import json
+import math
 from pathlib import Path
 
 from financial_report_llm_extractor.structured_sources.akshare_adapter import (
@@ -215,6 +216,35 @@ def test_akshare_cn_wide_inventory_preserves_unmapped_provider_fields(
     target = summary["targets"][0]
     assert "UNMAPPED_PROVIDER_FIELD" in target["raw_field_names"]
     assert "UNMAPPED_PROVIDER_FIELD" in target["raw_field_codes"]
+
+
+def test_akshare_cn_wide_inventory_treats_nan_as_missing_value(
+    tmp_path: Path,
+) -> None:
+    class NanAkshareClient(FakeAkshareClient):
+        def stock_balance_sheet_by_report_em(self, symbol: str) -> list[dict[str, object]]:
+            assert symbol == "SH600519"
+            return [
+                {
+                    "REPORT_DATE": "2024-12-31",
+                    "TOTAL_ASSETS": math.nan,
+                }
+            ]
+
+    store = SourceArtifactStore(tmp_path)
+    adapter = AkshareAdapter(client=NanAkshareClient(), artifact_store=store)
+
+    records = adapter.fetch_cn_statement_inventory(
+        ticker="600519",
+        exchange="SH",
+        statement_type="balance_sheet",
+        unit="yuan",
+    )
+
+    assert len(records) == 1
+    assert records[0].raw_field_name == "资产总计"
+    assert records[0].raw_value is None
+    assert records[0].parsed_numeric_value is None
 
 
 def test_akshare_cn_inventory_replay_validates_against_manifest(

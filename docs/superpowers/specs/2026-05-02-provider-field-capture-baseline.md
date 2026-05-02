@@ -18,7 +18,7 @@ This stage must provide:
 - One opt-in real-provider capture path for AKShare and Yahoo/yfinance.
 - Raw artifact persistence through `SourceArtifactStore`.
 - `source_artifact_manifest.json` validation through PC2.
-- `source_inventory.jsonl` for replay.
+- `source_inventory.jsonl` for run output and `source_inventory.jsonl.gz` for replayable checked-in fixtures.
 - `provider_field_inventory_summary.json` listing observed raw field names, raw field codes, periods, currencies, units, statuses, and artifact counts.
 - A fixture workflow that promotes successful captures into `tests/fixtures/provider_captures/<capture_id>/`.
 - No default network calls in tests.
@@ -75,6 +75,8 @@ review_summary.json
 
 The first four files are the baseline for future mapping work. The mapping/reconciliation/export artifacts are still useful smoke checks, but this stage is not judged by Turtle coverage.
 
+Checked-in fixture copies may store `source_inventory.jsonl` as `source_inventory.jsonl.gz` to avoid repository bloat. Replay readers must support both extensions.
+
 ## 6. Field Inventory Summary Contract
 
 `provider_field_inventory_summary.json` should be a compact index over `source_inventory.jsonl`, not a replacement for raw artifacts.
@@ -115,7 +117,7 @@ After one successful run, promote the output directory to a fixture directory:
 tests/fixtures/provider_captures/provider_field_baseline/
 ```
 
-Subsequent mapping, derivation, reconciliation, and export work should use the captured `source_inventory.jsonl` and raw artifacts. Real provider calls should only be repeated when intentionally refreshing provider shapes or adding a new company/statement family.
+Subsequent mapping, derivation, reconciliation, and export work should use the captured `source_inventory.jsonl` or `source_inventory.jsonl.gz` and raw artifacts. Real provider calls should only be repeated when intentionally refreshing provider shapes or adding a new company/statement family.
 
 ## 8. Testing Contract
 
