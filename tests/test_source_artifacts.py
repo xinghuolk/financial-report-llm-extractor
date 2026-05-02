@@ -19,6 +19,31 @@ from financial_report_llm_extractor.structured_sources.models import (
 )
 
 
+def _valid_source_inventory_payload() -> dict[str, object]:
+    return {
+        "source": "akshare",
+        "market": "HK",
+        "ticker": "00001",
+        "statement_type": "balance_sheet",
+        "period": "2024-12-31",
+        "raw_field_name": "Total assets",
+        "raw_value": "100",
+        "parsed_numeric_value": "100",
+        "currency": "HKD",
+        "unit": "HKD",
+        "source_evidence": [
+            {
+                "source": "akshare",
+                "adapter": "akshare",
+                "function": "stock_financial_hk_report_em",
+                "artifact_id": "artifact-1",
+                "raw_record_id": "00001:balance_sheet:2024",
+                "raw_field_name": "Total assets",
+            }
+        ],
+    }
+
+
 def test_source_artifact_store_writes_json_under_source_directory(tmp_path: Path) -> None:
     store = SourceArtifactStore(tmp_path)
     artifact_id = build_artifact_id(
@@ -119,6 +144,65 @@ def test_read_source_inventory_rejects_non_list_source_evidence(
     with pytest.raises(
         ValueError,
         match="source inventory line 1 source_evidence must be a list",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_missing_top_level_required_key(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    del payload["source"]
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="source inventory line 1 source is required"):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_top_level_extra_key(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    payload["extra"] = "unexpected"
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 has unsupported keys: extra",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_non_string_top_level_required_field(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    payload["market"] = 1
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 market must be a string",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_non_string_source_evidence_required_field(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    source_evidence = payload["source_evidence"]
+    assert isinstance(source_evidence, list)
+    source_evidence[0]["artifact_id"] = ["artifact-1"]
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 source_evidence\\[0\\] artifact_id must be a string",
     ):
         read_source_inventory(path)
 

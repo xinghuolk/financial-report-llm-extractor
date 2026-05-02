@@ -281,10 +281,71 @@ def _source_evidence_from_jsonable(value: Any, label: str) -> SourceEvidence:
         )
     for key in required_keys:
         _require_key(payload, key, label)
+        _validate_required_string(payload[key], f"{label} {key}")
+    for key in optional_keys:
+        if key in payload and payload[key] is not None:
+            _validate_optional_string(payload[key], f"{label} {key}")
 
     evidence = SourceEvidence(**payload)
     evidence.validate()
     return evidence
+
+
+def _validate_source_inventory_payload(payload: dict[str, Any], label: str) -> None:
+    required_keys = (
+        "source",
+        "market",
+        "ticker",
+        "statement_type",
+        "period",
+        "raw_field_name",
+        "raw_value",
+    )
+    allowed_keys = {
+        "source",
+        "market",
+        "ticker",
+        "statement_type",
+        "period",
+        "raw_field_name",
+        "raw_value",
+        "parsed_numeric_value",
+        "value_type",
+        "source_status",
+        "report_type",
+        "fiscal_year",
+        "scope",
+        "account_standard",
+        "currency",
+        "unit",
+        "raw_field_code",
+        "source_evidence",
+    }
+    unexpected_keys = sorted(set(payload) - allowed_keys)
+    if unexpected_keys:
+        raise ValueError(
+            f"{label} has unsupported keys: {', '.join(unexpected_keys)}"
+        )
+    for key in required_keys:
+        _require_key(payload, key, label)
+
+    for key in ("source", "market", "ticker", "statement_type", "raw_field_name"):
+        _validate_required_string(payload[key], f"{label} {key}")
+    if payload["period"] is not None:
+        _validate_optional_string(payload["period"], f"{label} period")
+    for key in (
+        "value_type",
+        "source_status",
+        "report_type",
+        "fiscal_year",
+        "scope",
+        "account_standard",
+        "currency",
+        "unit",
+        "raw_field_code",
+    ):
+        if key in payload and payload[key] is not None:
+            _validate_optional_string(payload[key], f"{label} {key}")
 
 
 def _require_object(value: Any, label: str) -> dict[str, Any]:
@@ -312,6 +373,11 @@ def _validate_required_string(value: Any, label: str) -> None:
         raise ValueError(f"{label} is required")
 
 
+def _validate_optional_string(value: Any, label: str) -> None:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a string")
+
+
 def _record_to_jsonable(record: SourceInventoryRecord) -> dict[str, Any]:
     record.validate()
     payload = asdict(record)
@@ -330,6 +396,7 @@ def _record_from_jsonable(
         label = f"{label} line {line_number}"
 
     record_payload = dict(payload)
+    _validate_source_inventory_payload(record_payload, label)
     if "source_evidence" in record_payload:
         raw_evidence = record_payload.pop("source_evidence")
         evidence_items: tuple[Any, ...] | list[Any] = _require_list(
