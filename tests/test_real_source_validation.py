@@ -125,6 +125,34 @@ def test_real_source_validation_runs_adapters_through_mapping_flow(
     assert result.records[0].parsed_numeric_value == Decimal("100")
 
 
+def test_real_source_validation_writes_source_artifact_manifest(
+    tmp_path: Path,
+) -> None:
+    result = run_real_source_validation(
+        samples=(
+            RealSourceValidationSample(
+                provider="akshare",
+                market="CN",
+                ticker="600519",
+                statement_type="income_statement",
+                currency="CNY",
+                unit="yuan",
+                exchange="SH",
+            ),
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path,
+        akshare_client=FakeAkshareClient(),
+    )
+
+    manifest_path = tmp_path / "source_artifact_manifest.json"
+    assert manifest_path.exists()
+    assert result.summary["artifact_paths"]["source_artifact_manifest"] == str(
+        manifest_path
+    )
+    assert result.summary["source_artifact_count"] >= 1
+
+
 def test_real_source_validation_records_source_errors_without_aborting(
     tmp_path: Path,
 ) -> None:
@@ -177,8 +205,11 @@ def test_captured_source_validation_reuses_saved_inventory_without_clients(
         "net_profit",
         "revenue",
     ]
+    assert "source_artifact_manifest" not in result.summary["artifact_paths"]
+    assert "source_artifact_count" not in result.summary
     assert (tmp_path / "source_inventory.jsonl").exists()
     assert (tmp_path / "extraction_result.json").exists()
+    assert not (tmp_path / "source_artifact_manifest.json").exists()
 
 
 def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fields(

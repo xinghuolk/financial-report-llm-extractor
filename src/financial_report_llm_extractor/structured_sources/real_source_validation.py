@@ -16,6 +16,7 @@ from financial_report_llm_extractor.structured_sources.akshare_adapter import (
 from financial_report_llm_extractor.structured_sources.artifacts import (
     SourceArtifactStore,
     build_artifact_id,
+    finalize_source_artifacts,
     read_source_inventory,
     write_source_inventory,
 )
@@ -148,6 +149,12 @@ def run_real_source_validation(
             )
 
     write_source_inventory(output_dir / "source_inventory.jsonl", records)
+    manifest = finalize_source_artifacts(
+        artifact_root=output_dir / "source_artifacts",
+        artifacts=artifact_store.artifacts,
+        records=records,
+        manifest_path=output_dir / "source_artifact_manifest.json",
+    )
 
     return _write_validation_outputs(
         records=tuple(records),
@@ -156,6 +163,8 @@ def run_real_source_validation(
         validation_mode="real_source_adapter",
         sample_count=len(samples),
         source_errors=source_errors,
+        source_artifact_manifest_path=output_dir / "source_artifact_manifest.json",
+        source_artifact_count=len(manifest.artifacts),
     )
 
 
@@ -186,6 +195,8 @@ def _write_validation_outputs(
     validation_mode: str,
     sample_count: int,
     source_errors: list[dict[str, str]],
+    source_artifact_manifest_path: Path | None = None,
+    source_artifact_count: int | None = None,
 ) -> RealSourceValidationResult:
     catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1"))
     mapping = map_source_inventory(catalog, records)
@@ -211,6 +222,11 @@ def _write_validation_outputs(
             "review_summary": str(output_dir / "review_summary.json"),
         },
     }
+    if source_artifact_manifest_path is not None:
+        summary["artifact_paths"]["source_artifact_manifest"] = str(
+            source_artifact_manifest_path
+        )
+        summary["source_artifact_count"] = source_artifact_count
     output_path = output_dir / "real_source_validation_summary.json"
     output_path.write_text(
         json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
