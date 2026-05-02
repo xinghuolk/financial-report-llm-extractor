@@ -916,10 +916,7 @@ def test_real_coverage_matrix_covers_taxonomy_fields() -> None:
     validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
 
     assert matrix.fields["revenue"].primary_route == "akshare_direct"
-    assert matrix.fields["gross_profit"].primary_route in {
-        "akshare_direct",
-        "yahoo_direct",
-    }
+    assert matrix.fields["gross_profit"].primary_route == "yahoo_direct"
     assert matrix.fields["mda_business_review"].primary_route == "llm_review"
 
 
