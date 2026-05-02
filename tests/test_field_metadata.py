@@ -157,6 +157,42 @@ def test_coverage_matrix_rejects_primary_route_without_matching_route(
         load_coverage_matrix(path)
 
 
+def test_coverage_matrix_rejects_invalid_route_statement_type(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "coverage.json"
+    path.write_text(
+        json.dumps(
+            {
+                "matrix_id": "demo_coverage",
+                "version": "2026-05-02",
+                "taxonomy_catalog": "demo_taxonomy",
+                "fields": {
+                    "revenue": {
+                        "domain": "income_statement",
+                        "priority": "P0",
+                        "primary_route": "akshare_direct",
+                        "verification": "verified",
+                        "routes": [
+                            {
+                                "source": "akshare",
+                                "mode": "direct",
+                                "status": "verified",
+                                "statement_type": "income_statment",
+                                "evidence_requirement": "source_only_allowed",
+                            }
+                        ],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="invalid statement_type"):
+        load_coverage_matrix(path)
+
+
 def test_coverage_matrix_rejects_verified_field_with_unverified_primary_route(
     tmp_path: Path,
 ) -> None:

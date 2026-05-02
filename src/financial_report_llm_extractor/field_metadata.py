@@ -147,20 +147,19 @@ class CoverageRoute:
     source: RouteSource
     mode: RouteMode
     status: VerificationStatus
-    statement_type: str
+    statement_type: StatementType
     evidence_requirement: EvidenceRequirement
 
     def validate(self) -> None:
         _validate_literal("route source", self.source, RouteSource)
         _validate_literal("route mode", self.mode, RouteMode)
         _validate_literal("route status", self.status, VerificationStatus)
+        _validate_literal("invalid statement_type", self.statement_type, StatementType)
         _validate_literal(
             "route evidence_requirement",
             self.evidence_requirement,
             EvidenceRequirement,
         )
-        if not self.statement_type:
-            raise ValueError("route statement_type is required")
 
 
 @dataclass(frozen=True)
