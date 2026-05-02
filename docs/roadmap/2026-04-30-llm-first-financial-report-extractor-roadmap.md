@@ -415,6 +415,7 @@ Implementation note:
 - Phase C baseline AKShare fixture adapter exists for HK and CN statements.
 - PC2 should integrate AKShare adapter runs with PB2 artifact manifests and replay validation.
 - Adapter-backed validation should write `source_artifact_manifest.json`; captured inventory validation remains manifest-optional.
+- PC3/PD0 should capture the target AKShare/Yahoo provider field baseline once, save raw artifacts plus `provider_field_inventory_summary.json`, and drive subsequent mapping work from captured fixtures.
 
 ### Phase D: Yahoo/yfinance Adapter
 
@@ -607,6 +608,12 @@ scripts/run-real-source-validation.sh
 REAL_SOURCE_VALIDATION=1 \
 INVENTORY_FIXTURE=tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl \
 OUT_DIR=tmp/runs/captured_source_validation_yahoo_income \
+scripts/run-real-source-validation.sh
+
+REAL_SOURCE_VALIDATION=1 \
+SAMPLE_SET=provider_field_baseline \
+PROVIDERS=akshare,yahoo \
+OUT_DIR=tmp/runs/provider_field_capture_baseline \
 scripts/run-real-source-validation.sh
 ```
 
