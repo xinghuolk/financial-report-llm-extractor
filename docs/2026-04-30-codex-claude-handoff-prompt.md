@@ -62,6 +62,8 @@
   - tests/test_skill_wrapper.py 覆盖 frontmatter、CLI command usage、guardrails、checklist link。
 - Source-first foundation 已开始并已有可运行代码。
   - `src/financial_report_llm_extractor/structured_sources/` 包含 source contracts、artifact store、AKShare adapter、Yahoo adapter、mapping、coverage、reconciliation、review export、PDF supplement、LLM review、source-first evaluation。
+  - `field_catalog/turtle_v015_field_taxonomy.json` classifies every Turtle field by domain and source mode.
+  - `field_catalog/turtle_v015_coverage_matrix.json` records planned coverage routes and verification status.
   - `field_catalog/turtle_v015_source_mapping_minimal.json` 是当前 source-first 最小字段映射目录。
   - `docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md` 定义了后续完整 Turtle 字段应按利润表、资产负债表、现金流量表、股东回报、会计调整、附注/MD&A 分类，再叠加 P0-P4 priority。
   - `scripts/run-source-first-e2e-evaluation.sh` 是 synthetic no-network source-first E2E。

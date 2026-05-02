@@ -300,6 +300,12 @@ Exit criteria:
 - The taxonomy can answer domain-first questions such as all P0 balance sheet fields, all cash-flow fields, and all PDF-only notes fields.
 - Provider aliases are not required for this phase.
 
+Implementation note:
+
+- `field_catalog/turtle_v015_field_taxonomy.json` contains full Turtle field taxonomy.
+- `field_catalog/turtle_v015_coverage_matrix.json` contains expected coverage route by field.
+- `field_catalog/turtle_v015_source_mapping_minimal.json` is linked to taxonomy and coverage metadata.
+
 ### Phase A2: Turtle Coverage Matrix
 
 Goal: decide expected coverage route for every Turtle field before writing broad provider mappings.
@@ -324,6 +330,12 @@ Exit criteria:
 - `pdf_only` and `llm_review` fields are not counted as missing structured-source failures in the first source-first gate.
 - The next provider work can be selected from explicit coverage gaps.
 
+Implementation note:
+
+- `field_catalog/turtle_v015_field_taxonomy.json` contains full Turtle field taxonomy.
+- `field_catalog/turtle_v015_coverage_matrix.json` contains expected coverage route by field.
+- `field_catalog/turtle_v015_source_mapping_minimal.json` is linked to taxonomy and coverage metadata.
+
 ### Phase A3: Minimal Source Mapping Contract
 
 Goal: add concrete source aliases only for the current source-first implementation slice.
@@ -342,6 +354,12 @@ Exit criteria:
 - Catalog can list required P0/P1 fields and their source mapping expectations.
 - A coverage gate can run against fixture inventory without AKShare/Yahoo installed.
 - Minimal mappings are traceable back to the full taxonomy and coverage matrix.
+
+Implementation note:
+
+- `field_catalog/turtle_v015_field_taxonomy.json` contains full Turtle field taxonomy.
+- `field_catalog/turtle_v015_coverage_matrix.json` contains expected coverage route by field.
+- `field_catalog/turtle_v015_source_mapping_minimal.json` is linked to taxonomy and coverage metadata.
 
 ### Phase B: Source Inventory And Artifact Store
 
