@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable
@@ -15,6 +16,55 @@ from financial_report_llm_extractor.structured_sources.models import (
     SourceInventoryRecord,
     SourceName,
 )
+
+
+@dataclass(frozen=True)
+class SourceArtifactManifestEntry:
+    source: SourceName
+    artifact_id: str
+    path: str
+    content_type: str
+    sha256: str
+    market: str | None = None
+    ticker: str | None = None
+    statement_type: str | None = None
+    function: str | None = None
+    schema_version: str | None = None
+    created_by: str | None = None
+
+    def validate(self) -> None:
+        if not self.source:
+            raise ValueError("source is required")
+        if not self.artifact_id:
+            raise ValueError("artifact_id is required")
+        if not self.path:
+            raise ValueError("path is required")
+        if not self.content_type:
+            raise ValueError("content_type is required")
+        if not re.fullmatch(r"[0-9a-f]{64}", self.sha256):
+            raise ValueError("sha256 must be a lowercase 64-character hex digest")
+        artifact_path = Path(self.path)
+        if artifact_path.is_absolute() or ".." in artifact_path.parts:
+            raise ValueError("path must be relative and must not contain '..'")
+
+
+@dataclass(frozen=True)
+class SourceArtifactManifest:
+    manifest_id: str
+    version: str
+    artifact_root: str
+    artifacts: tuple[SourceArtifactManifestEntry, ...]
+
+    def validate(self) -> None:
+        if not self.manifest_id:
+            raise ValueError("manifest_id is required")
+        if not self.version:
+            raise ValueError("version is required")
+        artifact_ids = [artifact.artifact_id for artifact in self.artifacts]
+        if len(set(artifact_ids)) != len(artifact_ids):
+            raise ValueError("duplicate artifact_id in source artifact manifest")
+        for artifact in self.artifacts:
+            artifact.validate()
 
 
 def build_artifact_id(
@@ -56,6 +106,50 @@ class SourceArtifactStore:
         return artifact
 
 
+def write_source_artifact_manifest(
+    path: Path,
+    *,
+    artifact_root: Path,
+    artifacts: Iterable[SourceArtifact],
+    manifest_id: str = "source_artifact_manifest",
+    version: str = "1",
+) -> SourceArtifactManifest:
+    entries = tuple(
+        sorted(
+            (
+                _manifest_entry_from_artifact(
+                    artifact,
+                    artifact_root=artifact_root,
+                )
+                for artifact in artifacts
+            ),
+            key=lambda entry: entry.artifact_id,
+        )
+    )
+    manifest = SourceArtifactManifest(
+        manifest_id=manifest_id,
+        version=version,
+        artifact_root=artifact_root.as_posix(),
+        artifacts=entries,
+    )
+    manifest.validate()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(_manifest_to_jsonable(manifest), ensure_ascii=False, indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
+    return manifest
+
+
+def read_source_artifact_manifest(path: Path) -> SourceArtifactManifest:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid source artifact manifest JSON: {path}") from exc
+    return _manifest_from_jsonable(payload)
+
+
 def write_source_inventory(
     path: Path,
     records: Iterable[SourceInventoryRecord],
@@ -75,6 +169,50 @@ def read_source_inventory(path: Path) -> tuple[SourceInventoryRecord, ...]:
             continue
         records.append(_record_from_jsonable(json.loads(line)))
     return tuple(records)
+
+
+def _manifest_entry_from_artifact(
+    artifact: SourceArtifact,
+    *,
+    artifact_root: Path,
+) -> SourceArtifactManifestEntry:
+    artifact.validate()
+    artifact_path = artifact_root / artifact.path
+    digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+    entry = SourceArtifactManifestEntry(
+        source=artifact.source,
+        artifact_id=artifact.artifact_id,
+        path=artifact.path,
+        content_type=artifact.content_type,
+        sha256=digest,
+        market=getattr(artifact, "market", None),
+        ticker=getattr(artifact, "ticker", None),
+        statement_type=getattr(artifact, "statement_type", None),
+        function=getattr(artifact, "function", None),
+        schema_version=getattr(artifact, "schema_version", None),
+        created_by=getattr(artifact, "created_by", None),
+    )
+    entry.validate()
+    return entry
+
+
+def _manifest_to_jsonable(manifest: SourceArtifactManifest) -> dict[str, Any]:
+    manifest.validate()
+    return asdict(manifest)
+
+
+def _manifest_from_jsonable(payload: dict[str, Any]) -> SourceArtifactManifest:
+    artifacts = tuple(
+        SourceArtifactManifestEntry(**artifact) for artifact in payload.get("artifacts", [])
+    )
+    manifest = SourceArtifactManifest(
+        manifest_id=payload["manifest_id"],
+        version=payload["version"],
+        artifact_root=payload["artifact_root"],
+        artifacts=artifacts,
+    )
+    manifest.validate()
+    return manifest
 
 
 def _record_to_jsonable(record: SourceInventoryRecord) -> dict[str, Any]:

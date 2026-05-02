@@ -4,7 +4,9 @@ from pathlib import Path
 from financial_report_llm_extractor.structured_sources.artifacts import (
     SourceArtifactStore,
     build_artifact_id,
+    read_source_artifact_manifest,
     read_source_inventory,
+    write_source_artifact_manifest,
     write_source_inventory,
 )
 from financial_report_llm_extractor.structured_sources.models import (
@@ -69,3 +71,35 @@ def test_source_inventory_jsonl_roundtrip_preserves_decimal_and_evidence(
     assert len(records) == 1
     assert records[0].parsed_numeric_value == Decimal("100")
     assert records[0].source_evidence[0].raw_field_code == "STD_ITEM_CODE"
+
+
+def test_source_artifact_manifest_roundtrip_includes_hash_and_sorts_entries(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+    second = store.write_json(
+        source="yahoo",
+        artifact_id="yahoo_hk_00001_income_statement",
+        payload={"rows": [{"field": "Total Revenue", "value": 10}]},
+    )
+    first = store.write_json(
+        source="akshare",
+        artifact_id="akshare_hk_00001_balance_sheet",
+        payload={"rows": [{"field": "Total assets", "value": 100}]},
+    )
+    manifest_path = tmp_path / "source_artifact_manifest.json"
+
+    manifest = write_source_artifact_manifest(
+        manifest_path,
+        artifact_root=tmp_path,
+        artifacts=(second, first),
+    )
+    loaded = read_source_artifact_manifest(manifest_path)
+
+    assert loaded.manifest_id == manifest.manifest_id
+    assert [entry.artifact_id for entry in loaded.artifacts] == [
+        "akshare_hk_00001_balance_sheet",
+        "yahoo_hk_00001_income_statement",
+    ]
+    assert all(len(entry.sha256) == 64 for entry in loaded.artifacts)
+    assert loaded.artifacts[0].path == "akshare/akshare_hk_00001_balance_sheet.json"
