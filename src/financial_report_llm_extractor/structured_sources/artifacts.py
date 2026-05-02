@@ -46,15 +46,15 @@ class SourceArtifactManifestEntry:
 
     def validate(self) -> None:
         _validate_required_string(self.source, "source")
+        _validate_allowed_value(self.source, "source", _ALLOWED_SOURCE_NAMES)
         _validate_required_string(self.artifact_id, "artifact_id")
+        _validate_artifact_id_segment(self.artifact_id)
         _validate_required_string(self.path, "path")
         _validate_required_string(self.content_type, "content_type")
         _validate_required_string(self.sha256, "sha256")
         if not re.fullmatch(r"[0-9a-f]{64}", self.sha256):
             raise ValueError("sha256 must be a lowercase 64-character hex digest")
-        artifact_path = Path(self.path)
-        if artifact_path.is_absolute() or ".." in artifact_path.parts:
-            raise ValueError("path must be relative and must not contain '..'")
+        _validate_relative_artifact_path(self.path, "path")
 
 
 @dataclass(frozen=True)
@@ -83,8 +83,20 @@ def build_artifact_id(
     ticker: str,
     artifact_type: str,
 ) -> str:
-    parts = (source, market, ticker, artifact_type)
-    return "_".join(_slug(part) for part in parts if part)
+    _validate_allowed_value(source, "source", _ALLOWED_SOURCE_NAMES)
+    raw_parts = {
+        "source": source,
+        "market": market,
+        "ticker": ticker,
+        "artifact_type": artifact_type,
+    }
+    slug_parts: list[str] = []
+    for label, value in raw_parts.items():
+        slug = _slug(value)
+        if not slug:
+            raise ValueError(f"{label} cannot be converted to artifact id")
+        slug_parts.append(slug)
+    return "_".join(slug_parts)
 
 
 class SourceArtifactStore:
@@ -98,6 +110,8 @@ class SourceArtifactStore:
         artifact_id: str,
         payload: Any,
     ) -> SourceArtifact:
+        _validate_allowed_value(source, "source", _ALLOWED_SOURCE_NAMES)
+        _validate_artifact_id_segment(artifact_id)
         relative_path = Path(source) / f"{artifact_id}.json"
         full_path = self.root / relative_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,11 +190,12 @@ def validate_source_inventory_artifacts(
                 raise ValueError(
                     f"source evidence references missing artifact_id: {evidence.artifact_id}"
                 )
-            full_path = (artifact_root / entry.path).resolve()
-            if not full_path.is_relative_to(root_path):
-                raise ValueError(
-                    f"source artifact path escapes artifact root: {evidence.artifact_id}"
-                )
+            full_path = _resolve_artifact_path_under_root(
+                artifact_root,
+                entry.path,
+                evidence.artifact_id,
+                root_path=root_path,
+            )
             if not full_path.exists():
                 raise ValueError(f"source artifact file is missing: {evidence.artifact_id}")
             actual_hash = hashlib.sha256(full_path.read_bytes()).hexdigest()
@@ -231,7 +246,13 @@ def _manifest_entry_from_artifact(
     artifact_root: Path,
 ) -> SourceArtifactManifestEntry:
     artifact.validate()
-    artifact_path = artifact_root / artifact.path
+    _validate_allowed_value(artifact.source, "source", _ALLOWED_SOURCE_NAMES)
+    _validate_artifact_id_segment(artifact.artifact_id)
+    artifact_path = _resolve_artifact_path_under_root(
+        artifact_root,
+        artifact.path,
+        artifact.artifact_id,
+    )
     digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
     entry = SourceArtifactManifestEntry(
         source=artifact.source,
@@ -437,6 +458,8 @@ def _validate_optional_string(value: Any, label: str) -> None:
 
 
 def _validate_allowed_value(value: str, label: str, allowed: set[str]) -> None:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a string")
     if value not in allowed:
         raise ValueError(f"{label} has unsupported value: {value}")
 
@@ -450,6 +473,35 @@ def _validate_raw_value(value: Any, label: str) -> None:
         or (isinstance(value, float) and not math.isfinite(value))
     ):
         raise ValueError(f"{label} must be a finite string, number, or null")
+
+
+def _validate_artifact_id_segment(artifact_id: str) -> None:
+    if not isinstance(artifact_id, str) or not artifact_id:
+        raise ValueError("artifact_id must be a slug segment")
+    if not re.fullmatch(r"[0-9a-z]+(?:_[0-9a-z]+)*", artifact_id):
+        raise ValueError("artifact_id must be a slug segment")
+
+
+def _validate_relative_artifact_path(path: str, label: str) -> None:
+    artifact_path = Path(path)
+    if artifact_path.is_absolute() or ".." in artifact_path.parts:
+        raise ValueError(f"{label} must be relative and must not contain '..'")
+
+
+def _resolve_artifact_path_under_root(
+    artifact_root: Path,
+    artifact_path: str,
+    artifact_id: str,
+    *,
+    root_path: Path | None = None,
+) -> Path:
+    _validate_relative_artifact_path(artifact_path, "path")
+    if root_path is None:
+        root_path = artifact_root.resolve()
+    full_path = (artifact_root / artifact_path).resolve()
+    if not full_path.is_relative_to(root_path):
+        raise ValueError(f"source artifact path escapes artifact root: {artifact_id}")
+    return full_path
 
 
 def _record_to_jsonable(record: SourceInventoryRecord) -> dict[str, Any]:

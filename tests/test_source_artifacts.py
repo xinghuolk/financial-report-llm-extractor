@@ -17,6 +17,7 @@ from financial_report_llm_extractor.structured_sources.artifacts import (
     write_source_inventory,
 )
 from financial_report_llm_extractor.structured_sources.models import (
+    SourceArtifact,
     SourceEvidence,
     SourceInventoryRecord,
 )
@@ -67,6 +68,27 @@ def test_source_artifact_store_writes_json_under_source_directory(tmp_path: Path
     assert artifact.content_type == "application/json"
     assert artifact.path == "akshare/akshare_hk_00001_balance_sheet.json"
     assert (tmp_path / artifact.path).read_text(encoding="utf-8").endswith("\n")
+
+
+def test_build_artifact_id_rejects_parts_that_slug_to_empty() -> None:
+    with pytest.raises(ValueError, match="market cannot be converted to artifact id"):
+        build_artifact_id(
+            source="fixture",
+            market="!!!",
+            ticker="00001",
+            artifact_type="balance_sheet",
+        )
+
+
+def test_source_artifact_store_rejects_path_traversal_artifact_id(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+
+    with pytest.raises(ValueError, match="artifact_id must be a slug segment"):
+        store.write_json(source="akshare", artifact_id="../escape", payload={"x": 1})
+
+    assert not (tmp_path / "escape.json").exists()
 
 
 def test_source_inventory_jsonl_roundtrip_preserves_decimal_and_evidence(
@@ -664,6 +686,57 @@ def test_read_source_artifact_manifest_rejects_artifact_non_string_sha256(
 
     with pytest.raises(ValueError, match="sha256"):
         read_source_artifact_manifest(path)
+
+
+def test_read_source_artifact_manifest_rejects_unsupported_artifact_source(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_artifact_manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "manifest_id": "source_artifact_manifest",
+                "version": "1",
+                "artifact_root": tmp_path.as_posix(),
+                "artifacts": [
+                    {
+                        "source": "bogus",
+                        "artifact_id": "artifact_1",
+                        "path": "bogus/artifact_1.json",
+                        "content_type": "application/json",
+                        "sha256": "a" * 64,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="source has unsupported value: bogus"):
+        read_source_artifact_manifest(path)
+
+
+def test_write_source_artifact_manifest_rejects_artifact_path_before_reading(
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path.parent / f"{tmp_path.name}_outside_artifact.json"
+    outside.write_text('{"secret": true}\n', encoding="utf-8")
+    artifact = SourceArtifact(
+        source="akshare",
+        artifact_id="artifact_1",
+        path=f"../{outside.name}",
+        content_type="application/json",
+    )
+
+    try:
+        with pytest.raises(ValueError, match="path must be relative"):
+            write_source_artifact_manifest(
+                tmp_path / "source_artifact_manifest.json",
+                artifact_root=tmp_path,
+                artifacts=(artifact,),
+            )
+    finally:
+        outside.unlink(missing_ok=True)
 
 
 def test_validate_source_inventory_artifacts_accepts_matching_manifest(
