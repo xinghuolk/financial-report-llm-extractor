@@ -123,7 +123,7 @@ def write_source_artifact_manifest(
                 )
                 for artifact in artifacts
             ),
-            key=lambda entry: entry.artifact_id,
+            key=lambda entry: (entry.source, entry.artifact_id, entry.path),
         )
     )
     manifest = SourceArtifactManifest(
