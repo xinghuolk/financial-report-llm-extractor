@@ -17,6 +17,17 @@ from financial_report_llm_extractor.structured_sources.models import (
     SourceName,
 )
 
+_ALLOWED_SOURCE_NAMES = {"akshare", "yahoo", "fixture"}
+_ALLOWED_SOURCE_VALUE_TYPES = {"money", "number", "percent", "text", "derived"}
+_ALLOWED_SOURCE_STATUSES = {
+    "present",
+    "missing",
+    "ambiguous",
+    "source_error",
+    "unsupported",
+}
+_ALLOWED_CURRENCIES = {"CNY", "HKD", "USD", "unknown", "ambiguous"}
+
 
 @dataclass(frozen=True)
 class SourceArtifactManifestEntry:
@@ -285,6 +296,7 @@ def _source_evidence_from_jsonable(value: Any, label: str) -> SourceEvidence:
     for key in optional_keys:
         if key in payload and payload[key] is not None:
             _validate_optional_string(payload[key], f"{label} {key}")
+    _validate_allowed_value(payload["source"], f"{label} source", _ALLOWED_SOURCE_NAMES)
 
     evidence = SourceEvidence(**payload)
     evidence.validate()
@@ -333,6 +345,7 @@ def _validate_source_inventory_payload(payload: dict[str, Any], label: str) -> N
         _validate_required_string(payload[key], f"{label} {key}")
     if payload["period"] is not None:
         _validate_optional_string(payload["period"], f"{label} period")
+    _validate_raw_value(payload["raw_value"], f"{label} raw_value")
     for key in (
         "value_type",
         "source_status",
@@ -346,6 +359,21 @@ def _validate_source_inventory_payload(payload: dict[str, Any], label: str) -> N
     ):
         if key in payload and payload[key] is not None:
             _validate_optional_string(payload[key], f"{label} {key}")
+    _validate_allowed_value(payload["source"], f"{label} source", _ALLOWED_SOURCE_NAMES)
+    if "value_type" in payload:
+        _validate_allowed_value(
+            payload["value_type"],
+            f"{label} value_type",
+            _ALLOWED_SOURCE_VALUE_TYPES,
+        )
+    if "source_status" in payload:
+        _validate_allowed_value(
+            payload["source_status"],
+            f"{label} source_status",
+            _ALLOWED_SOURCE_STATUSES,
+        )
+    if "currency" in payload:
+        _validate_allowed_value(payload["currency"], f"{label} currency", _ALLOWED_CURRENCIES)
 
 
 def _require_object(value: Any, label: str) -> dict[str, Any]:
@@ -376,6 +404,18 @@ def _validate_required_string(value: Any, label: str) -> None:
 def _validate_optional_string(value: Any, label: str) -> None:
     if not isinstance(value, str):
         raise ValueError(f"{label} must be a string")
+
+
+def _validate_allowed_value(value: str, label: str, allowed: set[str]) -> None:
+    if value not in allowed:
+        raise ValueError(f"{label} has unsupported value: {value}")
+
+
+def _validate_raw_value(value: Any, label: str) -> None:
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+        raise ValueError(f"{label} must be a string, number, or null")
 
 
 def _record_to_jsonable(record: SourceInventoryRecord) -> dict[str, Any]:

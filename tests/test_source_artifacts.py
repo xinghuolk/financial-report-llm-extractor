@@ -207,6 +207,83 @@ def test_read_source_inventory_rejects_non_string_source_evidence_required_field
         read_source_inventory(path)
 
 
+def test_read_source_inventory_rejects_invalid_raw_value_type(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    payload["raw_value"] = {}
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 raw_value must be a string, number, or null",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_unsupported_source_value(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    payload["source"] = "bogus"
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 source has unsupported value: bogus",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_unsupported_value_type(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    payload["value_type"] = "bogus"
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 value_type has unsupported value: bogus",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_unsupported_currency(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    payload["currency"] = "EUR"
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 currency has unsupported value: EUR",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_unsupported_source_evidence_source(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    source_evidence = payload["source_evidence"]
+    assert isinstance(source_evidence, list)
+    source_evidence[0]["source"] = "bogus"
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 source_evidence\\[0\\] source has unsupported value: bogus",
+    ):
+        read_source_inventory(path)
+
+
 def test_read_source_inventory_rejects_invalid_parsed_numeric_value_with_line_number(
     tmp_path: Path,
 ) -> None:
