@@ -385,7 +385,8 @@ Exit criteria:
 Implementation note:
 
 - Phase B baseline artifact store exists in `structured_sources/artifacts.py`.
-- PB2 hardening should add `source_artifact_manifest.json`, stable malformed JSONL errors, and replay validation from `SourceEvidence.artifact_id` to raw artifact files.
+- PB2 hardening is implemented: `source_artifact_manifest.json` roundtrip, stable malformed manifest and JSONL errors, and replay validation from `SourceEvidence.artifact_id` to raw artifact files.
+- Replay validation verifies manifest membership, file existence, SHA-256 match, and resolved path containment under the artifact root.
 - This remains fixture-only and offline; Phase C/D provider adapters should consume this storage boundary without changing it.
 
 ### Phase C: AKShare Adapter
