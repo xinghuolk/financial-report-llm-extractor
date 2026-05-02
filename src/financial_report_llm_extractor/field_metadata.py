@@ -421,6 +421,25 @@ def validate_coverage_matrix_against_taxonomy(
         raise ValueError("; ".join(errors))
 
 
+def summarize_coverage_matrix(matrix: CoverageMatrix) -> dict[str, object]:
+    matrix.validate()
+    by_domain: dict[str, int] = {}
+    by_priority: dict[str, int] = {}
+    by_primary_route: dict[str, int] = {}
+    for entry in matrix.fields.values():
+        by_domain[entry.domain] = by_domain.get(entry.domain, 0) + 1
+        by_priority[entry.priority] = by_priority.get(entry.priority, 0) + 1
+        by_primary_route[entry.primary_route] = (
+            by_primary_route.get(entry.primary_route, 0) + 1
+        )
+    return {
+        "total_fields": len(matrix.fields),
+        "by_domain": dict(sorted(by_domain.items())),
+        "by_priority": dict(sorted(by_priority.items())),
+        "by_primary_route": dict(sorted(by_primary_route.items())),
+    }
+
+
 def _primary_route_has_matching_route(entry: CoverageMatrixEntry) -> bool:
     expected_source, expected_mode = PRIMARY_ROUTE_MATCHES[entry.primary_route]
     return any(

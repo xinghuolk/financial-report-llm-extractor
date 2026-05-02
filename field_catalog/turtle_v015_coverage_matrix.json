@@ -1,0 +1,999 @@
+{
+  "matrix_id": "turtle_v015_coverage_matrix",
+  "version": "2026-05-02",
+  "taxonomy_catalog": "turtle_v015_field_taxonomy",
+  "fields": {
+    "revenue": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "operating_cost": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "operating_profit": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "net_profit": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "total_assets": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "total_liabilities": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "equity_attributable_to_owners": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "operating_cash_flow": {
+      "domain": "cash_flow",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "investing_cash_flow": {
+      "domain": "cash_flow",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "financing_cash_flow": {
+      "domain": "cash_flow",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "cash": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "money_cap": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "st_borr": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "lt_borr": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "bond_payable": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "accounts_receiv": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "acct_payable": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "inventories": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "fix_assets": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "cip": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "rd_exp": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "invest_income": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "gross_profit": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured Yahoo 0001.HK fixture for the yahoo_direct route."
+    },
+    "selling_general_administrative": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "fv_value_chg_gain": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "non_oper_income": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "non_oper_exp": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "total_cur_assets": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "other_cur_assets": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "total_cur_liab": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "defer_tax_assets": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "defer_tax_liab": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "minority_int": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "stock_based_compensation": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "change_in_receivables": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "change_in_payables": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "change_in_inventory": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "receiv_tax_refund": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "repurchase_of_stock": {
+      "domain": "shareholder_return",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "dividends_paid": {
+      "domain": "shareholder_return",
+      "priority": "P2",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "capital_expenditures": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "depreciation_amortization": {
+      "domain": "accounting_adjustments",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "dps": {
+      "domain": "shareholder_return",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "announcement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "dividend_plan": {
+      "domain": "shareholder_return",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "announcement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "buyback_cancellation_progress": {
+      "domain": "shareholder_return",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "announcement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "capitalized_rd": {
+      "domain": "accounting_adjustments",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "capitalized_interest": {
+      "domain": "accounting_adjustments",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "receivables_aging": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "bad_debt_provision": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "related_party_receivables_payables": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "contingent_liabilities_commitments": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "lease_liability_maturity": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "segment_revenue_profit": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "restricted_cash": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "time_deposits_or_wealth_products": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "interest_paid_cash": {
+      "domain": "cash_flow",
+      "priority": "P3",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "mda_business_review": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "mda",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "mda_forward_guidance": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "mda",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "mda_risk_factors": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "mda",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "dividend_policy_text": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "audit_opinion": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "auditor_change_history": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    }
+  }
+}

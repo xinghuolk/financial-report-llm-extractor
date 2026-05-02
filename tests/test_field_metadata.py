@@ -10,6 +10,7 @@ from financial_report_llm_extractor.field_metadata import (
     FieldTaxonomyCatalog,
     load_field_taxonomy,
     load_coverage_matrix,
+    summarize_coverage_matrix,
     validate_coverage_matrix_against_taxonomy,
     validate_taxonomy_against_priority_catalog,
 )
@@ -902,6 +903,40 @@ def test_real_turtle_taxonomy_covers_all_priority_fields() -> None:
     assert taxonomy.fields["total_assets"].domain == "balance_sheet"
     assert taxonomy.fields["operating_cash_flow"].domain == "cash_flow"
     assert taxonomy.fields["mda_risk_factors"].source_mode == "llm_review"
+
+
+def test_real_coverage_matrix_covers_taxonomy_fields() -> None:
+    taxonomy = load_field_taxonomy(
+        Path("field_catalog/turtle_v015_field_taxonomy.json")
+    )
+    matrix = load_coverage_matrix(
+        Path("field_catalog/turtle_v015_coverage_matrix.json")
+    )
+
+    validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
+
+    assert matrix.fields["revenue"].primary_route == "akshare_direct"
+    assert matrix.fields["gross_profit"].primary_route in {
+        "akshare_direct",
+        "yahoo_direct",
+    }
+    assert matrix.fields["mda_business_review"].primary_route == "llm_review"
+
+
+def test_coverage_matrix_can_summarize_by_domain_and_route() -> None:
+    matrix = load_coverage_matrix(
+        Path("field_catalog/turtle_v015_coverage_matrix.json")
+    )
+
+    summary = summarize_coverage_matrix(matrix)
+
+    assert summary["total_fields"] == len(matrix.fields)
+    by_domain = summary["by_domain"]
+    by_primary_route = summary["by_primary_route"]
+    assert isinstance(by_domain, dict)
+    assert isinstance(by_primary_route, dict)
+    assert by_domain["income_statement"] >= 1
+    assert by_primary_route["llm_review"] >= 1
 
 
 def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
