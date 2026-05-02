@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
@@ -341,8 +342,9 @@ def _validate_source_inventory_payload(payload: dict[str, Any], label: str) -> N
     for key in required_keys:
         _require_key(payload, key, label)
 
-    for key in ("source", "market", "ticker", "statement_type", "raw_field_name"):
+    for key in ("source", "market", "ticker", "statement_type"):
         _validate_required_string(payload[key], f"{label} {key}")
+    _validate_optional_string(payload["raw_field_name"], f"{label} raw_field_name")
     if payload["period"] is not None:
         _validate_optional_string(payload["period"], f"{label} period")
     _validate_raw_value(payload["raw_value"], f"{label} raw_value")
@@ -414,8 +416,12 @@ def _validate_allowed_value(value: str, label: str, allowed: set[str]) -> None:
 def _validate_raw_value(value: Any, label: str) -> None:
     if value is None:
         return
-    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
-        raise ValueError(f"{label} must be a string, number, or null")
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (str, int, float))
+        or (isinstance(value, float) and not math.isfinite(value))
+    ):
+        raise ValueError(f"{label} must be a finite string, number, or null")
 
 
 def _record_to_jsonable(record: SourceInventoryRecord) -> dict[str, Any]:

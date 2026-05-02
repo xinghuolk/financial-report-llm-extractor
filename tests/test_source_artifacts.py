@@ -126,7 +126,7 @@ def test_read_source_inventory_rejects_non_list_source_evidence(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "source_inventory.jsonl"
-    payload = {
+    payload: dict[str, object] = {
         "source": "akshare",
         "market": "HK",
         "ticker": "00001",
@@ -207,6 +207,21 @@ def test_read_source_inventory_rejects_non_string_source_evidence_required_field
         read_source_inventory(path)
 
 
+def test_read_source_inventory_rejects_non_string_raw_field_name(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = _valid_source_inventory_payload()
+    payload["raw_field_name"] = []
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 raw_field_name must be a string",
+    ):
+        read_source_inventory(path)
+
+
 def test_read_source_inventory_rejects_invalid_raw_value_type(
     tmp_path: Path,
 ) -> None:
@@ -217,9 +232,56 @@ def test_read_source_inventory_rejects_invalid_raw_value_type(
 
     with pytest.raises(
         ValueError,
-        match="source inventory line 1 raw_value must be a string, number, or null",
+        match="source inventory line 1 raw_value must be a finite string, number, or null",
     ):
         read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_non_finite_raw_value(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    path.write_text(
+        '{"source":"akshare","market":"HK","ticker":"00001",'
+        '"statement_type":"balance_sheet","period":"2024-12-31",'
+        '"raw_field_name":"Total assets","raw_value":NaN,'
+        '"currency":"HKD","unit":"HKD",'
+        '"source_evidence":[{"source":"akshare","adapter":"akshare",'
+        '"function":"stock_financial_hk_report_em","artifact_id":"artifact-1",'
+        '"raw_record_id":"00001:balance_sheet:2024",'
+        '"raw_field_name":"Total assets"}]}\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 raw_value must be a finite string, number, or null",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_allows_empty_raw_field_name_for_non_present_status(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload: dict[str, object] = {
+        "source": "akshare",
+        "market": "HK",
+        "ticker": "00001",
+        "statement_type": "balance_sheet",
+        "period": None,
+        "raw_field_name": "",
+        "raw_value": None,
+        "source_status": "missing",
+        "currency": "unknown",
+        "source_evidence": [],
+    }
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    records = read_source_inventory(path)
+
+    assert records[0].source_status == "missing"
+    assert records[0].raw_field_name == ""
 
 
 def test_read_source_inventory_rejects_unsupported_source_value(
