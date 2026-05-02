@@ -293,3 +293,35 @@ def test_taxonomy_validation_requires_source_priority_catalog_id_match(
 
     with pytest.raises(ValueError, match="source_priority_catalog mismatch"):
         validate_taxonomy_against_priority_catalog(taxonomy, priority_path)
+
+
+def test_real_turtle_taxonomy_covers_all_priority_fields() -> None:
+    taxonomy = load_field_taxonomy(
+        Path("field_catalog/turtle_v015_field_taxonomy.json")
+    )
+
+    validate_taxonomy_against_priority_catalog(
+        taxonomy,
+        Path("field_catalog/turtle_v015_priority_fields.json"),
+    )
+
+    assert taxonomy.fields["revenue"].domain == "income_statement"
+    assert taxonomy.fields["total_assets"].domain == "balance_sheet"
+    assert taxonomy.fields["operating_cash_flow"].domain == "cash_flow"
+    assert taxonomy.fields["mda_risk_factors"].source_mode == "llm_review"
+
+
+def test_real_turtle_taxonomy_supports_domain_queries() -> None:
+    taxonomy = load_field_taxonomy(
+        Path("field_catalog/turtle_v015_field_taxonomy.json")
+    )
+
+    p0_balance_sheet = sorted(
+        entry.field_id
+        for entry in taxonomy.fields.values()
+        if entry.priority == "P0" and entry.domain == "balance_sheet"
+    )
+
+    assert "total_assets" in p0_balance_sheet
+    assert "cash" in p0_balance_sheet
+    assert "revenue" not in p0_balance_sheet
