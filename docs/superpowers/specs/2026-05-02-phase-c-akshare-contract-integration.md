@@ -83,7 +83,7 @@ Rules:
 - It immediately calls `validate_source_inventory_artifacts()` with the written manifest, records, and artifact root.
 - It returns the manifest for summary/reporting.
 - It does not call AKShare, Yahoo, yfinance, or any network source.
-- It should be provider-neutral, but PC2 only needs to wire it through AKShare validation paths.
+- It should be provider-neutral and wired through adapter-backed validation runs that use `SourceArtifactStore`.
 
 The helper may live in `structured_sources/artifacts.py` if it remains provider-neutral, or in `real_source_validation.py` if implementation should stay local to validation runs. Prefer the provider-neutral location if the code is less than a few focused functions.
 
@@ -101,7 +101,7 @@ For real or fixture-backed source validation, output directories should include:
 
 ```text
 source_artifacts/
-  akshare/
+  <source>/
     <artifact_id>.json
 source_artifact_manifest.json
 source_inventory.jsonl

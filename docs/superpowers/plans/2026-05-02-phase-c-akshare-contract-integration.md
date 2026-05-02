@@ -282,6 +282,31 @@ class FakeAkshareClient01113(FakeAkshareClient):
 Add:
 
 ```python
+def test_akshare_hk_00001_inventory_replay_validates_against_manifest(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path / "source_artifacts")
+    adapter = AkshareAdapter(client=FakeAkshareClient(), artifact_store=store)
+    records = adapter.fetch_hk_statement_inventory(
+        ticker="00001",
+        statement_type="balance_sheet",
+        unit="HKD",
+    )
+
+    manifest = finalize_source_artifacts(
+        artifact_root=tmp_path / "source_artifacts",
+        artifacts=store.artifacts,
+        records=records,
+        manifest_path=tmp_path / "source_artifact_manifest.json",
+    )
+
+    assert manifest.artifacts[0].artifact_id == "akshare_hk_00001_balance_sheet"
+    assert records[0].currency == "HKD"
+```
+
+Add:
+
+```python
 def test_akshare_hk_01113_inventory_replay_validates_against_manifest(
     tmp_path: Path,
 ) -> None:
@@ -309,7 +334,7 @@ def test_akshare_hk_01113_inventory_replay_validates_against_manifest(
 Run:
 
 ```bash
-uv run pytest tests/test_akshare_adapter.py::test_akshare_cn_inventory_replay_validates_against_manifest tests/test_akshare_adapter.py::test_akshare_hk_01113_inventory_replay_validates_against_manifest -v
+uv run pytest tests/test_akshare_adapter.py::test_akshare_cn_inventory_replay_validates_against_manifest tests/test_akshare_adapter.py::test_akshare_hk_00001_inventory_replay_validates_against_manifest tests/test_akshare_adapter.py::test_akshare_hk_01113_inventory_replay_validates_against_manifest -v
 ```
 
 Expected: PASS if Task 1 was implemented correctly; FAIL if artifact store tracking or replay integration is incomplete.
@@ -426,7 +451,19 @@ summary["artifact_paths"]["source_artifact_manifest"] = str(source_artifact_mani
 summary["source_artifact_count"] = source_artifact_count
 ```
 
-- [ ] **Step 5: Run real source validation tests**
+- [ ] **Step 5: Add captured validation compatibility assertion**
+
+Extend `test_captured_source_validation_reuses_saved_inventory_without_clients`:
+
+```python
+    assert "source_artifact_manifest" not in result.summary["artifact_paths"]
+    assert "source_artifact_count" not in result.summary
+    assert not (tmp_path / "source_artifact_manifest.json").exists()
+```
+
+This protects captured inventory replay from accidentally requiring raw source artifacts.
+
+- [ ] **Step 6: Run real source validation tests**
 
 Run:
 
@@ -436,7 +473,7 @@ uv run pytest tests/test_real_source_validation.py -v
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit Task 3**
+- [ ] **Step 7: Commit Task 3**
 
 Run:
 
@@ -448,19 +485,21 @@ git commit -m "feat: write source artifact manifest in validation"
 ## Task 4: Roadmap And Verification
 
 **Files:**
-- Modify: `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
+- Review: `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
 
-- [ ] **Step 1: Update roadmap Phase C note**
+- [ ] **Step 1: Confirm roadmap Phase C note**
 
-In the Phase C section, add:
+Confirm the Phase C section already includes:
 
 ```markdown
 Implementation note:
 
 - Phase C baseline AKShare fixture adapter exists for HK and CN statements.
-- PC2 integrates AKShare adapter runs with PB2 artifact manifests and replay validation.
-- Adapter-backed validation writes `source_artifact_manifest.json`; captured inventory validation remains manifest-optional.
+- PC2 should integrate AKShare adapter runs with PB2 artifact manifests and replay validation.
+- Adapter-backed validation should write `source_artifact_manifest.json`; captured inventory validation remains manifest-optional.
 ```
+
+Only edit the roadmap if implementation reveals a new Phase C decision that is not already captured.
 
 - [ ] **Step 2: Run focused tests**
 
@@ -485,17 +524,19 @@ git diff --check
 
 Expected: all commands pass.
 
-- [ ] **Step 4: Commit roadmap update**
+- [ ] **Step 4: Commit any roadmap update if needed**
 
-Run:
+If the roadmap changed during implementation, run:
 
 ```bash
 git add docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md
 git commit -m "docs: update phase c akshare contract roadmap"
 ```
 
+If there is no roadmap diff, skip this commit.
+
 ## Self-Review
 
-- Spec coverage: Task 1 covers provider-neutral artifact tracking and finalization; Task 2 covers AKShare replay-validated fixtures for `600519` and `01113`; Task 3 covers validation output manifest writing and summary paths; Task 4 covers roadmap and verification.
+- Spec coverage: Task 1 covers provider-neutral artifact tracking and finalization; Task 2 covers AKShare replay-validated fixtures for `600519`, `00001`, and `01113`; Task 3 covers validation output manifest writing, summary paths, and captured-run manifest optionality; Task 4 covers roadmap confirmation and verification.
 - Placeholder scan: no task uses placeholder wording; each implementation step includes exact code or exact commands.
 - Type consistency: the plan consistently uses `SourceArtifact`, `SourceArtifactManifest`, `finalize_source_artifacts()`, and existing `AkshareAdapter`/`RealSourceValidationResult` names.
