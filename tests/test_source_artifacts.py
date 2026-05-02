@@ -87,6 +87,16 @@ def test_read_source_inventory_rejects_non_object_line_with_line_number(
         read_source_inventory(path)
 
 
+def test_read_source_inventory_reports_physical_line_number_after_blank_line(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    path.write_text("\n[]\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="source inventory line 2 must be an object"):
+        read_source_inventory(path)
+
+
 def test_read_source_inventory_rejects_non_list_source_evidence(
     tmp_path: Path,
 ) -> None:

@@ -162,11 +162,9 @@ def write_source_inventory(
 
 def read_source_inventory(path: Path) -> tuple[SourceInventoryRecord, ...]:
     records: list[SourceInventoryRecord] = []
-    line_number = 0
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
-        line_number += 1
         label = f"source inventory line {line_number}"
         try:
             payload = json.loads(line)
