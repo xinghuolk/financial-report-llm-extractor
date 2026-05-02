@@ -148,6 +148,111 @@ def test_read_source_inventory_rejects_invalid_parsed_numeric_value_with_line_nu
         read_source_inventory(path)
 
 
+def test_read_source_inventory_rejects_non_finite_parsed_numeric_value(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = {
+        "source": "akshare",
+        "market": "HK",
+        "ticker": "00001",
+        "statement_type": "balance_sheet",
+        "period": "2024-12-31",
+        "raw_field_name": "Total assets",
+        "raw_value": "NaN",
+        "parsed_numeric_value": "NaN",
+        "currency": "HKD",
+        "unit": "HKD",
+        "source_evidence": [
+            {
+                "source": "akshare",
+                "adapter": "akshare",
+                "function": "stock_financial_hk_report_em",
+                "artifact_id": "artifact-1",
+                "raw_record_id": "00001:balance_sheet:2024",
+                "raw_field_name": "Total assets",
+            }
+        ],
+    }
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 parsed_numeric_value is invalid",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_source_evidence_extra_key_with_path(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = {
+        "source": "akshare",
+        "market": "HK",
+        "ticker": "00001",
+        "statement_type": "balance_sheet",
+        "period": "2024-12-31",
+        "raw_field_name": "Total assets",
+        "raw_value": "100",
+        "parsed_numeric_value": "100",
+        "currency": "HKD",
+        "unit": "HKD",
+        "source_evidence": [
+            {
+                "source": "akshare",
+                "adapter": "akshare",
+                "function": "stock_financial_hk_report_em",
+                "artifact_id": "artifact-1",
+                "raw_record_id": "00001:balance_sheet:2024",
+                "raw_field_name": "Total assets",
+                "extra": "unexpected",
+            }
+        ],
+    }
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 source_evidence\\[0\\]",
+    ):
+        read_source_inventory(path)
+
+
+def test_read_source_inventory_rejects_source_evidence_missing_key_with_path(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_inventory.jsonl"
+    payload = {
+        "source": "akshare",
+        "market": "HK",
+        "ticker": "00001",
+        "statement_type": "balance_sheet",
+        "period": "2024-12-31",
+        "raw_field_name": "Total assets",
+        "raw_value": "100",
+        "parsed_numeric_value": "100",
+        "currency": "HKD",
+        "unit": "HKD",
+        "source_evidence": [
+            {
+                "source": "akshare",
+                "adapter": "akshare",
+                "function": "stock_financial_hk_report_em",
+                "raw_record_id": "00001:balance_sheet:2024",
+                "raw_field_name": "Total assets",
+            }
+        ],
+    }
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="source inventory line 1 source_evidence\\[0\\] artifact_id is required",
+    ):
+        read_source_inventory(path)
+
+
 def test_source_artifact_manifest_roundtrip_includes_hash_and_sorts_entries(
     tmp_path: Path,
 ) -> None:

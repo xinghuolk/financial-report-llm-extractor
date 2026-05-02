@@ -264,6 +264,31 @@ def _manifest_entry_from_jsonable(value: Any, label: str) -> SourceArtifactManif
     return entry
 
 
+def _source_evidence_from_jsonable(value: Any, label: str) -> SourceEvidence:
+    payload = _require_object(value, label)
+    required_keys = (
+        "source",
+        "adapter",
+        "function",
+        "artifact_id",
+        "raw_record_id",
+        "raw_field_name",
+    )
+    optional_keys = ("raw_field_code", "retrieved_at", "provider_version")
+    allowed_keys = set(required_keys + optional_keys)
+    unexpected_keys = sorted(set(payload) - allowed_keys)
+    if unexpected_keys:
+        raise ValueError(
+            f"{label} has unsupported keys: {', '.join(unexpected_keys)}"
+        )
+    for key in required_keys:
+        _require_key(payload, key, label)
+
+    evidence = SourceEvidence(**payload)
+    evidence.validate()
+    return evidence
+
+
 def _require_object(value: Any, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be an object")
@@ -316,15 +341,18 @@ def _record_from_jsonable(
     else:
         evidence_items = ()
     evidence = tuple(
-        SourceEvidence(**_require_object(item, f"{label} source_evidence[{index}]"))
+        _source_evidence_from_jsonable(item, f"{label} source_evidence[{index}]")
         for index, item in enumerate(evidence_items)
     )
     parsed_numeric_value = payload.get("parsed_numeric_value")
     if parsed_numeric_value is not None:
         try:
-            record_payload["parsed_numeric_value"] = Decimal(str(parsed_numeric_value))
+            parsed_value = Decimal(str(parsed_numeric_value))
         except (InvalidOperation, ValueError) as exc:
             raise ValueError(f"{label} parsed_numeric_value is invalid") from exc
+        if not parsed_value.is_finite():
+            raise ValueError(f"{label} parsed_numeric_value is invalid")
+        record_payload["parsed_numeric_value"] = parsed_value
     record = SourceInventoryRecord(
         **record_payload,
         source_evidence=evidence,
