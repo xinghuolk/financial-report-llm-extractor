@@ -166,6 +166,7 @@ def validate_source_inventory_artifacts(
     artifact_root: Path,
 ) -> None:
     manifest.validate()
+    root_path = artifact_root.resolve()
     entries = {entry.artifact_id: entry for entry in manifest.artifacts}
     for record in records:
         record.validate()
@@ -175,7 +176,11 @@ def validate_source_inventory_artifacts(
                 raise ValueError(
                     f"source evidence references missing artifact_id: {evidence.artifact_id}"
                 )
-            full_path = artifact_root / entry.path
+            full_path = (artifact_root / entry.path).resolve()
+            if not full_path.is_relative_to(root_path):
+                raise ValueError(
+                    f"source artifact path escapes artifact root: {evidence.artifact_id}"
+                )
             if not full_path.exists():
                 raise ValueError(f"source artifact file is missing: {evidence.artifact_id}")
             actual_hash = hashlib.sha256(full_path.read_bytes()).hexdigest()

@@ -1,3 +1,4 @@
+import hashlib
 import json
 from decimal import Decimal
 from pathlib import Path
@@ -6,6 +7,7 @@ import pytest
 
 from financial_report_llm_extractor.structured_sources.artifacts import (
     SourceArtifactManifest,
+    SourceArtifactManifestEntry,
     SourceArtifactStore,
     build_artifact_id,
     read_source_artifact_manifest,
@@ -816,4 +818,58 @@ def test_validate_source_inventory_artifacts_rejects_artifact_hash_mismatch(
     )
 
     with pytest.raises(ValueError, match=artifact.artifact_id):
+        validate_source_inventory_artifacts(manifest, (record,), tmp_path)
+
+
+def test_validate_source_inventory_artifacts_rejects_symlink_escape(
+    tmp_path: Path,
+) -> None:
+    external_dir = tmp_path.parent / f"{tmp_path.name}_external"
+    external_dir.mkdir()
+    external_file = external_dir / "artifact.json"
+    external_file.write_text('{"rows": [{"field": "Total assets", "value": 100}]}\n', encoding="utf-8")
+    symlink_path = tmp_path / "akshare"
+    try:
+        symlink_path.symlink_to(external_dir, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlinks are not supported: {exc}")
+
+    artifact_id = "akshare_hk_00001_balance_sheet"
+    manifest = SourceArtifactManifest(
+        manifest_id="source_artifact_manifest",
+        version="1",
+        artifact_root=tmp_path.as_posix(),
+        artifacts=(
+            SourceArtifactManifestEntry(
+                source="akshare",
+                artifact_id=artifact_id,
+                path="akshare/artifact.json",
+                content_type="application/json",
+                sha256=hashlib.sha256(external_file.read_bytes()).hexdigest(),
+            ),
+        ),
+    )
+    evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function="stock_financial_hk_report_em",
+        artifact_id=artifact_id,
+        raw_record_id="00001:balance_sheet:2024",
+        raw_field_name="Total assets",
+    )
+    record = SourceInventoryRecord(
+        source="akshare",
+        market="HK",
+        ticker="00001",
+        statement_type="balance_sheet",
+        period="2024-12-31",
+        raw_field_name="Total assets",
+        raw_value="100",
+        parsed_numeric_value=Decimal("100"),
+        currency="HKD",
+        unit="HKD",
+        source_evidence=(evidence,),
+    )
+
+    with pytest.raises(ValueError, match=artifact_id):
         validate_source_inventory_artifacts(manifest, (record,), tmp_path)
