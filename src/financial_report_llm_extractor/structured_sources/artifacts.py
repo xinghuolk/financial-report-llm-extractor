@@ -102,6 +102,11 @@ def build_artifact_id(
 class SourceArtifactStore:
     def __init__(self, root: Path) -> None:
         self.root = root
+        self._artifacts: list[SourceArtifact] = []
+
+    @property
+    def artifacts(self) -> tuple[SourceArtifact, ...]:
+        return tuple(self._artifacts)
 
     def write_json(
         self,
@@ -126,6 +131,7 @@ class SourceArtifactStore:
             content_type="application/json",
         )
         artifact.validate()
+        self._artifacts.append(artifact)
         return artifact
 
 
@@ -201,6 +207,28 @@ def validate_source_inventory_artifacts(
             actual_hash = hashlib.sha256(full_path.read_bytes()).hexdigest()
             if actual_hash != entry.sha256:
                 raise ValueError(f"source artifact hash mismatch: {evidence.artifact_id}")
+
+
+def finalize_source_artifacts(
+    *,
+    artifact_root: Path,
+    artifacts: Iterable[SourceArtifact],
+    records: Iterable[SourceInventoryRecord],
+    manifest_path: Path,
+) -> SourceArtifactManifest:
+    artifact_tuple = tuple(artifacts)
+    record_tuple = tuple(records)
+    manifest = write_source_artifact_manifest(
+        manifest_path,
+        artifact_root=artifact_root,
+        artifacts=artifact_tuple,
+    )
+    validate_source_inventory_artifacts(
+        manifest,
+        record_tuple,
+        artifact_root,
+    )
+    return manifest
 
 
 def write_source_inventory(

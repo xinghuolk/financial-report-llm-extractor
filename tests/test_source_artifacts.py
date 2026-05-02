@@ -10,6 +10,7 @@ from financial_report_llm_extractor.structured_sources.artifacts import (
     SourceArtifactManifestEntry,
     SourceArtifactStore,
     build_artifact_id,
+    finalize_source_artifacts,
     read_source_artifact_manifest,
     read_source_inventory,
     validate_source_inventory_artifacts,
@@ -68,6 +69,18 @@ def test_source_artifact_store_writes_json_under_source_directory(tmp_path: Path
     assert artifact.content_type == "application/json"
     assert artifact.path == "akshare/akshare_hk_00001_balance_sheet.json"
     assert (tmp_path / artifact.path).read_text(encoding="utf-8").endswith("\n")
+
+
+def test_source_artifact_store_tracks_written_artifacts(tmp_path: Path) -> None:
+    store = SourceArtifactStore(tmp_path)
+
+    artifact = store.write_json(
+        source="akshare",
+        artifact_id="akshare_cn_600519_balance_sheet",
+        payload={"rows": []},
+    )
+
+    assert store.artifacts == (artifact,)
 
 
 def test_build_artifact_id_rejects_parts_that_slug_to_empty() -> None:
@@ -541,6 +554,48 @@ def test_source_artifact_manifest_roundtrip_includes_hash_and_sorts_entries(
     ]
     assert all(len(entry.sha256) == 64 for entry in loaded.artifacts)
     assert loaded.artifacts[0].path == "akshare/akshare_hk_00001_balance_sheet.json"
+
+
+def test_finalize_source_artifacts_writes_manifest_and_replay_validates(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path / "source_artifacts")
+    artifact = store.write_json(
+        source="akshare",
+        artifact_id="akshare_cn_600519_balance_sheet",
+        payload={"rows": [{"field": "资产总计", "value": "100"}]},
+    )
+    evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function="stock_balance_sheet_by_report_em",
+        artifact_id=artifact.artifact_id,
+        raw_record_id="600519:CN:balance_sheet:2024-12-31:0",
+        raw_field_name="资产总计",
+    )
+    record = SourceInventoryRecord(
+        source="akshare",
+        market="CN",
+        ticker="600519",
+        statement_type="balance_sheet",
+        period="2024-12-31",
+        raw_field_name="资产总计",
+        raw_value="100",
+        parsed_numeric_value=Decimal("100"),
+        currency="CNY",
+        unit="yuan",
+        source_evidence=(evidence,),
+    )
+
+    manifest = finalize_source_artifacts(
+        artifact_root=tmp_path / "source_artifacts",
+        artifacts=(artifact,),
+        records=(record,),
+        manifest_path=tmp_path / "source_artifact_manifest.json",
+    )
+
+    assert manifest.artifacts[0].artifact_id == artifact.artifact_id
+    assert (tmp_path / "source_artifact_manifest.json").exists()
 
 
 def test_source_artifact_manifest_requires_artifact_root() -> None:
