@@ -256,12 +256,12 @@ def load_coverage_matrix(path: Path) -> CoverageMatrix:
             ),
             notes=metadata.get("notes", ""),
         )
-        for field_id, metadata in data["fields"].items()
+        for field_id, metadata in data.get("fields", {}).items()
     }
     matrix = CoverageMatrix(
-        matrix_id=data["matrix_id"],
-        version=data["version"],
-        taxonomy_catalog=data["taxonomy_catalog"],
+        matrix_id=str(data.get("matrix_id", "")),
+        version=str(data.get("version", "")),
+        taxonomy_catalog=str(data.get("taxonomy_catalog", "")),
         fields=fields,
     )
     matrix.validate()

@@ -139,6 +139,49 @@ def test_coverage_matrix_rejects_empty_fields(tmp_path: Path) -> None:
         load_coverage_matrix(path)
 
 
+@pytest.mark.parametrize(
+    ("missing_key", "expected_message"),
+    [
+        ("matrix_id", "matrix_id is required"),
+        ("version", "version is required"),
+        ("taxonomy_catalog", "taxonomy_catalog is required"),
+    ],
+)
+def test_coverage_matrix_rejects_missing_top_level_fields(
+    tmp_path: Path,
+    missing_key: str,
+    expected_message: str,
+) -> None:
+    data = {
+        "matrix_id": "demo_coverage",
+        "version": "2026-05-02",
+        "taxonomy_catalog": "demo_taxonomy",
+        "fields": {
+            "revenue": {
+                "domain": "income_statement",
+                "priority": "P0",
+                "primary_route": "akshare_direct",
+                "verification": "verified",
+                "routes": [
+                    {
+                        "source": "akshare",
+                        "mode": "direct",
+                        "status": "verified",
+                        "statement_type": "income_statement",
+                        "evidence_requirement": "source_only_allowed",
+                    }
+                ],
+            }
+        },
+    }
+    data.pop(missing_key)
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected_message):
+        load_coverage_matrix(path)
+
+
 def test_coverage_matrix_rejects_primary_route_without_matching_route(
     tmp_path: Path,
 ) -> None:
