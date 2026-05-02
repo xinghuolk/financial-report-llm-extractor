@@ -382,6 +382,12 @@ Exit criteria:
 - Fixture raw artifacts can be converted to `source_inventory.jsonl`.
 - Artifacts are deterministic and rebuildable.
 
+Implementation note:
+
+- Phase B baseline artifact store exists in `structured_sources/artifacts.py`.
+- PB2 hardening should add `source_artifact_manifest.json`, stable malformed JSONL errors, and replay validation from `SourceEvidence.artifact_id` to raw artifact files.
+- This remains fixture-only and offline; Phase C/D provider adapters should consume this storage boundary without changing it.
+
 ### Phase C: AKShare Adapter
 
 Goal: make AKShare the first structured financial source, implemented in stages against the Turtle coverage matrix.
