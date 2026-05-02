@@ -160,6 +160,29 @@ def read_source_artifact_manifest(path: Path) -> SourceArtifactManifest:
     return manifest
 
 
+def validate_source_inventory_artifacts(
+    manifest: SourceArtifactManifest,
+    records: Iterable[SourceInventoryRecord],
+    artifact_root: Path,
+) -> None:
+    manifest.validate()
+    entries = {entry.artifact_id: entry for entry in manifest.artifacts}
+    for record in records:
+        record.validate()
+        for evidence in record.source_evidence:
+            entry = entries.get(evidence.artifact_id)
+            if entry is None:
+                raise ValueError(
+                    f"source evidence references missing artifact_id: {evidence.artifact_id}"
+                )
+            full_path = artifact_root / entry.path
+            if not full_path.exists():
+                raise ValueError(f"source artifact file is missing: {evidence.artifact_id}")
+            actual_hash = hashlib.sha256(full_path.read_bytes()).hexdigest()
+            if actual_hash != entry.sha256:
+                raise ValueError(f"source artifact hash mismatch: {evidence.artifact_id}")
+
+
 def write_source_inventory(
     path: Path,
     records: Iterable[SourceInventoryRecord],

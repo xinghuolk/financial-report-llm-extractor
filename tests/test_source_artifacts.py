@@ -10,6 +10,7 @@ from financial_report_llm_extractor.structured_sources.artifacts import (
     build_artifact_id,
     read_source_artifact_manifest,
     read_source_inventory,
+    validate_source_inventory_artifacts,
     write_source_artifact_manifest,
     write_source_inventory,
 )
@@ -661,3 +662,158 @@ def test_read_source_artifact_manifest_rejects_artifact_non_string_sha256(
 
     with pytest.raises(ValueError, match="sha256"):
         read_source_artifact_manifest(path)
+
+
+def test_validate_source_inventory_artifacts_accepts_matching_manifest(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+    artifact = store.write_json(
+        source="akshare",
+        artifact_id="akshare_hk_00001_balance_sheet",
+        payload={"rows": [{"field": "Total assets", "value": 100}]},
+    )
+    manifest = write_source_artifact_manifest(
+        tmp_path / "source_artifact_manifest.json",
+        artifact_root=tmp_path,
+        artifacts=(artifact,),
+    )
+    evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function="stock_financial_hk_report_em",
+        artifact_id=artifact.artifact_id,
+        raw_record_id="00001:balance_sheet:2024",
+        raw_field_name="Total assets",
+    )
+    record = SourceInventoryRecord(
+        source="akshare",
+        market="HK",
+        ticker="00001",
+        statement_type="balance_sheet",
+        period="2024-12-31",
+        raw_field_name="Total assets",
+        raw_value="100",
+        parsed_numeric_value=Decimal("100"),
+        currency="HKD",
+        unit="HKD",
+        source_evidence=(evidence,),
+    )
+
+    validate_source_inventory_artifacts(manifest, (record,), tmp_path)
+
+
+def test_validate_source_inventory_artifacts_rejects_missing_artifact_id(
+    tmp_path: Path,
+) -> None:
+    manifest = write_source_artifact_manifest(
+        tmp_path / "source_artifact_manifest.json",
+        artifact_root=tmp_path,
+        artifacts=(),
+    )
+    evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function="stock_financial_hk_report_em",
+        artifact_id="missing_artifact",
+        raw_record_id="00001:balance_sheet:2024",
+        raw_field_name="Total assets",
+    )
+    record = SourceInventoryRecord(
+        source="akshare",
+        market="HK",
+        ticker="00001",
+        statement_type="balance_sheet",
+        period="2024-12-31",
+        raw_field_name="Total assets",
+        raw_value="100",
+        parsed_numeric_value=Decimal("100"),
+        currency="HKD",
+        unit="HKD",
+        source_evidence=(evidence,),
+    )
+
+    with pytest.raises(ValueError, match="missing_artifact"):
+        validate_source_inventory_artifacts(manifest, (record,), tmp_path)
+
+
+def test_validate_source_inventory_artifacts_rejects_missing_artifact_file(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+    artifact = store.write_json(
+        source="akshare",
+        artifact_id="akshare_hk_00001_balance_sheet",
+        payload={"rows": [{"field": "Total assets", "value": 100}]},
+    )
+    manifest = write_source_artifact_manifest(
+        tmp_path / "source_artifact_manifest.json",
+        artifact_root=tmp_path,
+        artifacts=(artifact,),
+    )
+    (tmp_path / artifact.path).unlink()
+    evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function="stock_financial_hk_report_em",
+        artifact_id=artifact.artifact_id,
+        raw_record_id="00001:balance_sheet:2024",
+        raw_field_name="Total assets",
+    )
+    record = SourceInventoryRecord(
+        source="akshare",
+        market="HK",
+        ticker="00001",
+        statement_type="balance_sheet",
+        period="2024-12-31",
+        raw_field_name="Total assets",
+        raw_value="100",
+        parsed_numeric_value=Decimal("100"),
+        currency="HKD",
+        unit="HKD",
+        source_evidence=(evidence,),
+    )
+
+    with pytest.raises(ValueError, match=artifact.artifact_id):
+        validate_source_inventory_artifacts(manifest, (record,), tmp_path)
+
+
+def test_validate_source_inventory_artifacts_rejects_artifact_hash_mismatch(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+    artifact = store.write_json(
+        source="akshare",
+        artifact_id="akshare_hk_00001_balance_sheet",
+        payload={"rows": [{"field": "Total assets", "value": 100}]},
+    )
+    manifest = write_source_artifact_manifest(
+        tmp_path / "source_artifact_manifest.json",
+        artifact_root=tmp_path,
+        artifacts=(artifact,),
+    )
+    (tmp_path / artifact.path).write_text('{"changed": true}\n', encoding="utf-8")
+    evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function="stock_financial_hk_report_em",
+        artifact_id=artifact.artifact_id,
+        raw_record_id="00001:balance_sheet:2024",
+        raw_field_name="Total assets",
+    )
+    record = SourceInventoryRecord(
+        source="akshare",
+        market="HK",
+        ticker="00001",
+        statement_type="balance_sheet",
+        period="2024-12-31",
+        raw_field_name="Total assets",
+        raw_value="100",
+        parsed_numeric_value=Decimal("100"),
+        currency="HKD",
+        unit="HKD",
+        source_evidence=(evidence,),
+    )
+
+    with pytest.raises(ValueError, match=artifact.artifact_id):
+        validate_source_inventory_artifacts(manifest, (record,), tmp_path)
