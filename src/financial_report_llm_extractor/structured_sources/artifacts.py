@@ -62,10 +62,11 @@ class SourceArtifactManifest:
             raise ValueError("version is required")
         if not self.artifact_root:
             raise ValueError("artifact_root is required")
-        artifact_ids = [artifact.artifact_id for artifact in self.artifacts]
-        if len(set(artifact_ids)) != len(artifact_ids):
-            raise ValueError("duplicate artifact_id in source artifact manifest")
+        seen_artifact_ids: set[str] = set()
         for artifact in self.artifacts:
+            if artifact.artifact_id in seen_artifact_ids:
+                raise ValueError(f"duplicate artifact_id: {artifact.artifact_id}")
+            seen_artifact_ids.add(artifact.artifact_id)
             artifact.validate()
 
 
@@ -149,7 +150,8 @@ def read_source_artifact_manifest(path: Path) -> SourceArtifactManifest:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"invalid source artifact manifest JSON: {path}") from exc
-    return _manifest_from_jsonable(payload)
+    manifest = _manifest_from_jsonable(_require_object(payload, "source artifact manifest"))
+    return manifest
 
 
 def write_source_inventory(
@@ -204,17 +206,35 @@ def _manifest_to_jsonable(manifest: SourceArtifactManifest) -> dict[str, Any]:
 
 
 def _manifest_from_jsonable(payload: dict[str, Any]) -> SourceArtifactManifest:
-    artifacts = tuple(
-        SourceArtifactManifestEntry(**artifact) for artifact in payload.get("artifacts", [])
+    raw_artifacts = _require_list(
+        payload.get("artifacts"), "source artifact manifest artifacts"
+    )
+    entries = tuple(
+        SourceArtifactManifestEntry(
+            **_require_object(item, f"source artifact manifest artifacts[{index}]")
+        )
+        for index, item in enumerate(raw_artifacts)
     )
     manifest = SourceArtifactManifest(
         manifest_id=payload["manifest_id"],
         version=payload["version"],
         artifact_root=payload["artifact_root"],
-        artifacts=artifacts,
+        artifacts=entries,
     )
     manifest.validate()
     return manifest
+
+
+def _require_object(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be an object")
+    return value
+
+
+def _require_list(value: Any, label: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must be a list")
+    return value
 
 
 def _record_to_jsonable(record: SourceInventoryRecord) -> dict[str, Any]:

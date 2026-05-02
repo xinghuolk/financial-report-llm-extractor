@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from pathlib import Path
 
@@ -118,3 +119,60 @@ def test_source_artifact_manifest_requires_artifact_root() -> None:
 
     with pytest.raises(ValueError, match="artifact_root"):
         manifest.validate()
+
+
+def test_read_source_artifact_manifest_rejects_non_object_payload(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_artifact_manifest.json"
+    path.write_text("[]\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="source artifact manifest must be an object"):
+        read_source_artifact_manifest(path)
+
+
+def test_read_source_artifact_manifest_rejects_duplicate_artifact_id(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_artifact_manifest.json"
+    entry = {
+        "source": "akshare",
+        "artifact_id": "artifact_1",
+        "path": "akshare/artifact_1.json",
+        "content_type": "application/json",
+        "sha256": "a" * 64,
+    }
+    path.write_text(
+        json.dumps(
+            {
+                "manifest_id": "source_artifact_manifest",
+                "version": "1",
+                "artifact_root": tmp_path.as_posix(),
+                "artifacts": [entry, entry],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="duplicate artifact_id: artifact_1"):
+        read_source_artifact_manifest(path)
+
+
+def test_read_source_artifact_manifest_rejects_non_list_artifacts(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_artifact_manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "manifest_id": "source_artifact_manifest",
+                "version": "1",
+                "artifact_root": tmp_path.as_posix(),
+                "artifacts": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="source artifact manifest artifacts must be a list"):
+        read_source_artifact_manifest(path)
