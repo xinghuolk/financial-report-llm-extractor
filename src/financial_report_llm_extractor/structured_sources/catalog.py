@@ -5,12 +5,31 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, get_args
 
+from financial_report_llm_extractor.field_metadata import (
+    FallbackPolicy,
+    FieldDomain,
+    PrimaryRoute,
+    Requirement,
+    SourceMode,
+    StatementType,
+    VerificationStatus,
+)
 from financial_report_llm_extractor.structured_sources.models import SourceValueType
 
 
-Requirement = Literal["required", "optional", "not_applicable"]
+REFERENCED_REQUIRED_METADATA = (
+    "value_type",
+    "statement_type",
+    "domain",
+    "source_mode",
+    "primary_route",
+    "verification_status",
+    "currency_requirement",
+    "unit_requirement",
+    "fallback_policy",
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +60,19 @@ class SourceMappingEntry:
             raise ValueError("statement_type is required")
         if not self.source_aliases:
             raise ValueError("source_aliases is required")
+        _validate_literal("invalid value_type", self.value_type, SourceValueType)
+        _validate_literal("invalid statement_type", self.statement_type, StatementType)
+        _validate_literal("domain", self.domain, FieldDomain)
+        _validate_literal("source_mode", self.source_mode, SourceMode)
+        _validate_literal("invalid primary_route", self.primary_route, PrimaryRoute)
+        _validate_literal(
+            "invalid verification_status",
+            self.verification_status,
+            VerificationStatus,
+        )
+        _validate_literal("currency_requirement", self.currency_requirement, Requirement)
+        _validate_literal("unit_requirement", self.unit_requirement, Requirement)
+        _validate_literal("invalid fallback_policy", self.fallback_policy, FallbackPolicy)
 
 
 @dataclass(frozen=True)
@@ -68,6 +100,9 @@ def load_source_mapping_catalog(
     priorities: tuple[str, ...],
 ) -> SourceMappingCatalog:
     raw = json.loads(catalog_path.read_text(encoding="utf-8"))
+    has_referenced_metadata = bool(
+        raw.get("taxonomy_catalog") or raw.get("coverage_matrix")
+    )
     selected_priorities = set(priorities)
     priority_by_field: dict[str, str] = {}
     for group in raw.get("priorities", []):
@@ -81,19 +116,22 @@ def load_source_mapping_catalog(
     entries: dict[str, SourceMappingEntry] = {}
     for field_id, priority in priority_by_field.items():
         mapping = mappings.get(field_id, {})
+        if has_referenced_metadata:
+            _require_referenced_metadata(field_id, mapping)
         aliases = {
             str(source): tuple(str(alias) for alias in values)
             for source, values in mapping.get("source_aliases", {}).items()
         }
+        statement_type = str(mapping.get("statement_type", "unknown"))
         entry = SourceMappingEntry(
             field_id=field_id,
             priority=priority,
             value_type=mapping.get("value_type", "money"),
-            statement_type=mapping.get("statement_type", "unknown"),
+            statement_type=statement_type,
             currency_requirement=mapping.get("currency_requirement", "required"),
             unit_requirement=mapping.get("unit_requirement", "required"),
             source_aliases=aliases,
-            domain=mapping.get("domain", "unknown"),
+            domain=mapping.get("domain", _default_domain(statement_type)),
             source_mode=mapping.get("source_mode", "direct"),
             primary_route=mapping.get("primary_route", "akshare_direct"),
             verification_status=mapping.get("verification_status", "unknown"),
@@ -113,3 +151,24 @@ def load_source_mapping_catalog(
     )
     catalog.validate()
     return catalog
+
+
+def _require_referenced_metadata(field_id: str, mapping: dict[str, Any]) -> None:
+    for key in REFERENCED_REQUIRED_METADATA:
+        if key not in mapping:
+            raise ValueError(
+                f"{field_id}: {key} is required in referenced source mapping catalog"
+            )
+
+
+def _default_domain(statement_type: str) -> str:
+    if statement_type in {"income_statement", "balance_sheet", "cash_flow"}:
+        return statement_type
+    if statement_type in {"notes", "mda"}:
+        return "notes_and_mda"
+    return "income_statement"
+
+
+def _validate_literal(name: str, value: str, literal: Any) -> None:
+    if value not in get_args(literal):
+        raise ValueError(f"{name} has unsupported value: {value}")

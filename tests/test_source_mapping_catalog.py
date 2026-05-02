@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from financial_report_llm_extractor.structured_sources.catalog import (
     load_source_mapping_catalog,
 )
@@ -52,6 +54,153 @@ def test_minimal_source_mapping_fixture_loads_core_fields() -> None:
     assert "total_assets" in catalog.entries
     assert catalog.entries["revenue"].source_aliases["akshare"]
     assert catalog.entries["revenue"].source_aliases["yahoo"]
+
+
+def test_referenced_source_mapping_requires_explicit_selected_metadata(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "catalog.json"
+    path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "taxonomy_catalog": "turtle_v015_field_taxonomy",
+                "coverage_matrix": "turtle_v015_coverage_matrix",
+                "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+                "source_mappings": {
+                    "revenue": {
+                        "value_type": "money",
+                        "statement_type": "income_statement",
+                        "source_mode": "direct",
+                        "verification_status": "verified",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "fallback_policy": "pdf_allowed",
+                        "source_aliases": {"akshare": ["营业收入"]},
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="revenue: domain is required in referenced source mapping catalog",
+    ):
+        load_source_mapping_catalog(path, priorities=("P0",))
+
+
+def test_referenced_source_mapping_requires_explicit_selected_route_metadata(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "catalog.json"
+    path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "taxonomy_catalog": "turtle_v015_field_taxonomy",
+                "coverage_matrix": "turtle_v015_coverage_matrix",
+                "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+                "source_mappings": {
+                    "revenue": {
+                        "value_type": "money",
+                        "statement_type": "income_statement",
+                        "domain": "income_statement",
+                        "source_mode": "direct",
+                        "verification_status": "verified",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "fallback_policy": "pdf_allowed",
+                        "source_aliases": {"akshare": ["营业收入"]},
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="revenue: primary_route is required in referenced source mapping catalog",
+    ):
+        load_source_mapping_catalog(path, priorities=("P0",))
+
+
+@pytest.mark.parametrize(
+    ("metadata_key", "metadata_value", "message"),
+    [
+        ("value_type", "currency", "invalid value_type has unsupported value: currency"),
+        (
+            "statement_type",
+            "profit_statement",
+            "invalid statement_type has unsupported value: profit_statement",
+        ),
+        ("domain", "equity", "domain has unsupported value: equity"),
+        ("source_mode", "driect", "source_mode has unsupported value: driect"),
+        (
+            "primary_route",
+            "akshare_lookup",
+            "invalid primary_route has unsupported value: akshare_lookup",
+        ),
+        (
+            "verification_status",
+            "confirmed",
+            "invalid verification_status has unsupported value: confirmed",
+        ),
+        (
+            "currency_requirement",
+            "mandatory",
+            "currency_requirement has unsupported value: mandatory",
+        ),
+        (
+            "unit_requirement",
+            "mandatory",
+            "unit_requirement has unsupported value: mandatory",
+        ),
+        (
+            "fallback_policy",
+            "silent_default",
+            "invalid fallback_policy has unsupported value: silent_default",
+        ),
+    ],
+)
+def test_source_mapping_rejects_invalid_metadata_literals(
+    tmp_path: Path,
+    metadata_key: str,
+    metadata_value: str,
+    message: str,
+) -> None:
+    path = tmp_path / "catalog.json"
+    mapping = {
+        "value_type": "money",
+        "statement_type": "income_statement",
+        "domain": "income_statement",
+        "source_mode": "direct",
+        "primary_route": "akshare_direct",
+        "verification_status": "verified",
+        "currency_requirement": "required",
+        "unit_requirement": "required",
+        "fallback_policy": "pdf_allowed",
+        "source_aliases": {"akshare": ["营业收入"]},
+    }
+    mapping[metadata_key] = metadata_value
+    path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+                "source_mappings": {"revenue": mapping},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=message):
+        load_source_mapping_catalog(path, priorities=("P0",))
 
 
 def test_minimal_source_mapping_fixture_includes_akshare_field_codes() -> None:

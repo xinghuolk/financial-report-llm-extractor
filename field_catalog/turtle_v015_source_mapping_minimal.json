@@ -36,6 +36,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["营业收入", "营业总收入", "Total revenue", "Revenue", "OPERATE_INCOME", "TOTAL_OPERATE_INCOME"],
         "yahoo": ["Total Revenue", "Operating Revenue"]
@@ -51,6 +52,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["净利润", "归属于母公司股东的净利润", "Profit attributable to shareholders", "NETPROFIT", "PARENT_NETPROFIT"],
         "yahoo": ["Net Income", "Net Income Common Stockholders"]
@@ -66,6 +68,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["资产总计", "总资产", "Total assets", "TOTAL_ASSETS"],
         "yahoo": ["Total Assets"]
@@ -81,6 +84,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["负债合计", "总负债", "Total liabilities", "TOTAL_LIABILITIES"],
         "yahoo": ["Total Liabilities Net Minority Interest", "Total Liabilities"]
@@ -96,6 +100,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["货币资金", "Cash and cash equivalents", "MONETARYFUNDS", "MONETARY_FUNDS"],
         "yahoo": ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"]
@@ -111,6 +116,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["经营活动产生的现金流量净额", "经营活动现金流量净额", "Net cash generated from operating activities", "NETCASH_OPERATE", "NET_CASH_FLOWS_OPERATE"],
         "yahoo": ["Operating Cash Flow", "Total Cash From Operating Activities"]
@@ -126,6 +132,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["毛利", "Gross profit", "GROSSPROFIT", "GROSS_PROFIT"],
         "yahoo": ["Gross Profit"]
@@ -141,6 +148,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["流动资产合计", "Total current assets", "TOTAL_CURRENT_ASSETS"],
         "yahoo": ["Current Assets", "Total Current Assets"]
@@ -156,6 +164,7 @@
       "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["流动负债合计", "Total current liabilities", "TOTAL_CURRENT_LIAB"],
         "yahoo": ["Current Liabilities", "Total Current Liabilities"]
