@@ -404,6 +404,36 @@ def test_coverage_matrix_rejects_verified_field_with_unverified_primary_route(
         load_coverage_matrix(path)
 
 
+def test_coverage_matrix_rejects_expected_field_with_unsupported_primary_route(
+    tmp_path: Path,
+) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"]["verification"] = "expected"
+    data["fields"]["revenue"]["routes"][0]["status"] = "unsupported"
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="field verification exceeds primary route status",
+    ):
+        load_coverage_matrix(path)
+
+
+def test_coverage_matrix_accepts_expected_field_with_expected_primary_route(
+    tmp_path: Path,
+) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"]["verification"] = "expected"
+    data["fields"]["revenue"]["routes"][0]["status"] = "expected"
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    matrix = load_coverage_matrix(path)
+
+    assert matrix.fields["revenue"].verification == "expected"
+
+
 def test_coverage_matrix_rejects_pdf_only_taxonomy_with_direct_primary_route(
     tmp_path: Path,
 ) -> None:

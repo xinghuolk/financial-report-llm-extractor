@@ -213,6 +213,12 @@ class CoverageMatrixEntry:
             raise ValueError(
                 f"{self.field_id}: verified field requires verified primary route"
             )
+        if self.verification != "verified" and not _primary_route_status_is_sufficient(
+            self
+        ):
+            raise ValueError(
+                f"{self.field_id}: field verification exceeds primary route status"
+            )
 
 
 @dataclass(frozen=True)
@@ -416,6 +422,21 @@ def _primary_route_is_verified(entry: CoverageMatrixEntry) -> bool:
         route.source == expected_source
         and route.mode == expected_mode
         and route.status == "verified"
+        for route in entry.routes
+    )
+
+
+def _primary_route_status_is_sufficient(entry: CoverageMatrixEntry) -> bool:
+    allowed_route_statuses = {
+        "expected": {"verified", "expected"},
+        "unknown": {"verified", "expected", "unknown"},
+        "unsupported": {"unsupported"},
+    }
+    expected_source, expected_mode = PRIMARY_ROUTE_MATCHES[entry.primary_route]
+    return any(
+        route.source == expected_source
+        and route.mode == expected_mode
+        and route.status in allowed_route_statuses[entry.verification]
         for route in entry.routes
     )
 
