@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -179,6 +180,26 @@ def test_coverage_matrix_rejects_missing_top_level_fields(
     path.write_text(json.dumps(data), encoding="utf-8")
 
     with pytest.raises(ValueError, match=expected_message):
+        load_coverage_matrix(path)
+
+
+def test_coverage_matrix_rejects_missing_entry_domain(tmp_path: Path) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"].pop("domain")
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="domain is required"):
+        load_coverage_matrix(path)
+
+
+def test_coverage_matrix_rejects_missing_route_source(tmp_path: Path) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"]["routes"][0].pop("source")
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="source is required"):
         load_coverage_matrix(path)
 
 
@@ -1460,6 +1481,31 @@ def _write_and_load_taxonomy(
         encoding="utf-8",
     )
     return load_field_taxonomy(path)
+
+
+def _coverage_matrix_payload() -> dict[str, Any]:
+    return {
+        "matrix_id": "demo_coverage",
+        "version": "2026-05-02",
+        "taxonomy_catalog": "demo_taxonomy",
+        "fields": {
+            "revenue": {
+                "domain": "income_statement",
+                "priority": "P0",
+                "primary_route": "akshare_direct",
+                "verification": "verified",
+                "routes": [
+                    {
+                        "source": "akshare",
+                        "mode": "direct",
+                        "status": "verified",
+                        "statement_type": "income_statement",
+                        "evidence_requirement": "source_only_allowed",
+                    }
+                ],
+            }
+        },
+    }
 
 
 def _write_and_load_coverage_matrix(

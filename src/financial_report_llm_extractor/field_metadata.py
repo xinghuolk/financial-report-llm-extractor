@@ -151,6 +151,16 @@ class CoverageRoute:
     evidence_requirement: EvidenceRequirement
 
     def validate(self) -> None:
+        if not self.source:
+            raise ValueError("source is required")
+        if not self.mode:
+            raise ValueError("mode is required")
+        if not self.status:
+            raise ValueError("status is required")
+        if not self.statement_type:
+            raise ValueError("statement_type is required")
+        if not self.evidence_requirement:
+            raise ValueError("evidence_requirement is required")
         _validate_literal("route source", self.source, RouteSource)
         _validate_literal("route mode", self.mode, RouteMode)
         _validate_literal("route status", self.status, VerificationStatus)
@@ -175,6 +185,14 @@ class CoverageMatrixEntry:
     def validate(self) -> None:
         if not self.field_id:
             raise ValueError("coverage field_id is required")
+        if not self.domain:
+            raise ValueError("domain is required")
+        if not self.priority:
+            raise ValueError("priority is required")
+        if not self.primary_route:
+            raise ValueError("primary_route is required")
+        if not self.verification:
+            raise ValueError("verification is required")
         _validate_literal("coverage domain", self.domain, FieldDomain)
         _validate_literal("coverage priority", self.priority, Priority)
         _validate_literal("primary_route", self.primary_route, PrimaryRoute)
@@ -240,19 +258,19 @@ def load_coverage_matrix(path: Path) -> CoverageMatrix:
     fields = {
         field_id: CoverageMatrixEntry(
             field_id=field_id,
-            domain=metadata["domain"],
-            priority=metadata["priority"],
-            primary_route=metadata["primary_route"],
-            verification=metadata["verification"],
+            domain=metadata.get("domain", ""),
+            priority=metadata.get("priority", ""),
+            primary_route=metadata.get("primary_route", ""),
+            verification=metadata.get("verification", ""),
             routes=tuple(
                 CoverageRoute(
-                    source=route["source"],
-                    mode=route["mode"],
-                    status=route["status"],
-                    statement_type=route["statement_type"],
-                    evidence_requirement=route["evidence_requirement"],
+                    source=route.get("source", ""),
+                    mode=route.get("mode", ""),
+                    status=route.get("status", ""),
+                    statement_type=route.get("statement_type", ""),
+                    evidence_requirement=route.get("evidence_requirement", ""),
                 )
-                for route in metadata["routes"]
+                for route in metadata.get("routes", [])
             ),
             notes=metadata.get("notes", ""),
         )
