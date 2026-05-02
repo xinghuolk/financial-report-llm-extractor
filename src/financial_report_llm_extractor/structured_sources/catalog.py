@@ -62,7 +62,8 @@ class SourceMappingEntry:
             raise ValueError("source_aliases is required")
         _validate_literal("invalid value_type", self.value_type, SourceValueType)
         _validate_literal("invalid statement_type", self.statement_type, StatementType)
-        _validate_literal("domain", self.domain, FieldDomain)
+        if self.domain != "unknown":
+            _validate_literal("domain", self.domain, FieldDomain)
         _validate_literal("source_mode", self.source_mode, SourceMode)
         _validate_literal("invalid primary_route", self.primary_route, PrimaryRoute)
         _validate_literal(
@@ -118,6 +119,7 @@ def load_source_mapping_catalog(
         mapping = mappings.get(field_id, {})
         if has_referenced_metadata:
             _require_referenced_metadata(field_id, mapping)
+            _validate_referenced_metadata_values(mapping)
         aliases = {
             str(source): tuple(str(alias) for alias in values)
             for source, values in mapping.get("source_aliases", {}).items()
@@ -159,6 +161,10 @@ def _require_referenced_metadata(field_id: str, mapping: dict[str, Any]) -> None
             raise ValueError(
                 f"{field_id}: {key} is required in referenced source mapping catalog"
             )
+
+
+def _validate_referenced_metadata_values(mapping: dict[str, Any]) -> None:
+    _validate_literal("domain", str(mapping["domain"]), FieldDomain)
 
 
 def _default_domain(statement_type: str) -> str:

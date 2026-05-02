@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from financial_report_llm_extractor.structured_sources.catalog import (
+    SourceMappingEntry,
     load_source_mapping_catalog,
 )
 from financial_report_llm_extractor.field_metadata import (
@@ -54,6 +55,22 @@ def test_minimal_source_mapping_fixture_loads_core_fields() -> None:
     assert "total_assets" in catalog.entries
     assert catalog.entries["revenue"].source_aliases["akshare"]
     assert catalog.entries["revenue"].source_aliases["yahoo"]
+
+
+def test_source_mapping_entry_allows_default_unknown_domain_for_in_memory_catalogs() -> None:
+    entry = SourceMappingEntry(
+        field_id="revenue",
+        priority="P0",
+        value_type="money",
+        statement_type="income_statement",
+        currency_requirement="required",
+        unit_requirement="required",
+        source_aliases={"akshare": ("营业收入",)},
+    )
+
+    entry.validate()
+
+    assert entry.domain == "unknown"
 
 
 def test_referenced_source_mapping_requires_explicit_selected_metadata(
@@ -126,6 +143,41 @@ def test_referenced_source_mapping_requires_explicit_selected_route_metadata(
         ValueError,
         match="revenue: primary_route is required in referenced source mapping catalog",
     ):
+        load_source_mapping_catalog(path, priorities=("P0",))
+
+
+def test_referenced_source_mapping_rejects_unknown_domain(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "catalog.json"
+    path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "taxonomy_catalog": "turtle_v015_field_taxonomy",
+                "coverage_matrix": "turtle_v015_coverage_matrix",
+                "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+                "source_mappings": {
+                    "revenue": {
+                        "value_type": "money",
+                        "statement_type": "income_statement",
+                        "domain": "unknown",
+                        "source_mode": "direct",
+                        "primary_route": "akshare_direct",
+                        "verification_status": "verified",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "fallback_policy": "pdf_allowed",
+                        "source_aliases": {"akshare": ["营业收入"]},
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="domain has unsupported value: unknown"):
         load_source_mapping_catalog(path, priorities=("P0",))
 
 
