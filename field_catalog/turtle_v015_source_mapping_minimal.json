@@ -1,6 +1,8 @@
 {
   "catalog_id": "turtle_v015_source_mapping_minimal",
   "version": "2026-05-01",
+  "taxonomy_catalog": "turtle_v015_field_taxonomy",
+  "coverage_matrix": "turtle_v015_coverage_matrix",
   "priorities": [
     {
       "priority": "P0",
@@ -28,6 +30,10 @@
     "revenue": {
       "value_type": "money",
       "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {
@@ -39,6 +45,10 @@
     "net_profit": {
       "value_type": "money",
       "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {
@@ -50,6 +60,10 @@
     "total_assets": {
       "value_type": "money",
       "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {
@@ -61,6 +75,10 @@
     "total_liabilities": {
       "value_type": "money",
       "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {
@@ -72,6 +90,10 @@
     "cash": {
       "value_type": "money",
       "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {
@@ -83,6 +105,10 @@
     "operating_cash_flow": {
       "value_type": "money",
       "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {
@@ -94,6 +120,10 @@
     "gross_profit": {
       "value_type": "money",
       "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {
@@ -105,6 +135,10 @@
     "total_cur_assets": {
       "value_type": "money",
       "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {
@@ -116,6 +150,10 @@
     "total_cur_liab": {
       "value_type": "money",
       "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "source_aliases": {

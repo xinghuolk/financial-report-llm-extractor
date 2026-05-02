@@ -22,6 +22,10 @@ class SourceMappingEntry:
     currency_requirement: Requirement
     unit_requirement: Requirement
     source_aliases: dict[str, tuple[str, ...]]
+    domain: str = "unknown"
+    source_mode: str = "direct"
+    primary_route: str = "akshare_direct"
+    verification_status: str = "unknown"
     period_expectation: str = "annual"
     scope_expectation: str = "unknown"
     pdf_aliases: tuple[str, ...] = field(default_factory=tuple)
@@ -89,6 +93,10 @@ def load_source_mapping_catalog(
             currency_requirement=mapping.get("currency_requirement", "required"),
             unit_requirement=mapping.get("unit_requirement", "required"),
             source_aliases=aliases,
+            domain=mapping.get("domain", "unknown"),
+            source_mode=mapping.get("source_mode", "direct"),
+            primary_route=mapping.get("primary_route", "akshare_direct"),
+            verification_status=mapping.get("verification_status", "unknown"),
             period_expectation=mapping.get("period_expectation", "annual"),
             scope_expectation=mapping.get("scope_expectation", "unknown"),
             pdf_aliases=tuple(str(alias) for alias in mapping.get("pdf_aliases", [])),
@@ -105,4 +113,3 @@ def load_source_mapping_catalog(
     )
     catalog.validate()
     return catalog
-
