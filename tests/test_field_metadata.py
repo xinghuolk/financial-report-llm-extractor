@@ -121,6 +121,24 @@ def test_load_coverage_matrix_reads_routes(tmp_path: Path) -> None:
     assert matrix.fields["revenue"].routes[0].status == "verified"
 
 
+def test_coverage_matrix_rejects_empty_fields(tmp_path: Path) -> None:
+    path = tmp_path / "coverage.json"
+    path.write_text(
+        json.dumps(
+            {
+                "matrix_id": "demo_coverage",
+                "version": "2026-05-02",
+                "taxonomy_catalog": "demo_taxonomy",
+                "fields": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="coverage fields are required"):
+        load_coverage_matrix(path)
+
+
 def test_coverage_matrix_rejects_primary_route_without_matching_route(
     tmp_path: Path,
 ) -> None:

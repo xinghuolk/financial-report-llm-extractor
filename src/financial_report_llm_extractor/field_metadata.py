@@ -209,6 +209,8 @@ class CoverageMatrix:
             raise ValueError("version is required")
         if not self.taxonomy_catalog:
             raise ValueError("taxonomy_catalog is required")
+        if not self.fields:
+            raise ValueError("coverage fields are required")
         for field_id, entry in self.fields.items():
             if not field_id:
                 raise ValueError("coverage field ids cannot be empty")
