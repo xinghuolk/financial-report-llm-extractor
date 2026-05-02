@@ -5,6 +5,7 @@ from pathlib import Path
 from financial_report_llm_extractor.structured_sources.real_source_validation import (
     RealSourceValidationSample,
     build_default_validation_samples,
+    build_provider_field_capture_samples,
     run_captured_source_validation,
     run_real_source_validation,
 )
@@ -153,6 +154,36 @@ def test_real_source_validation_writes_source_artifact_manifest(
     assert result.summary["source_artifact_count"] >= 1
 
 
+def test_real_source_validation_writes_provider_field_inventory_summary(
+    tmp_path: Path,
+) -> None:
+    result = run_real_source_validation(
+        samples=(
+            RealSourceValidationSample(
+                provider="akshare",
+                market="CN",
+                ticker="600519",
+                statement_type="income_statement",
+                currency="CNY",
+                unit="yuan",
+                exchange="SH",
+            ),
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path,
+        akshare_client=FakeAkshareClient(),
+    )
+
+    summary_path = tmp_path / "provider_field_inventory_summary.json"
+    assert summary_path.exists()
+    assert result.summary["artifact_paths"]["provider_field_inventory_summary"] == str(
+        summary_path
+    )
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert payload["record_count"] == 1
+    assert payload["targets"][0]["raw_field_names"] == ["营业收入"]
+
+
 def test_real_source_validation_records_source_errors_without_aborting(
     tmp_path: Path,
 ) -> None:
@@ -209,6 +240,11 @@ def test_captured_source_validation_reuses_saved_inventory_without_clients(
     assert "source_artifact_count" not in result.summary
     assert (tmp_path / "source_inventory.jsonl").exists()
     assert (tmp_path / "extraction_result.json").exists()
+    summary_path = tmp_path / "provider_field_inventory_summary.json"
+    assert summary_path.exists()
+    assert result.summary["artifact_paths"]["provider_field_inventory_summary"] == str(
+        summary_path
+    )
     assert not (tmp_path / "source_artifact_manifest.json").exists()
 
 
@@ -297,3 +333,26 @@ def test_default_validation_samples_can_request_multiple_akshare_statements() ->
         "cash_flow",
     )
     assert {sample.ticker for sample in samples} == {"600519"}
+
+
+def test_provider_field_capture_sample_set_builds_full_target_matrix() -> None:
+    samples = build_provider_field_capture_samples(providers=("akshare", "yahoo"))
+
+    assert len(samples) == 18
+    assert RealSourceValidationSample(
+        provider="akshare",
+        market="CN",
+        ticker="600519",
+        statement_type="balance_sheet",
+        currency="CNY",
+        unit="yuan",
+        exchange="SH",
+    ) in samples
+    assert RealSourceValidationSample(
+        provider="yahoo",
+        market="HK",
+        ticker="1113.HK",
+        statement_type="cash_flow",
+        currency="HKD",
+        unit="raw",
+    ) in samples

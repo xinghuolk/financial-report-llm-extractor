@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Protocol, cast
 
 from financial_report_llm_extractor.models import Currency
 from financial_report_llm_extractor.structured_sources.akshare_adapter import (
@@ -20,12 +20,19 @@ from financial_report_llm_extractor.structured_sources.artifacts import (
     read_source_inventory,
     write_source_inventory,
 )
+from financial_report_llm_extractor.structured_sources.capture_targets import (
+    ProviderName,
+    build_provider_field_capture_targets,
+)
 from financial_report_llm_extractor.structured_sources.catalog import (
     load_source_mapping_catalog,
 )
 from financial_report_llm_extractor.structured_sources.export import (
     build_source_first_export,
     write_source_first_export_artifacts,
+)
+from financial_report_llm_extractor.structured_sources.field_inventory_summary import (
+    write_provider_field_inventory_summary,
 )
 from financial_report_llm_extractor.structured_sources.mapping import (
     TurtleMappingResult,
@@ -46,7 +53,7 @@ from financial_report_llm_extractor.structured_sources.yahoo_adapter import (
 )
 
 
-Provider = Literal["akshare", "yahoo"]
+Provider = ProviderName
 
 
 class AkshareLikeClient(Protocol):
@@ -115,6 +122,7 @@ def run_real_source_validation(
     samples: tuple[RealSourceValidationSample, ...],
     catalog_path: Path,
     output_dir: Path,
+    sample_set: str = "real_source_adapter",
     akshare_client: AkshareLikeClient | None = None,
     yahoo_client: YahooLikeClient | None = None,
 ) -> RealSourceValidationResult:
@@ -161,6 +169,7 @@ def run_real_source_validation(
         catalog_path=catalog_path,
         output_dir=output_dir,
         validation_mode="real_source_adapter",
+        sample_set=sample_set,
         sample_count=len(samples),
         source_errors=source_errors,
         source_artifact_manifest_path=output_dir / "source_artifact_manifest.json",
@@ -182,6 +191,7 @@ def run_captured_source_validation(
         catalog_path=catalog_path,
         output_dir=output_dir,
         validation_mode="captured_source_inventory",
+        sample_set="captured_source_inventory",
         sample_count=1,
         source_errors=[],
     )
@@ -193,6 +203,7 @@ def _write_validation_outputs(
     catalog_path: Path,
     output_dir: Path,
     validation_mode: str,
+    sample_set: str,
     sample_count: int,
     source_errors: list[dict[str, str]],
     source_artifact_manifest_path: Path | None = None,
@@ -206,6 +217,15 @@ def _write_validation_outputs(
     write_turtle_mapping_artifacts(mapping, output_dir)
     write_reconciliation_report(reconciliation, output_dir / "reconciliation_report.json")
     write_source_first_export_artifacts(export, output_dir)
+    provider_field_inventory_summary_path = (
+        output_dir / "provider_field_inventory_summary.json"
+    )
+    write_provider_field_inventory_summary(
+        provider_field_inventory_summary_path,
+        records=records,
+        sample_set=sample_set,
+        source_artifact_count=source_artifact_count,
+    )
 
     artifact_paths = {
         "source_inventory": str(output_dir / "source_inventory.jsonl"),
@@ -213,6 +233,9 @@ def _write_validation_outputs(
         "reconciliation_report": str(output_dir / "reconciliation_report.json"),
         "extraction_result": str(output_dir / "extraction_result.json"),
         "review_summary": str(output_dir / "review_summary.json"),
+        "provider_field_inventory_summary": str(
+            provider_field_inventory_summary_path
+        ),
     }
     summary: dict[str, Any] = {
         "validation_mode": validation_mode,
@@ -552,6 +575,23 @@ def build_default_validation_samples(
     return tuple(samples)
 
 
+def build_provider_field_capture_samples(
+    providers: tuple[ProviderName, ...] = ("akshare", "yahoo"),
+) -> tuple[RealSourceValidationSample, ...]:
+    return tuple(
+        RealSourceValidationSample(
+            provider=target.provider,
+            market=target.market,
+            ticker=target.provider_ticker,
+            statement_type=target.statement_type,
+            currency=target.currency,
+            unit=target.unit,
+            exchange=target.exchange,
+        )
+        for target in build_provider_field_capture_targets(providers=providers)
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -579,6 +619,12 @@ def main() -> None:
         type=Path,
         help="Use saved source_inventory.jsonl instead of calling real providers.",
     )
+    parser.add_argument(
+        "--sample-set",
+        choices=("default", "provider_field_baseline"),
+        default="default",
+        help="Real-provider sample set to request.",
+    )
     args = parser.parse_args()
     if args.inventory_fixture is not None:
         result = run_captured_source_validation(
@@ -597,13 +643,18 @@ def main() -> None:
             for statement in args.akshare_cn_statements.split(",")
             if statement.strip()
         )
-        result = run_real_source_validation(
-            samples=build_default_validation_samples(
+        if args.sample_set == "provider_field_baseline":
+            samples = build_provider_field_capture_samples(providers=providers)
+        else:
+            samples = build_default_validation_samples(
                 providers=providers,
                 akshare_cn_statements=akshare_cn_statements,
-            ),
+            )
+        result = run_real_source_validation(
+            samples=samples,
             catalog_path=args.catalog,
             output_dir=args.out_dir,
+            sample_set=args.sample_set,
         )
     print(json.dumps(result.summary, ensure_ascii=False, indent=2, sort_keys=True))
 
