@@ -48,3 +48,21 @@ def test_minimal_source_mapping_fixture_loads_core_fields() -> None:
     assert "total_assets" in catalog.entries
     assert catalog.entries["revenue"].source_aliases["akshare"]
     assert catalog.entries["revenue"].source_aliases["yahoo"]
+
+
+def test_minimal_source_mapping_fixture_includes_akshare_field_codes() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+
+    assert "TOTAL_ASSETS" in catalog.entries["total_assets"].source_aliases["akshare"]
+    assert (
+        "TOTAL_LIABILITIES"
+        in catalog.entries["total_liabilities"].source_aliases["akshare"]
+    )
+    assert "MONETARYFUNDS" in catalog.entries["cash"].source_aliases["akshare"]
+    assert (
+        "NETCASH_OPERATE"
+        in catalog.entries["operating_cash_flow"].source_aliases["akshare"]
+    )

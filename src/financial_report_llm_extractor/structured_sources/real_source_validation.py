@@ -504,19 +504,24 @@ def _import_module(name: str) -> Any:
     return importlib.import_module(name)
 
 
-def _default_samples(providers: tuple[Provider, ...]) -> tuple[RealSourceValidationSample, ...]:
+def build_default_validation_samples(
+    *,
+    providers: tuple[Provider, ...],
+    akshare_cn_statements: tuple[str, ...] = ("income_statement",),
+) -> tuple[RealSourceValidationSample, ...]:
     samples: list[RealSourceValidationSample] = []
     if "akshare" in providers:
-        samples.append(
+        samples.extend(
             RealSourceValidationSample(
                 provider="akshare",
                 market="CN",
                 ticker="600519",
-                statement_type="income_statement",
+                statement_type=statement_type,
                 currency="CNY",
                 unit="yuan",
                 exchange="SH",
             )
+            for statement_type in akshare_cn_statements
         )
     if "yahoo" in providers:
         samples.append(
@@ -550,6 +555,11 @@ def main() -> None:
         help="Comma-separated providers: akshare,yahoo",
     )
     parser.add_argument(
+        "--akshare-cn-statements",
+        default="income_statement",
+        help="Comma-separated AKShare CN statements to request.",
+    )
+    parser.add_argument(
         "--inventory-fixture",
         type=Path,
         help="Use saved source_inventory.jsonl instead of calling real providers.",
@@ -567,8 +577,16 @@ def main() -> None:
             for provider in args.providers.split(",")
             if provider.strip()
         )
+        akshare_cn_statements = tuple(
+            statement.strip()
+            for statement in args.akshare_cn_statements.split(",")
+            if statement.strip()
+        )
         result = run_real_source_validation(
-            samples=_default_samples(providers),
+            samples=build_default_validation_samples(
+                providers=providers,
+                akshare_cn_statements=akshare_cn_statements,
+            ),
             catalog_path=args.catalog,
             output_dir=args.out_dir,
         )

@@ -79,6 +79,31 @@ AKShare
 
 PDF 财报分析是最后阶段，不参与第一轮 broad field coverage。它只处理结构化数据源无法稳定解决的问题。
 
+### 3.1 Turtle 字段分类
+
+Source-first 映射不应继续把 Turtle 字段只按 `P0`、`P1`、`P2` 平铺。优先级是实现顺序，不是字段语义边界。字段目录必须先按财报语义域分类，再为每个字段叠加 priority、source mode 和 evidence requirement。
+
+推荐主分类：
+
+- 利润表：收入、成本、毛利、费用、经营利润、投资收益、公允价值变动、营业外收支、净利润。
+- 资产负债表：资产、负债、权益、现金、借款、应收应付、存货、固定资产、在建工程、流动资产和流动负债。
+- 现金流量表：经营、投资、筹资现金流，以及回购、分红、资本开支、折旧摊销和营运资本变化。
+- 股东回报和资本动作：每股分红、分红计划、回购注销进度。
+- 研发、资本化和会计调整：研发费用、资本化研发、资本化利息、递延税、折旧摊销。
+- 附注、风险和经营文字：账龄、坏账、关联方、或有事项、租赁到期、分部、受限资金、理财、MD&A、审计意见。
+
+每个字段至少需要：
+
+- `domain`
+- `statement_type`
+- `source_mode`: direct、derived、source_optional、pdf_only、llm_review
+- `period_type`: duration、point_in_time、annual_text、event
+- `evidence_requirement`: source_only_allowed、pdf_required、llm_review_required
+
+详细 taxonomy 见：
+
+- `docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md`
+
 ## 4. 数据源对比
 
 ### 4.1 Yahoo / yfinance / yahoo-finance-mcp
@@ -296,6 +321,16 @@ MCP 合适的角色：
 生产实现应使用 deterministic adapter/API。
 
 ## 8. 风险和规避
+
+### 当前验证基线
+
+已经完成的真实/捕获验证提供了一个更稳的开发基线：
+
+- AKShare `600519` 三张表真实请求已保存为 captured inventory，回放覆盖 8/9 个 minimal source-mapping 字段。
+- Yahoo/yfinance `0001.HK` income statement 真实请求已保存为 captured inventory，回放覆盖 `revenue`、`net_profit`、`gross_profit`。
+- 真实 provider 调用只用于创建或刷新 captured artifacts；日常 mapping、coverage、reconciliation 迭代应使用 captured replay，避免重复请求和接口波动。
+
+这说明 source-first 路线对核心三大表字段是可行的，但还不能替代完整评估：`00001`、`01113`、Yahoo balance sheet/cash flow 和 cross-source reconciliation 仍需补齐。
 
 ### 风险：结构化来源覆盖不足
 

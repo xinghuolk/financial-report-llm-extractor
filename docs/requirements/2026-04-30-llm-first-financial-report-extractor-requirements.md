@@ -79,10 +79,22 @@ Turtle P0/P1 source mapping contract
 
 字段目录来源为 `field_catalog/turtle_v015_priority_fields.json`，需要扩展为 source mapping catalog。
 
+字段设计必须先按财报语义域分类，再叠加 P0-P4 优先级。优先级只表达实现顺序和重要性，不表达字段应该从哪里取数、如何验证或是否应该进入 PDF/LLM fallback。
+
+字段语义域至少包括：
+
+- `income_statement`：利润表字段，例如 `revenue`、`operating_cost`、`gross_profit`、`operating_profit`、`net_profit`。
+- `balance_sheet`：资产负债表字段，例如 `total_assets`、`total_liabilities`、`cash`、`st_borr`、`inventories`、`total_cur_assets`。
+- `cash_flow`：现金流量表字段，例如 `operating_cash_flow`、`investing_cash_flow`、`financing_cash_flow`、`capital_expenditures`、`dividends_paid`。
+- `shareholder_return`：分红、回购和资本动作字段，例如 `dps`、`dividend_plan`、`buyback_cancellation_progress`。
+- `accounting_adjustments`：研发资本化、利息资本化、折旧摊销、递延税等会计调整字段。
+- `notes_and_mda`：附注、风险、经营文字、审计和政策文本字段。
+
 每个 Turtle entry 应包含：
 
 - `field_id`
 - priority：P0、P1、P2、P3、P4
+- domain：income_statement、balance_sheet、cash_flow、shareholder_return、accounting_adjustments、notes_and_mda
 - value type：money、number、percent、text、derived
 - statement type：income statement、balance sheet、cash flow、equity、notes、unknown
 - period expectation：annual、quarterly、point-in-time、duration
@@ -93,6 +105,12 @@ Turtle P0/P1 source mapping contract
 - PDF aliases：仅用于 fallback 和 evidence supplement
 - derivation metadata：公式、输入字段、输入一致性要求
 - fallback policy：source_required、pdf_allowed、llm_review_required
+- source mode：direct、derived、source_optional、pdf_only、llm_review
+- evidence requirement：source_only_allowed、pdf_required、llm_review_required
+
+字段 taxonomy 的详细设计见：
+
+- `docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md`
 
 最小 P0/P1 source-first spike 必须覆盖这些字段类别：
 
@@ -405,3 +423,19 @@ PDF artifacts 只在 fallback/supplement 阶段生成。source artifacts 是第�
 - 能阻断单位/币种不明的 present money。
 - 能明确列出哪些字段需要 PDF/LLM fallback。
 - 不依赖 PDF broad extraction 即可判断结构化 source route 是否可行。
+
+## 17. Current Validation Evidence
+
+当前已经完成的真实/捕获验证：
+
+- AKShare `600519` income statement、balance sheet、cash flow 已做一次真实 opt-in 请求，并保存为 `tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl`。
+- AKShare captured replay 能通过 source inventory、Turtle mapping、reconciliation、source-only export 全链路，当前覆盖 8/9 个 minimal source-mapping 字段，缺口是 `gross_profit`。
+- Yahoo/yfinance `0001.HK` income statement 已做一次真实 opt-in 请求，并保存为 `tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl`。
+- Yahoo captured replay 能通过同一全链路，当前覆盖 3/9 个 minimal source-mapping 字段：`revenue`、`net_profit`、`gross_profit`。
+- 后续 mapping/reconciliation 调整应优先使用 captured replay，不应反复请求 AKShare/Yahoo；只有需要新增 statement family、刷新 provider 返回或确认 source availability 时才运行真实 provider。
+
+当前还不能宣称完整完成：
+
+- `00001`、`01113` 的 AKShare/Yahoo captured validation 仍需补齐。
+- Yahoo balance sheet 和 cash flow captured validation 仍需补齐。
+- 跨 source 同字段 period、currency、unit、value reconciliation 仍需用真实/captured 组合数据验证。

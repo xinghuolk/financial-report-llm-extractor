@@ -17,6 +17,7 @@
 - docs/design/2026-04-30-llm-first-turtle-financial-extraction-design.md
 - docs/design/2026-05-01-structured-data-source-first-financial-extraction-design.md
 - docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md
+- docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md
 - docs/superpowers/plans/2026-04-30-phase-0-contracts.md
 - docs/superpowers/plans/2026-04-30-phase-1-pdf-probe-page-store.md
 
@@ -62,10 +63,13 @@
 - Source-first foundation 已开始并已有可运行代码。
   - `src/financial_report_llm_extractor/structured_sources/` 包含 source contracts、artifact store、AKShare adapter、Yahoo adapter、mapping、coverage、reconciliation、review export、PDF supplement、LLM review、source-first evaluation。
   - `field_catalog/turtle_v015_source_mapping_minimal.json` 是当前 source-first 最小字段映射目录。
+  - `docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md` 定义了后续完整 Turtle 字段应按利润表、资产负债表、现金流量表、股东回报、会计调整、附注/MD&A 分类，再叠加 P0-P4 priority。
   - `scripts/run-source-first-e2e-evaluation.sh` 是 synthetic no-network source-first E2E。
   - `scripts/run-real-source-validation.sh` 是 opt-in 真实/捕获来源验证入口。
   - `tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl` 是从真实 AKShare 600519 income statement 返回固化出来的 captured source inventory。
-  - captured replay 已验证 source inventory -> Turtle mapping -> reconciliation -> source-only export；当前该 fixture 覆盖 `revenue` 和 `net_profit`，其余字段需要资产负债表、现金流量表和/或 Yahoo fixtures 继续补。
+  - `tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl` 是从真实 AKShare 600519 income statement、balance sheet、cash flow 一次性验证输出固化出来的 captured source inventory。
+  - `tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl` 是从真实 Yahoo/yfinance `0001.HK` income statement 输出固化出来的 captured source inventory。
+  - captured replay 已验证 source inventory -> Turtle mapping -> reconciliation -> source-only export；AKShare combined fixture 当前覆盖 8/9 minimal source-mapping fields，Yahoo income fixture 当前覆盖 3/9。
 - field_catalog/turtle_v015_priority_fields.json 已包含 P0-P4 字段优先级。
 - tests/ 下已有 test_models.py、test_ingestion.py、test_cli.py、test_field_catalog.py。
 
@@ -87,8 +91,9 @@
 
 当前推荐方向：
 - 用 captured fixture 驱动 source-first 映射完善。
-- 优先补 AKShare balance sheet 和 cash flow captured fixtures，验证 `total_assets`、`total_liabilities`、`cash`、`operating_cash_flow` 等字段。
-- 再补 Yahoo/yfinance captured fixture 作为第二来源和交叉验证。
+- 优先补 Yahoo/yfinance balance sheet 和 cash flow captured fixtures，验证 `total_assets`、`total_liabilities`、`cash`、`operating_cash_flow` 等字段。
+- 再补 `00001`、`01113` 的 AKShare/Yahoo captured fixtures 作为港股英文样本验证。
+- 对同字段 AKShare/Yahoo 候选做 period、currency、unit、value reconciliation。
 - 最后才对仍缺失、冲突、歧义或需要页码证据的字段进入 PDF/LLM fallback。
 
 Phase 2 已完成的基础能力：
@@ -109,6 +114,8 @@ Phase 2 已完成的基础能力：
 - uv run ruff check .
 - uv run mypy src tests
 - REAL_SOURCE_VALIDATION=1 INVENTORY_FIXTURE=tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl OUT_DIR=tmp/runs/captured_source_validation_akshare scripts/run-real-source-validation.sh
+- REAL_SOURCE_VALIDATION=1 INVENTORY_FIXTURE=tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl OUT_DIR=tmp/runs/captured_source_validation_akshare_combined scripts/run-real-source-validation.sh
+- REAL_SOURCE_VALIDATION=1 INVENTORY_FIXTURE=tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl OUT_DIR=tmp/runs/captured_source_validation_yahoo_income scripts/run-real-source-validation.sh
 
 如果 uv 不可用，可尝试项目虚拟环境中的 pytest；但最终最好保持上述命令可通过。
 

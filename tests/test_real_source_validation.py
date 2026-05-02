@@ -1,8 +1,10 @@
+import json
 from decimal import Decimal
 from pathlib import Path
 
 from financial_report_llm_extractor.structured_sources.real_source_validation import (
     RealSourceValidationSample,
+    build_default_validation_samples,
     run_captured_source_validation,
     run_real_source_validation,
 )
@@ -179,6 +181,70 @@ def test_captured_source_validation_reuses_saved_inventory_without_clients(
     assert (tmp_path / "extraction_result.json").exists()
 
 
+def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fields(
+    tmp_path: Path,
+) -> None:
+    result = run_captured_source_validation(
+        inventory_path=Path(
+            "tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl"
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path,
+    )
+
+    assert result.summary["validation_mode"] == "captured_source_inventory"
+    assert result.summary["status"] == "completed"
+    assert result.summary["record_count"] == 10
+    assert result.summary["mapping_coverage"]["covered_fields"] == [
+        "cash",
+        "net_profit",
+        "operating_cash_flow",
+        "revenue",
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    ]
+    assert result.summary["mapping_coverage"]["covered_count"] == 8
+    assert result.summary["mapping_coverage"]["total_fields"] == 9
+    review_summary = (tmp_path / "review_summary.json").read_text(encoding="utf-8")
+    assert '"missing_fields": [\n    "gross_profit"\n  ]' in review_summary
+
+
+def test_captured_source_validation_yahoo_fixture_covers_income_fields(
+    tmp_path: Path,
+) -> None:
+    result = run_captured_source_validation(
+        inventory_path=Path(
+            "tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl"
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path,
+    )
+
+    assert result.summary["validation_mode"] == "captured_source_inventory"
+    assert result.summary["status"] == "completed"
+    assert result.summary["record_count"] == 5
+    assert result.summary["mapping_coverage"]["covered_fields"] == [
+        "gross_profit",
+        "net_profit",
+        "revenue",
+    ]
+    assert result.summary["mapping_coverage"]["covered_count"] == 3
+    assert result.summary["mapping_coverage"]["total_fields"] == 9
+    review_summary = json.loads(
+        (tmp_path / "review_summary.json").read_text(encoding="utf-8")
+    )
+    assert review_summary["present_fields"] == [
+        "gross_profit",
+        "net_profit",
+        "revenue",
+    ]
+    assert "gross_profit" not in review_summary["missing_fields"]
+    assert "net_profit" not in review_summary["missing_fields"]
+    assert "revenue" not in review_summary["missing_fields"]
+
+
 def test_real_source_validation_script_is_opt_in() -> None:
     script = Path("scripts/run-real-source-validation.sh").read_text(encoding="utf-8")
 
@@ -186,3 +252,17 @@ def test_real_source_validation_script_is_opt_in() -> None:
     assert "PYTHONPATH=src" in script
     assert "real_source_validation" in script
     assert "--inventory-fixture" in script
+    assert "--akshare-cn-statements" in script
+
+
+def test_default_validation_samples_can_request_multiple_akshare_statements() -> None:
+    samples = build_default_validation_samples(
+        providers=("akshare",),
+        akshare_cn_statements=("balance_sheet", "cash_flow"),
+    )
+
+    assert tuple(sample.statement_type for sample in samples) == (
+        "balance_sheet",
+        "cash_flow",
+    )
+    assert {sample.ticker for sample in samples} == {"600519"}

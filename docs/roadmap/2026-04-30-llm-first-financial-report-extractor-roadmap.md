@@ -11,7 +11,9 @@ The next product slice should not continue broad PDF field retrieval as the main
 The revised main path is:
 
 ```text
-Turtle source mapping contract
+Turtle full field taxonomy
+-> Turtle coverage matrix
+-> minimal source mapping contract
 -> AKShare raw adapter
 -> Yahoo/yfinance raw adapter
 -> source field inventory
@@ -24,6 +26,8 @@ Turtle source mapping contract
 ```
 
 AKShare is the first source. Yahoo/yfinance is the second source. PDF financial report analysis is the last stage and only handles fields that are missing, ambiguous, conflicting, or require page/block/snippet evidence.
+
+The Turtle target model must be designed first. AKShare and Yahoo/yfinance coverage should then be added in phases against that model, not used to reshape Turtle semantics around provider-specific returned fields.
 
 ## 2. Architecture Guardrails
 
@@ -77,6 +81,7 @@ source coverage/reconciliation
 The newly added design supplement is:
 
 - `docs/design/2026-05-01-structured-data-source-first-financial-extraction-design.md`
+- `docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md`
 
 ## 4. Functional Areas
 
@@ -84,10 +89,20 @@ The newly added design supplement is:
 
 Define an extraction catalog that starts from `field_catalog/turtle_v015_priority_fields.json` but adds source semantics.
 
+Before adding aliases broadly, fields must be classified by financial statement domain:
+
+- income statement
+- balance sheet
+- cash flow
+- shareholder return and capital actions
+- R&D, capitalization, and accounting adjustments
+- notes, risk, and operating text
+
 Required fields per entry:
 
 - `field_id`
 - priority
+- domain
 - value type
 - statement type
 - period expectation
@@ -98,8 +113,16 @@ Required fields per entry:
 - PDF aliases for fallback only
 - derivation formula when applicable
 - fallback policy
+- source mode: direct, derived, source_optional, pdf_only, or llm_review
+- evidence requirement: source_only_allowed, pdf_required, or llm_review_required
 
-This catalog is the first implementation dependency. Without it, adapter work cannot be measured.
+This catalog work has three layers:
+
+1. Full Turtle field taxonomy: classify every existing Turtle field by financial statement domain and source mode.
+2. Turtle coverage matrix: state whether each field is expected to be covered by AKShare, Yahoo/yfinance, PDF evidence, LLM review, derivation, or no first-stage source.
+3. Minimal source mapping contract: add concrete aliases and raw field candidates only for the current implementation slice.
+
+The first two layers come before broad AKShare/Yahoo mapping. Without them, adapter work can only chase provider output instead of measuring coverage against a stable Turtle model.
 
 ### 4.2 Structured Source Contracts
 
@@ -259,15 +282,58 @@ CLI direction:
 
 ## 5. Implementation Phases
 
-### Phase A: Source Mapping Contract And Catalog
+### Phase A1: Turtle Full Field Taxonomy
 
-Goal: define the field semantics before integrating external data sources.
+Goal: define the full Turtle target model before integrating or expanding external data sources.
+
+Deliverables:
+
+- Turtle field taxonomy for all existing fields, grouped by income statement, balance sheet, cash flow, shareholder return, accounting adjustments, and notes/MDA.
+- Primary domain for every field in `field_catalog/turtle_v015_priority_fields.json`.
+- Source mode for every field: direct, derived, source_optional, pdf_only, or llm_review.
+- Statement type, period type, value type, currency/unit requirement, and evidence requirement metadata.
+- Tests or validation checks that every current Turtle field is classified exactly once by primary domain.
+
+Exit criteria:
+
+- Every existing Turtle field has a primary domain and source mode.
+- The taxonomy can answer domain-first questions such as all P0 balance sheet fields, all cash-flow fields, and all PDF-only notes fields.
+- Provider aliases are not required for this phase.
+
+### Phase A2: Turtle Coverage Matrix
+
+Goal: decide expected coverage route for every Turtle field before writing broad provider mappings.
+
+Deliverables:
+
+- Coverage matrix keyed by `field_id`.
+- Expected coverage route per field:
+  - AKShare direct
+  - Yahoo/yfinance direct
+  - derived from source fields
+  - PDF evidence required
+  - LLM review required
+  - unsupported in first-stage source-first extraction
+- Verification status per provider and field: verified, expected, unknown, unsupported.
+- Domain-level and priority-level coverage summaries.
+- Tests or validation checks that all fields have a coverage route and verification status.
+
+Exit criteria:
+
+- The project can report total Turtle coverage by domain and priority before calling AKShare/Yahoo.
+- `pdf_only` and `llm_review` fields are not counted as missing structured-source failures in the first source-first gate.
+- The next provider work can be selected from explicit coverage gaps.
+
+### Phase A3: Minimal Source Mapping Contract
+
+Goal: add concrete source aliases only for the current source-first implementation slice.
 
 Deliverables:
 
 - Source-first dataclasses.
 - Source evidence contract.
 - Enriched Turtle mapping catalog fixture for P0/P1 minimum fields.
+- AKShare/Yahoo raw field aliases for the selected fields.
 - Tests for serialization and validation.
 - Tests for missing currency/unit blocking.
 
@@ -275,6 +341,7 @@ Exit criteria:
 
 - Catalog can list required P0/P1 fields and their source mapping expectations.
 - A coverage gate can run against fixture inventory without AKShare/Yahoo installed.
+- Minimal mappings are traceable back to the full taxonomy and coverage matrix.
 
 ### Phase B: Source Inventory And Artifact Store
 
@@ -295,7 +362,7 @@ Exit criteria:
 
 ### Phase C: AKShare Adapter
 
-Goal: make AKShare the first structured financial source.
+Goal: make AKShare the first structured financial source, implemented in stages against the Turtle coverage matrix.
 
 Deliverables:
 
@@ -312,10 +379,11 @@ Exit criteria:
 - AKShare fixtures produce source inventory rows for all three validation companies.
 - Currency/unit metadata is explicit or marked unknown/ambiguous.
 - Source errors are structured.
+- AKShare coverage is reported by Turtle domain and priority, not only by raw provider fields.
 
 ### Phase D: Yahoo/yfinance Adapter
 
-Goal: add the second structured source for fallback and reconciliation.
+Goal: add the second structured source for fallback and reconciliation, implemented in stages against the Turtle coverage matrix.
 
 Deliverables:
 
@@ -329,10 +397,11 @@ Exit criteria:
 
 - Yahoo fixtures produce source inventory rows.
 - Yahoo coverage can be compared independently with AKShare coverage.
+- Yahoo coverage is reported by Turtle domain and priority, not only by raw provider fields.
 
 ### Phase E: Turtle Mapping, Derivation, And Coverage Gate
 
-Goal: decide whether AKShare/Yahoo can cover Turtle P0/P1 fields before PDF/LLM work.
+Goal: decide whether AKShare/Yahoo can cover Turtle fields by domain and priority before PDF/LLM work.
 
 Deliverables:
 
@@ -350,6 +419,7 @@ Exit criteria:
   - `turtle_mapping.json`
   - `source_coverage_summary.json`
 - Missing, ambiguous, conflict, derived, unsupported statuses are explicit.
+- Coverage summaries distinguish structured-source gaps from fields intentionally routed to PDF/LLM by taxonomy.
 
 ### Phase F: Cross-Source Reconciliation
 
@@ -418,7 +488,7 @@ Exit criteria:
 
 ### Phase J: End-To-End Source-First Evaluation
 
-Goal: decide whether source-first is viable for Turtle P0/P1 before broader implementation.
+Goal: decide whether source-first is viable for Turtle fields by domain and priority before broader implementation.
 
 Validation samples:
 
@@ -434,13 +504,14 @@ Deliverables:
   - Yahoo only
   - combined
   - combined + PDF supplement
+- Coverage comparison by Turtle domain and priority, using the full taxonomy and coverage matrix.
 - Known hard-case fixtures.
 - Updated roadmap decision note.
 
 Exit criteria:
 
 - Source-first combined coverage is materially better than the current PDF retrieval coverage.
-- Remaining gaps are explicit and assigned to source mapping, source availability, PDF supplement, or LLM review.
+- Remaining gaps are explicit and assigned to source mapping, source availability, PDF supplement, LLM review, or intentionally unsupported first-stage source coverage.
 
 Implementation note:
 
@@ -462,8 +533,12 @@ Current validation status:
 
 - Synthetic no-network source-first E2E: implemented.
 - Captured AKShare income statement replay for 600519: implemented; covers 2 of 9 minimal source-mapping fields.
-- AKShare balance sheet and cash flow captured fixtures: still needed to validate asset, liability, cash, and operating cash flow fields.
-- Yahoo/yfinance real or captured validation: still needed.
+- Real AKShare combined validation for 600519 has been run once for income statement, balance sheet, and cash flow, then saved as `tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl`.
+  Captured replay covers 8 of 9 minimal fields: `revenue`, `net_profit`, `total_assets`, `total_liabilities`, `cash`, `operating_cash_flow`, `total_cur_assets`, and `total_cur_liab`.
+- Real Yahoo/yfinance validation for `0001.HK` income statement has been run once, then saved as `tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl`.
+  Captured replay covers 3 of 9 minimal fields: `revenue`, `net_profit`, and `gross_profit`.
+- Remaining minimal-field gap in the current 600519 AKShare combined replay is `gross_profit`.
+- Remaining Yahoo work is balance sheet and cash flow captured validation, plus cross-source reconciliation against AKShare where periods and units are comparable.
 - Full source-first viability decision is not complete until captured or real validation covers the required statement families for the target companies and remaining gaps are categorized.
 
 ## 6. Validation Commands
@@ -488,6 +563,16 @@ REAL_SOURCE_VALIDATION=1 \
 INVENTORY_FIXTURE=tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl \
 OUT_DIR=tmp/runs/captured_source_validation_akshare \
 scripts/run-real-source-validation.sh
+
+REAL_SOURCE_VALIDATION=1 \
+INVENTORY_FIXTURE=tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl \
+OUT_DIR=tmp/runs/captured_source_validation_akshare_combined \
+scripts/run-real-source-validation.sh
+
+REAL_SOURCE_VALIDATION=1 \
+INVENTORY_FIXTURE=tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl \
+OUT_DIR=tmp/runs/captured_source_validation_yahoo_income \
+scripts/run-real-source-validation.sh
 ```
 
 Use real provider calls only to create or refresh captured fixtures, then drive mapping and reconciliation fixes from those saved artifacts.
@@ -497,7 +582,7 @@ Use real provider calls only to create or refresh captured fixtures, then drive 
 This branch is complete when:
 
 - Requirements document describes source-first as the main product direction.
-- Roadmap phases begin with Turtle source mapping, AKShare, and Yahoo/yfinance.
+- Roadmap phases begin with Turtle full field taxonomy, Turtle coverage matrix, minimal source mapping, then staged AKShare and Yahoo/yfinance coverage.
 - PDF/LLM work is clearly moved to selected-field fallback.
 - Existing completed PDF/LLM phases are preserved as reusable fallback assets, not deleted conceptually.
 - The design supplement, requirements, and roadmap agree on source priority:

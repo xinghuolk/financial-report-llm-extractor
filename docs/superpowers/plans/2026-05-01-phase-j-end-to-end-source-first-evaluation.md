@@ -14,6 +14,8 @@
 - Provider responses should be captured into stable `source_inventory.jsonl` fixtures after the first successful call.
 - Mapping, reconciliation, and export fixes should be driven from captured fixtures instead of repeated provider requests.
 - The first captured AKShare 600519 income statement fixture validates source inventory -> Turtle mapping -> reconciliation -> source-only export for `revenue` and `net_profit`.
+- A later captured AKShare 600519 combined fixture validates income statement, balance sheet, and cash flow through the same pipeline and covers 8 of 9 minimal fields.
+- A captured Yahoo/yfinance `0001.HK` income statement fixture validates `revenue`, `net_profit`, and `gross_profit` through the same pipeline.
 
 This plan should be read as an implementation history plus validation guardrail. Future work should not blindly repeat these tasks; instead, inspect the current captured fixture coverage, the latest `review_summary.json`, and the roadmap status to choose the next missing source/statement family.
 
@@ -133,6 +135,8 @@ Expected: PASS.
 - `scripts/run-real-source-validation.sh`
 - `tests/test_real_source_validation.py`
 - `tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl`
+- `tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl`
+- `tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl`
 
 **Behavior now expected:**
 - `REAL_SOURCE_VALIDATION=1` gates real provider access.
@@ -151,7 +155,9 @@ Expected: PASS.
 
 **How to choose next work:**
 
-Run or inspect a captured validation output, then continue with the highest-value missing statement family. For the current minimal catalog, AKShare income statement already covers `revenue` and `net_profit`; balance sheet and cash flow captured fixtures are the natural next validation targets before claiming broader source-first completion.
+Run or inspect a captured validation output, then continue with the highest-value missing statement family. For the current minimal catalog, AKShare combined captured replay covers `revenue`, `net_profit`, `total_assets`, `total_liabilities`, `cash`, `operating_cash_flow`, `total_cur_assets`, and `total_cur_liab`; Yahoo income captured replay covers `revenue`, `net_profit`, and `gross_profit`.
+
+The next validation targets are Yahoo balance sheet/cash flow captured replay and `00001`/`01113` AKShare/Yahoo captured replay. Do not repeat real provider calls unless a new statement family or ticker needs to be captured.
 
 **Captured replay command:**
 
@@ -159,6 +165,16 @@ Run or inspect a captured validation output, then continue with the highest-valu
 REAL_SOURCE_VALIDATION=1 \
 INVENTORY_FIXTURE=tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl \
 OUT_DIR=tmp/runs/captured_source_validation_akshare \
+scripts/run-real-source-validation.sh
+
+REAL_SOURCE_VALIDATION=1 \
+INVENTORY_FIXTURE=tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl \
+OUT_DIR=tmp/runs/captured_source_validation_akshare_combined \
+scripts/run-real-source-validation.sh
+
+REAL_SOURCE_VALIDATION=1 \
+INVENTORY_FIXTURE=tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl \
+OUT_DIR=tmp/runs/captured_source_validation_yahoo_income \
 scripts/run-real-source-validation.sh
 ```
 
