@@ -193,6 +193,8 @@ class CoverageMatrixEntry:
             raise ValueError("primary_route is required")
         if not self.verification:
             raise ValueError("verification is required")
+        if not self.notes:
+            raise ValueError("notes are required")
         _validate_literal("coverage domain", self.domain, FieldDomain)
         _validate_literal("coverage priority", self.priority, Priority)
         _validate_literal("invalid primary_route", self.primary_route, PrimaryRoute)
@@ -388,6 +390,14 @@ def validate_coverage_matrix_against_taxonomy(
             errors.append(
                 f"{field_id}: source mode requires PDF or LLM route"
             )
+        if (
+            taxonomy_entry.source_mode == "direct"
+            and coverage_entry.verification != "unknown"
+            and not _direct_source_mode_has_provider_route(coverage_entry)
+        ):
+            errors.append(
+                f"{field_id}: direct source mode requires provider route unless unknown"
+            )
     if errors:
         raise ValueError("; ".join(errors))
 
@@ -406,6 +416,15 @@ def _primary_route_is_verified(entry: CoverageMatrixEntry) -> bool:
         route.source == expected_source
         and route.mode == expected_mode
         and route.status == "verified"
+        for route in entry.routes
+    )
+
+
+def _direct_source_mode_has_provider_route(entry: CoverageMatrixEntry) -> bool:
+    if entry.primary_route not in ("akshare_direct", "yahoo_direct"):
+        return False
+    return any(
+        route.source in ("akshare", "yahoo") and route.mode == "direct"
         for route in entry.routes
     )
 

@@ -164,6 +164,7 @@ def test_coverage_matrix_rejects_missing_top_level_fields(
                 "priority": "P0",
                 "primary_route": "akshare_direct",
                 "verification": "verified",
+                "notes": "Verified by captured AKShare fixture.",
                 "routes": [
                     {
                         "source": "akshare",
@@ -181,6 +182,16 @@ def test_coverage_matrix_rejects_missing_top_level_fields(
     path.write_text(json.dumps(data), encoding="utf-8")
 
     with pytest.raises(ValueError, match=expected_message):
+        load_coverage_matrix(path)
+
+
+def test_coverage_matrix_rejects_missing_entry_notes(tmp_path: Path) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"].pop("notes")
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="notes are required"):
         load_coverage_matrix(path)
 
 
@@ -295,6 +306,7 @@ def test_coverage_matrix_rejects_primary_route_without_matching_route(
                         "priority": "P0",
                         "primary_route": "akshare_direct",
                         "verification": "expected",
+                        "notes": "Expected source route coverage.",
                         "routes": [
                             {
                                 "source": "pdf",
@@ -331,6 +343,7 @@ def test_coverage_matrix_rejects_invalid_route_statement_type(
                         "priority": "P0",
                         "primary_route": "akshare_direct",
                         "verification": "verified",
+                        "notes": "Invalid statement type regression fixture.",
                         "routes": [
                             {
                                 "source": "akshare",
@@ -367,6 +380,7 @@ def test_coverage_matrix_rejects_verified_field_with_unverified_primary_route(
                         "priority": "P0",
                         "primary_route": "akshare_direct",
                         "verification": "verified",
+                        "notes": "Verified status requires verified primary route.",
                         "routes": [
                             {
                                 "source": "akshare",
@@ -407,6 +421,58 @@ def test_coverage_matrix_rejects_pdf_only_taxonomy_with_direct_primary_route(
         match="source mode requires PDF or LLM route",
     ):
         validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
+
+
+def test_coverage_matrix_validation_rejects_direct_taxonomy_without_provider_route(
+    tmp_path: Path,
+) -> None:
+    taxonomy = _write_and_load_taxonomy(tmp_path)
+    matrix = _write_and_load_coverage_matrix(
+        tmp_path,
+        field_metadata={
+            "primary_route": "pdf_evidence",
+            "verification": "expected",
+            "routes": [
+                {
+                    "source": "pdf",
+                    "mode": "evidence",
+                    "status": "expected",
+                    "statement_type": "income_statement",
+                    "evidence_requirement": "pdf_required",
+                }
+            ],
+        },
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="direct source mode requires provider route unless unknown",
+    ):
+        validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
+
+
+def test_coverage_matrix_validation_allows_unknown_direct_taxonomy_without_provider_route(
+    tmp_path: Path,
+) -> None:
+    taxonomy = _write_and_load_taxonomy(tmp_path)
+    matrix = _write_and_load_coverage_matrix(
+        tmp_path,
+        field_metadata={
+            "primary_route": "pdf_evidence",
+            "verification": "unknown",
+            "routes": [
+                {
+                    "source": "pdf",
+                    "mode": "evidence",
+                    "status": "unknown",
+                    "statement_type": "income_statement",
+                    "evidence_requirement": "pdf_required",
+                }
+            ],
+        },
+    )
+
+    validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
 
 
 def test_coverage_matrix_validation_rejects_missing_coverage_fields(
@@ -1637,6 +1703,7 @@ def _coverage_matrix_payload() -> dict[str, Any]:
                 "priority": "P0",
                 "primary_route": "akshare_direct",
                 "verification": "verified",
+                "notes": "Verified by captured AKShare fixture.",
                 "routes": [
                     {
                         "source": "akshare",
@@ -1662,6 +1729,7 @@ def _write_and_load_coverage_matrix(
         "priority": "P0",
         "primary_route": "akshare_direct",
         "verification": "verified",
+        "notes": "Verified by captured AKShare fixture.",
         "routes": [
             {
                 "source": "akshare",
