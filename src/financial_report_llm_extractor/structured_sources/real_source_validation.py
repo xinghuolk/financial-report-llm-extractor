@@ -207,25 +207,24 @@ def _write_validation_outputs(
     write_reconciliation_report(reconciliation, output_dir / "reconciliation_report.json")
     write_source_first_export_artifacts(export, output_dir)
 
-    summary = {
+    artifact_paths = {
+        "source_inventory": str(output_dir / "source_inventory.jsonl"),
+        "turtle_mapping": str(output_dir / "turtle_mapping.json"),
+        "reconciliation_report": str(output_dir / "reconciliation_report.json"),
+        "extraction_result": str(output_dir / "extraction_result.json"),
+        "review_summary": str(output_dir / "review_summary.json"),
+    }
+    summary: dict[str, Any] = {
         "validation_mode": validation_mode,
         "status": "completed_with_source_errors" if source_errors else "completed",
         "sample_count": sample_count,
         "record_count": len(records),
         "source_errors": source_errors,
         "mapping_coverage": _mapping_coverage(mapping),
-        "artifact_paths": {
-            "source_inventory": str(output_dir / "source_inventory.jsonl"),
-            "turtle_mapping": str(output_dir / "turtle_mapping.json"),
-            "reconciliation_report": str(output_dir / "reconciliation_report.json"),
-            "extraction_result": str(output_dir / "extraction_result.json"),
-            "review_summary": str(output_dir / "review_summary.json"),
-        },
+        "artifact_paths": artifact_paths,
     }
     if source_artifact_manifest_path is not None:
-        summary["artifact_paths"]["source_artifact_manifest"] = str(
-            source_artifact_manifest_path
-        )
+        artifact_paths["source_artifact_manifest"] = str(source_artifact_manifest_path)
         summary["source_artifact_count"] = source_artifact_count
     output_path = output_dir / "real_source_validation_summary.json"
     output_path.write_text(
