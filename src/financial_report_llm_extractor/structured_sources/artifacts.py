@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -162,10 +162,28 @@ def write_source_inventory(
 
 def read_source_inventory(path: Path) -> tuple[SourceInventoryRecord, ...]:
     records: list[SourceInventoryRecord] = []
+    line_number = 0
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
-        records.append(_record_from_jsonable(json.loads(line)))
+        line_number += 1
+        label = f"source inventory line {line_number}"
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"{label} is invalid JSON") from exc
+        try:
+            records.append(
+                _record_from_jsonable(
+                    _require_object(payload, label),
+                    line_number=line_number,
+                )
+            )
+        except (TypeError, KeyError, ValueError) as exc:
+            message = str(exc)
+            if message.startswith(label):
+                raise
+            raise ValueError(f"{label}: {message}") from exc
     return tuple(records)
 
 
@@ -279,13 +297,36 @@ def _record_to_jsonable(record: SourceInventoryRecord) -> dict[str, Any]:
     return payload
 
 
-def _record_from_jsonable(payload: dict[str, Any]) -> SourceInventoryRecord:
-    evidence = tuple(SourceEvidence(**item) for item in payload.pop("source_evidence", []))
+def _record_from_jsonable(
+    payload: dict[str, Any],
+    *,
+    line_number: int | None = None,
+) -> SourceInventoryRecord:
+    label = "source inventory"
+    if line_number is not None:
+        label = f"{label} line {line_number}"
+
+    record_payload = dict(payload)
+    if "source_evidence" in record_payload:
+        raw_evidence = record_payload.pop("source_evidence")
+        evidence_items: tuple[Any, ...] | list[Any] = _require_list(
+            raw_evidence,
+            f"{label} source_evidence",
+        )
+    else:
+        evidence_items = ()
+    evidence = tuple(
+        SourceEvidence(**_require_object(item, f"{label} source_evidence[{index}]"))
+        for index, item in enumerate(evidence_items)
+    )
     parsed_numeric_value = payload.get("parsed_numeric_value")
     if parsed_numeric_value is not None:
-        payload["parsed_numeric_value"] = Decimal(str(parsed_numeric_value))
+        try:
+            record_payload["parsed_numeric_value"] = Decimal(str(parsed_numeric_value))
+        except (InvalidOperation, ValueError) as exc:
+            raise ValueError(f"{label} parsed_numeric_value is invalid") from exc
     record = SourceInventoryRecord(
-        **payload,
+        **record_payload,
         source_evidence=evidence,
     )
     record.validate()
