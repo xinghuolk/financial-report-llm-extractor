@@ -85,6 +85,24 @@ def test_field_taxonomy_rejects_invalid_value_type(tmp_path: Path) -> None:
         load_field_taxonomy(taxonomy_path)
 
 
+def test_field_taxonomy_rejects_empty_fields(tmp_path: Path) -> None:
+    taxonomy_path = tmp_path / "taxonomy.json"
+    taxonomy_path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo_taxonomy",
+                "version": "2026-05-02",
+                "source_priority_catalog": "demo_priority",
+                "fields": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="fields is required"):
+        load_field_taxonomy(taxonomy_path)
+
+
 def test_load_coverage_matrix_reads_routes(tmp_path: Path) -> None:
     path = tmp_path / "coverage.json"
     path.write_text(

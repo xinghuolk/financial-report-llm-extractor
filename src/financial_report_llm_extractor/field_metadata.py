@@ -134,6 +134,8 @@ class FieldTaxonomyCatalog:
             raise ValueError("version is required")
         if not self.source_priority_catalog:
             raise ValueError("source_priority_catalog is required")
+        if not self.fields:
+            raise ValueError("fields is required")
         for field_id, entry in self.fields.items():
             if not field_id:
                 raise ValueError("taxonomy field ids cannot be empty")
