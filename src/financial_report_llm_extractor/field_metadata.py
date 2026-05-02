@@ -17,12 +17,36 @@ FieldDomain = Literal[
     "accounting_adjustments",
     "notes_and_mda",
 ]
+StatementType = Literal[
+    "income_statement",
+    "balance_sheet",
+    "cash_flow",
+    "notes",
+    "mda",
+    "announcement",
+    "mixed",
+]
+FieldValueType = Literal["money", "number", "percent", "text", "derived"]
 SourceMode = Literal["direct", "derived", "source_optional", "pdf_only", "llm_review"]
+PeriodType = Literal["duration", "point_in_time", "annual_text", "event"]
+ScopeExpectation = Literal[
+    "consolidated",
+    "parent",
+    "attributable_to_owners",
+    "unknown",
+    "not_applicable",
+]
 Requirement = Literal["required", "optional", "not_applicable"]
 EvidenceRequirement = Literal[
     "source_only_allowed",
     "pdf_required",
     "llm_review_required",
+]
+FallbackPolicy = Literal[
+    "source_required",
+    "pdf_allowed",
+    "llm_review_required",
+    "manual_review_required",
 ]
 PrimaryRoute = Literal[
     "akshare_direct",
@@ -52,15 +76,15 @@ class FieldTaxonomyEntry:
     field_id: str
     priority: Priority
     domain: FieldDomain
-    statement_type: str
-    value_type: str
+    statement_type: StatementType
+    value_type: FieldValueType
     source_mode: SourceMode
-    period_type: str
-    scope_expectation: str
+    period_type: PeriodType
+    scope_expectation: ScopeExpectation
     currency_requirement: Requirement
     unit_requirement: Requirement
     evidence_requirement: EvidenceRequirement
-    fallback_policy: str
+    fallback_policy: FallbackPolicy
     description: str
 
     def validate(self) -> None:
@@ -72,7 +96,15 @@ class FieldTaxonomyEntry:
             raise ValueError("description is required")
         _validate_literal("priority", self.priority, Priority)
         _validate_literal("domain", self.domain, FieldDomain)
+        _validate_literal("invalid statement_type", self.statement_type, StatementType)
+        _validate_literal("invalid value_type", self.value_type, FieldValueType)
         _validate_literal("source_mode", self.source_mode, SourceMode)
+        _validate_literal("invalid period_type", self.period_type, PeriodType)
+        _validate_literal(
+            "invalid scope_expectation",
+            self.scope_expectation,
+            ScopeExpectation,
+        )
         _validate_literal("currency_requirement", self.currency_requirement, Requirement)
         _validate_literal("unit_requirement", self.unit_requirement, Requirement)
         _validate_literal(
@@ -80,6 +112,7 @@ class FieldTaxonomyEntry:
             self.evidence_requirement,
             EvidenceRequirement,
         )
+        _validate_literal("invalid fallback_policy", self.fallback_policy, FallbackPolicy)
         if self.value_type == "money" and (
             self.currency_requirement == "not_applicable"
             or self.unit_requirement == "not_applicable"

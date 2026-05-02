@@ -49,6 +49,39 @@ def test_load_field_taxonomy_reads_field_metadata(tmp_path: Path) -> None:
     assert taxonomy.fields["revenue"].source_mode == "direct"
 
 
+def test_field_taxonomy_rejects_invalid_value_type(tmp_path: Path) -> None:
+    taxonomy_path = tmp_path / "taxonomy.json"
+    taxonomy_path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo_taxonomy",
+                "version": "2026-05-02",
+                "source_priority_catalog": "demo_priority",
+                "fields": {
+                    "revenue": {
+                        "priority": "P0",
+                        "domain": "income_statement",
+                        "statement_type": "income_statement",
+                        "value_type": "mony",
+                        "source_mode": "direct",
+                        "period_type": "duration",
+                        "scope_expectation": "consolidated",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "evidence_requirement": "source_only_allowed",
+                        "fallback_policy": "pdf_allowed",
+                        "description": "Revenue.",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="invalid value_type"):
+        load_field_taxonomy(taxonomy_path)
+
+
 def test_load_coverage_matrix_reads_routes(tmp_path: Path) -> None:
     path = tmp_path / "coverage.json"
     path.write_text(
