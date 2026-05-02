@@ -4,7 +4,11 @@ from pathlib import Path
 import pytest
 
 from financial_report_llm_extractor.field_metadata import (
+    CoverageMatrix,
+    FieldTaxonomyCatalog,
     load_field_taxonomy,
+    load_coverage_matrix,
+    validate_coverage_matrix_against_taxonomy,
     validate_taxonomy_against_priority_catalog,
 )
 
@@ -43,6 +47,139 @@ def test_load_field_taxonomy_reads_field_metadata(tmp_path: Path) -> None:
     assert taxonomy.catalog_id == "demo_taxonomy"
     assert taxonomy.fields["revenue"].domain == "income_statement"
     assert taxonomy.fields["revenue"].source_mode == "direct"
+
+
+def test_load_coverage_matrix_reads_routes(tmp_path: Path) -> None:
+    path = tmp_path / "coverage.json"
+    path.write_text(
+        json.dumps(
+            {
+                "matrix_id": "demo_coverage",
+                "version": "2026-05-02",
+                "taxonomy_catalog": "demo_taxonomy",
+                "fields": {
+                    "revenue": {
+                        "domain": "income_statement",
+                        "priority": "P0",
+                        "primary_route": "akshare_direct",
+                        "verification": "verified",
+                        "routes": [
+                            {
+                                "source": "akshare",
+                                "mode": "direct",
+                                "status": "verified",
+                                "statement_type": "income_statement",
+                                "evidence_requirement": "source_only_allowed",
+                            }
+                        ],
+                        "notes": "Verified by captured AKShare fixture.",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    matrix = load_coverage_matrix(path)
+
+    assert matrix.matrix_id == "demo_coverage"
+    assert matrix.fields["revenue"].primary_route == "akshare_direct"
+    assert matrix.fields["revenue"].verification == "verified"
+    assert matrix.fields["revenue"].routes[0].status == "verified"
+
+
+def test_coverage_matrix_rejects_primary_route_without_matching_route(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "coverage.json"
+    path.write_text(
+        json.dumps(
+            {
+                "matrix_id": "demo_coverage",
+                "version": "2026-05-02",
+                "taxonomy_catalog": "demo_taxonomy",
+                "fields": {
+                    "revenue": {
+                        "domain": "income_statement",
+                        "priority": "P0",
+                        "primary_route": "akshare_direct",
+                        "verification": "expected",
+                        "routes": [
+                            {
+                                "source": "pdf",
+                                "mode": "evidence",
+                                "status": "expected",
+                                "statement_type": "income_statement",
+                                "evidence_requirement": "pdf_required",
+                            }
+                        ],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="primary_route has no matching route"):
+        load_coverage_matrix(path)
+
+
+def test_coverage_matrix_rejects_verified_field_with_unverified_primary_route(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "coverage.json"
+    path.write_text(
+        json.dumps(
+            {
+                "matrix_id": "demo_coverage",
+                "version": "2026-05-02",
+                "taxonomy_catalog": "demo_taxonomy",
+                "fields": {
+                    "revenue": {
+                        "domain": "income_statement",
+                        "priority": "P0",
+                        "primary_route": "akshare_direct",
+                        "verification": "verified",
+                        "routes": [
+                            {
+                                "source": "akshare",
+                                "mode": "direct",
+                                "status": "expected",
+                                "statement_type": "income_statement",
+                                "evidence_requirement": "source_only_allowed",
+                            }
+                        ],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="verified field requires verified primary route",
+    ):
+        load_coverage_matrix(path)
+
+
+def test_coverage_matrix_rejects_pdf_only_taxonomy_with_direct_primary_route(
+    tmp_path: Path,
+) -> None:
+    taxonomy = _write_and_load_taxonomy(
+        tmp_path,
+        field_metadata={
+            "source_mode": "pdf_only",
+            "evidence_requirement": "pdf_required",
+        },
+    )
+    matrix = _write_and_load_coverage_matrix(tmp_path)
+
+    with pytest.raises(
+        ValueError,
+        match="source mode requires PDF or LLM route",
+    ):
+        validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
 
 
 def test_taxonomy_validation_requires_exact_priority_catalog_coverage(
@@ -1157,3 +1294,76 @@ def test_real_turtle_taxonomy_supports_domain_queries() -> None:
     assert "total_assets" in p0_balance_sheet
     assert "cash" in p0_balance_sheet
     assert "revenue" not in p0_balance_sheet
+
+
+def _write_and_load_taxonomy(
+    tmp_path: Path,
+    *,
+    field_metadata: dict[str, str] | None = None,
+) -> FieldTaxonomyCatalog:
+    metadata = {
+        "priority": "P0",
+        "domain": "income_statement",
+        "statement_type": "income_statement",
+        "value_type": "money",
+        "source_mode": "direct",
+        "period_type": "duration",
+        "scope_expectation": "consolidated",
+        "currency_requirement": "required",
+        "unit_requirement": "required",
+        "evidence_requirement": "source_only_allowed",
+        "fallback_policy": "pdf_allowed",
+        "description": "Revenue.",
+    }
+    if field_metadata:
+        metadata.update(field_metadata)
+    path = tmp_path / "taxonomy.json"
+    path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo_taxonomy",
+                "version": "2026-05-02",
+                "source_priority_catalog": "demo_priority",
+                "fields": {"revenue": metadata},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return load_field_taxonomy(path)
+
+
+def _write_and_load_coverage_matrix(
+    tmp_path: Path,
+    *,
+    field_metadata: dict[str, object] | None = None,
+) -> CoverageMatrix:
+    metadata: dict[str, object] = {
+        "domain": "income_statement",
+        "priority": "P0",
+        "primary_route": "akshare_direct",
+        "verification": "verified",
+        "routes": [
+            {
+                "source": "akshare",
+                "mode": "direct",
+                "status": "verified",
+                "statement_type": "income_statement",
+                "evidence_requirement": "source_only_allowed",
+            }
+        ],
+    }
+    if field_metadata:
+        metadata.update(field_metadata)
+    path = tmp_path / "coverage.json"
+    path.write_text(
+        json.dumps(
+            {
+                "matrix_id": "demo_coverage",
+                "version": "2026-05-02",
+                "taxonomy_catalog": "demo_taxonomy",
+                "fields": {"revenue": metadata},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return load_coverage_matrix(path)

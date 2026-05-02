@@ -24,6 +24,27 @@ EvidenceRequirement = Literal[
     "pdf_required",
     "llm_review_required",
 ]
+PrimaryRoute = Literal[
+    "akshare_direct",
+    "yahoo_direct",
+    "source_derived",
+    "pdf_evidence",
+    "llm_review",
+    "unsupported_first_stage",
+]
+RouteSource = Literal["akshare", "yahoo", "pdf", "llm", "derived"]
+RouteMode = Literal["direct", "derived", "evidence", "review", "unsupported"]
+VerificationStatus = Literal["verified", "expected", "unknown", "unsupported"]
+
+
+PRIMARY_ROUTE_MATCHES: dict[PrimaryRoute, tuple[RouteSource, RouteMode]] = {
+    "akshare_direct": ("akshare", "direct"),
+    "yahoo_direct": ("yahoo", "direct"),
+    "source_derived": ("derived", "derived"),
+    "pdf_evidence": ("pdf", "evidence"),
+    "llm_review": ("llm", "review"),
+    "unsupported_first_stage": ("derived", "unsupported"),
+}
 
 
 @dataclass(frozen=True)
@@ -88,6 +109,82 @@ class FieldTaxonomyCatalog:
             entry.validate()
 
 
+@dataclass(frozen=True)
+class CoverageRoute:
+    source: RouteSource
+    mode: RouteMode
+    status: VerificationStatus
+    statement_type: str
+    evidence_requirement: EvidenceRequirement
+
+    def validate(self) -> None:
+        _validate_literal("route source", self.source, RouteSource)
+        _validate_literal("route mode", self.mode, RouteMode)
+        _validate_literal("route status", self.status, VerificationStatus)
+        _validate_literal(
+            "route evidence_requirement",
+            self.evidence_requirement,
+            EvidenceRequirement,
+        )
+        if not self.statement_type:
+            raise ValueError("route statement_type is required")
+
+
+@dataclass(frozen=True)
+class CoverageMatrixEntry:
+    field_id: str
+    domain: FieldDomain
+    priority: Priority
+    primary_route: PrimaryRoute
+    verification: VerificationStatus
+    routes: tuple[CoverageRoute, ...]
+    notes: str = ""
+
+    def validate(self) -> None:
+        if not self.field_id:
+            raise ValueError("coverage field_id is required")
+        _validate_literal("coverage domain", self.domain, FieldDomain)
+        _validate_literal("coverage priority", self.priority, Priority)
+        _validate_literal("primary_route", self.primary_route, PrimaryRoute)
+        _validate_literal("verification", self.verification, VerificationStatus)
+        if not self.routes:
+            raise ValueError("coverage routes are required")
+        for route in self.routes:
+            route.validate()
+        if not _primary_route_has_matching_route(self):
+            raise ValueError(
+                f"{self.field_id}: primary_route has no matching route"
+            )
+        if self.verification == "verified" and not _primary_route_is_verified(
+            self
+        ):
+            raise ValueError(
+                f"{self.field_id}: verified field requires verified primary route"
+            )
+
+
+@dataclass(frozen=True)
+class CoverageMatrix:
+    matrix_id: str
+    version: str
+    taxonomy_catalog: str
+    fields: dict[str, CoverageMatrixEntry]
+
+    def validate(self) -> None:
+        if not self.matrix_id:
+            raise ValueError("matrix_id is required")
+        if not self.version:
+            raise ValueError("version is required")
+        if not self.taxonomy_catalog:
+            raise ValueError("taxonomy_catalog is required")
+        for field_id, entry in self.fields.items():
+            if not field_id:
+                raise ValueError("coverage field ids cannot be empty")
+            if field_id != entry.field_id:
+                raise ValueError("coverage field id must match entry field_id")
+            entry.validate()
+
+
 def load_field_taxonomy(path: Path) -> FieldTaxonomyCatalog:
     data = json.loads(path.read_text(encoding="utf-8"))
     fields = {
@@ -102,6 +199,39 @@ def load_field_taxonomy(path: Path) -> FieldTaxonomyCatalog:
     )
     taxonomy.validate()
     return taxonomy
+
+
+def load_coverage_matrix(path: Path) -> CoverageMatrix:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    fields = {
+        field_id: CoverageMatrixEntry(
+            field_id=field_id,
+            domain=metadata["domain"],
+            priority=metadata["priority"],
+            primary_route=metadata["primary_route"],
+            verification=metadata["verification"],
+            routes=tuple(
+                CoverageRoute(
+                    source=route["source"],
+                    mode=route["mode"],
+                    status=route["status"],
+                    statement_type=route["statement_type"],
+                    evidence_requirement=route["evidence_requirement"],
+                )
+                for route in metadata["routes"]
+            ),
+            notes=metadata.get("notes", ""),
+        )
+        for field_id, metadata in data["fields"].items()
+    }
+    matrix = CoverageMatrix(
+        matrix_id=data["matrix_id"],
+        version=data["version"],
+        taxonomy_catalog=data["taxonomy_catalog"],
+        fields=fields,
+    )
+    matrix.validate()
+    return matrix
 
 
 def load_priority_field_ids(path: Path) -> set[str]:
@@ -170,6 +300,62 @@ def validate_taxonomy_against_priority_catalog(
         errors.append(f"priority mismatch: {', '.join(priority_mismatches)}")
     if errors:
         raise ValueError("; ".join(errors))
+
+
+def validate_coverage_matrix_against_taxonomy(
+    matrix: CoverageMatrix,
+    taxonomy: FieldTaxonomyCatalog,
+) -> None:
+    matrix.validate()
+    taxonomy.validate()
+    coverage_field_ids = set(matrix.fields)
+    taxonomy_field_ids = set(taxonomy.fields)
+    missing = sorted(taxonomy_field_ids - coverage_field_ids)
+    unknown = sorted(coverage_field_ids - taxonomy_field_ids)
+    errors: list[str] = []
+    if matrix.taxonomy_catalog != taxonomy.catalog_id:
+        errors.append(
+            "taxonomy_catalog mismatch: "
+            f"{matrix.taxonomy_catalog} != {taxonomy.catalog_id}"
+        )
+    if missing:
+        errors.append(f"missing coverage fields: {', '.join(missing)}")
+    if unknown:
+        errors.append(f"unknown coverage fields: {', '.join(unknown)}")
+    for field_id in sorted(coverage_field_ids & taxonomy_field_ids):
+        coverage_entry = matrix.fields[field_id]
+        taxonomy_entry = taxonomy.fields[field_id]
+        if coverage_entry.domain != taxonomy_entry.domain:
+            errors.append(f"{field_id}: domain mismatch")
+        if coverage_entry.priority != taxonomy_entry.priority:
+            errors.append(f"{field_id}: priority mismatch")
+        if (
+            taxonomy_entry.source_mode in ("pdf_only", "llm_review")
+            and coverage_entry.primary_route not in ("pdf_evidence", "llm_review")
+        ):
+            errors.append(
+                f"{field_id}: source mode requires PDF or LLM route"
+            )
+    if errors:
+        raise ValueError("; ".join(errors))
+
+
+def _primary_route_has_matching_route(entry: CoverageMatrixEntry) -> bool:
+    expected_source, expected_mode = PRIMARY_ROUTE_MATCHES[entry.primary_route]
+    return any(
+        route.source == expected_source and route.mode == expected_mode
+        for route in entry.routes
+    )
+
+
+def _primary_route_is_verified(entry: CoverageMatrixEntry) -> bool:
+    expected_source, expected_mode = PRIMARY_ROUTE_MATCHES[entry.primary_route]
+    return any(
+        route.source == expected_source
+        and route.mode == expected_mode
+        and route.status == "verified"
+        for route in entry.routes
+    )
 
 
 def _validate_literal(name: str, value: str, literal: Any) -> None:
