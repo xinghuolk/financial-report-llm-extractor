@@ -410,6 +410,12 @@ Exit criteria:
 - Source errors are structured.
 - AKShare coverage is reported by Turtle domain and priority, not only by raw provider fields.
 
+Implementation note:
+
+- Phase C baseline AKShare fixture adapter exists for HK and CN statements.
+- PC2 should integrate AKShare adapter runs with PB2 artifact manifests and replay validation.
+- Adapter-backed validation should write `source_artifact_manifest.json`; captured inventory validation remains manifest-optional.
+
 ### Phase D: Yahoo/yfinance Adapter
 
 Goal: add the second structured source for fallback and reconciliation, implemented in stages against the Turtle coverage matrix.
