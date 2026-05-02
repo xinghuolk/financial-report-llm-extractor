@@ -51,6 +51,31 @@ def evaluate_source_coverage(
     }
 
 
+def summarize_source_coverage_by_metadata(
+    entries: Mapping[str, SourceMappingEntry],
+) -> dict[str, object]:
+    by_domain: dict[str, int] = {}
+    by_priority: dict[str, int] = {}
+    by_source_mode: dict[str, int] = {}
+    by_primary_route: dict[str, int] = {}
+    for entry in entries.values():
+        by_domain[entry.domain] = by_domain.get(entry.domain, 0) + 1
+        by_priority[entry.priority] = by_priority.get(entry.priority, 0) + 1
+        by_source_mode[entry.source_mode] = (
+            by_source_mode.get(entry.source_mode, 0) + 1
+        )
+        by_primary_route[entry.primary_route] = (
+            by_primary_route.get(entry.primary_route, 0) + 1
+        )
+    return {
+        "total_fields": len(entries),
+        "by_domain": dict(sorted(by_domain.items())),
+        "by_priority": dict(sorted(by_priority.items())),
+        "by_source_mode": dict(sorted(by_source_mode.items())),
+        "by_primary_route": dict(sorted(by_primary_route.items())),
+    }
+
+
 def _coverage_for_source(
     entries: Sequence[SourceMappingEntry],
     records: Sequence[SourceInventoryRecord],

@@ -3,6 +3,7 @@ from decimal import Decimal
 from financial_report_llm_extractor.structured_sources.catalog import SourceMappingEntry
 from financial_report_llm_extractor.structured_sources.coverage import (
     evaluate_source_coverage,
+    summarize_source_coverage_by_metadata,
 )
 from financial_report_llm_extractor.structured_sources.models import (
     SourceEvidence,
@@ -112,3 +113,29 @@ def test_source_coverage_blocks_money_record_without_currency_unit() -> None:
     assert summary["combined"]["blocker_reasons"] == {
         "revenue": ["money source records require currency and unit"]
     }
+
+
+def test_source_coverage_summary_groups_by_domain_and_route() -> None:
+    entries = {
+        "revenue": SourceMappingEntry(
+            field_id="revenue",
+            priority="P0",
+            value_type="money",
+            statement_type="income_statement",
+            currency_requirement="required",
+            unit_requirement="required",
+            source_aliases={"akshare": ("营业收入",)},
+            domain="income_statement",
+            source_mode="direct",
+            primary_route="akshare_direct",
+            verification_status="verified",
+        )
+    }
+
+    summary = summarize_source_coverage_by_metadata(entries)
+
+    assert summary["total_fields"] == 1
+    assert summary["by_domain"] == {"income_statement": 1}
+    assert summary["by_priority"] == {"P0": 1}
+    assert summary["by_source_mode"] == {"direct": 1}
+    assert summary["by_primary_route"] == {"akshare_direct": 1}
