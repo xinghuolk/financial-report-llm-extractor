@@ -161,12 +161,12 @@ class CoverageRoute:
             raise ValueError("statement_type is required")
         if not self.evidence_requirement:
             raise ValueError("evidence_requirement is required")
-        _validate_literal("route source", self.source, RouteSource)
-        _validate_literal("route mode", self.mode, RouteMode)
-        _validate_literal("route status", self.status, VerificationStatus)
+        _validate_literal("invalid source", self.source, RouteSource)
+        _validate_literal("invalid mode", self.mode, RouteMode)
+        _validate_literal("invalid status", self.status, VerificationStatus)
         _validate_literal("invalid statement_type", self.statement_type, StatementType)
         _validate_literal(
-            "route evidence_requirement",
+            "invalid evidence_requirement",
             self.evidence_requirement,
             EvidenceRequirement,
         )
@@ -195,8 +195,8 @@ class CoverageMatrixEntry:
             raise ValueError("verification is required")
         _validate_literal("coverage domain", self.domain, FieldDomain)
         _validate_literal("coverage priority", self.priority, Priority)
-        _validate_literal("primary_route", self.primary_route, PrimaryRoute)
-        _validate_literal("verification", self.verification, VerificationStatus)
+        _validate_literal("invalid primary_route", self.primary_route, PrimaryRoute)
+        _validate_literal("invalid verification", self.verification, VerificationStatus)
         if not self.routes:
             raise ValueError("coverage routes are required")
         for route in self.routes:

@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -183,23 +184,98 @@ def test_coverage_matrix_rejects_missing_top_level_fields(
         load_coverage_matrix(path)
 
 
-def test_coverage_matrix_rejects_missing_entry_domain(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("missing_key", "expected_message"),
+    [
+        ("domain", "domain is required"),
+        ("priority", "priority is required"),
+        ("primary_route", "primary_route is required"),
+        ("verification", "verification is required"),
+        ("routes", "coverage routes are required"),
+    ],
+)
+def test_coverage_matrix_rejects_missing_entry_fields(
+    tmp_path: Path,
+    missing_key: str,
+    expected_message: str,
+) -> None:
     data = _coverage_matrix_payload()
-    data["fields"]["revenue"].pop("domain")
+    data["fields"]["revenue"].pop(missing_key)
     path = tmp_path / "coverage.json"
     path.write_text(json.dumps(data), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="domain is required"):
+    with pytest.raises(ValueError, match=expected_message):
         load_coverage_matrix(path)
 
 
-def test_coverage_matrix_rejects_missing_route_source(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("missing_key", "expected_message"),
+    [
+        ("source", "source is required"),
+        ("mode", "mode is required"),
+        ("status", "status is required"),
+        ("statement_type", "statement_type is required"),
+        ("evidence_requirement", "evidence_requirement is required"),
+    ],
+)
+def test_coverage_matrix_rejects_missing_route_fields(
+    tmp_path: Path,
+    missing_key: str,
+    expected_message: str,
+) -> None:
     data = _coverage_matrix_payload()
-    data["fields"]["revenue"]["routes"][0].pop("source")
+    data["fields"]["revenue"]["routes"][0].pop(missing_key)
     path = tmp_path / "coverage.json"
     path.write_text(json.dumps(data), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="source is required"):
+    with pytest.raises(ValueError, match=expected_message):
+        load_coverage_matrix(path)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value", "expected_message"),
+    [
+        ("source", "wind", "invalid source"),
+        ("mode", "lookup", "invalid mode"),
+        ("status", "confirmed", "invalid status"),
+        ("statement_type", "income_statment", "invalid statement_type"),
+        ("evidence_requirement", "none", "invalid evidence_requirement"),
+    ],
+)
+def test_coverage_matrix_rejects_invalid_route_vocabulary(
+    tmp_path: Path,
+    field_name: str,
+    bad_value: str,
+    expected_message: str,
+) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"]["routes"][0][field_name] = bad_value
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected_message):
+        load_coverage_matrix(path)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value", "expected_message"),
+    [
+        ("primary_route", "akshare_lookup", "invalid primary_route"),
+        ("verification", "confirmed", "invalid verification"),
+    ],
+)
+def test_coverage_matrix_rejects_invalid_entry_vocabulary(
+    tmp_path: Path,
+    field_name: str,
+    bad_value: str,
+    expected_message: str,
+) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"][field_name] = bad_value
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected_message):
         load_coverage_matrix(path)
 
 
@@ -330,6 +406,73 @@ def test_coverage_matrix_rejects_pdf_only_taxonomy_with_direct_primary_route(
         ValueError,
         match="source mode requires PDF or LLM route",
     ):
+        validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
+
+
+def test_coverage_matrix_validation_rejects_missing_coverage_fields(
+    tmp_path: Path,
+) -> None:
+    taxonomy = _write_and_load_taxonomy(tmp_path)
+    taxonomy.fields["net_profit"] = replace(
+        taxonomy.fields["revenue"],
+        field_id="net_profit",
+    )
+    matrix = _write_and_load_coverage_matrix(tmp_path)
+
+    with pytest.raises(ValueError, match="missing coverage fields"):
+        validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
+
+
+def test_coverage_matrix_validation_rejects_unknown_coverage_fields(
+    tmp_path: Path,
+) -> None:
+    taxonomy = _write_and_load_taxonomy(tmp_path)
+    matrix = _write_and_load_coverage_matrix(tmp_path)
+    matrix.fields["unexpected_field"] = replace(
+        matrix.fields["revenue"],
+        field_id="unexpected_field",
+    )
+
+    with pytest.raises(ValueError, match="unknown coverage fields"):
+        validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
+
+
+def test_coverage_matrix_validation_rejects_taxonomy_catalog_mismatch(
+    tmp_path: Path,
+) -> None:
+    taxonomy = _write_and_load_taxonomy(tmp_path)
+    matrix = _write_and_load_coverage_matrix(
+        tmp_path,
+        matrix_metadata={"taxonomy_catalog": "different_taxonomy"},
+    )
+
+    with pytest.raises(ValueError, match="taxonomy_catalog mismatch"):
+        validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
+
+
+def test_coverage_matrix_validation_rejects_domain_mismatch(
+    tmp_path: Path,
+) -> None:
+    taxonomy = _write_and_load_taxonomy(
+        tmp_path,
+        field_metadata={"domain": "balance_sheet"},
+    )
+    matrix = _write_and_load_coverage_matrix(tmp_path)
+
+    with pytest.raises(ValueError, match="domain mismatch"):
+        validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
+
+
+def test_coverage_matrix_validation_rejects_priority_mismatch(
+    tmp_path: Path,
+) -> None:
+    taxonomy = _write_and_load_taxonomy(
+        tmp_path,
+        field_metadata={"priority": "P1"},
+    )
+    matrix = _write_and_load_coverage_matrix(tmp_path)
+
+    with pytest.raises(ValueError, match="priority mismatch"):
         validate_coverage_matrix_against_taxonomy(matrix, taxonomy)
 
 
@@ -1512,6 +1655,7 @@ def _write_and_load_coverage_matrix(
     tmp_path: Path,
     *,
     field_metadata: dict[str, object] | None = None,
+    matrix_metadata: dict[str, object] | None = None,
 ) -> CoverageMatrix:
     metadata: dict[str, object] = {
         "domain": "income_statement",
@@ -1530,16 +1674,17 @@ def _write_and_load_coverage_matrix(
     }
     if field_metadata:
         metadata.update(field_metadata)
+    matrix_payload: dict[str, object] = {
+        "matrix_id": "demo_coverage",
+        "version": "2026-05-02",
+        "taxonomy_catalog": "demo_taxonomy",
+        "fields": {"revenue": metadata},
+    }
+    if matrix_metadata:
+        matrix_payload.update(matrix_metadata)
     path = tmp_path / "coverage.json"
     path.write_text(
-        json.dumps(
-            {
-                "matrix_id": "demo_coverage",
-                "version": "2026-05-02",
-                "taxonomy_catalog": "demo_taxonomy",
-                "fields": {"revenue": metadata},
-            }
-        ),
+        json.dumps(matrix_payload),
         encoding="utf-8",
     )
     return load_coverage_matrix(path)
