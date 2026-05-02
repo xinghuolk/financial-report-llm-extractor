@@ -105,26 +105,69 @@ def load_field_taxonomy(path: Path) -> FieldTaxonomyCatalog:
 
 
 def load_priority_field_ids(path: Path) -> set[str]:
+    priority_catalog = load_priority_catalog(path)
+    return set(priority_catalog.field_priorities)
+
+
+@dataclass(frozen=True)
+class PriorityFieldCatalog:
+    catalog_id: str
+    field_priorities: dict[str, Priority]
+    duplicate_field_ids: tuple[str, ...]
+
+
+def load_priority_catalog(path: Path) -> PriorityFieldCatalog:
     catalog = json.loads(path.read_text(encoding="utf-8"))
-    field_ids: set[str] = set()
+    field_priorities: dict[str, Priority] = {}
+    duplicate_field_ids: set[str] = set()
     for group in catalog["priorities"]:
-        field_ids.update(str(field_id) for field_id in group["fields"])
-    return field_ids
+        priority = group["priority"]
+        _validate_literal("priority", priority, Priority)
+        for raw_field_id in group["fields"]:
+            field_id = str(raw_field_id)
+            if field_id in field_priorities:
+                duplicate_field_ids.add(field_id)
+                continue
+            field_priorities[field_id] = priority
+    return PriorityFieldCatalog(
+        catalog_id=catalog["catalog_id"],
+        field_priorities=field_priorities,
+        duplicate_field_ids=tuple(sorted(duplicate_field_ids)),
+    )
 
 
 def validate_taxonomy_against_priority_catalog(
     taxonomy: FieldTaxonomyCatalog,
     priority_catalog_path: Path,
 ) -> None:
-    priority_field_ids = load_priority_field_ids(priority_catalog_path)
+    priority_catalog = load_priority_catalog(priority_catalog_path)
+    priority_field_ids = set(priority_catalog.field_priorities)
     taxonomy_field_ids = set(taxonomy.fields)
     missing = sorted(priority_field_ids - taxonomy_field_ids)
     unknown = sorted(taxonomy_field_ids - priority_field_ids)
+    priority_mismatches = [
+        field_id
+        for field_id in sorted(priority_field_ids & taxonomy_field_ids)
+        if taxonomy.fields[field_id].priority
+        != priority_catalog.field_priorities[field_id]
+    ]
     errors: list[str] = []
+    if taxonomy.source_priority_catalog != priority_catalog.catalog_id:
+        errors.append(
+            "source_priority_catalog mismatch: "
+            f"{taxonomy.source_priority_catalog} != {priority_catalog.catalog_id}"
+        )
+    if priority_catalog.duplicate_field_ids:
+        errors.append(
+            "duplicate priority catalog fields: "
+            f"{', '.join(priority_catalog.duplicate_field_ids)}"
+        )
     if missing:
         errors.append(f"missing taxonomy fields: {', '.join(missing)}")
     if unknown:
         errors.append(f"unknown taxonomy fields: {', '.join(unknown)}")
+    if priority_mismatches:
+        errors.append(f"priority mismatch: {', '.join(priority_mismatches)}")
     if errors:
         raise ValueError("; ".join(errors))
 
