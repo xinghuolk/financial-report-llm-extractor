@@ -142,6 +142,72 @@ def test_coverage_matrix_rejects_empty_fields(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    ("payload", "expected_message"),
+    [
+        ([], "coverage matrix must be an object"),
+        ("not an object", "coverage matrix must be an object"),
+        (
+            {
+                "matrix_id": "demo_coverage",
+                "version": "2026-05-02",
+                "taxonomy_catalog": "demo_taxonomy",
+                "fields": [],
+            },
+            "coverage fields must be an object",
+        ),
+    ],
+)
+def test_coverage_matrix_rejects_malformed_top_level_shapes(
+    tmp_path: Path,
+    payload: object,
+    expected_message: str,
+) -> None:
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected_message):
+        load_coverage_matrix(path)
+
+
+@pytest.mark.parametrize("entry_payload", ["not an object", []])
+def test_coverage_matrix_rejects_malformed_field_entry_shapes(
+    tmp_path: Path,
+    entry_payload: object,
+) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"] = entry_payload
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="coverage field entry must be an object"):
+        load_coverage_matrix(path)
+
+
+def test_coverage_matrix_rejects_malformed_routes_shape(tmp_path: Path) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"]["routes"] = {}
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="coverage routes must be a list"):
+        load_coverage_matrix(path)
+
+
+@pytest.mark.parametrize("route_payload", ["not an object", []])
+def test_coverage_matrix_rejects_malformed_route_shapes(
+    tmp_path: Path,
+    route_payload: object,
+) -> None:
+    data = _coverage_matrix_payload()
+    data["fields"]["revenue"]["routes"] = [route_payload]
+    path = tmp_path / "coverage.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="coverage route must be an object"):
+        load_coverage_matrix(path)
+
+
+@pytest.mark.parametrize(
     ("missing_key", "expected_message"),
     [
         ("matrix_id", "matrix_id is required"),

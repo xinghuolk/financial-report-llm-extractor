@@ -263,14 +263,23 @@ def load_field_taxonomy(path: Path) -> FieldTaxonomyCatalog:
 
 def load_coverage_matrix(path: Path) -> CoverageMatrix:
     data = json.loads(path.read_text(encoding="utf-8"))
-    fields = {
-        field_id: CoverageMatrixEntry(
-            field_id=field_id,
-            domain=metadata.get("domain", ""),
-            priority=metadata.get("priority", ""),
-            primary_route=metadata.get("primary_route", ""),
-            verification=metadata.get("verification", ""),
-            routes=tuple(
+    if not isinstance(data, dict):
+        raise ValueError("coverage matrix must be an object")
+    raw_fields = data.get("fields", {})
+    if not isinstance(raw_fields, dict):
+        raise ValueError("coverage fields must be an object")
+    fields: dict[str, CoverageMatrixEntry] = {}
+    for field_id, metadata in raw_fields.items():
+        if not isinstance(metadata, dict):
+            raise ValueError("coverage field entry must be an object")
+        raw_routes = metadata.get("routes", [])
+        if not isinstance(raw_routes, list):
+            raise ValueError("coverage routes must be a list")
+        routes: list[CoverageRoute] = []
+        for route in raw_routes:
+            if not isinstance(route, dict):
+                raise ValueError("coverage route must be an object")
+            routes.append(
                 CoverageRoute(
                     source=route.get("source", ""),
                     mode=route.get("mode", ""),
@@ -278,12 +287,16 @@ def load_coverage_matrix(path: Path) -> CoverageMatrix:
                     statement_type=route.get("statement_type", ""),
                     evidence_requirement=route.get("evidence_requirement", ""),
                 )
-                for route in metadata.get("routes", [])
-            ),
+            )
+        fields[field_id] = CoverageMatrixEntry(
+            field_id=field_id,
+            domain=metadata.get("domain", ""),
+            priority=metadata.get("priority", ""),
+            primary_route=metadata.get("primary_route", ""),
+            verification=metadata.get("verification", ""),
+            routes=tuple(routes),
             notes=metadata.get("notes", ""),
         )
-        for field_id, metadata in data.get("fields", {}).items()
-    }
     matrix = CoverageMatrix(
         matrix_id=str(data.get("matrix_id", "")),
         version=str(data.get("version", "")),
