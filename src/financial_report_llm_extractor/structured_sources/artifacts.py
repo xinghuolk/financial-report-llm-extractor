@@ -60,6 +60,8 @@ class SourceArtifactManifest:
             raise ValueError("manifest_id is required")
         if not self.version:
             raise ValueError("version is required")
+        if not self.artifact_root:
+            raise ValueError("artifact_root is required")
         artifact_ids = [artifact.artifact_id for artifact in self.artifacts]
         if len(set(artifact_ids)) != len(artifact_ids):
             raise ValueError("duplicate artifact_id in source artifact manifest")

@@ -1,7 +1,10 @@
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from financial_report_llm_extractor.structured_sources.artifacts import (
+    SourceArtifactManifest,
     SourceArtifactStore,
     build_artifact_id,
     read_source_artifact_manifest,
@@ -103,3 +106,15 @@ def test_source_artifact_manifest_roundtrip_includes_hash_and_sorts_entries(
     ]
     assert all(len(entry.sha256) == 64 for entry in loaded.artifacts)
     assert loaded.artifacts[0].path == "akshare/akshare_hk_00001_balance_sheet.json"
+
+
+def test_source_artifact_manifest_requires_artifact_root() -> None:
+    manifest = SourceArtifactManifest(
+        manifest_id="source_artifact_manifest",
+        version="1",
+        artifact_root="",
+        artifacts=(),
+    )
+
+    with pytest.raises(ValueError, match="artifact_root"):
+        manifest.validate()
