@@ -68,8 +68,8 @@ class LlmReviewReport:
     def to_dict(self) -> dict[str, object]:
         return {
             "decisions": {
-                field_id: self.decisions[field_id].to_dict()
-                for field_id in sorted(self.decisions)
+                decision_key: self.decisions[decision_key].to_dict()
+                for decision_key in sorted(self.decisions)
             },
             "raw_response_paths": list(self.raw_response_paths),
         }
@@ -132,7 +132,7 @@ def run_llm_reviews(
             encoding="utf-8",
         )
         raw_paths.append(str(raw_path))
-        decisions[request.field_id] = _parse_decision(request, raw_response)
+        decisions[_decision_key(request)] = _parse_decision(request, raw_response)
     return LlmReviewReport(
         decisions=decisions,
         raw_response_paths=tuple(raw_paths),
@@ -234,6 +234,10 @@ def _parse_decision(
 
 def _raw_filename(index: int, request: LlmReviewRequest) -> str:
     return f"{index:04d}_{request.kind}_{request.field_id}.json"
+
+
+def _decision_key(request: LlmReviewRequest) -> str:
+    return f"{request.kind}:{request.field_id}"
 
 
 def _source_evidence(evidence_items: tuple[SourceEvidence, ...]) -> list[dict[str, object]]:

@@ -5,6 +5,10 @@ from pathlib import Path
 from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
     SourceMappingEntry,
+    load_source_mapping_catalog,
+)
+from financial_report_llm_extractor.structured_sources.artifacts import (
+    read_source_inventory,
 )
 from financial_report_llm_extractor.structured_sources.mapping import (
     map_source_inventory,
@@ -60,6 +64,28 @@ def test_map_source_inventory_marks_missing_field() -> None:
     assert mapped.errors == ("no source candidates matched catalog aliases",)
 
 
+def test_map_source_inventory_blocks_when_matched_candidate_fails_normalization() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "revenue": _entry(
+                "revenue",
+                source_aliases={"akshare": ("营业收入",)},
+            )
+        },
+    )
+    records = [_record("营业收入", "-", Decimal("0"))]
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["revenue"]
+    assert mapped.status == "blocked"
+    assert len(mapped.candidates) == 1
+    assert mapped.candidates[0].errors == ("missing numeric value",)
+    assert mapped.errors == ("matched source candidates failed validation or normalization",)
+
+
 def test_map_source_inventory_marks_multiple_candidates_ambiguous() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",
@@ -85,6 +111,27 @@ def test_map_source_inventory_marks_multiple_candidates_ambiguous() -> None:
     assert mapped.status == "ambiguous"
     assert len(mapped.candidates) == 2
     assert mapped.errors == ("multiple source candidates matched catalog aliases",)
+
+
+def test_map_source_inventory_uses_catalog_alias_order_for_same_source_candidates() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+    records = read_source_inventory(
+        Path("tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl")
+    )
+
+    result = map_source_inventory(catalog, records)
+
+    revenue = result.fields["revenue"]
+    assert revenue.status == "present"
+    assert revenue.value == Decimal("168838102514.79")
+    assert revenue.source_evidence[0].raw_field_code == "OPERATE_INCOME"
+    net_profit = result.fields["net_profit"]
+    assert net_profit.status == "present"
+    assert net_profit.value == Decimal("85310324833.67")
+    assert net_profit.source_evidence[0].raw_field_code == "NETPROFIT"
 
 
 def test_map_source_inventory_derives_money_field_from_compatible_inputs() -> None:

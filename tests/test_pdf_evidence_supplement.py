@@ -41,6 +41,20 @@ def test_pdf_supplement_retrieves_evidence_for_needed_fields_only() -> None:
     assert item.pdf_evidence[0].snippet == "Cash and cash equivalents 20"
 
 
+def test_pdf_supplement_respects_explicit_empty_field_selection() -> None:
+    export = _export_result(
+        {"cash": _item("cash", status="needs_pdf_evidence", value=Decimal("20"))}
+    )
+
+    supplement = build_pdf_evidence_supplement(
+        export,
+        [_chunk("chunk-cash", "cash and cash equivalents 20")],
+        fields=(),
+    )
+
+    assert supplement.items == {}
+
+
 def test_pdf_supplement_marks_missing_pdf_evidence() -> None:
     export = _export_result(
         {"cash": _item("cash", status="needs_pdf_evidence", value=Decimal("20"))}
@@ -75,6 +89,22 @@ def test_pdf_supplement_records_value_not_found_consistency() -> None:
     supplement = build_pdf_evidence_supplement(
         export,
         [_chunk("chunk-cash", "cash and cash equivalents")],
+    )
+
+    assert (
+        supplement.items["cash"].consistency_status
+        == "value_not_found_in_snippet"
+    )
+
+
+def test_pdf_supplement_does_not_match_short_value_inside_larger_number() -> None:
+    export = _export_result(
+        {"cash": _item("cash", status="needs_pdf_evidence", value=Decimal("20"))}
+    )
+
+    supplement = build_pdf_evidence_supplement(
+        export,
+        [_chunk("chunk-cash", "cash and cash equivalents in 2024")],
     )
 
     assert (

@@ -447,6 +447,24 @@ Implementation note:
 - Phase J now includes a fixture-driven no-network evaluation harness and `scripts/run-source-first-e2e-evaluation.sh`.
 - The harness writes per-report artifacts and compares AKShare-only, Yahoo-only, combined, and combined-plus-PDF-supplement coverage.
 - The default fixtures cover the three validation report IDs: `600519`, `00001`, and `01113`.
+- Phase J has been tightened after code review so that source-first validation cannot be considered complete from synthetic fixtures alone.
+- A real-source validation path now exists as an opt-in smoke:
+  - `scripts/run-real-source-validation.sh`
+  - `src/financial_report_llm_extractor/structured_sources/real_source_validation.py`
+  - real provider calls are gated by `REAL_SOURCE_VALIDATION=1`
+  - captured source inventory can be replayed with `INVENTORY_FIXTURE=<source_inventory.jsonl>` without calling providers again.
+- The first captured AKShare fixture is saved at `tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl`.
+  It was derived from a real AKShare 600519 income statement response and currently validates `revenue` and `net_profit` through source inventory, mapping, reconciliation, and source-only export.
+- Real AKShare CN statement responses are wide tables, so the AKShare adapter now expands known wide columns into long `SourceInventoryRecord` rows before mapping.
+- The mapper treats catalog alias order as a deterministic same-source precedence rule. This resolves cases such as `营业收入` versus `营业总收入` without hiding cross-source conflicts.
+
+Current validation status:
+
+- Synthetic no-network source-first E2E: implemented.
+- Captured AKShare income statement replay for 600519: implemented; covers 2 of 9 minimal source-mapping fields.
+- AKShare balance sheet and cash flow captured fixtures: still needed to validate asset, liability, cash, and operating cash flow fields.
+- Yahoo/yfinance real or captured validation: still needed.
+- Full source-first viability decision is not complete until captured or real validation covers the required statement families for the target companies and remaining gaps are categorized.
 
 ## 6. Validation Commands
 
@@ -462,6 +480,17 @@ uv run mypy src tests
 ```
 
 Real AKShare/Yahoo/LLM tests must be opt-in and skipped by default when network credentials or external services are unavailable.
+
+Captured source fixtures should be preferred for iterative development after a provider has been called once. The workflow is:
+
+```bash
+REAL_SOURCE_VALIDATION=1 \
+INVENTORY_FIXTURE=tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl \
+OUT_DIR=tmp/runs/captured_source_validation_akshare \
+scripts/run-real-source-validation.sh
+```
+
+Use real provider calls only to create or refresh captured fixtures, then drive mapping and reconciliation fixes from those saved artifacts.
 
 ## 7. Branch Completion Criteria
 

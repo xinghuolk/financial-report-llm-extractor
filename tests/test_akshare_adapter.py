@@ -122,3 +122,46 @@ def test_akshare_cn_statement_inventory_uses_market_symbol_and_cny(
     assert record.unit == "yuan"
     assert record.source_evidence[0].function == "stock_balance_sheet_by_report_em"
     assert (tmp_path / "akshare" / "akshare_cn_600519_balance_sheet.json").exists()
+
+
+def test_akshare_hk_statement_inventory_returns_unsupported_record(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+    adapter = AkshareAdapter(client=FakeAkshareClient(), artifact_store=store)
+
+    records = adapter.fetch_hk_statement_inventory(
+        ticker="00001",
+        statement_type="equity_statement",
+        unit="HKD",
+    )
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source_status == "unsupported"
+    assert record.market == "HK"
+    assert record.raw_field_name == "equity_statement"
+    assert record.source_evidence[0].function == "unsupported_statement_type"
+    assert (tmp_path / "akshare" / "akshare_hk_00001_equity_statement.json").exists()
+
+
+def test_akshare_cn_statement_inventory_returns_missing_record_for_empty_rows(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+    adapter = AkshareAdapter(client=FakeAkshareClient(), artifact_store=store)
+
+    records = adapter.fetch_cn_statement_inventory(
+        ticker="600519",
+        exchange="SH",
+        statement_type="income_statement",
+        unit="yuan",
+    )
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source_status == "missing"
+    assert record.market == "CN"
+    assert record.raw_field_name == "income_statement"
+    assert record.source_evidence[0].function == "stock_profit_sheet_by_report_em"
+    assert (tmp_path / "akshare" / "akshare_cn_600519_income_statement.json").exists()

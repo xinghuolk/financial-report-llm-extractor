@@ -9,6 +9,7 @@ from financial_report_llm_extractor.structured_sources.export import (
     SourceFirstExportResult,
 )
 from financial_report_llm_extractor.structured_sources.llm_review import (
+    LlmReviewRequest,
     build_llm_review_requests,
     run_llm_reviews,
 )
@@ -70,7 +71,7 @@ def test_run_llm_reviews_archives_raw_request_response_and_parses_decision(
 
     report = run_llm_reviews(requests, client, raw_response_dir=tmp_path)
 
-    decision = report.decisions["revenue"]
+    decision = report.decisions["ambiguous_source_mapping:revenue"]
     assert decision.decision == "needs_human_review"
     assert decision.reason == "AKShare and Yahoo disagree."
     assert decision.confidence == 0.42
@@ -93,10 +94,61 @@ def test_run_llm_reviews_archives_malformed_response_and_marks_not_reviewed(
 
     report = run_llm_reviews(requests, client, raw_response_dir=tmp_path)
 
-    decision = report.decisions["revenue"]
+    decision = report.decisions["ambiguous_source_mapping:revenue"]
     assert decision.decision == "not_reviewed"
     assert decision.errors == ("invalid or missing decision",)
     assert len(list(tmp_path.glob("*.json"))) == 1
+
+
+def test_run_llm_reviews_preserves_multiple_kinds_for_same_field(
+    tmp_path: Path,
+) -> None:
+    requests = (
+        LlmReviewRequest(
+            kind="ambiguous_source_mapping",
+            field_id="revenue",
+            system_prompt="Review",
+            user_payload={"field_id": "revenue", "kind": "ambiguous_source_mapping"},
+        ),
+        LlmReviewRequest(
+            kind="source_pdf_consistency",
+            field_id="revenue",
+            system_prompt="Review",
+            user_payload={"field_id": "revenue", "kind": "source_pdf_consistency"},
+        ),
+    )
+    client = FakeReviewClient(
+        [
+            {
+                "field_id": "revenue",
+                "decision": "needs_human_review",
+                "reason": "source conflict",
+            },
+            {
+                "field_id": "revenue",
+                "decision": "reject_source",
+                "reason": "value absent from PDF",
+            },
+        ]
+    )
+
+    report = run_llm_reviews(requests, client, raw_response_dir=tmp_path)
+
+    assert tuple(sorted(report.decisions)) == (
+        "ambiguous_source_mapping:revenue",
+        "source_pdf_consistency:revenue",
+    )
+    assert (
+        report.decisions["ambiguous_source_mapping:revenue"].decision
+        == "needs_human_review"
+    )
+    assert report.decisions["source_pdf_consistency:revenue"].decision == "reject_source"
+    payload = report.to_dict()
+    decisions_payload = cast(dict[str, object], payload["decisions"])
+    assert tuple(sorted(decisions_payload)) == (
+        "ambiguous_source_mapping:revenue",
+        "source_pdf_consistency:revenue",
+    )
 
 
 class FakeReviewClient:

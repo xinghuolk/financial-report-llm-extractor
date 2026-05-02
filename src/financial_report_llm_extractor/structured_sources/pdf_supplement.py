@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from pathlib import Path
@@ -70,11 +71,14 @@ def build_pdf_evidence_supplement(
     fields: tuple[str, ...] | None = None,
     limit: int = 1,
 ) -> PdfEvidenceSupplementResult:
-    selected_fields = fields or tuple(
-        field_id
-        for field_id, item in export_result.items.items()
-        if item.status == "needs_pdf_evidence"
-    )
+    if fields is None:
+        selected_fields = tuple(
+            field_id
+            for field_id, item in export_result.items.items()
+            if item.status == "needs_pdf_evidence"
+        )
+    else:
+        selected_fields = fields
     items = {
         field_id: _build_item(
             field_id,
@@ -185,7 +189,7 @@ def _consistency_status(
         return "not_checked"
     needle = _normalize_text(_decimal_to_string(value))
     haystack = _normalize_text(" ".join(item.snippet for item in evidence))
-    if needle and needle in haystack:
+    if needle and re.search(rf"(?<![\d.]){re.escape(needle)}(?![\d.])", haystack):
         return "value_mentioned"
     return "value_not_found_in_snippet"
 

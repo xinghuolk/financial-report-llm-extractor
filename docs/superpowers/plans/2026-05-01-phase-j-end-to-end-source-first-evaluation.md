@@ -8,6 +8,15 @@
 
 **Tech Stack:** Python 3.11 standard library, dataclasses, pytest, existing source-first modules.
 
+**Current status update:** The original Phase J synthetic harness is implemented, but review found that it did not prove real AKShare/Yahoo viability. The phase now includes an additional real-source validation direction:
+
+- Real provider calls must be opt-in and minimal.
+- Provider responses should be captured into stable `source_inventory.jsonl` fixtures after the first successful call.
+- Mapping, reconciliation, and export fixes should be driven from captured fixtures instead of repeated provider requests.
+- The first captured AKShare 600519 income statement fixture validates source inventory -> Turtle mapping -> reconciliation -> source-only export for `revenue` and `net_profit`.
+
+This plan should be read as an implementation history plus validation guardrail. Future work should not blindly repeat these tasks; instead, inspect the current captured fixture coverage, the latest `review_summary.json`, and the roadmap status to choose the next missing source/statement family.
+
 ---
 
 ### Task 1: Evaluation Coverage Matrix
@@ -116,6 +125,42 @@ uv run pytest tests/test_source_first_evaluation.py tests/test_source_review_exp
 ```
 
 Expected: PASS.
+
+### Follow-up Direction: Captured Real-Source Validation
+
+**Files added by follow-up work:**
+- `src/financial_report_llm_extractor/structured_sources/real_source_validation.py`
+- `scripts/run-real-source-validation.sh`
+- `tests/test_real_source_validation.py`
+- `tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl`
+
+**Behavior now expected:**
+- `REAL_SOURCE_VALIDATION=1` gates real provider access.
+- `INVENTORY_FIXTURE=<path>` replays captured source inventory without provider access.
+- Captured replay writes:
+  - `source_inventory.jsonl`
+  - `turtle_mapping.json`
+  - `source_coverage_summary.json`
+  - `reconciliation_report.json`
+  - `extraction_result.json`
+  - `review_summary.json`
+  - `real_source_validation_summary.json`
+- The mapper must not report matched-but-invalid candidates as `missing`; it must use `blocked`.
+- Same-source duplicate candidates may be resolved by catalog alias precedence.
+- Cross-source disagreements must remain visible for reconciliation and review.
+
+**How to choose next work:**
+
+Run or inspect a captured validation output, then continue with the highest-value missing statement family. For the current minimal catalog, AKShare income statement already covers `revenue` and `net_profit`; balance sheet and cash flow captured fixtures are the natural next validation targets before claiming broader source-first completion.
+
+**Captured replay command:**
+
+```bash
+REAL_SOURCE_VALIDATION=1 \
+INVENTORY_FIXTURE=tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl \
+OUT_DIR=tmp/runs/captured_source_validation_akshare \
+scripts/run-real-source-validation.sh
+```
 
 - [x] **Step 2: Run full verification**
 

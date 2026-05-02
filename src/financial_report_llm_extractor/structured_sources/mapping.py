@@ -175,19 +175,28 @@ def _map_direct_field(
     entry: SourceMappingEntry,
     records: list[SourceInventoryRecord] | tuple[SourceInventoryRecord, ...],
 ) -> MappedTurtleField:
-    candidates = tuple(
-        candidate
+    matched_candidates = tuple(
+        _candidate_from_record(record)
         for record in records
         if _record_matches_entry(record, entry)
-        for candidate in (_candidate_from_record(record),)
-        if not candidate.errors
     )
-    if not candidates:
+    if not matched_candidates:
         return MappedTurtleField(
             field_id=entry.field_id,
             status="missing",
             errors=("no source candidates matched catalog aliases",),
         )
+    candidates = tuple(
+        candidate for candidate in matched_candidates if not candidate.errors
+    )
+    if not candidates:
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="blocked",
+            candidates=matched_candidates,
+            errors=("matched source candidates failed validation or normalization",),
+        )
+    candidates = _apply_alias_precedence(entry, candidates)
     if len(candidates) > 1:
         return MappedTurtleField(
             field_id=entry.field_id,
@@ -315,6 +324,32 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
         source_evidence=record.source_evidence,
         errors=tuple(errors),
     )
+
+
+def _apply_alias_precedence(
+    entry: SourceMappingEntry,
+    candidates: tuple[TurtleMappingCandidate, ...],
+) -> tuple[TurtleMappingCandidate, ...]:
+    best_rank_by_source: dict[SourceName, int] = {}
+    for candidate in candidates:
+        rank = _alias_rank(entry, candidate)
+        best_rank_by_source[candidate.source] = min(
+            rank,
+            best_rank_by_source.get(candidate.source, rank),
+        )
+    return tuple(
+        candidate
+        for candidate in candidates
+        if _alias_rank(entry, candidate) == best_rank_by_source[candidate.source]
+    )
+
+
+def _alias_rank(entry: SourceMappingEntry, candidate: TurtleMappingCandidate) -> int:
+    aliases = entry.source_aliases.get(candidate.source, ())
+    for index, alias in enumerate(aliases):
+        if candidate.raw_field_name == alias or candidate.raw_field_code == alias:
+            return index
+    return len(aliases)
 
 
 def _compatibility_error(

@@ -32,6 +32,29 @@ CN_STATEMENT_FUNCTIONS = {
     "cash_flow": "stock_cash_flow_sheet_by_report_em",
 }
 
+CN_WIDE_FIELD_ALIASES = {
+    "balance_sheet": {
+        "TOTAL_ASSETS": "资产总计",
+        "TOTAL_LIABILITIES": "负债合计",
+        "TOTAL_CURRENT_ASSETS": "流动资产合计",
+        "TOTAL_CURRENT_LIAB": "流动负债合计",
+        "MONETARYFUNDS": "货币资金",
+        "MONETARY_FUNDS": "货币资金",
+    },
+    "income_statement": {
+        "OPERATE_INCOME": "营业收入",
+        "TOTAL_OPERATE_INCOME": "营业总收入",
+        "NETPROFIT": "净利润",
+        "PARENT_NETPROFIT": "归属于母公司股东的净利润",
+        "GROSSPROFIT": "毛利",
+        "GROSS_PROFIT": "毛利",
+    },
+    "cash_flow": {
+        "NETCASH_OPERATE": "经营活动产生的现金流量净额",
+        "NET_CASH_FLOWS_OPERATE": "经营活动产生的现金流量净额",
+    },
+}
+
 
 class AkshareClient(Protocol):
     def stock_financial_hk_report_em(
@@ -79,7 +102,35 @@ class AkshareAdapter:
         statement_type: str,
         unit: str,
     ) -> tuple[SourceInventoryRecord, ...]:
-        symbol = HK_STATEMENT_SYMBOLS[statement_type]
+        symbol = HK_STATEMENT_SYMBOLS.get(statement_type)
+        if symbol is None:
+            artifact = self.artifact_store.write_json(
+                source="akshare",
+                artifact_id=build_artifact_id(
+                    source="akshare",
+                    market="HK",
+                    ticker=ticker,
+                    artifact_type=statement_type,
+                ),
+                payload={
+                    "rows": [],
+                    "metadata": [],
+                    "source_status": "unsupported",
+                    "statement_type": statement_type,
+                },
+            )
+            return (
+                _status_record(
+                    market="HK",
+                    ticker=ticker,
+                    statement_type=statement_type,
+                    source_status="unsupported",
+                    function="unsupported_statement_type",
+                    artifact_id=artifact.artifact_id,
+                    currency="unknown",
+                    unit=unit,
+                ),
+            )
         rows = list(
             self.client.stock_financial_hk_report_em(
                 stock=ticker,
@@ -101,6 +152,19 @@ class AkshareAdapter:
             ),
             payload={"rows": rows, "metadata": metadata_rows},
         )
+        if not rows:
+            return (
+                _status_record(
+                    market="HK",
+                    ticker=ticker,
+                    statement_type=statement_type,
+                    source_status="missing",
+                    function="stock_financial_hk_report_em",
+                    artifact_id=artifact.artifact_id,
+                    currency="unknown",
+                    unit=unit,
+                ),
+            )
 
         records: list[SourceInventoryRecord] = []
         for index, row in enumerate(rows):
@@ -146,10 +210,37 @@ class AkshareAdapter:
         statement_type: str,
         unit: str,
     ) -> tuple[SourceInventoryRecord, ...]:
-        function_name = CN_STATEMENT_FUNCTIONS[statement_type]
+        function_name = CN_STATEMENT_FUNCTIONS.get(statement_type)
+        if function_name is None:
+            artifact = self.artifact_store.write_json(
+                source="akshare",
+                artifact_id=build_artifact_id(
+                    source="akshare",
+                    market="CN",
+                    ticker=ticker,
+                    artifact_type=statement_type,
+                ),
+                payload={
+                    "rows": [],
+                    "source_status": "unsupported",
+                    "statement_type": statement_type,
+                },
+            )
+            return (
+                _status_record(
+                    market="CN",
+                    ticker=ticker,
+                    statement_type=statement_type,
+                    source_status="unsupported",
+                    function="unsupported_statement_type",
+                    artifact_id=artifact.artifact_id,
+                    currency="CNY",
+                    unit=unit,
+                ),
+            )
         symbol = f"{exchange.upper()}{ticker}"
         function = getattr(self.client, function_name)
-        rows = list(function(symbol=symbol))
+        rows = _expand_cn_statement_rows(list(function(symbol=symbol)), statement_type)
         artifact = self.artifact_store.write_json(
             source="akshare",
             artifact_id=build_artifact_id(
@@ -160,6 +251,19 @@ class AkshareAdapter:
             ),
             payload={"rows": rows},
         )
+        if not rows:
+            return (
+                _status_record(
+                    market="CN",
+                    ticker=ticker,
+                    statement_type=statement_type,
+                    source_status="missing",
+                    function=function_name,
+                    artifact_id=artifact.artifact_id,
+                    currency="CNY",
+                    unit=unit,
+                ),
+            )
 
         records: list[SourceInventoryRecord] = []
         for index, row in enumerate(rows):
@@ -232,3 +336,67 @@ def _raw_value(value: object) -> str | int | float | None:
     if value is None or isinstance(value, (str, int, float)):
         return value
     return str(value)
+
+
+def _expand_cn_statement_rows(
+    rows: list[dict[str, object]],
+    statement_type: str,
+) -> list[dict[str, object]]:
+    expanded: list[dict[str, object]] = []
+    aliases = CN_WIDE_FIELD_ALIASES.get(statement_type, {})
+    for row in rows:
+        if row.get("STD_ITEM_NAME"):
+            expanded.append(row)
+            continue
+        for field_code, field_name in aliases.items():
+            if field_code not in row:
+                continue
+            value = row.get(field_code)
+            if value is None:
+                continue
+            expanded.append(
+                {
+                    "REPORT_DATE": row.get("REPORT_DATE"),
+                    "FISCAL_YEAR": row.get("FISCAL_YEAR"),
+                    "STD_ITEM_CODE": field_code,
+                    "STD_ITEM_NAME": field_name,
+                    "AMOUNT": value,
+                }
+            )
+    return expanded
+
+
+def _status_record(
+    *,
+    market: str,
+    ticker: str,
+    statement_type: str,
+    source_status: str,
+    function: str,
+    artifact_id: str,
+    currency: Currency,
+    unit: str,
+) -> SourceInventoryRecord:
+    evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function=function,
+        artifact_id=artifact_id,
+        raw_record_id=f"{ticker}:{market}:{statement_type}:{source_status}",
+        raw_field_name=statement_type,
+    )
+    record = SourceInventoryRecord(
+        source="akshare",
+        market=market,
+        ticker=ticker,
+        statement_type=statement_type,
+        period=None,
+        raw_field_name=statement_type,
+        raw_value=None,
+        source_status=source_status,  # type: ignore[arg-type]
+        currency=currency,
+        unit=unit,
+        source_evidence=(evidence,),
+    )
+    record.validate()
+    return record
