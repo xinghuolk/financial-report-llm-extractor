@@ -101,29 +101,47 @@ def load_source_mapping_catalog(
     priorities: tuple[str, ...],
 ) -> SourceMappingCatalog:
     raw = json.loads(catalog_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("source mapping catalog must be an object")
     has_referenced_metadata = bool(
         raw.get("taxonomy_catalog") or raw.get("coverage_matrix")
     )
     selected_priorities = set(priorities)
     priority_by_field: dict[str, str] = {}
-    for group in raw.get("priorities", []):
+    raw_priorities = raw.get("priorities", [])
+    if not isinstance(raw_priorities, list):
+        raise ValueError("source mapping priorities must be a list")
+    for group in raw_priorities:
+        if not isinstance(group, dict):
+            raise ValueError("source mapping priority entry must be an object")
         priority = str(group.get("priority", ""))
         if priority not in selected_priorities:
             continue
-        for field_id in group.get("fields", []):
+        raw_priority_fields = group.get("fields", [])
+        if not isinstance(raw_priority_fields, list):
+            raise ValueError("source mapping priority fields must be a list")
+        for field_id in raw_priority_fields:
             priority_by_field.setdefault(str(field_id), priority)
 
     mappings: dict[str, Any] = raw.get("source_mappings", {})
+    if not isinstance(mappings, dict):
+        raise ValueError("source_mappings must be an object")
     entries: dict[str, SourceMappingEntry] = {}
     for field_id, priority in priority_by_field.items():
         mapping = mappings.get(field_id, {})
+        if not isinstance(mapping, dict):
+            raise ValueError("source mapping entry must be an object")
         if has_referenced_metadata:
             _require_referenced_metadata(field_id, mapping)
             _validate_referenced_metadata_values(mapping)
-        aliases = {
-            str(source): tuple(str(alias) for alias in values)
-            for source, values in mapping.get("source_aliases", {}).items()
-        }
+        raw_aliases = mapping.get("source_aliases", {})
+        if not isinstance(raw_aliases, dict):
+            raise ValueError("source_aliases must be an object")
+        aliases: dict[str, tuple[str, ...]] = {}
+        for source, values in raw_aliases.items():
+            if not isinstance(values, list):
+                raise ValueError("source alias values must be a list")
+            aliases[str(source)] = tuple(str(alias) for alias in values)
         statement_type = str(mapping.get("statement_type", "unknown"))
         entry = SourceMappingEntry(
             field_id=field_id,

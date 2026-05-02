@@ -92,6 +92,12 @@ Validation rules:
 - Every field has exactly one primary `domain`.
 - `money` and `derived_money` fields must require currency and unit unless explicitly marked `not_applicable`.
 - `pdf_only` and `llm_review` fields must not require source aliases.
+- The taxonomy loader must reject malformed JSON shape with stable `ValueError` messages:
+  - top-level payload is not an object
+  - `fields` is not an object
+  - field entry payload is not an object
+  - missing required top-level or field metadata
+- Loader errors must not leak raw `KeyError`, `TypeError`, or `AttributeError`.
 
 ## 5. A2: Turtle Coverage Matrix
 
@@ -146,6 +152,8 @@ Validation rules:
 - Field-level `verification` must be no stronger than route evidence. For example, a `verified` field must have at least one `verified` route matching `primary_route`.
 - `pdf_only` taxonomy fields must have `primary_route` of `pdf_evidence` or `llm_review`.
 - `direct` taxonomy fields should have at least one provider route unless explicitly marked `unknown`.
+- The coverage matrix loader must reject malformed top-level, field-entry, route-list, and route-entry shapes with stable `ValueError` messages.
+- Loader errors must not leak raw `KeyError`, `TypeError`, or `AttributeError`.
 
 ## 6. A3: Minimal Source Mapping Contract
 
@@ -174,6 +182,9 @@ Validation rules:
 - Mapping `statement_type` must match taxonomy `statement_type`, unless taxonomy uses `mixed`.
 - Mapping `source_mode` must not contradict coverage `primary_route`.
 - A mapping field marked `pdf_only` or `llm_review` must not be accepted as source-direct.
+- If a source mapping catalog declares `taxonomy_catalog` or `coverage_matrix`, all selected mapping entries must explicitly declare critical metadata instead of relying on defaults.
+- The source mapping loader must reject malformed top-level, priority-list, priority-entry, `source_mappings`, mapping-entry, and alias shapes with stable `ValueError` messages.
+- Loader errors must not leak raw `KeyError`, `TypeError`, or `AttributeError`.
 
 ## 7. Coverage Reporting
 
@@ -209,4 +220,5 @@ Phase A is complete when:
 - Every Turtle v0.15 field has coverage matrix metadata.
 - The minimal source mapping catalog references and agrees with taxonomy and coverage matrix.
 - Tests fail on missing, extra, contradictory, or unrouteable fields.
+- Tests fail on malformed taxonomy, coverage matrix, and referenced source mapping JSON shapes.
 - Source-first coverage reports can distinguish true provider gaps from fields intentionally routed to PDF/LLM.

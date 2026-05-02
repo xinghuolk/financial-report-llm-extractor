@@ -108,6 +108,15 @@ Turtle P0/P1 source mapping contract
 - source mode：direct、derived、source_optional、pdf_only、llm_review
 - evidence requirement：source_only_allowed、pdf_required、llm_review_required
 
+Catalog 和 metadata artifact loader 是第一阶段的信任边界之一，必须有稳定的输入形状校验：
+
+- taxonomy、coverage matrix、source mapping catalog 的 top-level JSON 必须是 object。
+- `fields`、`source_mappings` 等映射结构必须是 object；`priorities`、`routes` 等序列结构必须是 list。
+- 每个 field entry、mapping entry、route entry 必须是 object。
+- 缺失字段、空字段集、未知枚举值、字段 key 与 `field_id` 不一致、taxonomy/coverage/source mapping 不一致都必须抛出稳定 `ValueError`。
+- 不允许把 malformed catalog JSON 泄漏成原生 `KeyError`、`TypeError` 或 `AttributeError`；这些错误会降低 agent/debug/review 的可定位性。
+- 对带 `taxonomy_catalog` 或 `coverage_matrix` 引用的 source mapping catalog，关键 metadata 必须显式声明，不得依赖默认值；无引用的 in-memory 测试 catalog 可以保留兼容默认值。
+
 字段 taxonomy 的详细设计见：
 
 - `docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md`

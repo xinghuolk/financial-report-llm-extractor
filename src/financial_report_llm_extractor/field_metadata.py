@@ -249,14 +249,34 @@ class CoverageMatrix:
 
 def load_field_taxonomy(path: Path) -> FieldTaxonomyCatalog:
     data = json.loads(path.read_text(encoding="utf-8"))
-    fields = {
-        field_id: FieldTaxonomyEntry(field_id=field_id, **metadata)
-        for field_id, metadata in data["fields"].items()
-    }
+    if not isinstance(data, dict):
+        raise ValueError("taxonomy catalog must be an object")
+    raw_fields = data.get("fields", {})
+    if not isinstance(raw_fields, dict):
+        raise ValueError("taxonomy fields must be an object")
+    fields: dict[str, FieldTaxonomyEntry] = {}
+    for field_id, metadata in raw_fields.items():
+        if not isinstance(metadata, dict):
+            raise ValueError("taxonomy field entry must be an object")
+        fields[str(field_id)] = FieldTaxonomyEntry(
+            field_id=str(field_id),
+            priority=metadata.get("priority", ""),
+            domain=metadata.get("domain", ""),
+            statement_type=metadata.get("statement_type", ""),
+            value_type=metadata.get("value_type", ""),
+            source_mode=metadata.get("source_mode", ""),
+            period_type=metadata.get("period_type", ""),
+            scope_expectation=metadata.get("scope_expectation", ""),
+            currency_requirement=metadata.get("currency_requirement", ""),
+            unit_requirement=metadata.get("unit_requirement", ""),
+            evidence_requirement=metadata.get("evidence_requirement", ""),
+            fallback_policy=metadata.get("fallback_policy", ""),
+            description=str(metadata.get("description", "")),
+        )
     taxonomy = FieldTaxonomyCatalog(
-        catalog_id=data["catalog_id"],
-        version=data["version"],
-        source_priority_catalog=data["source_priority_catalog"],
+        catalog_id=str(data.get("catalog_id", "")),
+        version=str(data.get("version", "")),
+        source_priority_catalog=str(data.get("source_priority_catalog", "")),
         fields=fields,
     )
     taxonomy.validate()

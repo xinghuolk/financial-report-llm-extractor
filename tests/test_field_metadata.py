@@ -103,6 +103,76 @@ def test_field_taxonomy_rejects_empty_fields(tmp_path: Path) -> None:
         load_field_taxonomy(taxonomy_path)
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected_message"),
+    [
+        ([], "taxonomy catalog must be an object"),
+        (
+            {
+                "catalog_id": "demo_taxonomy",
+                "version": "2026-05-02",
+                "source_priority_catalog": "demo_priority",
+                "fields": [],
+            },
+            "taxonomy fields must be an object",
+        ),
+        (
+            {
+                "catalog_id": "demo_taxonomy",
+                "version": "2026-05-02",
+                "source_priority_catalog": "demo_priority",
+                "fields": {"revenue": []},
+            },
+            "taxonomy field entry must be an object",
+        ),
+    ],
+)
+def test_field_taxonomy_rejects_malformed_shapes(
+    tmp_path: Path,
+    payload: object,
+    expected_message: str,
+) -> None:
+    taxonomy_path = tmp_path / "taxonomy.json"
+    taxonomy_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected_message):
+        load_field_taxonomy(taxonomy_path)
+
+
+def test_field_taxonomy_rejects_missing_required_field_metadata(
+    tmp_path: Path,
+) -> None:
+    taxonomy_path = tmp_path / "taxonomy.json"
+    taxonomy_path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "demo_taxonomy",
+                "version": "2026-05-02",
+                "source_priority_catalog": "demo_priority",
+                "fields": {
+                    "revenue": {
+                        "domain": "income_statement",
+                        "statement_type": "income_statement",
+                        "value_type": "money",
+                        "source_mode": "direct",
+                        "period_type": "duration",
+                        "scope_expectation": "consolidated",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "evidence_requirement": "source_only_allowed",
+                        "fallback_policy": "pdf_allowed",
+                        "description": "Revenue.",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="priority is required"):
+        load_field_taxonomy(taxonomy_path)
+
+
 def test_load_coverage_matrix_reads_routes(tmp_path: Path) -> None:
     path = tmp_path / "coverage.json"
     path.write_text(

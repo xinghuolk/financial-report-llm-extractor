@@ -73,6 +73,103 @@ def test_source_mapping_entry_allows_default_unknown_domain_for_in_memory_catalo
     assert entry.domain == "unknown"
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected_message"),
+    [
+        ([], "source mapping catalog must be an object"),
+        (
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "priorities": {},
+                "source_mappings": {},
+            },
+            "source mapping priorities must be a list",
+        ),
+        (
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "priorities": ["P0"],
+                "source_mappings": {},
+            },
+            "source mapping priority entry must be an object",
+        ),
+        (
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "priorities": [{"priority": "P0", "fields": {}}],
+                "source_mappings": {},
+            },
+            "source mapping priority fields must be a list",
+        ),
+        (
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+                "source_mappings": [],
+            },
+            "source_mappings must be an object",
+        ),
+        (
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+                "source_mappings": {"revenue": []},
+            },
+            "source mapping entry must be an object",
+        ),
+        (
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+                "source_mappings": {
+                    "revenue": {
+                        "value_type": "money",
+                        "statement_type": "income_statement",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "source_aliases": [],
+                    }
+                },
+            },
+            "source_aliases must be an object",
+        ),
+        (
+            {
+                "catalog_id": "demo",
+                "version": "2026-05-01",
+                "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+                "source_mappings": {
+                    "revenue": {
+                        "value_type": "money",
+                        "statement_type": "income_statement",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "source_aliases": {"akshare": "营业收入"},
+                    }
+                },
+            },
+            "source alias values must be a list",
+        ),
+    ],
+)
+def test_source_mapping_catalog_rejects_malformed_shapes(
+    tmp_path: Path,
+    payload: object,
+    expected_message: str,
+) -> None:
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected_message):
+        load_source_mapping_catalog(path, priorities=("P0",))
+
+
 def test_referenced_source_mapping_requires_explicit_selected_metadata(
     tmp_path: Path,
 ) -> None:

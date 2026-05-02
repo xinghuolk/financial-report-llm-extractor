@@ -299,12 +299,14 @@ Exit criteria:
 - Every existing Turtle field has a primary domain and source mode.
 - The taxonomy can answer domain-first questions such as all P0 balance sheet fields, all cash-flow fields, and all PDF-only notes fields.
 - Provider aliases are not required for this phase.
+- The taxonomy loader rejects malformed JSON shape with stable `ValueError` messages, not raw `KeyError`, `TypeError`, or `AttributeError`.
 
 Implementation note:
 
 - `field_catalog/turtle_v015_field_taxonomy.json` contains full Turtle field taxonomy.
 - `field_catalog/turtle_v015_coverage_matrix.json` contains expected coverage route by field.
 - `field_catalog/turtle_v015_source_mapping_minimal.json` is linked to taxonomy and coverage metadata.
+- Review follow-up: align taxonomy loader shape validation with the already hardened coverage matrix loader.
 
 ### Phase A2: Turtle Coverage Matrix
 
@@ -354,12 +356,14 @@ Exit criteria:
 - Catalog can list required P0/P1 fields and their source mapping expectations.
 - A coverage gate can run against fixture inventory without AKShare/Yahoo installed.
 - Minimal mappings are traceable back to the full taxonomy and coverage matrix.
+- Referenced source mapping catalogs fail fast on malformed top-level, priority, mapping, alias, or entry shapes using stable `ValueError` messages.
 
 Implementation note:
 
 - `field_catalog/turtle_v015_field_taxonomy.json` contains full Turtle field taxonomy.
 - `field_catalog/turtle_v015_coverage_matrix.json` contains expected coverage route by field.
 - `field_catalog/turtle_v015_source_mapping_minimal.json` is linked to taxonomy and coverage metadata.
+- Review follow-up: harden `load_source_mapping_catalog()` shape validation so broken catalog JSON cannot surface as raw Python container errors.
 
 ### Phase B: Source Inventory And Artifact Store
 
