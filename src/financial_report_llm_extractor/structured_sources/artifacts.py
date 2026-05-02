@@ -33,14 +33,11 @@ class SourceArtifactManifestEntry:
     created_by: str | None = None
 
     def validate(self) -> None:
-        if not self.source:
-            raise ValueError("source is required")
-        if not self.artifact_id:
-            raise ValueError("artifact_id is required")
-        if not self.path:
-            raise ValueError("path is required")
-        if not self.content_type:
-            raise ValueError("content_type is required")
+        _validate_required_string(self.source, "source")
+        _validate_required_string(self.artifact_id, "artifact_id")
+        _validate_required_string(self.path, "path")
+        _validate_required_string(self.content_type, "content_type")
+        _validate_required_string(self.sha256, "sha256")
         if not re.fullmatch(r"[0-9a-f]{64}", self.sha256):
             raise ValueError("sha256 must be a lowercase 64-character hex digest")
         artifact_path = Path(self.path)
@@ -56,18 +53,15 @@ class SourceArtifactManifest:
     artifacts: tuple[SourceArtifactManifestEntry, ...]
 
     def validate(self) -> None:
-        if not self.manifest_id:
-            raise ValueError("manifest_id is required")
-        if not self.version:
-            raise ValueError("version is required")
-        if not self.artifact_root:
-            raise ValueError("artifact_root is required")
+        _validate_required_string(self.manifest_id, "manifest_id")
+        _validate_required_string(self.version, "version")
+        _validate_required_string(self.artifact_root, "artifact_root")
         seen_artifact_ids: set[str] = set()
         for artifact in self.artifacts:
+            artifact.validate()
             if artifact.artifact_id in seen_artifact_ids:
                 raise ValueError(f"duplicate artifact_id: {artifact.artifact_id}")
             seen_artifact_ids.add(artifact.artifact_id)
-            artifact.validate()
 
 
 def build_artifact_id(
@@ -207,22 +201,49 @@ def _manifest_to_jsonable(manifest: SourceArtifactManifest) -> dict[str, Any]:
 
 def _manifest_from_jsonable(payload: dict[str, Any]) -> SourceArtifactManifest:
     raw_artifacts = _require_list(
-        payload.get("artifacts"), "source artifact manifest artifacts"
+        _require_key(payload, "artifacts", "source artifact manifest"),
+        "source artifact manifest artifacts",
     )
     entries = tuple(
-        SourceArtifactManifestEntry(
-            **_require_object(item, f"source artifact manifest artifacts[{index}]")
+        _manifest_entry_from_jsonable(
+            item,
+            f"source artifact manifest artifacts[{index}]",
         )
         for index, item in enumerate(raw_artifacts)
     )
     manifest = SourceArtifactManifest(
-        manifest_id=payload["manifest_id"],
-        version=payload["version"],
-        artifact_root=payload["artifact_root"],
+        manifest_id=_require_key(payload, "manifest_id", "source artifact manifest"),
+        version=_require_key(payload, "version", "source artifact manifest"),
+        artifact_root=_require_key(payload, "artifact_root", "source artifact manifest"),
         artifacts=entries,
     )
     manifest.validate()
     return manifest
+
+
+def _manifest_entry_from_jsonable(value: Any, label: str) -> SourceArtifactManifestEntry:
+    payload = _require_object(value, label)
+    required_keys = ("source", "artifact_id", "path", "content_type", "sha256")
+    optional_keys = (
+        "market",
+        "ticker",
+        "statement_type",
+        "function",
+        "schema_version",
+        "created_by",
+    )
+    allowed_keys = set(required_keys + optional_keys)
+    unexpected_keys = sorted(set(payload) - allowed_keys)
+    if unexpected_keys:
+        raise ValueError(
+            f"{label} has unsupported keys: {', '.join(unexpected_keys)}"
+        )
+    for key in required_keys:
+        _require_key(payload, key, label)
+
+    entry = SourceArtifactManifestEntry(**payload)
+    entry.validate()
+    return entry
 
 
 def _require_object(value: Any, label: str) -> dict[str, Any]:
@@ -235,6 +256,19 @@ def _require_list(value: Any, label: str) -> list[Any]:
     if not isinstance(value, list):
         raise ValueError(f"{label} must be a list")
     return value
+
+
+def _require_key(payload: dict[str, Any], key: str, label: str) -> Any:
+    if key not in payload:
+        raise ValueError(f"{label} {key} is required")
+    return payload[key]
+
+
+def _validate_required_string(value: Any, label: str) -> None:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a string")
+    if not value:
+        raise ValueError(f"{label} is required")
 
 
 def _record_to_jsonable(record: SourceInventoryRecord) -> dict[str, Any]:

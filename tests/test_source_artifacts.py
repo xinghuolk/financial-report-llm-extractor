@@ -176,3 +176,79 @@ def test_read_source_artifact_manifest_rejects_non_list_artifacts(
 
     with pytest.raises(ValueError, match="source artifact manifest artifacts must be a list"):
         read_source_artifact_manifest(path)
+
+
+def test_read_source_artifact_manifest_rejects_missing_manifest_id(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_artifact_manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": "1",
+                "artifact_root": tmp_path.as_posix(),
+                "artifacts": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="source artifact manifest manifest_id is required"):
+        read_source_artifact_manifest(path)
+
+
+def test_read_source_artifact_manifest_rejects_artifact_extra_key(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_artifact_manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "manifest_id": "source_artifact_manifest",
+                "version": "1",
+                "artifact_root": tmp_path.as_posix(),
+                "artifacts": [
+                    {
+                        "source": "akshare",
+                        "artifact_id": "artifact_1",
+                        "path": "akshare/artifact_1.json",
+                        "content_type": "application/json",
+                        "sha256": "a" * 64,
+                        "extra": "unexpected",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="source artifact manifest artifacts\\[0\\]"):
+        read_source_artifact_manifest(path)
+
+
+def test_read_source_artifact_manifest_rejects_artifact_non_string_sha256(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source_artifact_manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "manifest_id": "source_artifact_manifest",
+                "version": "1",
+                "artifact_root": tmp_path.as_posix(),
+                "artifacts": [
+                    {
+                        "source": "akshare",
+                        "artifact_id": "artifact_1",
+                        "path": "akshare/artifact_1.json",
+                        "content_type": "application/json",
+                        "sha256": 123,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="sha256"):
+        read_source_artifact_manifest(path)
