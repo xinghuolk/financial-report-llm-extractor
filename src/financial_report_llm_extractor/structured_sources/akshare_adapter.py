@@ -55,6 +55,22 @@ CN_WIDE_FIELD_ALIASES = {
     },
 }
 
+CN_WIDE_METADATA_FIELDS = {
+    "REPORT_DATE",
+    "FISCAL_YEAR",
+    "SECURITY_CODE",
+    "SECURITY_NAME_ABBR",
+    "ORG_CODE",
+    "TRADE_MARKET_CODE",
+    "SECURITY_TYPE_CODE",
+    "REPORT_TYPE",
+    "REPORT_DATE_NAME",
+    "NOTICE_DATE",
+    "UPDATE_DATE",
+    "DATE_TYPE",
+    "CURRENCY",
+}
+
 
 class AkshareClient(Protocol):
     def stock_financial_hk_report_em(
@@ -240,7 +256,8 @@ class AkshareAdapter:
             )
         symbol = f"{exchange.upper()}{ticker}"
         function = getattr(self.client, function_name)
-        rows = _expand_cn_statement_rows(list(function(symbol=symbol)), statement_type)
+        provider_rows = list(function(symbol=symbol))
+        rows = _expand_cn_statement_rows(provider_rows, statement_type)
         artifact = self.artifact_store.write_json(
             source="akshare",
             artifact_id=build_artifact_id(
@@ -249,7 +266,7 @@ class AkshareAdapter:
                 ticker=ticker,
                 artifact_type=statement_type,
             ),
-            payload={"rows": rows},
+            payload={"rows": provider_rows},
         )
         if not rows:
             return (
@@ -348,22 +365,37 @@ def _expand_cn_statement_rows(
         if row.get("STD_ITEM_NAME"):
             expanded.append(row)
             continue
+        emitted_field_codes: set[str] = set()
         for field_code, field_name in aliases.items():
             if field_code not in row:
                 continue
             value = row.get(field_code)
             if value is None:
                 continue
-            expanded.append(
-                {
-                    "REPORT_DATE": row.get("REPORT_DATE"),
-                    "FISCAL_YEAR": row.get("FISCAL_YEAR"),
-                    "STD_ITEM_CODE": field_code,
-                    "STD_ITEM_NAME": field_name,
-                    "AMOUNT": value,
-                }
-            )
+            expanded.append(_cn_wide_field_row(row, field_code, field_name, value))
+            emitted_field_codes.add(field_code)
+        for field_code, value in row.items():
+            if field_code in emitted_field_codes or field_code in CN_WIDE_METADATA_FIELDS:
+                continue
+            if value is None:
+                continue
+            expanded.append(_cn_wide_field_row(row, field_code, field_code, value))
     return expanded
+
+
+def _cn_wide_field_row(
+    row: dict[str, object],
+    field_code: str,
+    field_name: str,
+    value: object,
+) -> dict[str, object]:
+    return {
+        "REPORT_DATE": row.get("REPORT_DATE"),
+        "FISCAL_YEAR": row.get("FISCAL_YEAR"),
+        "STD_ITEM_CODE": field_code,
+        "STD_ITEM_NAME": field_name,
+        "AMOUNT": value,
+    }
 
 
 def _status_record(

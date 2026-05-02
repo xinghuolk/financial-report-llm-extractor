@@ -1,4 +1,5 @@
 from decimal import Decimal
+import json
 from pathlib import Path
 
 from financial_report_llm_extractor.structured_sources.akshare_adapter import (
@@ -7,6 +8,9 @@ from financial_report_llm_extractor.structured_sources.akshare_adapter import (
 from financial_report_llm_extractor.structured_sources.artifacts import (
     SourceArtifactStore,
     finalize_source_artifacts,
+)
+from financial_report_llm_extractor.structured_sources.field_inventory_summary import (
+    build_provider_field_inventory_summary,
 )
 
 
@@ -158,6 +162,59 @@ def test_akshare_cn_statement_inventory_uses_market_symbol_and_cny(
     assert record.unit == "yuan"
     assert record.source_evidence[0].function == "stock_balance_sheet_by_report_em"
     assert (tmp_path / "akshare" / "akshare_cn_600519_balance_sheet.json").exists()
+
+
+def test_akshare_cn_wide_inventory_preserves_unmapped_provider_fields(
+    tmp_path: Path,
+) -> None:
+    class WideAkshareClient(FakeAkshareClient):
+        def stock_profit_sheet_by_report_em(self, symbol: str) -> list[dict[str, object]]:
+            assert symbol == "SH600519"
+            return [
+                {
+                    "REPORT_DATE": "2024-12-31",
+                    "FISCAL_YEAR": "2024",
+                    "OPERATE_INCOME": "100",
+                    "UNMAPPED_PROVIDER_FIELD": "42.5",
+                }
+            ]
+
+    store = SourceArtifactStore(tmp_path)
+    adapter = AkshareAdapter(client=WideAkshareClient(), artifact_store=store)
+
+    records = adapter.fetch_cn_statement_inventory(
+        ticker="600519",
+        exchange="SH",
+        statement_type="income_statement",
+        unit="yuan",
+    )
+
+    assert [record.raw_field_code for record in records] == [
+        "OPERATE_INCOME",
+        "UNMAPPED_PROVIDER_FIELD",
+    ]
+    assert [record.raw_field_name for record in records] == [
+        "营业收入",
+        "UNMAPPED_PROVIDER_FIELD",
+    ]
+    assert records[1].raw_value == "42.5"
+    assert records[1].parsed_numeric_value == Decimal("42.5")
+
+    artifact_payload = json.loads(
+        (tmp_path / "akshare" / "akshare_cn_600519_income_statement.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert artifact_payload["rows"][0]["UNMAPPED_PROVIDER_FIELD"] == "42.5"
+
+    summary = build_provider_field_inventory_summary(
+        records,
+        sample_set="provider_field_baseline",
+        source_artifact_count=len(store.artifacts),
+    )
+    target = summary["targets"][0]
+    assert "UNMAPPED_PROVIDER_FIELD" in target["raw_field_names"]
+    assert "UNMAPPED_PROVIDER_FIELD" in target["raw_field_codes"]
 
 
 def test_akshare_cn_inventory_replay_validates_against_manifest(
