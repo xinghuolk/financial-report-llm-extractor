@@ -88,7 +88,7 @@ def build_provider_raw_field_index(
     for record in records:
         if record.source_status != "present":
             continue
-        key = (
+        key: tuple[str, str, str, str | None] = (
             record.source,
             record.statement_type,
             record.raw_field_name,

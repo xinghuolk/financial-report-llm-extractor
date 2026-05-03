@@ -1,8 +1,9 @@
 import json
 from decimal import Decimal
 from pathlib import Path
+from typing import cast
 
-from financial_report_llm_extractor.field_metadata import FieldTaxonomyEntry
+from financial_report_llm_extractor.field_metadata import FieldDomain, FieldTaxonomyEntry
 from financial_report_llm_extractor.structured_sources.catalog import SourceMappingEntry
 from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
     ProviderFieldCandidate,
@@ -105,14 +106,13 @@ def _taxonomy_entry(
     evidence_requirement: str = "source_only_allowed",
     description: str = "Revenue from operations for the reporting period.",
 ) -> FieldTaxonomyEntry:
+    domain: FieldDomain = "notes_and_mda"
+    if statement_type in {"income_statement", "balance_sheet", "cash_flow"}:
+        domain = cast(FieldDomain, statement_type)
     return FieldTaxonomyEntry(
         field_id=field_id,
         priority=priority,  # type: ignore[arg-type]
-        domain=(
-            statement_type
-            if statement_type in {"income_statement", "balance_sheet", "cash_flow"}
-            else "notes_and_mda"
-        ),  # type: ignore[arg-type]
+        domain=domain,
         statement_type=statement_type,  # type: ignore[arg-type]
         value_type=value_type,  # type: ignore[arg-type]
         source_mode=source_mode,  # type: ignore[arg-type]
@@ -316,3 +316,34 @@ def test_write_provider_field_candidate_report_writes_json_and_markdown(
     assert "OPERATE_INCOME" in markdown
     assert "strength=`strong`" in markdown
     assert "signals=existing_alias,statement_match,period_support" in markdown
+
+
+def test_provider_field_candidate_report_fixture_summary_is_stable(
+    tmp_path: Path,
+) -> None:
+    result = write_provider_field_candidate_report(
+        taxonomy_path=Path("field_catalog/turtle_v015_field_taxonomy.json"),
+        mapping_catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        inventory_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
+        ),
+        summary_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/"
+            "provider_field_inventory_summary.json"
+        ),
+        output_dir=tmp_path,
+        priorities=("P0", "P1"),
+    )
+
+    payload = json.loads(result.json_path.read_text(encoding="utf-8"))
+    assert payload["summary"]["field_count"] == 33
+    assert payload["summary"]["inventory_record_count"] == 6771
+    assert payload["summary"]["fields_with_candidates"] >= 9
+    revenue_candidates = payload["fields"]["revenue"]["providers"]["akshare"][
+        "candidates"
+    ]
+    total_assets_candidates = payload["fields"]["total_assets"]["providers"]["yahoo"][
+        "candidates"
+    ]
+    assert revenue_candidates[0]["strength"] == "strong"
+    assert total_assets_candidates[0]["strength"] == "strong"
