@@ -146,7 +146,7 @@ Create `src/financial_report_llm_extractor/structured_sources/field_candidate_di
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass
 from typing import Iterable, Literal
 
 from financial_report_llm_extractor.structured_sources.models import (
@@ -481,6 +481,24 @@ def test_discover_provider_field_candidates_marks_cross_provider_support() -> No
     yahoo_candidate = report.fields["revenue"].providers["yahoo"].candidates[0]
     assert "cross_provider_support" in akshare_candidate.signals
     assert "cross_provider_support" in yahoo_candidate.signals
+
+
+def test_discover_provider_field_candidates_keeps_catalog_gap_with_candidates() -> None:
+    report = discover_provider_field_candidates(
+        taxonomy_entries={"revenue": _taxonomy_entry()},
+        mapping_entries={},
+        records=(
+            _record(
+                raw_field_name="revenue",
+                raw_field_code=None,
+            ),
+        ),
+        priorities=("P0",),
+    )
+
+    field = report.fields["revenue"]
+    assert field.status == "catalog_gap"
+    assert field.providers["akshare"].candidates[0].raw_field_name == "revenue"
 ```
 
 - [ ] **Step 2: Run tests and verify they fail**
@@ -488,18 +506,31 @@ def test_discover_provider_field_candidates_marks_cross_provider_support() -> No
 Run:
 
 ```bash
-uv run pytest tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_existing_aliases_strong tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_pdf_only_not_applicable tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_cross_provider_support -v
+uv run pytest tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_existing_aliases_strong tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_pdf_only_not_applicable tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_cross_provider_support tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_keeps_catalog_gap_with_candidates -v
 ```
 
 Expected: fail because `ProviderFieldCandidate` and `discover_provider_field_candidates` are not implemented.
 
 - [ ] **Step 3: Implement candidate dataclasses and discovery**
 
+Extend the module imports at the top so they are:
+
+```python
+import re
+from dataclasses import asdict, dataclass, replace
+from typing import Iterable, Literal
+
+from financial_report_llm_extractor.field_metadata import FieldTaxonomyEntry
+from financial_report_llm_extractor.structured_sources.catalog import SourceMappingEntry
+from financial_report_llm_extractor.structured_sources.models import (
+    SourceInventoryRecord,
+    SourceName,
+)
+```
+
 Append to `field_candidate_discovery.py`:
 
 ```python
-from financial_report_llm_extractor.field_metadata import FieldTaxonomyEntry
-from financial_report_llm_extractor.structured_sources.catalog import SourceMappingEntry
 
 
 @dataclass(frozen=True)
@@ -622,10 +653,10 @@ def discover_provider_field_candidates(
             if candidates:
                 provider_groups[source] = ProviderCandidateGroup(candidates=candidates)
         provider_groups = _add_cross_provider_support(provider_groups)
-        if provider_groups:
-            status: FieldCandidateStatus = "has_candidates"
-        elif mapping is None:
-            status = "catalog_gap"
+        if mapping is None:
+            status: FieldCandidateStatus = "catalog_gap"
+        elif provider_groups:
+            status = "has_candidates"
         else:
             status = "no_candidates"
         fields[field_id] = FieldCandidateReportEntry(
@@ -800,10 +831,10 @@ def _strength_for_score(score: int) -> CandidateStrength:
 Run:
 
 ```bash
-uv run pytest tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_existing_aliases_strong tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_pdf_only_not_applicable tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_cross_provider_support -v
+uv run pytest tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_existing_aliases_strong tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_pdf_only_not_applicable tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_marks_cross_provider_support tests/test_field_candidate_discovery.py::test_discover_provider_field_candidates_keeps_catalog_gap_with_candidates -v
 ```
 
-Expected: all three selected tests pass.
+Expected: all four selected tests pass.
 
 - [ ] **Step 5: Commit Task 2**
 
@@ -861,6 +892,10 @@ def test_write_provider_field_candidate_report_writes_json_and_markdown(
     assert "## P0" in markdown
     assert "`revenue`" in markdown
     assert "akshare" in markdown
+    assert "营业收入" in markdown
+    assert "OPERATE_INCOME" in markdown
+    assert "strength=`strong`" in markdown
+    assert "signals=existing_alias,statement_match,period_support" in markdown
 ```
 
 - [ ] **Step 2: Run test and verify it fails**
