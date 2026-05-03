@@ -279,6 +279,21 @@ def test_discover_provider_field_candidates_keeps_catalog_gap_with_candidates() 
     field = report.fields["revenue"]
     assert field.status == "catalog_gap"
     assert field.providers["akshare"].candidates[0].raw_field_name == "revenue"
+    assert report.summary["fields_with_candidates"] == 1
+    assert report.summary["fields_without_candidates"] == 0
+
+
+def test_provider_field_candidate_report_summary_counts_empty_catalog_gaps() -> None:
+    report = discover_provider_field_candidates(
+        taxonomy_entries={"revenue": _taxonomy_entry()},
+        mapping_entries={},
+        records=(),
+        priorities=("P0",),
+    )
+
+    assert report.fields["revenue"].status == "catalog_gap"
+    assert report.summary["fields_with_candidates"] == 0
+    assert report.summary["fields_without_candidates"] == 1
 
 
 def test_write_provider_field_candidate_report_writes_json_and_markdown(
@@ -338,7 +353,7 @@ def test_provider_field_candidate_report_fixture_summary_is_stable(
     payload = json.loads(result.json_path.read_text(encoding="utf-8"))
     assert payload["summary"]["field_count"] == 33
     assert payload["summary"]["inventory_record_count"] == 6771
-    assert payload["summary"]["fields_with_candidates"] >= 9
+    assert payload["summary"]["fields_with_candidates"] >= 25
     revenue_candidates = payload["fields"]["revenue"]["providers"]["akshare"][
         "candidates"
     ]

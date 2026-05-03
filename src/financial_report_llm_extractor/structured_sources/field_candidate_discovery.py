@@ -202,10 +202,16 @@ class ProviderFieldCandidateReport:
     @property
     def summary(self) -> dict[str, int]:
         statuses = [entry.status for entry in self.fields.values()]
+        fields_with_candidates = sum(1 for entry in self.fields.values() if entry.providers)
+        fields_without_candidates = sum(
+            1
+            for entry in self.fields.values()
+            if not entry.providers and entry.status != "not_applicable"
+        )
         return {
             "field_count": len(statuses),
-            "fields_with_candidates": statuses.count("has_candidates"),
-            "fields_without_candidates": statuses.count("no_candidates"),
+            "fields_with_candidates": fields_with_candidates,
+            "fields_without_candidates": fields_without_candidates,
             "not_applicable_fields": statuses.count("not_applicable"),
             "catalog_gap_fields": statuses.count("catalog_gap"),
         }
