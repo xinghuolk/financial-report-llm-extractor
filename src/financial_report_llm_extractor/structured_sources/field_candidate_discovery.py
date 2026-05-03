@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Iterable, Literal
 
+from financial_report_llm_extractor.field_metadata import FieldTaxonomyEntry
+from financial_report_llm_extractor.structured_sources.catalog import SourceMappingEntry
 from financial_report_llm_extractor.structured_sources.models import (
     SourceInventoryRecord,
     SourceName,
@@ -132,3 +134,296 @@ def build_provider_raw_field_index(
             record_count=bucket.record_count,
         )
     return index
+
+
+@dataclass(frozen=True)
+class ProviderFieldCandidate:
+    raw_field_name: str
+    raw_field_code: str | None
+    score: int
+    strength: CandidateStrength
+    signals: tuple[str, ...]
+    target_count: int
+    period_count: int
+    record_count: int
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ProviderCandidateGroup:
+    candidates: tuple[ProviderFieldCandidate, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return {"candidates": [candidate.to_dict() for candidate in self.candidates]}
+
+
+@dataclass(frozen=True)
+class FieldCandidateReportEntry:
+    priority: str
+    statement_type: str
+    source_mode: str
+    status: FieldCandidateStatus
+    providers: dict[str, ProviderCandidateGroup]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "priority": self.priority,
+            "statement_type": self.statement_type,
+            "source_mode": self.source_mode,
+            "status": self.status,
+            "providers": {
+                source: group.to_dict()
+                for source, group in sorted(self.providers.items())
+            },
+        }
+
+
+@dataclass(frozen=True)
+class ProviderFieldCandidateReport:
+    report_id: str
+    version: str
+    taxonomy_catalog: str
+    mapping_catalog: str
+    fixture: str
+    priorities: tuple[str, ...]
+    fields: dict[str, FieldCandidateReportEntry]
+
+    @property
+    def summary(self) -> dict[str, int]:
+        statuses = [entry.status for entry in self.fields.values()]
+        return {
+            "field_count": len(statuses),
+            "fields_with_candidates": statuses.count("has_candidates"),
+            "fields_without_candidates": statuses.count("no_candidates"),
+            "not_applicable_fields": statuses.count("not_applicable"),
+            "catalog_gap_fields": statuses.count("catalog_gap"),
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "report_id": self.report_id,
+            "version": self.version,
+            "taxonomy_catalog": self.taxonomy_catalog,
+            "mapping_catalog": self.mapping_catalog,
+            "fixture": self.fixture,
+            "priorities": list(self.priorities),
+            "fields": {
+                field_id: entry.to_dict()
+                for field_id, entry in sorted(self.fields.items())
+            },
+            "summary": self.summary,
+        }
+
+
+def discover_provider_field_candidates(
+    *,
+    taxonomy_entries: dict[str, FieldTaxonomyEntry],
+    mapping_entries: dict[str, SourceMappingEntry],
+    records: Iterable[SourceInventoryRecord],
+    priorities: tuple[str, ...] = ("P0", "P1"),
+    fixture: str = "provider_field_baseline",
+    taxonomy_catalog: str = "turtle_v015_field_taxonomy",
+    mapping_catalog: str = "turtle_v015_source_mapping_minimal",
+) -> ProviderFieldCandidateReport:
+    raw_index = build_provider_raw_field_index(records)
+    selected_priorities = set(priorities)
+    fields: dict[str, FieldCandidateReportEntry] = {}
+    for field_id, taxonomy in sorted(taxonomy_entries.items()):
+        if taxonomy.priority not in selected_priorities:
+            continue
+        if taxonomy.source_mode in {"pdf_only", "llm_review"}:
+            fields[field_id] = FieldCandidateReportEntry(
+                priority=taxonomy.priority,
+                statement_type=taxonomy.statement_type,
+                source_mode=taxonomy.source_mode,
+                status="not_applicable",
+                providers={},
+            )
+            continue
+
+        mapping = mapping_entries.get(field_id)
+        provider_groups: dict[str, ProviderCandidateGroup] = {}
+        for source in ("akshare", "yahoo"):
+            candidates = _rank_provider_candidates(
+                field_id=field_id,
+                taxonomy=taxonomy,
+                mapping=mapping,
+                source=source,
+                raw_fields=raw_index.values(),
+            )
+            if candidates:
+                provider_groups[source] = ProviderCandidateGroup(candidates=candidates)
+        provider_groups = _add_cross_provider_support(provider_groups)
+        if mapping is None:
+            status: FieldCandidateStatus = "catalog_gap"
+        elif provider_groups:
+            status = "has_candidates"
+        else:
+            status = "no_candidates"
+        fields[field_id] = FieldCandidateReportEntry(
+            priority=taxonomy.priority,
+            statement_type=taxonomy.statement_type,
+            source_mode=taxonomy.source_mode,
+            status=status,
+            providers=provider_groups,
+        )
+
+    return ProviderFieldCandidateReport(
+        report_id="provider_field_candidate_report",
+        version="1",
+        taxonomy_catalog=taxonomy_catalog,
+        mapping_catalog=mapping_catalog,
+        fixture=fixture,
+        priorities=priorities,
+        fields=fields,
+    )
+
+
+def _rank_provider_candidates(
+    *,
+    field_id: str,
+    taxonomy: FieldTaxonomyEntry,
+    mapping: SourceMappingEntry | None,
+    source: str,
+    raw_fields: Iterable[ProviderRawField],
+) -> tuple[ProviderFieldCandidate, ...]:
+    source_aliases = set(mapping.source_aliases.get(source, ())) if mapping else set()
+    normalized_aliases = {normalize_match_text(alias) for alias in source_aliases}
+    field_tokens = _field_tokens(field_id, taxonomy)
+    candidates: list[ProviderFieldCandidate] = []
+    for raw in raw_fields:
+        if raw.source != source:
+            continue
+        if raw.statement_type != taxonomy.statement_type:
+            continue
+        signals: list[str] = ["statement_match"]
+        raw_labels = {
+            raw.raw_field_name,
+            raw.raw_field_code or "",
+            *raw.normalized_names,
+            *raw.normalized_codes,
+        }
+        normalized_raw_labels = {
+            normalize_match_text(label)
+            for label in raw_labels
+            if label
+        }
+        if source_aliases.intersection(raw_labels) or normalized_aliases.intersection(
+            normalized_raw_labels
+        ):
+            signals.insert(0, "existing_alias")
+        elif normalized_raw_labels.intersection(field_tokens):
+            signals.insert(0, "exact_text")
+        elif _keyword_overlap(field_tokens, normalized_raw_labels) >= 2:
+            signals.insert(0, "keyword_overlap")
+        else:
+            continue
+        if len(raw.periods) > 1:
+            signals.append("period_support")
+        if len(raw.tickers) > 1:
+            signals.append("provider_presence")
+        score = _score_signals(signals)
+        candidates.append(
+            ProviderFieldCandidate(
+                raw_field_name=raw.raw_field_name,
+                raw_field_code=raw.raw_field_code,
+                score=score,
+                strength=_strength_for_score(score),
+                signals=tuple(signals),
+                target_count=len(raw.tickers),
+                period_count=len(raw.periods),
+                record_count=raw.record_count,
+            )
+        )
+    return tuple(
+        sorted(
+            candidates,
+            key=lambda candidate: (
+                -candidate.score,
+                candidate.raw_field_name,
+                candidate.raw_field_code or "",
+            ),
+        )[:10]
+    )
+
+
+def _add_cross_provider_support(
+    provider_groups: dict[str, ProviderCandidateGroup],
+) -> dict[str, ProviderCandidateGroup]:
+    if set(provider_groups) != {"akshare", "yahoo"}:
+        return provider_groups
+    provider_labels = {
+        source: {
+            normalize_match_text(candidate.raw_field_name)
+            for candidate in group.candidates
+        }
+        for source, group in provider_groups.items()
+    }
+    shared_labels = provider_labels["akshare"].intersection(provider_labels["yahoo"])
+    if not shared_labels:
+        return provider_groups
+
+    updated: dict[str, ProviderCandidateGroup] = {}
+    for source, group in provider_groups.items():
+        updated_candidates: list[ProviderFieldCandidate] = []
+        for candidate in group.candidates:
+            if normalize_match_text(candidate.raw_field_name) not in shared_labels:
+                updated_candidates.append(candidate)
+                continue
+            signals = tuple((*candidate.signals, "cross_provider_support"))
+            score = min(candidate.score + 5, 100)
+            updated_candidates.append(
+                replace(
+                    candidate,
+                    score=score,
+                    strength=_strength_for_score(score),
+                    signals=signals,
+                )
+            )
+        updated[source] = ProviderCandidateGroup(candidates=tuple(updated_candidates))
+    return updated
+
+
+def _field_tokens(field_id: str, taxonomy: FieldTaxonomyEntry) -> set[str]:
+    values = [field_id, taxonomy.description]
+    tokens: set[str] = set()
+    for value in values:
+        normalized = normalize_match_text(value)
+        tokens.add(normalized)
+        tokens.update(part for part in normalized.split() if part not in _COMMON_WORDS)
+    return {token for token in tokens if token}
+
+
+def _keyword_overlap(field_tokens: set[str], raw_labels: set[str]) -> int:
+    raw_tokens: set[str] = set()
+    for label in raw_labels:
+        raw_tokens.add(label)
+        raw_tokens.update(part for part in label.split() if part not in _COMMON_WORDS)
+    return len(field_tokens.intersection(raw_tokens))
+
+
+def _score_signals(signals: list[str]) -> int:
+    score = 0
+    if "existing_alias" in signals:
+        score += 80
+    if "exact_text" in signals:
+        score += 70
+    if "keyword_overlap" in signals:
+        score += 40
+    if "statement_match" in signals:
+        score += 10
+    if "period_support" in signals:
+        score += 10
+    if "provider_presence" in signals:
+        score += 5
+    return min(score, 100)
+
+
+def _strength_for_score(score: int) -> CandidateStrength:
+    if score >= 90:
+        return "strong"
+    if score >= 60:
+        return "medium"
+    return "weak"

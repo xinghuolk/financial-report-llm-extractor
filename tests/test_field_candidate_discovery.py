@@ -1,8 +1,12 @@
 from decimal import Decimal
 
+from financial_report_llm_extractor.field_metadata import FieldTaxonomyEntry
+from financial_report_llm_extractor.structured_sources.catalog import SourceMappingEntry
 from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
+    ProviderFieldCandidate,
     ProviderRawField,
     build_provider_raw_field_index,
+    discover_provider_field_candidates,
     normalize_match_text,
 )
 from financial_report_llm_extractor.structured_sources.models import (
@@ -82,3 +86,193 @@ def test_build_provider_raw_field_index_groups_targets_periods_and_counts() -> N
     )
     assert index[yahoo_key].tickers == ("0001.HK",)
     assert index[yahoo_key].periods == ("2025-12-31",)
+
+
+def _taxonomy_entry(
+    field_id: str = "revenue",
+    *,
+    priority: str = "P0",
+    statement_type: str = "income_statement",
+    source_mode: str = "direct",
+    value_type: str = "money",
+    period_type: str = "duration",
+    scope_expectation: str = "consolidated",
+    currency_requirement: str = "required",
+    unit_requirement: str = "required",
+    evidence_requirement: str = "source_only_allowed",
+    description: str = "Revenue from operations for the reporting period.",
+) -> FieldTaxonomyEntry:
+    return FieldTaxonomyEntry(
+        field_id=field_id,
+        priority=priority,  # type: ignore[arg-type]
+        domain=(
+            statement_type
+            if statement_type in {"income_statement", "balance_sheet", "cash_flow"}
+            else "notes_and_mda"
+        ),  # type: ignore[arg-type]
+        statement_type=statement_type,  # type: ignore[arg-type]
+        value_type=value_type,  # type: ignore[arg-type]
+        source_mode=source_mode,  # type: ignore[arg-type]
+        period_type=period_type,  # type: ignore[arg-type]
+        scope_expectation=scope_expectation,  # type: ignore[arg-type]
+        currency_requirement=currency_requirement,  # type: ignore[arg-type]
+        unit_requirement=unit_requirement,  # type: ignore[arg-type]
+        evidence_requirement=evidence_requirement,  # type: ignore[arg-type]
+        fallback_policy="pdf_allowed",
+        description=description,
+    )
+
+
+def _mapping_entry(
+    field_id: str = "revenue",
+    *,
+    priority: str = "P0",
+    statement_type: str = "income_statement",
+) -> SourceMappingEntry:
+    return SourceMappingEntry(
+        field_id=field_id,
+        priority=priority,
+        value_type="money",
+        statement_type=statement_type,
+        currency_requirement="required",
+        unit_requirement="required",
+        source_aliases={
+            "akshare": ("营业收入", "OPERATE_INCOME"),
+            "yahoo": ("Total Revenue",),
+        },
+        domain=statement_type,
+        source_mode="direct",
+        primary_route="akshare_direct",
+        verification_status="verified",
+        fallback_policy="pdf_allowed",
+    )
+
+
+def test_discover_provider_field_candidates_marks_existing_aliases_strong() -> None:
+    records = (
+        _record(
+            period="2024-12-31",
+            raw_field_name="营业收入",
+            raw_field_code="OPERATE_INCOME",
+        ),
+        _record(
+            period="2025-12-31",
+            raw_field_name="营业收入",
+            raw_field_code="OPERATE_INCOME",
+        ),
+        _record(
+            source="yahoo",
+            ticker="0001.HK",
+            raw_field_name="Total Revenue",
+            raw_field_code=None,
+            value="200",
+        ),
+    )
+
+    report = discover_provider_field_candidates(
+        taxonomy_entries={"revenue": _taxonomy_entry()},
+        mapping_entries={"revenue": _mapping_entry()},
+        records=records,
+        priorities=("P0",),
+    )
+
+    field = report.fields["revenue"]
+    assert field.status == "has_candidates"
+    assert field.providers["akshare"].candidates[0] == ProviderFieldCandidate(
+        raw_field_name="营业收入",
+        raw_field_code="OPERATE_INCOME",
+        score=100,
+        strength="strong",
+        signals=("existing_alias", "statement_match", "period_support"),
+        target_count=1,
+        period_count=2,
+        record_count=2,
+    )
+    assert field.providers["yahoo"].candidates[0].strength == "strong"
+
+
+def test_discover_provider_field_candidates_marks_pdf_only_not_applicable() -> None:
+    report = discover_provider_field_candidates(
+        taxonomy_entries={
+            "audit_opinion": _taxonomy_entry(
+                field_id="audit_opinion",
+                priority="P4",
+                statement_type="notes",
+                source_mode="pdf_only",
+                value_type="text",
+                period_type="annual_text",
+                scope_expectation="not_applicable",
+                currency_requirement="not_applicable",
+                unit_requirement="not_applicable",
+                evidence_requirement="pdf_required",
+                description="Audit opinion text.",
+            )
+        },
+        mapping_entries={},
+        records=(),
+        priorities=("P4",),
+    )
+
+    assert report.fields["audit_opinion"].status == "not_applicable"
+    assert report.fields["audit_opinion"].providers == {}
+
+
+def test_discover_provider_field_candidates_marks_cross_provider_support() -> None:
+    mapping = SourceMappingEntry(
+        field_id="revenue",
+        priority="P0",
+        value_type="money",
+        statement_type="income_statement",
+        currency_requirement="required",
+        unit_requirement="required",
+        source_aliases={
+            "akshare": ("Total Revenue",),
+            "yahoo": ("Total Revenue",),
+        },
+        domain="income_statement",
+        source_mode="direct",
+        primary_route="akshare_direct",
+        verification_status="expected",
+        fallback_policy="pdf_allowed",
+    )
+    report = discover_provider_field_candidates(
+        taxonomy_entries={"revenue": _taxonomy_entry()},
+        mapping_entries={"revenue": mapping},
+        records=(
+            _record(
+                source="akshare",
+                raw_field_name="Total Revenue",
+                raw_field_code=None,
+            ),
+            _record(
+                source="yahoo",
+                ticker="0001.HK",
+                raw_field_name="Total Revenue",
+                raw_field_code=None,
+            ),
+        ),
+        priorities=("P0",),
+    )
+
+    akshare_candidate = report.fields["revenue"].providers["akshare"].candidates[0]
+    yahoo_candidate = report.fields["revenue"].providers["yahoo"].candidates[0]
+    assert "cross_provider_support" in akshare_candidate.signals
+    assert "cross_provider_support" in yahoo_candidate.signals
+
+
+def test_discover_provider_field_candidates_keeps_catalog_gap_with_candidates() -> None:
+    report = discover_provider_field_candidates(
+        taxonomy_entries={"revenue": _taxonomy_entry()},
+        mapping_entries={},
+        records=(
+            _record(
+                raw_field_name="revenue",
+                raw_field_code=None,
+            ),
+        ),
+        priorities=("P0",),
+    )
+
+    field = report.fields["revenue"]
+    assert field.status == "catalog_gap"
+    assert field.providers["akshare"].candidates[0].raw_field_name == "revenue"
