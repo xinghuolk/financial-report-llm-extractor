@@ -255,9 +255,11 @@ def build_provider_raw_field_index(
         normalized_codes = tuple(
             value
             for value in (
-                normalize_match_text(raw_field_code)
-                if isinstance(raw_field_code, str)
-                else "",
+                (
+                    normalize_match_text(raw_field_code)
+                    if isinstance(raw_field_code, str)
+                    else ""
+                ),
             )
             if value
         )
