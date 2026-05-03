@@ -919,9 +919,13 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Iterable, Literal
 
-from financial_report_llm_extractor.field_metadata import load_field_taxonomy
+from financial_report_llm_extractor.field_metadata import (
+    FieldTaxonomyEntry,
+    load_field_taxonomy,
+)
 from financial_report_llm_extractor.structured_sources.artifacts import read_source_inventory
 from financial_report_llm_extractor.structured_sources.catalog import (
+    SourceMappingEntry,
     load_source_mapping_catalog,
 )
 from financial_report_llm_extractor.structured_sources.models import (
