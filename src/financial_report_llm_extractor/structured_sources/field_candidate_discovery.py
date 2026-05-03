@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import asdict, dataclass, replace
+from pathlib import Path
 from typing import Iterable, Literal
 
-from financial_report_llm_extractor.field_metadata import FieldTaxonomyEntry
-from financial_report_llm_extractor.structured_sources.catalog import SourceMappingEntry
+from financial_report_llm_extractor.field_metadata import (
+    FieldTaxonomyEntry,
+    load_field_taxonomy,
+)
+from financial_report_llm_extractor.structured_sources.artifacts import read_source_inventory
+from financial_report_llm_extractor.structured_sources.catalog import (
+    SourceMappingEntry,
+    load_source_mapping_catalog,
+)
 from financial_report_llm_extractor.structured_sources.models import (
     SourceInventoryRecord,
     SourceName,
@@ -427,3 +436,111 @@ def _strength_for_score(score: int) -> CandidateStrength:
     if score >= 60:
         return "medium"
     return "weak"
+
+
+@dataclass(frozen=True)
+class ProviderFieldCandidateReportResult:
+    json_path: Path
+    markdown_path: Path
+    field_count: int
+
+
+def write_provider_field_candidate_report(
+    *,
+    taxonomy_path: Path,
+    mapping_catalog_path: Path,
+    inventory_path: Path,
+    summary_path: Path,
+    output_dir: Path,
+    priorities: tuple[str, ...] = ("P0", "P1"),
+) -> ProviderFieldCandidateReportResult:
+    taxonomy = load_field_taxonomy(taxonomy_path)
+    mapping_catalog = load_source_mapping_catalog(
+        mapping_catalog_path,
+        priorities=priorities,
+    )
+    summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    records = read_source_inventory(inventory_path)
+    report = discover_provider_field_candidates(
+        taxonomy_entries=taxonomy.fields,
+        mapping_entries=mapping_catalog.entries,
+        records=records,
+        priorities=priorities,
+        taxonomy_catalog=taxonomy.catalog_id,
+        mapping_catalog=mapping_catalog.catalog_id,
+    )
+    report_dict = report.to_dict()
+    summary_dict = dict(report.summary)
+    summary_dict["inventory_record_count"] = int(summary_payload["record_count"])
+    summary_dict["source_artifact_count"] = int(
+        summary_payload["source_artifact_count"]
+    )
+    report_dict["summary"] = summary_dict
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / "provider_field_candidate_report.json"
+    markdown_path = output_dir / "provider_field_candidate_report.md"
+    json_path.write_text(
+        json.dumps(report_dict, ensure_ascii=False, indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
+    markdown_path.write_text(
+        _candidate_report_markdown(
+            report,
+            inventory_record_count=int(summary_payload["record_count"]),
+            source_artifact_count=int(summary_payload["source_artifact_count"]),
+        ),
+        encoding="utf-8",
+    )
+    return ProviderFieldCandidateReportResult(
+        json_path=json_path,
+        markdown_path=markdown_path,
+        field_count=len(report.fields),
+    )
+
+
+def _candidate_report_markdown(
+    report: ProviderFieldCandidateReport,
+    *,
+    inventory_record_count: int,
+    source_artifact_count: int,
+) -> str:
+    lines = [
+        "# Provider Field Candidate Report",
+        "",
+        f"- Fixture: `{report.fixture}`",
+        f"- Priorities: `{','.join(report.priorities)}`",
+        f"- Fields: `{len(report.fields)}`",
+        f"- Inventory records: `{inventory_record_count}`",
+        f"- Source artifacts: `{source_artifact_count}`",
+        "",
+    ]
+    priorities = sorted({entry.priority for entry in report.fields.values()})
+    for priority in priorities:
+        lines.extend([f"## {priority}", ""])
+        for field_id, entry in sorted(report.fields.items()):
+            if entry.priority != priority:
+                continue
+            lines.append(f"### `{field_id}`")
+            lines.append("")
+            lines.append(
+                f"- Status: `{entry.status}`; statement: `{entry.statement_type}`; "
+                f"mode: `{entry.source_mode}`"
+            )
+            if not entry.providers:
+                lines.append("")
+                continue
+            for source, group in sorted(entry.providers.items()):
+                lines.append(f"- Provider `{source}`")
+                for candidate in group.candidates[:5]:
+                    code = candidate.raw_field_code or ""
+                    lines.append(
+                        f"  - `{candidate.raw_field_name}` `{code}` "
+                        f"score={candidate.score} strength=`{candidate.strength}` "
+                        f"signals={','.join(candidate.signals)} "
+                        f"targets={candidate.target_count} "
+                        f"periods={candidate.period_count}"
+                    )
+            lines.append("")
+    return "\n".join(lines).rstrip() + "\n"

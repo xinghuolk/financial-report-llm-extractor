@@ -1,4 +1,6 @@
+import json
 from decimal import Decimal
+from pathlib import Path
 
 from financial_report_llm_extractor.field_metadata import FieldTaxonomyEntry
 from financial_report_llm_extractor.structured_sources.catalog import SourceMappingEntry
@@ -8,6 +10,7 @@ from financial_report_llm_extractor.structured_sources.field_candidate_discovery
     build_provider_raw_field_index,
     discover_provider_field_candidates,
     normalize_match_text,
+    write_provider_field_candidate_report,
 )
 from financial_report_llm_extractor.structured_sources.models import (
     SourceEvidence,
@@ -276,3 +279,40 @@ def test_discover_provider_field_candidates_keeps_catalog_gap_with_candidates() 
     field = report.fields["revenue"]
     assert field.status == "catalog_gap"
     assert field.providers["akshare"].candidates[0].raw_field_name == "revenue"
+
+
+def test_write_provider_field_candidate_report_writes_json_and_markdown(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "candidate_report"
+
+    result = write_provider_field_candidate_report(
+        taxonomy_path=Path("field_catalog/turtle_v015_field_taxonomy.json"),
+        mapping_catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        inventory_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
+        ),
+        summary_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/"
+            "provider_field_inventory_summary.json"
+        ),
+        output_dir=output_dir,
+        priorities=("P0", "P1"),
+    )
+
+    assert result.json_path == output_dir / "provider_field_candidate_report.json"
+    assert result.markdown_path == output_dir / "provider_field_candidate_report.md"
+    payload = json.loads(result.json_path.read_text(encoding="utf-8"))
+    assert payload["report_id"] == "provider_field_candidate_report"
+    assert payload["summary"]["field_count"] == 33
+    assert payload["summary"]["inventory_record_count"] == 6771
+    assert payload["fields"]["revenue"]["status"] == "has_candidates"
+    assert "akshare" in payload["fields"]["revenue"]["providers"]
+    markdown = result.markdown_path.read_text(encoding="utf-8")
+    assert "## P0" in markdown
+    assert "`revenue`" in markdown
+    assert "akshare" in markdown
+    assert "营业收入" in markdown
+    assert "OPERATE_INCOME" in markdown
+    assert "strength=`strong`" in markdown
+    assert "signals=existing_alias,statement_match,period_support" in markdown
