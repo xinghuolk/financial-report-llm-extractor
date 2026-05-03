@@ -89,6 +89,13 @@ class FakeLlmRowDiscoveryResult:
     raw_response_count: int
 
 
+@dataclass(frozen=True)
+class FakeProviderFieldCandidateResult:
+    json_path: Path
+    markdown_path: Path
+    field_count: int
+
+
 def test_ingest_command_calls_ingestion_layer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -228,6 +235,79 @@ def test_extract_fake_command_calls_extraction_layer(
 
     assert exit_code == 0
     assert calls == [(retrieval_probe_path, output_path)]
+
+
+def test_discover_provider_fields_command_calls_candidate_discovery_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    taxonomy_path = tmp_path / "taxonomy.json"
+    mapping_path = tmp_path / "mapping.json"
+    inventory_path = tmp_path / "source_inventory.jsonl.gz"
+    summary_path = tmp_path / "provider_field_inventory_summary.json"
+    output_dir = tmp_path / "candidate_report"
+    calls: list[tuple[Path, Path, Path, Path, Path, tuple[str, ...]]] = []
+
+    def fake_write_provider_field_candidate_report(
+        *,
+        taxonomy_path: Path,
+        mapping_catalog_path: Path,
+        inventory_path: Path,
+        summary_path: Path,
+        output_dir: Path,
+        priorities: tuple[str, ...] = ("P0", "P1"),
+    ) -> FakeProviderFieldCandidateResult:
+        calls.append(
+            (
+                taxonomy_path,
+                mapping_catalog_path,
+                inventory_path,
+                summary_path,
+                output_dir,
+                priorities,
+            )
+        )
+        return FakeProviderFieldCandidateResult(
+            json_path=output_dir / "provider_field_candidate_report.json",
+            markdown_path=output_dir / "provider_field_candidate_report.md",
+            field_count=33,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "write_provider_field_candidate_report",
+        fake_write_provider_field_candidate_report,
+    )
+
+    exit_code = cli.main(
+        [
+            "discover-provider-fields",
+            "--taxonomy",
+            str(taxonomy_path),
+            "--mapping-catalog",
+            str(mapping_path),
+            "--inventory",
+            str(inventory_path),
+            "--summary",
+            str(summary_path),
+            "--out",
+            str(output_dir),
+            "--priorities",
+            "P0,P1",
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [
+        (
+            taxonomy_path,
+            mapping_path,
+            inventory_path,
+            summary_path,
+            output_dir,
+            ("P0", "P1"),
+        )
+    ]
 
 
 def test_extract_command_calls_real_transport_layer(

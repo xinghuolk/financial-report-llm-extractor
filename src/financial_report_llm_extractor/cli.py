@@ -29,6 +29,9 @@ from financial_report_llm_extractor.statement_discovery import (
     write_row_inventory,
     write_statement_map,
 )
+from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
+    write_provider_field_candidate_report,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -113,6 +116,14 @@ def build_parser() -> argparse.ArgumentParser:
     discover_rows_llm_parser.add_argument("--prompt-dir", required=True, type=Path)
     discover_rows_llm_parser.add_argument("--raw-response-dir", required=True, type=Path)
     discover_rows_llm_parser.add_argument("--parsed-response-dir", required=True, type=Path)
+
+    provider_fields_parser = subparsers.add_parser("discover-provider-fields")
+    provider_fields_parser.add_argument("--taxonomy", required=True, type=Path)
+    provider_fields_parser.add_argument("--mapping-catalog", required=True, type=Path)
+    provider_fields_parser.add_argument("--inventory", required=True, type=Path)
+    provider_fields_parser.add_argument("--summary", required=True, type=Path)
+    provider_fields_parser.add_argument("--out", required=True, type=Path)
+    provider_fields_parser.add_argument("--priorities", default="P0,P1")
 
     return parser
 
@@ -309,6 +320,25 @@ def main(argv: list[str] | None = None) -> int:
         print(f"prompts={llm_row_result.prompt_count}")
         print(f"raw_responses={llm_row_result.raw_response_count}")
         print(f"row_inventory_llm_path={llm_row_result.output_path}")
+        return 0
+
+    if args.command == "discover-provider-fields":
+        priorities = tuple(
+            priority.strip()
+            for priority in args.priorities.split(",")
+            if priority.strip()
+        )
+        result = write_provider_field_candidate_report(
+            taxonomy_path=args.taxonomy,
+            mapping_catalog_path=args.mapping_catalog,
+            inventory_path=args.inventory,
+            summary_path=args.summary,
+            output_dir=args.out,
+            priorities=priorities,
+        )
+        print(f"fields={result.field_count}")
+        print(f"candidate_report_path={result.json_path}")
+        print(f"candidate_markdown_path={result.markdown_path}")
         return 0
 
     raise ValueError(f"unknown command: {args.command}")
