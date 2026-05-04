@@ -354,6 +354,9 @@ def test_provider_field_candidate_report_fixture_summary_is_stable(
     assert payload["summary"]["field_count"] == 33
     assert payload["summary"]["inventory_record_count"] == 6771
     assert payload["summary"]["fields_with_candidates"] >= 25
+    assert payload["summary"]["catalog_gap_fields"] <= 18
+    assert payload["fields"]["bond_payable"]["status"] == "has_candidates"
+    assert payload["fields"]["financing_cash_flow"]["status"] == "has_candidates"
     revenue_candidates = payload["fields"]["revenue"]["providers"]["akshare"][
         "candidates"
     ]
