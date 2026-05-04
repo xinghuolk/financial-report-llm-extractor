@@ -94,6 +94,17 @@ def decide_candidate_promotion(
                 aliases=(),
             )
 
+    if any(source_aliases.get(alias) == field_id for alias in aliases):
+        return CandidateDecision(
+            field_id=field_id,
+            source=source,
+            raw_field_name=raw_field_name,
+            raw_field_code=code,
+            action="defer",
+            reason="candidate already mapped",
+            aliases=(),
+        )
+
     new_aliases = tuple(alias for alias in aliases if source_aliases.get(alias) != field_id)
     if not new_aliases:
         return CandidateDecision(
@@ -209,6 +220,9 @@ def _decisions_from_candidate_report(
     if not isinstance(fields, dict):
         return ()
 
+    review_aliases_by_source = {
+        source: dict(aliases) for source, aliases in existing_aliases_by_source.items()
+    }
     for field_id, raw_field in sorted(fields.items()):
         if not isinstance(raw_field, dict):
             continue
@@ -227,12 +241,15 @@ def _decisions_from_candidate_report(
             candidate = dict(top_candidate)
             candidate["field_id"] = str(field_id)
             candidate["source"] = str(source)
-            decisions.append(
-                decide_candidate_promotion(
-                    candidate,
-                    existing_aliases_by_source=existing_aliases_by_source,
-                )
+            decision = decide_candidate_promotion(
+                candidate,
+                existing_aliases_by_source=review_aliases_by_source,
             )
+            decisions.append(decision)
+            if decision.action == "promote":
+                source_aliases = review_aliases_by_source.setdefault(decision.source, {})
+                for alias in decision.aliases:
+                    source_aliases[alias] = decision.field_id
     return tuple(decisions)
 
 

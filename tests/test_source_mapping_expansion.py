@@ -1,5 +1,6 @@
 from financial_report_llm_extractor.structured_sources.source_mapping_expansion import (
     CandidateDecision,
+    _decisions_from_candidate_report,
     decide_candidate_promotion,
     write_source_mapping_expansion_review,
 )
@@ -101,15 +102,74 @@ def test_decide_candidate_promotion_defers_already_mapped_alias() -> None:
     assert decision.aliases == ()
 
 
-def test_decide_candidate_promotion_promotes_only_new_aliases() -> None:
+def test_decide_candidate_promotion_defers_when_candidate_alias_already_mapped() -> None:
     decision = decide_candidate_promotion(
         _candidate(raw_field_name="BOND_PAYABLE", raw_field_code="BOND_PAYABLE_CODE"),
         existing_aliases_by_source={"akshare": {"BOND_PAYABLE": "bond_payable"}},
     )
 
-    assert decision.action == "promote"
-    assert decision.reason == "strong deterministic candidate"
-    assert decision.aliases == ("BOND_PAYABLE_CODE",)
+    assert decision.action == "defer"
+    assert decision.reason == "candidate already mapped"
+    assert decision.aliases == ()
+
+
+def test_decisions_from_candidate_report_reserves_batch_promotions() -> None:
+    decisions = _decisions_from_candidate_report(
+        {
+            "fields": {
+                "alpha_field": {
+                    "providers": {
+                        "akshare": {
+                            "candidates": [
+                                _candidate(
+                                    field_id="ignored",
+                                    source="ignored",
+                                    raw_field_name="SHARED_ALIAS",
+                                    raw_field_code=None,
+                                )
+                            ]
+                        }
+                    }
+                },
+                "beta_field": {
+                    "providers": {
+                        "akshare": {
+                            "candidates": [
+                                _candidate(
+                                    field_id="ignored",
+                                    source="ignored",
+                                    raw_field_name="SHARED_ALIAS",
+                                    raw_field_code=None,
+                                )
+                            ]
+                        }
+                    }
+                },
+            }
+        },
+        existing_aliases_by_source={"akshare": {}},
+    )
+
+    assert decisions == (
+        CandidateDecision(
+            field_id="alpha_field",
+            source="akshare",
+            raw_field_name="SHARED_ALIAS",
+            raw_field_code=None,
+            action="promote",
+            reason="strong deterministic candidate",
+            aliases=("SHARED_ALIAS",),
+        ),
+        CandidateDecision(
+            field_id="beta_field",
+            source="akshare",
+            raw_field_name="SHARED_ALIAS",
+            raw_field_code=None,
+            action="block",
+            reason="alias already belongs to alpha_field",
+            aliases=(),
+        ),
+    )
 
 
 def test_write_source_mapping_expansion_review_uses_real_candidate_report(
