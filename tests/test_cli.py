@@ -105,6 +105,13 @@ class FakeSourceMappingExpansionReviewResult:
     blocked_count: int
 
 
+@dataclass(frozen=True)
+class FakeProviderBaselineReplayResult:
+    summary_path: Path
+    markdown_path: Path
+    company_count: int
+
+
 def test_ingest_command_calls_ingestion_layer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -363,6 +370,58 @@ def test_review_source_mapping_expansion_command_calls_review_layer(
 
     assert exit_code == 0
     assert calls == [(candidate_report, mapping_catalog, output_dir)]
+
+
+def test_replay_provider_baseline_command_calls_replay_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    inventory_path = tmp_path / "source_inventory.jsonl.gz"
+    inventory_summary_path = tmp_path / "provider_field_inventory_summary.json"
+    catalog_path = tmp_path / "catalog.json"
+    output_dir = tmp_path / "replay"
+    calls: list[tuple[Path, Path, Path, Path]] = []
+
+    def fake_write_provider_baseline_period_replay(
+        *,
+        inventory_path: Path,
+        inventory_summary_path: Path,
+        catalog_path: Path,
+        output_dir: Path,
+        output_summary_path: Path | None = None,
+        company_ids: tuple[str, ...] | None = None,
+    ) -> FakeProviderBaselineReplayResult:
+        assert output_summary_path is None
+        assert company_ids is None
+        calls.append((inventory_path, inventory_summary_path, catalog_path, output_dir))
+        return FakeProviderBaselineReplayResult(
+            summary_path=output_dir / "provider_baseline_period_replay_summary.json",
+            markdown_path=output_dir / "provider_baseline_period_replay_summary.md",
+            company_count=3,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "write_provider_baseline_period_replay",
+        fake_write_provider_baseline_period_replay,
+    )
+
+    exit_code = cli.main(
+        [
+            "replay-provider-baseline",
+            "--inventory",
+            str(inventory_path),
+            "--inventory-summary",
+            str(inventory_summary_path),
+            "--catalog",
+            str(catalog_path),
+            "--out",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(inventory_path, inventory_summary_path, catalog_path, output_dir)]
 
 
 def test_extract_command_calls_real_transport_layer(

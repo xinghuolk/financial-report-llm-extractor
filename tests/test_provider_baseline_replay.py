@@ -255,3 +255,14 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         report = json.loads(report_path.read_text(encoding="utf-8"))
         reasons = {item["reason"] for item in report["items"].values()}
         assert "candidate periods differ" not in reasons
+
+
+def test_provider_baseline_period_replay_script_is_local_fixture_entrypoint() -> None:
+    script = Path("scripts/run-provider-baseline-period-replay.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "replay-provider-baseline" in script
+    assert "source_inventory.jsonl.gz" in script
+    assert "provider_field_inventory_summary.json" in script
+    assert "tmp/runs/provider_baseline_period_replay" in script

@@ -32,6 +32,9 @@ from financial_report_llm_extractor.statement_discovery import (
 from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
     write_provider_field_candidate_report,
 )
+from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+    write_provider_baseline_period_replay,
+)
 from financial_report_llm_extractor.structured_sources.source_mapping_expansion import (
     write_source_mapping_expansion_review,
 )
@@ -132,6 +135,12 @@ def build_parser() -> argparse.ArgumentParser:
     expansion_review_parser.add_argument("--candidate-report", required=True, type=Path)
     expansion_review_parser.add_argument("--mapping-catalog", required=True, type=Path)
     expansion_review_parser.add_argument("--out", required=True, type=Path)
+
+    baseline_replay_parser = subparsers.add_parser("replay-provider-baseline")
+    baseline_replay_parser.add_argument("--inventory", required=True, type=Path)
+    baseline_replay_parser.add_argument("--inventory-summary", required=True, type=Path)
+    baseline_replay_parser.add_argument("--catalog", required=True, type=Path)
+    baseline_replay_parser.add_argument("--out", required=True, type=Path)
 
     return parser
 
@@ -363,6 +372,18 @@ def main(argv: list[str] | None = None) -> int:
             "source_mapping_expansion_markdown="
             f"{expansion_review_result.markdown_path}"
         )
+        return 0
+
+    if args.command == "replay-provider-baseline":
+        replay_result = write_provider_baseline_period_replay(
+            inventory_path=args.inventory,
+            inventory_summary_path=args.inventory_summary,
+            catalog_path=args.catalog,
+            output_dir=args.out,
+        )
+        print(f"companies={replay_result.company_count}")
+        print(f"provider_baseline_replay_summary={replay_result.summary_path}")
+        print(f"provider_baseline_replay_markdown={replay_result.markdown_path}")
         return 0
 
     raise ValueError(f"unknown command: {args.command}")
