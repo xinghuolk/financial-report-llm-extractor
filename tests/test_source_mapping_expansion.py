@@ -68,6 +68,21 @@ def test_decide_candidate_promotion_blocks_alias_conflict() -> None:
     assert decision.reason == "alias already belongs to other_field"
 
 
+def test_decide_candidate_promotion_blocks_later_alias_conflict() -> None:
+    decision = decide_candidate_promotion(
+        _candidate(raw_field_name="BOND_PAYABLE", raw_field_code="BOND_PAYABLE_CODE"),
+        existing_aliases_by_source={
+            "akshare": {
+                "BOND_PAYABLE": "bond_payable",
+                "BOND_PAYABLE_CODE": "other_field",
+            }
+        },
+    )
+
+    assert decision.action == "block"
+    assert decision.reason == "alias already belongs to other_field"
+
+
 def test_decide_candidate_promotion_defers_already_mapped_alias() -> None:
     decision = decide_candidate_promotion(
         _candidate(raw_field_name="BOND_PAYABLE", raw_field_code="BOND_PAYABLE"),
@@ -77,3 +92,14 @@ def test_decide_candidate_promotion_defers_already_mapped_alias() -> None:
     assert decision.action == "defer"
     assert decision.reason == "candidate already mapped"
     assert decision.aliases == ()
+
+
+def test_decide_candidate_promotion_promotes_only_new_aliases() -> None:
+    decision = decide_candidate_promotion(
+        _candidate(raw_field_name="BOND_PAYABLE", raw_field_code="BOND_PAYABLE_CODE"),
+        existing_aliases_by_source={"akshare": {"BOND_PAYABLE": "bond_payable"}},
+    )
+
+    assert decision.action == "promote"
+    assert decision.reason == "strong deterministic candidate"
+    assert decision.aliases == ("BOND_PAYABLE_CODE",)
