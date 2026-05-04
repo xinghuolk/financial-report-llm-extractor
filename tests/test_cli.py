@@ -96,6 +96,15 @@ class FakeProviderFieldCandidateResult:
     field_count: int
 
 
+@dataclass(frozen=True)
+class FakeSourceMappingExpansionReviewResult:
+    json_path: Path
+    markdown_path: Path
+    promoted_count: int
+    deferred_count: int
+    blocked_count: int
+
+
 def test_ingest_command_calls_ingestion_layer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -308,6 +317,52 @@ def test_discover_provider_fields_command_calls_candidate_discovery_layer(
             ("P0", "P1"),
         )
     ]
+
+
+def test_review_source_mapping_expansion_command_calls_review_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    candidate_report = tmp_path / "provider_field_candidate_report.json"
+    mapping_catalog = tmp_path / "mapping.json"
+    output_dir = tmp_path / "review"
+    calls: list[tuple[Path, Path, Path]] = []
+
+    def fake_write_source_mapping_expansion_review(
+        *,
+        candidate_report_path: Path,
+        mapping_catalog_path: Path,
+        output_dir: Path,
+    ) -> FakeSourceMappingExpansionReviewResult:
+        calls.append((candidate_report_path, mapping_catalog_path, output_dir))
+        return FakeSourceMappingExpansionReviewResult(
+            json_path=output_dir / "source_mapping_expansion_review.json",
+            markdown_path=output_dir / "source_mapping_expansion_review.md",
+            promoted_count=6,
+            deferred_count=10,
+            blocked_count=0,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "write_source_mapping_expansion_review",
+        fake_write_source_mapping_expansion_review,
+    )
+
+    exit_code = cli.main(
+        [
+            "review-source-mapping-expansion",
+            "--candidate-report",
+            str(candidate_report),
+            "--mapping-catalog",
+            str(mapping_catalog),
+            "--out",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(candidate_report, mapping_catalog, output_dir)]
 
 
 def test_extract_command_calls_real_transport_layer(

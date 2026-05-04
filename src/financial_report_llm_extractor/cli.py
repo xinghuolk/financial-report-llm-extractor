@@ -32,6 +32,9 @@ from financial_report_llm_extractor.statement_discovery import (
 from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
     write_provider_field_candidate_report,
 )
+from financial_report_llm_extractor.structured_sources.source_mapping_expansion import (
+    write_source_mapping_expansion_review,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -124,6 +127,11 @@ def build_parser() -> argparse.ArgumentParser:
     provider_fields_parser.add_argument("--summary", required=True, type=Path)
     provider_fields_parser.add_argument("--out", required=True, type=Path)
     provider_fields_parser.add_argument("--priorities", default="P0,P1")
+
+    expansion_review_parser = subparsers.add_parser("review-source-mapping-expansion")
+    expansion_review_parser.add_argument("--candidate-report", required=True, type=Path)
+    expansion_review_parser.add_argument("--mapping-catalog", required=True, type=Path)
+    expansion_review_parser.add_argument("--out", required=True, type=Path)
 
     return parser
 
@@ -328,7 +336,7 @@ def main(argv: list[str] | None = None) -> int:
             for priority in args.priorities.split(",")
             if priority.strip()
         )
-        result = write_provider_field_candidate_report(
+        candidate_result = write_provider_field_candidate_report(
             taxonomy_path=args.taxonomy,
             mapping_catalog_path=args.mapping_catalog,
             inventory_path=args.inventory,
@@ -336,9 +344,25 @@ def main(argv: list[str] | None = None) -> int:
             output_dir=args.out,
             priorities=priorities,
         )
-        print(f"fields={result.field_count}")
-        print(f"candidate_report_path={result.json_path}")
-        print(f"candidate_markdown_path={result.markdown_path}")
+        print(f"fields={candidate_result.field_count}")
+        print(f"candidate_report_path={candidate_result.json_path}")
+        print(f"candidate_markdown_path={candidate_result.markdown_path}")
+        return 0
+
+    if args.command == "review-source-mapping-expansion":
+        expansion_review_result = write_source_mapping_expansion_review(
+            candidate_report_path=args.candidate_report,
+            mapping_catalog_path=args.mapping_catalog,
+            output_dir=args.out,
+        )
+        print(f"promoted={expansion_review_result.promoted_count}")
+        print(f"deferred={expansion_review_result.deferred_count}")
+        print(f"blocked={expansion_review_result.blocked_count}")
+        print(f"source_mapping_expansion_json={expansion_review_result.json_path}")
+        print(
+            "source_mapping_expansion_markdown="
+            f"{expansion_review_result.markdown_path}"
+        )
         return 0
 
     raise ValueError(f"unknown command: {args.command}")
