@@ -2,7 +2,7 @@
 
 > Date: 2026-05-04
 > Status: design spec
-> Scope: replay the checked-in provider baseline fixture through source mapping, reconciliation, and review export without provider calls, while selecting one annual period per company/source slice.
+> Scope: replay the checked-in provider baseline fixture through source mapping, reconciliation, and review export without provider calls, while selecting one annual date-part period per company/source slice.
 
 ## 1. Purpose
 
@@ -10,7 +10,7 @@ The expanded source mapping catalog now has 15 P0/P1 fields. Replaying the small
 
 The broader provider baseline fixture has 6,771 source inventory records across 5 annual periods, 3 companies, 2 providers, and 3 statement families. Directly sending the whole fixture into `map_source_inventory()` produces `0/15` coverage because every mapped field has multiple periods and is reconciled as `candidate periods differ`.
 
-This phase makes that fixture usable by selecting the latest annual period per company/source, then replaying those period-scoped records through the existing deterministic source-first pipeline.
+This phase makes that fixture usable by selecting the latest annual date-part period per company/source, then replaying those period-scoped records through the existing deterministic source-first pipeline.
 
 ## 2. Goals
 
@@ -18,13 +18,13 @@ This phase must provide:
 
 - A no-network replay path for `tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz`.
 - Deterministic grouping by provider capture target company id.
-- Latest annual period selection per `(source, market, provider_ticker)` group.
+- Latest annual period selection per `(source, market, provider_ticker)` group using normalized date-part periods.
 - Per-company coverage for:
   - AKShare only,
   - Yahoo only,
   - combined AKShare + Yahoo.
 - Per-slice artifacts:
-  - `source_inventory.jsonl`,
+  - `source_inventory.jsonl` with replay periods normalized to `YYYY-MM-DD`,
   - `turtle_mapping.json`,
   - `source_coverage_summary.json`,
   - `reconciliation_report.json`,
@@ -68,11 +68,14 @@ For each provider target group `(provider, market, provider_ticker)`:
 
 - Consider only `source_status == "present"` records with a non-empty `period`.
 - Annual periods are records whose date part ends with `-12-31`.
-- Select the lexicographically latest annual period in that group.
-- Keep all present records for that selected period across statement families.
+- Select the lexicographically latest annual date part in that group.
+- Keep all present records for that selected annual date part across statement families.
+- Normalize the kept records' `period` to the selected `YYYY-MM-DD` date part before mapping, reconciliation, and export.
 - Keep non-present records for that group only when there is no selected present period.
 
 This selection is intentionally group-local. It must not select one global period for all providers because provider date string formats can differ (`2025-12-31 00:00:00` vs `2025-12-31`).
+
+The source artifact still preserves original provider context through raw evidence and raw record ids. The replay period is normalized because reconciliation compares period strings directly, and this phase must not create false combined-slice conflicts for semantically identical annual periods.
 
 ## 6. Replay Semantics
 
@@ -126,11 +129,11 @@ The top-level JSON summary must include:
 - `catalog_id`
 - `catalog_version`
 - `inventory_path`
-- `summary_path`
+- `inventory_summary_path`
 - `company_count`
 - `companies`
 - per company:
-  - selected source periods,
+  - selected source periods, including normalized period plus raw source period formats,
   - record counts by slice,
   - coverage by slice,
   - present/missing/ambiguous/blocked/conflict fields by slice,
@@ -144,10 +147,13 @@ Tests must cover:
 
 - Latest annual period selection ignores interim periods.
 - Selection is per source/ticker group, not global.
+- Selected records normalize provider-specific period strings to the same annual date part before combined replay.
+- Non-present records are retained only for groups with no selected present annual period.
 - Company ids are resolved through provider capture targets.
-- Replay on a synthetic fixture avoids period conflict by selecting one period per source.
+- Replay on a synthetic fixture avoids period conflict by selecting one annual date part per source and normalizing period strings.
 - The checked-in provider baseline can be replayed without network calls.
 - Top-level summary reports three companies and the expanded catalog denominator of 15 fields.
+- The checked-in baseline regression asserts meaningful per-company/per-slice coverage, not merely that any field is covered somewhere.
 - Default tests do not call AKShare, Yahoo, yfinance, PDF tooling, or LLM providers.
 
 ## 9. Success Criteria
@@ -157,7 +163,7 @@ This phase is complete when:
 - Provider baseline period-scoped replay runs from checked-in fixture only.
 - The full baseline no longer produces `0/15` solely because multiple annual periods were sent into one mapping run.
 - The replay summary identifies which of the 15 fields are covered for `600519`, `00001`, and `01113`.
-- Remaining gaps are categorized as source availability, mapping ambiguity/blocker, reconciliation conflict, or later PDF/LLM supplement candidates.
+- Remaining gaps are categorized as source availability, mapping ambiguity/blocker, real reconciliation conflict, or later PDF/LLM supplement candidates.
 - Full verification passes:
 
 ```bash

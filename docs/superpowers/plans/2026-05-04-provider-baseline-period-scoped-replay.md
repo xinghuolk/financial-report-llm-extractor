@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replay the checked-in provider baseline fixture through source mapping, reconciliation, and review export after selecting one latest annual period per company/source slice.
+**Goal:** Replay the checked-in provider baseline fixture through source mapping, reconciliation, and review export after selecting one latest annual date-part period per company/source slice.
 
-**Architecture:** Add a focused `structured_sources/provider_baseline_replay.py` orchestration module. It reads source inventory records, resolves company/source groups from `DEFAULT_PROVIDER_FIELD_CAPTURE_TARGETS`, filters each provider group to its latest annual period, then reuses existing mapping, reconciliation, and export writers. Add a thin CLI/script wrapper and keep all generated artifacts under `tmp/runs/`.
+**Architecture:** Add a focused `structured_sources/provider_baseline_replay.py` orchestration module. It reads source inventory records, resolves company/source groups from `DEFAULT_PROVIDER_FIELD_CAPTURE_TARGETS`, filters each provider group to its latest annual date part, normalizes replay records to `YYYY-MM-DD` periods, then reuses existing mapping, reconciliation, and export writers. Add a thin CLI/script wrapper and keep all generated artifacts under `tmp/runs/`.
 
 **Tech Stack:** Python 3.11 standard library, existing source inventory gzip reader, existing source mapping/reconciliation/export modules, `pytest`, `ruff`, `mypy`.
 
@@ -13,7 +13,7 @@
 ## File Structure
 
 - Create: `src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py`
-  - Period-scoped record selection.
+  - Period-scoped record selection and replay period normalization.
   - Company/source grouping from provider capture targets.
   - Replay writer and JSON/Markdown summary.
 - Create: `tests/test_provider_baseline_replay.py`
@@ -60,10 +60,11 @@ def _record(
     market: str = "CN",
     ticker: str = "600519",
     statement_type: str = "income_statement",
-    period: str = "2024-12-31",
+    period: str | None = "2024-12-31",
     raw_field_name: str = "营业收入",
     raw_field_code: str | None = "OPERATE_INCOME",
     raw_value: str = "100",
+    source_status: str = "present",
 ) -> SourceInventoryRecord:
     evidence = SourceEvidence(
         source=source,  # type: ignore[arg-type]
@@ -86,6 +87,7 @@ def _record(
         parsed_numeric_value=Decimal(raw_value),
         currency="CNY" if market == "CN" else "HKD",
         unit="yuan" if market == "CN" else "raw",
+        source_status=source_status,  # type: ignore[arg-type]
         source_evidence=(evidence,),
     )
 
@@ -93,18 +95,36 @@ def _record(
 def test_select_latest_annual_records_ignores_interim_periods() -> None:
     records = (
         _record(period="2024-12-31", raw_value="100"),
+        _record(period="2025-12-31 00:00:00", raw_value="120"),
         _record(period="2025-09-30", raw_value="200"),
         _record(period="2023-12-31", raw_value="50"),
     )
 
     selected = select_latest_annual_records(records)
 
-    assert [record.period for record in selected] == ["2024-12-31"]
-    assert [record.raw_value for record in selected] == ["100"]
+    assert [record.period for record in selected] == ["2025-12-31"]
+    assert [record.raw_value for record in selected] == ["120"]
+
+
+def test_select_latest_annual_records_drops_non_present_when_annual_present() -> None:
+    records = (
+        _record(period="2025-12-31 00:00:00", raw_value="120"),
+        _record(period=None, raw_value="0", source_status="source_error"),
+    )
+
+    selected = select_latest_annual_records(records)
+
+    assert len(selected) == 1
+    assert selected[0].source_status == "present"
+    assert selected[0].period == "2025-12-31"
 
 
 def test_select_latest_annual_records_is_group_local() -> None:
-    akshare_2025 = _record(source="akshare", ticker="600519", period="2025-12-31")
+    akshare_2025 = _record(
+        source="akshare",
+        ticker="600519",
+        period="2025-12-31 00:00:00",
+    )
     yahoo_2024 = _record(
         source="yahoo",
         market="CN",
@@ -114,7 +134,7 @@ def test_select_latest_annual_records_is_group_local() -> None:
         raw_field_code=None,
     )
 
-    assert select_latest_annual_records((akshare_2025,)) == (akshare_2025,)
+    assert select_latest_annual_records((akshare_2025,))[0].period == "2025-12-31"
     assert select_latest_annual_records((yahoo_2024,)) == (yahoo_2024,)
 
 
@@ -156,7 +176,7 @@ Create `src/financial_report_llm_extractor/structured_sources/provider_baseline_
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from financial_report_llm_extractor.structured_sources.capture_targets import (
@@ -207,25 +227,31 @@ def records_for_group(
 def select_latest_annual_records(
     records: tuple[SourceInventoryRecord, ...],
 ) -> tuple[SourceInventoryRecord, ...]:
-    annual_periods = {
-        record.period
+    annual_dates = {
+        _period_date_part(record.period)
         for record in records
         if record.source_status == "present"
         and record.period is not None
         and _is_annual_period(record.period)
     }
-    if not annual_periods:
+    if not annual_dates:
         return records
-    selected_period = sorted(annual_periods)[-1]
+    selected_date = sorted(annual_dates)[-1]
     return tuple(
-        record
+        replace(record, period=_period_date_part(record.period))
         for record in records
-        if record.source_status != "present" or record.period == selected_period
+        if record.source_status == "present"
+        and record.period is not None
+        and _period_date_part(record.period) == selected_date
     )
 
 
 def _is_annual_period(period: str) -> bool:
-    return period.split(" ")[0].endswith("-12-31")
+    return _period_date_part(period).endswith("-12-31")
+
+
+def _period_date_part(period: str) -> str:
+    return period.split(" ")[0]
 ```
 
 - [ ] **Step 4: Run period-selection tests**
@@ -236,7 +262,7 @@ Run:
 uv run pytest tests/test_provider_baseline_replay.py -v
 ```
 
-Expected: all 3 tests pass.
+Expected: all 4 tests pass.
 
 - [ ] **Step 5: Commit Task 1**
 
@@ -271,11 +297,13 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
     tmp_path: Path,
 ) -> None:
     inventory_path = tmp_path / "source_inventory.jsonl"
+    inventory_summary_path = tmp_path / "provider_field_inventory_summary.json"
+    inventory_summary_path.write_text("{}\n", encoding="utf-8")
     write_source_inventory(
         inventory_path,
         (
             _record(period="2024-12-31", raw_value="100"),
-            _record(period="2025-12-31", raw_value="120"),
+            _record(period="2025-12-31 00:00:00", raw_value="120"),
             _record(
                 source="yahoo",
                 market="CN",
@@ -301,6 +329,7 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
 
     result = write_provider_baseline_period_replay(
         inventory_path=inventory_path,
+        inventory_summary_path=inventory_summary_path,
         catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
         output_dir=tmp_path / "replay",
         company_ids=("600519",),
@@ -308,10 +337,17 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
 
     payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
     company = payload["companies"][0]
+    assert payload["inventory_summary_path"] == str(inventory_summary_path)
     assert company["company_id"] == "600519"
     assert company["selected_periods"] == {
-        "akshare": "2025-12-31",
-        "yahoo": "2025-12-31",
+        "akshare": {
+            "normalized": "2025-12-31",
+            "raw_periods": ["2025-12-31 00:00:00"],
+        },
+        "yahoo": {
+            "normalized": "2025-12-31",
+            "raw_periods": ["2025-12-31"],
+        },
     }
     assert company["coverage"]["akshare_only"]["covered_fields"] == ["revenue"]
     assert company["coverage"]["yahoo_only"]["covered_fields"] == ["cash"]
@@ -371,12 +407,15 @@ class ProviderBaselineReplayResult:
 def write_provider_baseline_period_replay(
     *,
     inventory_path: Path,
+    inventory_summary_path: Path,
     catalog_path: Path,
     output_dir: Path,
-    summary_path: Path | None = None,
+    output_summary_path: Path | None = None,
     company_ids: tuple[str, ...] | None = None,
 ) -> ProviderBaselineReplayResult:
     output_dir.mkdir(parents=True, exist_ok=True)
+    if not inventory_summary_path.exists():
+        raise FileNotFoundError(f"inventory summary not found: {inventory_summary_path}")
     records = read_source_inventory(inventory_path)
     catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1"))
     groups = company_source_groups()
@@ -384,12 +423,10 @@ def write_provider_baseline_period_replay(
     companies = []
     for company_id in selected_company_ids:
         company_groups = groups[company_id]
-        akshare_records = select_latest_annual_records(
-            records_for_group(records, company_groups["akshare"])
-        )
-        yahoo_records = select_latest_annual_records(
-            records_for_group(records, company_groups["yahoo"])
-        )
+        akshare_group_records = records_for_group(records, company_groups["akshare"])
+        yahoo_group_records = records_for_group(records, company_groups["yahoo"])
+        akshare_records = select_latest_annual_records(akshare_group_records)
+        yahoo_records = select_latest_annual_records(yahoo_group_records)
         company_dir = output_dir / company_id
         akshare_report = _write_slice(
             company_dir / "akshare_only",
@@ -410,8 +447,14 @@ def write_provider_baseline_period_replay(
             {
                 "company_id": company_id,
                 "selected_periods": {
-                    "akshare": _selected_period(akshare_records),
-                    "yahoo": _selected_period(yahoo_records),
+                    "akshare": _selected_period(
+                        raw_records=akshare_group_records,
+                        selected_records=akshare_records,
+                    ),
+                    "yahoo": _selected_period(
+                        raw_records=yahoo_group_records,
+                        selected_records=yahoo_records,
+                    ),
                 },
                 "record_counts": {
                     "akshare_only": len(akshare_records),
@@ -441,10 +484,11 @@ def write_provider_baseline_period_replay(
         "catalog_id": catalog.catalog_id,
         "catalog_version": catalog.version,
         "inventory_path": str(inventory_path),
+        "inventory_summary_path": str(inventory_summary_path),
         "company_count": len(companies),
         "companies": companies,
     }
-    json_path = summary_path or output_dir / "provider_baseline_period_replay_summary.json"
+    json_path = output_summary_path or output_dir / "provider_baseline_period_replay_summary.json"
     markdown_path = output_dir / "provider_baseline_period_replay_summary.md"
     json_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -530,17 +574,31 @@ def _review_lists(
     }
 
 
-def _selected_period(records: tuple[SourceInventoryRecord, ...]) -> str | None:
-    periods = sorted(
+def _selected_period(
+    *,
+    raw_records: tuple[SourceInventoryRecord, ...],
+    selected_records: tuple[SourceInventoryRecord, ...],
+) -> dict[str, object]:
+    selected_periods = sorted(
         {
             record.period
-            for record in records
+            for record in selected_records
             if record.source_status == "present" and record.period is not None
         }
     )
-    if not periods:
-        return None
-    return periods[-1].split(" ")[0]
+    if not selected_periods:
+        return {"normalized": None, "raw_periods": []}
+    normalized = selected_periods[-1]
+    raw_periods = sorted(
+        {
+            record.period
+            for record in raw_records
+            if record.source_status == "present"
+            and record.period is not None
+            and _period_date_part(record.period) == normalized
+        }
+    )
+    return {"normalized": normalized, "raw_periods": raw_periods}
 
 
 def _summary_markdown(payload: dict[str, Any]) -> str:
@@ -587,6 +645,9 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         inventory_path=Path(
             "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
         ),
+        inventory_summary_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json"
+        ),
         catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
         output_dir=tmp_path / "baseline",
     )
@@ -604,11 +665,19 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         company["coverage"]["combined"]["total_fields"] == 15
         for company in payload["companies"]
     )
-    assert any(
-        company["coverage"]["akshare_only"]["covered_count"] > 0
-        or company["coverage"]["yahoo_only"]["covered_count"] > 0
-        for company in payload["companies"]
-    )
+    companies = {company["company_id"]: company for company in payload["companies"]}
+    assert companies["600519"]["selected_periods"]["akshare"]["normalized"] == "2025-12-31"
+    assert companies["600519"]["selected_periods"]["yahoo"]["normalized"] == "2025-12-31"
+    assert companies["600519"]["coverage"]["akshare_only"]["covered_count"] >= 11
+    assert companies["600519"]["coverage"]["yahoo_only"]["covered_count"] >= 11
+    assert companies["00001"]["coverage"]["yahoo_only"]["covered_count"] >= 11
+    assert companies["01113"]["coverage"]["yahoo_only"]["covered_count"] >= 11
+
+    for company_id in ("600519", "00001", "01113"):
+        report_path = tmp_path / "baseline" / company_id / "combined" / "reconciliation_report.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        reasons = {item["reason"] for item in report["items"].values()}
+        assert "candidate periods differ" not in reasons
 ```
 
 - [ ] **Step 6: Run checked-in baseline test**
@@ -656,21 +725,23 @@ def test_replay_provider_baseline_command_calls_replay_layer(
     tmp_path: Path,
 ) -> None:
     inventory_path = tmp_path / "source_inventory.jsonl.gz"
+    inventory_summary_path = tmp_path / "provider_field_inventory_summary.json"
     catalog_path = tmp_path / "catalog.json"
     output_dir = tmp_path / "replay"
-    calls: list[tuple[Path, Path, Path]] = []
+    calls: list[tuple[Path, Path, Path, Path]] = []
 
     def fake_write_provider_baseline_period_replay(
         *,
         inventory_path: Path,
+        inventory_summary_path: Path,
         catalog_path: Path,
         output_dir: Path,
-        summary_path: Path | None = None,
+        output_summary_path: Path | None = None,
         company_ids: tuple[str, ...] | None = None,
     ) -> FakeProviderBaselineReplayResult:
-        assert summary_path is None
+        assert output_summary_path is None
         assert company_ids is None
-        calls.append((inventory_path, catalog_path, output_dir))
+        calls.append((inventory_path, inventory_summary_path, catalog_path, output_dir))
         return FakeProviderBaselineReplayResult(
             summary_path=output_dir / "provider_baseline_period_replay_summary.json",
             markdown_path=output_dir / "provider_baseline_period_replay_summary.md",
@@ -688,6 +759,8 @@ def test_replay_provider_baseline_command_calls_replay_layer(
             "replay-provider-baseline",
             "--inventory",
             str(inventory_path),
+            "--inventory-summary",
+            str(inventory_summary_path),
             "--catalog",
             str(catalog_path),
             "--out",
@@ -696,7 +769,7 @@ def test_replay_provider_baseline_command_calls_replay_layer(
     )
 
     assert exit_code == 0
-    assert calls == [(inventory_path, catalog_path, output_dir)]
+    assert calls == [(inventory_path, inventory_summary_path, catalog_path, output_dir)]
 ```
 
 - [ ] **Step 2: Run CLI test and verify it fails**
@@ -724,6 +797,7 @@ Add parser:
 ```python
     baseline_replay_parser = subparsers.add_parser("replay-provider-baseline")
     baseline_replay_parser.add_argument("--inventory", required=True, type=Path)
+    baseline_replay_parser.add_argument("--inventory-summary", required=True, type=Path)
     baseline_replay_parser.add_argument("--catalog", required=True, type=Path)
     baseline_replay_parser.add_argument("--out", required=True, type=Path)
 ```
@@ -734,6 +808,7 @@ Add dispatch:
     if args.command == "replay-provider-baseline":
         replay_result = write_provider_baseline_period_replay(
             inventory_path=args.inventory,
+            inventory_summary_path=args.inventory_summary,
             catalog_path=args.catalog,
             output_dir=args.out,
         )
@@ -755,6 +830,7 @@ def test_provider_baseline_period_replay_script_is_local_fixture_entrypoint() ->
 
     assert "replay-provider-baseline" in script
     assert "source_inventory.jsonl.gz" in script
+    assert "provider_field_inventory_summary.json" in script
     assert "tmp/runs/provider_baseline_period_replay" in script
 ```
 
@@ -780,11 +856,13 @@ ROOT="${ROOT:-.}"
 cd "${ROOT}"
 
 INVENTORY="${INVENTORY:-tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz}"
+INVENTORY_SUMMARY="${INVENTORY_SUMMARY:-tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json}"
 CATALOG="${CATALOG:-field_catalog/turtle_v015_source_mapping_minimal.json}"
 OUT_DIR="${OUT_DIR:-tmp/runs/provider_baseline_period_replay}"
 
 uv run financial-report-llm-extractor replay-provider-baseline \
   --inventory "${INVENTORY}" \
+  --inventory-summary "${INVENTORY_SUMMARY}" \
   --catalog "${CATALOG}" \
   --out "${OUT_DIR}"
 ```
@@ -838,7 +916,7 @@ In the roadmap `Current validation status` section, replace the stale candidate 
 - Provider baseline period-scoped replay is now the next validation artifact:
   - `scripts/run-provider-baseline-period-replay.sh`
   - output: `tmp/runs/provider_baseline_period_replay/provider_baseline_period_replay_summary.json`
-  - it selects the latest annual period per company/source before mapping.
+  - it selects the latest annual date part per company/source and normalizes replay periods before mapping.
 ```
 
 - [ ] **Step 2: Update handoff guidance**
@@ -847,7 +925,7 @@ In `docs/2026-04-30-codex-claude-handoff-prompt.md`, update the current recommen
 
 ```markdown
 - Do not map the full 6,771-row provider baseline directly; it intentionally contains 5 annual periods and will produce period conflicts.
-- Use `scripts/run-provider-baseline-period-replay.sh` to inspect latest-period source-first coverage by company and provider.
+- Use `scripts/run-provider-baseline-period-replay.sh` to inspect latest-period source-first coverage by company and provider; it normalizes AKShare/Yahoo period strings before combined replay.
 - Choose subsequent mapping/PDF/LLM work from the replay summary's missing, blocked, ambiguous, and conflict fields.
 ```
 
@@ -895,6 +973,8 @@ git commit -m "docs: record provider baseline period replay"
 
 - [ ] No provider, PDF, or LLM calls are used in default tests.
 - [ ] Latest annual period selection is per company/source group.
+- [ ] AKShare/Yahoo period strings are normalized to `YYYY-MM-DD` before combined replay.
+- [ ] Non-present source records are not mixed into a group that has a selected annual present period.
 - [ ] Replay summary covers `600519`, `00001`, and `01113`.
 - [ ] Per-slice artifacts are written under `tmp/runs/provider_baseline_period_replay/`.
 - [ ] Whole 5-year baseline is not sent directly into the mapper for coverage decisions.
