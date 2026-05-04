@@ -386,12 +386,16 @@ def test_minimal_source_mapping_includes_first_candidate_promotions() -> None:
     assert catalog.entries["financing_cash_flow"].source_aliases["yahoo"] == (
         "Financing Cash Flow",
     )
+    assert catalog.entries["financing_cash_flow"].primary_route == "yahoo_direct"
+    assert set(catalog.entries["financing_cash_flow"].source_aliases) == {"yahoo"}
     assert catalog.entries["invest_income"].source_aliases["akshare"] == (
         "INVEST_INCOME",
     )
     assert catalog.entries["investing_cash_flow"].source_aliases["yahoo"] == (
         "Investing Cash Flow",
     )
+    assert catalog.entries["investing_cash_flow"].primary_route == "yahoo_direct"
+    assert set(catalog.entries["investing_cash_flow"].source_aliases) == {"yahoo"}
 
 
 def test_minimal_source_mapping_references_taxonomy_and_coverage() -> None:

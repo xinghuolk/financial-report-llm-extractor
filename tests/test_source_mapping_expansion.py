@@ -196,15 +196,19 @@ def test_write_source_mapping_expansion_review_uses_real_candidate_report(
     )
 
     payload = json.loads(result.json_path.read_text(encoding="utf-8"))
-    promoted_pairs = {
-        (item["field_id"], item["source"])
-        for item in payload["promoted"]
+    deferred_pairs_by_reason = {
+        (item["field_id"], item["source"]): item["reason"]
+        for item in payload["deferred"]
     }
     markdown = result.markdown_path.read_text(encoding="utf-8")
 
-    assert ("bond_payable", "akshare") in promoted_pairs
-    assert ("financing_cash_flow", "yahoo") in promoted_pairs
-    assert payload["summary"]["promoted_count"] >= 6
+    assert deferred_pairs_by_reason[("bond_payable", "akshare")] == (
+        "candidate already mapped"
+    )
+    assert deferred_pairs_by_reason[("financing_cash_flow", "yahoo")] == (
+        "candidate already mapped"
+    )
+    assert payload["summary"]["promoted_count"] == 0
     assert payload["summary"]["deferred_count"] > 0
     assert payload["summary"]["no_candidate_count"] >= 0
     assert "# Source Mapping Expansion Review" in markdown
