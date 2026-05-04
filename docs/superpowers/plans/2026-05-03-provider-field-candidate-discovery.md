@@ -10,6 +10,36 @@
 
 ---
 
+## Completion Status
+
+This plan has been implemented on `feature/source-first-roadmap-requirements`.
+
+Key commits:
+
+- `1358ea4 feat: index provider raw fields`
+- `59ac88f feat: discover provider field candidates`
+- `384b919 feat: write provider field candidate report`
+- `c1014ad feat: add provider field discovery cli`
+- `6e2597b test: validate provider field discovery fixture`
+- `cefb29f fix: count catalog gap provider candidates`
+
+Latest local candidate report summary:
+
+```json
+{
+  "field_count": 33,
+  "fields_with_candidates": 25,
+  "fields_without_candidates": 8,
+  "catalog_gap_fields": 24,
+  "inventory_record_count": 6771,
+  "source_artifact_count": 18
+}
+```
+
+`fields_with_candidates` counts fields with provider candidates even when their
+status is `catalog_gap`. The next phase should use this report to expand the
+source mapping catalog with review-gated promotion.
+
 ## File Structure
 
 - Create: `src/financial_report_llm_extractor/structured_sources/field_candidate_discovery.py`
@@ -592,10 +622,18 @@ class ProviderFieldCandidateReport:
     @property
     def summary(self) -> dict[str, int]:
         statuses = [entry.status for entry in self.fields.values()]
+        fields_with_candidates = sum(
+            1 for entry in self.fields.values() if entry.providers
+        )
+        fields_without_candidates = sum(
+            1
+            for entry in self.fields.values()
+            if not entry.providers and entry.status != "not_applicable"
+        )
         return {
             "field_count": len(statuses),
-            "fields_with_candidates": statuses.count("has_candidates"),
-            "fields_without_candidates": statuses.count("no_candidates"),
+            "fields_with_candidates": fields_with_candidates,
+            "fields_without_candidates": fields_without_candidates,
             "not_applicable_fields": statuses.count("not_applicable"),
             "catalog_gap_fields": statuses.count("catalog_gap"),
         }
@@ -1273,7 +1311,7 @@ def test_provider_field_candidate_report_fixture_summary_is_stable(
     payload = json.loads(result.json_path.read_text(encoding="utf-8"))
     assert payload["summary"]["field_count"] == 33
     assert payload["summary"]["inventory_record_count"] == 6771
-    assert payload["summary"]["fields_with_candidates"] >= 9
+    assert payload["summary"]["fields_with_candidates"] >= 25
     revenue_candidates = payload["fields"]["revenue"]["providers"]["akshare"][
         "candidates"
     ]
@@ -1324,7 +1362,7 @@ Run:
 jq '.summary' tmp/runs/provider_field_candidate_discovery/provider_field_candidate_report.json
 ```
 
-Expected: `field_count` is `33`, and `fields_with_candidates` is nonzero.
+Expected: `field_count` is `33`, `fields_with_candidates` is `25`, and `fields_without_candidates` is `8`.
 
 - [ ] **Step 5: Run full verification**
 

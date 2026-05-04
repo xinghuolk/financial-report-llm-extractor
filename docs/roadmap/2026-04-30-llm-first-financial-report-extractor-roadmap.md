@@ -573,9 +573,17 @@ Current validation status:
   Captured replay covers 8 of 9 minimal fields: `revenue`, `net_profit`, `total_assets`, `total_liabilities`, `cash`, `operating_cash_flow`, `total_cur_assets`, and `total_cur_liab`.
 - Real Yahoo/yfinance validation for `0001.HK` income statement has been run once, then saved as `tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl`.
   Captured replay covers 3 of 9 minimal fields: `revenue`, `net_profit`, and `gross_profit`.
-- Remaining minimal-field gap in the current 600519 AKShare combined replay is `gross_profit`.
-- Remaining Yahoo work is balance sheet and cash flow captured validation, plus cross-source reconciliation against AKShare where periods and units are comparable.
-- Full source-first viability decision is not complete until captured or real validation covers the required statement families for the target companies and remaining gaps are categorized.
+- A broader provider field baseline has been captured and compressed under `tests/fixtures/provider_captures/provider_field_baseline/`.
+  It contains 6,771 latest-five-annual-period inventory records from AKShare and Yahoo across the current validation matrix.
+- Provider field candidate discovery is implemented as a no-network replay step:
+  - `src/financial_report_llm_extractor/structured_sources/field_candidate_discovery.py`
+  - `financial-report-llm-extractor discover-provider-fields`
+  - output: `tmp/runs/provider_field_candidate_discovery/provider_field_candidate_report.json`
+- Current candidate report summary is `field_count=33`, `fields_with_candidates=25`, `fields_without_candidates=8`, `catalog_gap_fields=24`.
+  `fields_with_candidates` includes catalog-gap fields that already have reviewable provider candidates.
+- Next source-first step is to expand `field_catalog/turtle_v015_source_mapping_minimal.json` from the candidate report using review-gated promotion:
+  promote only strong deterministic candidates first, keep medium/weak candidates in review artifacts, and do not call providers again.
+- Full source-first viability decision is not complete until the expanded mapping catalog has been replayed through coverage, reconciliation, and review export, and remaining gaps are categorized.
 
 ## 6. Validation Commands
 
