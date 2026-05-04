@@ -75,7 +75,8 @@
   - `tests/fixtures/provider_captures/provider_field_baseline/` 保存了更广的 AKShare/Yahoo provider field baseline，`source_inventory.jsonl.gz` 当前包含 6,771 条 latest-five-annual-period inventory records。
   - `src/financial_report_llm_extractor/structured_sources/field_candidate_discovery.py` 已实现离线 provider raw field candidate discovery。
   - `financial-report-llm-extractor discover-provider-fields` 可从压缩 fixture 生成 `provider_field_candidate_report.json` 和 Markdown review report。
-  - 当前 candidate report 覆盖 P0/P1 共 33 个字段，其中 `fields_with_candidates=25`、`fields_without_candidates=8`、`catalog_gap_fields=24`；`fields_with_candidates` 包含已有 provider candidates 的 catalog-gap 字段。
+  - `src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py` 已实现 period-scoped baseline replay。
+  - `financial-report-llm-extractor replay-provider-baseline` / `scripts/run-provider-baseline-period-replay.sh` 会按 company/source 选择最新年度 date part，并把 AKShare/Yahoo period 归一化后再做 combined replay。
 - field_catalog/turtle_v015_priority_fields.json 已包含 P0-P4 字段优先级。
 - tests/ 下已有 test_models.py、test_ingestion.py、test_cli.py、test_field_catalog.py。
 
@@ -96,10 +97,9 @@
 - 如果要调 AKShare/Yahoo 映射，优先从 captured source inventory 开始；只有需要新增或刷新 captured fixture 时才 opt-in 调真实 provider。
 
 当前推荐方向：
-- 先使用 `tmp/runs/provider_field_candidate_discovery/provider_field_candidate_report.json` 和压缩 baseline fixture 扩展 `field_catalog/turtle_v015_source_mapping_minimal.json`。
-- 第一轮只 promotion strong deterministic candidates，例如 `exact_text`/`existing_alias` + `statement_match` + `period_support`；medium/weak candidates 保留在 review artifact，不自动写入生产 mapping。
-- 扩展 mapping 后重新跑 captured source validation、coverage、reconciliation、review export，看新增字段是否真实进入 Turtle source-first 输出。
-- 再根据剩余 `fields_without_candidates` 和 medium/weak review 列表决定是否刷新 provider fixture、补 Yahoo/AKShare statement family，或进入 PDF/LLM fallback。
+- Do not map the full 6,771-row provider baseline directly; it intentionally contains 5 annual periods and will produce period conflicts.
+- Use `scripts/run-provider-baseline-period-replay.sh` to inspect latest-period source-first coverage by company and provider; it normalizes AKShare/Yahoo period strings before combined replay.
+- Choose subsequent mapping/PDF/LLM work from the replay summary's missing, blocked, ambiguous, and conflict fields.
 - 最后才对仍缺失、冲突、歧义或需要页码证据的字段进入 PDF/LLM fallback。
 
 Phase 2 已完成的基础能力：

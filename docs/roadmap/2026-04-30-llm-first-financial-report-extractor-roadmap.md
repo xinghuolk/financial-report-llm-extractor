@@ -579,11 +579,13 @@ Current validation status:
   - `src/financial_report_llm_extractor/structured_sources/field_candidate_discovery.py`
   - `financial-report-llm-extractor discover-provider-fields`
   - output: `tmp/runs/provider_field_candidate_discovery/provider_field_candidate_report.json`
-- Current candidate report summary is `field_count=33`, `fields_with_candidates=25`, `fields_without_candidates=8`, `catalog_gap_fields=24`.
-  `fields_with_candidates` includes catalog-gap fields that already have reviewable provider candidates.
-- Next source-first step is to expand `field_catalog/turtle_v015_source_mapping_minimal.json` from the candidate report using review-gated promotion:
-  promote only strong deterministic candidates first, keep medium/weak candidates in review artifacts, and do not call providers again.
-- Full source-first viability decision is not complete until the expanded mapping catalog has been replayed through coverage, reconciliation, and review export, and remaining gaps are categorized.
+- Source mapping catalog expansion has promoted 6 strong deterministic mappings, increasing the minimal source mapping denominator from 9 to 15.
+- Whole-baseline replay without period scoping is invalid for coverage because the 5-year baseline creates `candidate periods differ` conflicts for every mapped field.
+- Provider baseline period-scoped replay is now the next validation artifact:
+  - `scripts/run-provider-baseline-period-replay.sh`
+  - output: `tmp/runs/provider_baseline_period_replay/provider_baseline_period_replay_summary.json`
+  - it selects the latest annual date part per company/source and normalizes replay periods before mapping.
+- Full source-first viability decision is not complete until the period-scoped replay has been reviewed and remaining gaps are categorized.
 
 ## 6. Validation Commands
 
