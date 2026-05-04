@@ -395,9 +395,19 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "total_liabilities",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 8
-    assert result.summary["mapping_coverage"]["total_fields"] == 9
-    review_summary = (tmp_path / "review_summary.json").read_text(encoding="utf-8")
-    assert '"missing_fields": [\n    "gross_profit"\n  ]' in review_summary
+    assert result.summary["mapping_coverage"]["total_fields"] == 15
+    review_summary = json.loads(
+        (tmp_path / "review_summary.json").read_text(encoding="utf-8")
+    )
+    assert review_summary["missing_fields"] == [
+        "bond_payable",
+        "cip",
+        "defer_tax_liab",
+        "financing_cash_flow",
+        "gross_profit",
+        "invest_income",
+        "investing_cash_flow",
+    ]
 
 
 def test_captured_source_validation_yahoo_fixture_covers_income_fields(
@@ -420,7 +430,7 @@ def test_captured_source_validation_yahoo_fixture_covers_income_fields(
         "revenue",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 3
-    assert result.summary["mapping_coverage"]["total_fields"] == 9
+    assert result.summary["mapping_coverage"]["total_fields"] == 15
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )
@@ -432,6 +442,8 @@ def test_captured_source_validation_yahoo_fixture_covers_income_fields(
     assert "gross_profit" not in review_summary["missing_fields"]
     assert "net_profit" not in review_summary["missing_fields"]
     assert "revenue" not in review_summary["missing_fields"]
+    assert "financing_cash_flow" in review_summary["missing_fields"]
+    assert "investing_cash_flow" in review_summary["missing_fields"]
 
 
 def test_real_source_validation_script_is_opt_in() -> None:
