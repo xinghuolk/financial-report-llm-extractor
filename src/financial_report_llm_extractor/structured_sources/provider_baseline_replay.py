@@ -120,6 +120,13 @@ def write_provider_baseline_period_replay(
     catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1"))
     groups = company_source_groups()
     selected_company_ids = company_ids or tuple(sorted(groups))
+    unknown_company_ids = sorted(set(selected_company_ids) - set(groups))
+    if unknown_company_ids:
+        valid_company_ids = ", ".join(sorted(groups))
+        raise ValueError(
+            "unknown company ids: "
+            f"{', '.join(unknown_company_ids)}; valid company ids: {valid_company_ids}"
+        )
 
     companies: list[dict[str, object]] = []
     for company_id in selected_company_ids:

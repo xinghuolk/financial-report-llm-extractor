@@ -2,6 +2,8 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from financial_report_llm_extractor.structured_sources.artifacts import (
     write_source_inventory,
 )
@@ -191,6 +193,24 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
     assert company["coverage"]["yahoo_only"]["covered_fields"] == ["cash"]
     assert company["coverage"]["combined"]["covered_fields"] == ["cash", "revenue"]
     assert (tmp_path / "replay" / "600519" / "combined" / "review_summary.json").exists()
+
+
+def test_write_provider_baseline_period_replay_rejects_unknown_company_id(
+    tmp_path: Path,
+) -> None:
+    inventory_path = tmp_path / "source_inventory.jsonl"
+    inventory_summary_path = tmp_path / "provider_field_inventory_summary.json"
+    inventory_summary_path.write_text("{}\n", encoding="utf-8")
+    write_source_inventory(inventory_path, ())
+
+    with pytest.raises(ValueError, match="unknown company ids: 99999"):
+        write_provider_baseline_period_replay(
+            inventory_path=inventory_path,
+            inventory_summary_path=inventory_summary_path,
+            catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+            output_dir=tmp_path / "replay",
+            company_ids=("99999",),
+        )
 
 
 def test_provider_baseline_period_replay_uses_checked_in_fixture(
