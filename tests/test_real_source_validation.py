@@ -1,7 +1,15 @@
 import json
 from decimal import Decimal
 from pathlib import Path
+from typing import cast
 
+from financial_report_llm_extractor.structured_sources.artifacts import (
+    build_artifact_id,
+    read_source_inventory,
+)
+from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+    write_provider_baseline_period_replay,
+)
 from financial_report_llm_extractor.structured_sources.real_source_validation import (
     RealSourceValidationSample,
     build_default_validation_samples,
@@ -81,6 +89,120 @@ class FakeYahooClient:
                 }
             ],
         }
+
+
+class RawArtifactAkshareClient:
+    def __init__(self, artifact_root: Path) -> None:
+        self.artifact_root = artifact_root
+        self._last_hk_payload_by_stock: dict[str, dict[str, object]] = {}
+
+    def stock_financial_hk_report_em(
+        self,
+        *,
+        stock: str,
+        symbol: str,
+        indicator: str,
+    ) -> list[dict[str, object]]:
+        assert indicator == "年度"
+        statement_type = {
+            "资产负债表": "balance_sheet",
+            "利润表": "income_statement",
+            "现金流量表": "cash_flow",
+        }[symbol]
+        payload = self._read_artifact(
+            build_artifact_id(
+                source="akshare",
+                market="HK",
+                ticker=stock,
+                artifact_type=statement_type,
+            )
+        )
+        self._last_hk_payload_by_stock[stock] = payload
+        return _payload_rows(payload)
+
+    def stock_financial_hk_report_metadata(
+        self,
+        *,
+        stock: str,
+    ) -> list[dict[str, object]]:
+        return _payload_rows(
+            self._last_hk_payload_by_stock[stock],
+            key="metadata",
+        )
+
+    def stock_balance_sheet_by_report_em(
+        self,
+        *,
+        symbol: str,
+    ) -> list[dict[str, object]]:
+        return self._cn_rows(symbol, "balance_sheet")
+
+    def stock_profit_sheet_by_report_em(
+        self,
+        *,
+        symbol: str,
+    ) -> list[dict[str, object]]:
+        return self._cn_rows(symbol, "income_statement")
+
+    def stock_cash_flow_sheet_by_report_em(
+        self,
+        *,
+        symbol: str,
+    ) -> list[dict[str, object]]:
+        return self._cn_rows(symbol, "cash_flow")
+
+    def _cn_rows(self, symbol: str, statement_type: str) -> list[dict[str, object]]:
+        ticker = symbol[-6:]
+        payload = self._read_artifact(
+            build_artifact_id(
+                source="akshare",
+                market="CN",
+                ticker=ticker,
+                artifact_type=statement_type,
+            )
+        )
+        return _payload_rows(payload)
+
+    def _read_artifact(self, artifact_id: str) -> dict[str, object]:
+        return _read_json_object(
+            self.artifact_root / "akshare" / f"{artifact_id}.json"
+        )
+
+
+class RawArtifactYahooClient:
+    def __init__(self, artifact_root: Path) -> None:
+        self.artifact_root = artifact_root
+
+    def get_financial_statement(
+        self,
+        *,
+        ticker: str,
+        statement_type: str,
+    ) -> dict[str, object]:
+        market = "CN" if ticker.endswith(".SS") else "HK"
+        artifact_id = build_artifact_id(
+            source="yahoo",
+            market=market,
+            ticker=ticker,
+            artifact_type=statement_type,
+        )
+        return _read_json_object(self.artifact_root / "yahoo" / f"{artifact_id}.json")
+
+
+def _read_json_object(path: Path) -> dict[str, object]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return cast(dict[str, object], payload)
+
+
+def _payload_rows(
+    payload: dict[str, object],
+    *,
+    key: str = "rows",
+) -> list[dict[str, object]]:
+    rows = payload.get(key)
+    assert isinstance(rows, list)
+    return [dict(row) for row in rows if isinstance(row, dict)]
 
 
 def test_real_source_validation_runs_adapters_through_mapping_flow(
@@ -182,6 +304,74 @@ def test_real_source_validation_writes_provider_field_inventory_summary(
     payload = json.loads(summary_path.read_text(encoding="utf-8"))
     assert payload["record_count"] == 1
     assert payload["targets"][0]["raw_field_names"] == ["营业收入"]
+
+
+def test_provider_baseline_raw_artifacts_replay_through_adapters_and_period_replay(
+    tmp_path: Path,
+) -> None:
+    fixture_root = Path("tests/fixtures/provider_captures/provider_field_baseline")
+    artifact_root = fixture_root / "source_artifacts"
+    result = run_real_source_validation(
+        samples=build_provider_field_capture_samples(providers=("akshare", "yahoo")),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path / "raw_replay",
+        sample_set="provider_field_baseline",
+        akshare_client=RawArtifactAkshareClient(artifact_root),
+        yahoo_client=RawArtifactYahooClient(artifact_root),
+    )
+
+    assert result.summary["validation_mode"] == "real_source_adapter"
+    assert result.summary["source_artifact_count"] == 18
+    assert result.summary["source_errors"] == []
+
+    baseline_records = read_source_inventory(fixture_root / "source_inventory.jsonl.gz")
+    baseline_keys = {_inventory_comparison_key(record) for record in baseline_records}
+    replay_keys = {_inventory_comparison_key(record) for record in result.records}
+    assert replay_keys
+    assert replay_keys <= baseline_keys
+
+    replay = write_provider_baseline_period_replay(
+        inventory_path=tmp_path / "raw_replay" / "source_inventory.jsonl",
+        inventory_summary_path=(
+            tmp_path / "raw_replay" / "provider_field_inventory_summary.json"
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path / "period_replay",
+    )
+
+    payload = json.loads(replay.summary_path.read_text(encoding="utf-8"))
+    companies = {company["company_id"]: company for company in payload["companies"]}
+    assert payload["company_count"] == 3
+    assert companies["600519"]["selected_periods"]["akshare"]["normalized"] == "2025-12-31"
+    assert companies["600519"]["coverage"]["yahoo_only"]["covered_count"] >= 11
+    for company_id in ("00001", "01113", "600519"):
+        report = json.loads(
+            (
+                tmp_path
+                / "period_replay"
+                / company_id
+                / "combined"
+                / "reconciliation_report.json"
+            ).read_text(encoding="utf-8")
+        )
+        reasons = {item["reason"] for item in report["items"].values()}
+        assert "candidate periods differ" not in reasons
+
+
+def _inventory_comparison_key(record: object) -> tuple[object, ...]:
+    return (
+        getattr(record, "source"),
+        getattr(record, "market"),
+        getattr(record, "ticker"),
+        getattr(record, "statement_type"),
+        getattr(record, "period"),
+        getattr(record, "raw_field_name"),
+        getattr(record, "raw_field_code"),
+        getattr(record, "raw_value"),
+        getattr(record, "parsed_numeric_value"),
+        getattr(record, "currency"),
+        getattr(record, "unit"),
+    )
 
 
 def test_provider_field_baseline_preserves_all_returned_period_fields(
