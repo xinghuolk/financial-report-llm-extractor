@@ -1,7 +1,14 @@
 from financial_report_llm_extractor.structured_sources.source_mapping_expansion import (
     CandidateDecision,
     decide_candidate_promotion,
+    write_source_mapping_expansion_review,
 )
+from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
+    write_provider_field_candidate_report,
+)
+
+import json
+from pathlib import Path
 
 
 def _candidate(
@@ -103,3 +110,46 @@ def test_decide_candidate_promotion_promotes_only_new_aliases() -> None:
     assert decision.action == "promote"
     assert decision.reason == "strong deterministic candidate"
     assert decision.aliases == ("BOND_PAYABLE_CODE",)
+
+
+def test_write_source_mapping_expansion_review_uses_real_candidate_report(
+    tmp_path: Path,
+) -> None:
+    candidate_result = write_provider_field_candidate_report(
+        taxonomy_path=Path("field_catalog/turtle_v015_field_taxonomy.json"),
+        mapping_catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        inventory_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
+        ),
+        summary_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/"
+            "provider_field_inventory_summary.json"
+        ),
+        output_dir=tmp_path / "candidate_report",
+        priorities=("P0", "P1"),
+    )
+
+    result = write_source_mapping_expansion_review(
+        candidate_report_path=candidate_result.json_path,
+        mapping_catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path / "review",
+    )
+
+    payload = json.loads(result.json_path.read_text(encoding="utf-8"))
+    promoted_pairs = {
+        (item["field_id"], item["source"])
+        for item in payload["promoted"]
+    }
+    markdown = result.markdown_path.read_text(encoding="utf-8")
+
+    assert ("bond_payable", "akshare") in promoted_pairs
+    assert ("financing_cash_flow", "yahoo") in promoted_pairs
+    assert payload["summary"]["promoted_count"] >= 6
+    assert payload["summary"]["deferred_count"] > 0
+    assert payload["summary"]["no_candidate_count"] >= 0
+    assert "# Source Mapping Expansion Review" in markdown
+    assert "## Promoted" in markdown
+    assert "## Deferred" in markdown
+    assert "## Blocked" in markdown
+    assert "## No Provider Candidates" in markdown
+    assert "bond_payable" in markdown
