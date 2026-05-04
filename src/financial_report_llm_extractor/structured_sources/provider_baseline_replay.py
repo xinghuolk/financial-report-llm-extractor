@@ -263,8 +263,8 @@ def _mapping_coverage(mapping: TurtleMappingResult) -> dict[str, object]:
 def _review_lists(
     mapping: TurtleMappingResult,
     reconciliation: ReconciliationReport,
-) -> dict[str, list[str]]:
-    return {
+) -> dict[str, object]:
+    field_lists = {
         "present_fields": sorted(
             field_id
             for field_id, field in mapping.fields.items()
@@ -286,6 +286,28 @@ def _review_lists(
             if field.status == "blocked"
         ),
         "conflict_fields": list(reconciliation.conflict_fields),
+    }
+    return {**field_lists, "gap_categories": _gap_categories(field_lists)}
+
+
+def _gap_categories(review: dict[str, list[str]]) -> dict[str, list[str]]:
+    conflict_fields = set(review["conflict_fields"])
+    source_availability = review["missing_fields"]
+    mapping_ambiguity = sorted(set(review["ambiguous_fields"]) - conflict_fields)
+    mapping_blocker = review["blocked_fields"]
+    real_reconciliation_conflict = sorted(conflict_fields)
+    pdf_llm_supplement_candidates = sorted(
+        set(source_availability)
+        | set(mapping_ambiguity)
+        | set(mapping_blocker)
+        | set(real_reconciliation_conflict)
+    )
+    return {
+        "source_availability": source_availability,
+        "mapping_ambiguity": mapping_ambiguity,
+        "mapping_blocker": mapping_blocker,
+        "real_reconciliation_conflict": real_reconciliation_conflict,
+        "pdf_llm_supplement_candidates": pdf_llm_supplement_candidates,
     }
 
 
@@ -329,6 +351,7 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
         for slice_name in ("akshare_only", "yahoo_only", "combined"):
             coverage = company["coverage"][slice_name]
             review = company["review"][slice_name]
+            artifact_paths = company["artifact_paths"][slice_name]
             lines.append(
                 f"- {slice_name}: {coverage['covered_count']}/"
                 f"{coverage['total_fields']} covered; "
@@ -336,8 +359,43 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
                 f"ambiguous={len(review['ambiguous_fields'])}; "
                 f"blocked={len(review['blocked_fields'])}"
             )
+            lines.extend(
+                [
+                    f"  - present_fields: {_format_field_list(review['present_fields'])}",
+                    f"  - missing_fields: {_format_field_list(review['missing_fields'])}",
+                    f"  - ambiguous_fields: {_format_field_list(review['ambiguous_fields'])}",
+                    f"  - blocked_fields: {_format_field_list(review['blocked_fields'])}",
+                    f"  - conflict_fields: {_format_field_list(review['conflict_fields'])}",
+                ]
+            )
+            gap_categories = review["gap_categories"]
+            lines.extend(
+                [
+                    "  - gap_categories:",
+                    "    - source_availability: "
+                    f"{_format_field_list(gap_categories['source_availability'])}",
+                    "    - mapping_ambiguity: "
+                    f"{_format_field_list(gap_categories['mapping_ambiguity'])}",
+                    "    - mapping_blocker: "
+                    f"{_format_field_list(gap_categories['mapping_blocker'])}",
+                    "    - real_reconciliation_conflict: "
+                    f"{_format_field_list(gap_categories['real_reconciliation_conflict'])}",
+                    "    - pdf_llm_supplement_candidates: "
+                    f"{_format_field_list(gap_categories['pdf_llm_supplement_candidates'])}",
+                    "  - artifacts:",
+                    f"    - review_summary: {artifact_paths['review_summary']}",
+                    f"    - reconciliation_report: {artifact_paths['reconciliation_report']}",
+                    f"    - extraction_result: {artifact_paths['extraction_result']}",
+                ]
+            )
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _format_field_list(fields: object) -> str:
+    if not isinstance(fields, list) or not fields:
+        return "none"
+    return ", ".join(str(field) for field in fields)
 
 
 def _is_annual_period(period: str) -> bool:

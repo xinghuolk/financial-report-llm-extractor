@@ -192,6 +192,16 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
     assert company["coverage"]["akshare_only"]["covered_fields"] == ["revenue"]
     assert company["coverage"]["yahoo_only"]["covered_fields"] == ["cash"]
     assert company["coverage"]["combined"]["covered_fields"] == ["cash", "revenue"]
+    assert "cash" in company["review"]["akshare_only"]["gap_categories"][
+        "source_availability"
+    ]
+    assert company["review"]["combined"]["gap_categories"][
+        "real_reconciliation_conflict"
+    ] == []
+    markdown = result.markdown_path.read_text(encoding="utf-8")
+    assert "present_fields: cash, revenue" in markdown
+    assert "source_availability:" in markdown
+    assert "review_summary: " in markdown
     assert (tmp_path / "replay" / "600519" / "combined" / "review_summary.json").exists()
 
 
@@ -247,6 +257,12 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
     assert companies["600519"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["00001"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["01113"]["coverage"]["yahoo_only"]["covered_count"] >= 11
+    assert companies["600519"]["review"]["combined"]["gap_categories"][
+        "real_reconciliation_conflict"
+    ]
+    assert companies["00001"]["review"]["combined"]["gap_categories"][
+        "pdf_llm_supplement_candidates"
+    ]
 
     for company_id in ("600519", "00001", "01113"):
         report_path = (
