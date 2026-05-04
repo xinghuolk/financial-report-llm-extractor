@@ -370,6 +370,30 @@ def test_minimal_source_mapping_fixture_includes_akshare_field_codes() -> None:
     )
 
 
+def test_minimal_source_mapping_includes_first_candidate_promotions() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+
+    assert catalog.entries["bond_payable"].source_aliases["akshare"] == (
+        "BOND_PAYABLE",
+    )
+    assert catalog.entries["cip"].source_aliases["akshare"] == ("CIP",)
+    assert catalog.entries["defer_tax_liab"].source_aliases["akshare"] == (
+        "DEFER_TAX_LIAB",
+    )
+    assert catalog.entries["financing_cash_flow"].source_aliases["yahoo"] == (
+        "Financing Cash Flow",
+    )
+    assert catalog.entries["invest_income"].source_aliases["akshare"] == (
+        "INVEST_INCOME",
+    )
+    assert catalog.entries["investing_cash_flow"].source_aliases["yahoo"] == (
+        "Investing Cash Flow",
+    )
+
+
 def test_minimal_source_mapping_references_taxonomy_and_coverage() -> None:
     taxonomy = load_field_taxonomy(
         Path("field_catalog/turtle_v015_field_taxonomy.json")
@@ -405,9 +429,12 @@ def test_minimal_source_mapping_entries_match_taxonomy_and_coverage() -> None:
     for field_id, entry in catalog.entries.items():
         taxonomy_entry = taxonomy.fields[field_id]
         coverage_entry = coverage.fields[field_id]
+        expected_primary_route = coverage_entry.primary_route
+        if field_id in {"financing_cash_flow", "investing_cash_flow"}:
+            expected_primary_route = "yahoo_direct"
         assert entry.domain == taxonomy_entry.domain
         assert entry.source_mode == taxonomy_entry.source_mode
-        assert entry.primary_route == coverage_entry.primary_route
+        assert entry.primary_route == expected_primary_route
         assert entry.verification_status == coverage_entry.verification
         if taxonomy_entry.statement_type != "mixed":
             assert entry.statement_type == taxonomy_entry.statement_type

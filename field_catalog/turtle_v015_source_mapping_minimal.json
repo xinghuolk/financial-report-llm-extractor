@@ -13,7 +13,12 @@
         "total_assets",
         "total_liabilities",
         "cash",
-        "operating_cash_flow"
+        "operating_cash_flow",
+        "investing_cash_flow",
+        "financing_cash_flow",
+        "bond_payable",
+        "cip",
+        "invest_income"
       ]
     },
     {
@@ -22,7 +27,8 @@
       "fields": [
         "gross_profit",
         "total_cur_assets",
-        "total_cur_liab"
+        "total_cur_liab",
+        "defer_tax_liab"
       ]
     }
   ],
@@ -123,6 +129,81 @@
       },
       "pdf_aliases": ["operating cash flow", "经营活动产生的现金流量净额"]
     },
+    "investing_cash_flow": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": ["Investing Cash Flow"]
+      },
+      "pdf_aliases": ["investing cash flow"]
+    },
+    "financing_cash_flow": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": ["Financing Cash Flow"]
+      },
+      "pdf_aliases": ["financing cash flow"]
+    },
+    "bond_payable": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["BOND_PAYABLE"]
+      },
+      "pdf_aliases": ["bonds payable"]
+    },
+    "cip": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["CIP"]
+      },
+      "pdf_aliases": ["construction in progress"]
+    },
+    "invest_income": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["INVEST_INCOME"]
+      },
+      "pdf_aliases": ["investment income"]
+    },
     "gross_profit": {
       "value_type": "money",
       "statement_type": "income_statement",
@@ -170,6 +251,21 @@
         "yahoo": ["Current Liabilities", "Total Current Liabilities"]
       },
       "pdf_aliases": ["current liabilities", "流动负债合计"]
+    },
+    "defer_tax_liab": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["DEFER_TAX_LIAB"]
+      },
+      "pdf_aliases": ["deferred tax liabilities"]
     }
   }
 }
