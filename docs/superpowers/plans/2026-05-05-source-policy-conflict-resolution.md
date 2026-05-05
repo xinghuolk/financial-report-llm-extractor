@@ -18,6 +18,8 @@
 - Modify: `field_catalog/turtle_v015_source_mapping_minimal.json`
   - Add source policy metadata for `revenue`, `net_profit`, HK balance-sheet totals, `gross_profit`, and Yahoo-only HK fields.
   - Reorder `net_profit` AKShare aliases so `PARENT_NETPROFIT` is primary.
+- Modify: `src/financial_report_llm_extractor/structured_sources/mapping.py`
+  - Preserve non-selected related source candidates as policy evidence after alias precedence.
 - Create: `src/financial_report_llm_extractor/structured_sources/source_policy.py`
   - Classify semantic mismatches, FX-like ratios, suspected currency metadata, and single-source unverified fields.
   - Resolve primary source selection with warnings and verification flags.
@@ -29,6 +31,8 @@
   - Write `source_policy_report.json` per slice.
 - Test: `tests/test_source_mapping_catalog.py`
   - Validate policy parsing and catalog regression for `net_profit`.
+- Test: `tests/test_source_mapping.py`
+  - Validate related source candidates survive as policy evidence candidates.
 - Test: `tests/test_source_policy.py`
   - Cover classification and resolver behavior.
 - Test: `tests/test_source_review_export.py`
@@ -429,13 +433,135 @@ git add field_catalog/turtle_v015_source_mapping_minimal.json tests/test_source_
 git commit -m "feat: define source policy for conflict fields"
 ```
 
-## Task 3: Add Conflict Classification And Policy Resolution
+## Task 3: Add Policy Evidence Candidates And Conflict Classification
 
 **Files:**
+- Modify: `tests/test_source_mapping.py`
+- Modify: `src/financial_report_llm_extractor/structured_sources/mapping.py`
 - Create: `src/financial_report_llm_extractor/structured_sources/source_policy.py`
 - Create: `tests/test_source_policy.py`
 
-- [ ] **Step 1: Write tests for semantic mismatch and source selection**
+- [ ] **Step 1: Write the failing policy evidence candidate mapping test**
+
+Add this test to `tests/test_source_mapping.py`:
+
+```python
+def test_map_source_inventory_preserves_related_policy_evidence_candidates() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "revenue": _entry(
+                "revenue",
+                statement_type="income_statement",
+                source_aliases={
+                    "akshare": (
+                        "OPERATE_INCOME",
+                        "营业收入",
+                        "TOTAL_OPERATE_INCOME",
+                        "营业总收入",
+                    ),
+                    "yahoo": ("Total Revenue",),
+                },
+            )
+        },
+    )
+    records = (
+        _record(
+            "营业收入",
+            "168838102514.79",
+            Decimal("168838102514.79"),
+            raw_field_code="OPERATE_INCOME",
+        ),
+        _record(
+            "营业总收入",
+            "172054171890.91",
+            Decimal("172054171890.91"),
+            raw_field_code="TOTAL_OPERATE_INCOME",
+        ),
+        _record(
+            "Total Revenue",
+            "172054171890.91",
+            Decimal("172054171890.91"),
+            source="yahoo",
+            raw_field_code=None,
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["revenue"]
+    assert mapped.status == "ambiguous"
+    assert [candidate.raw_field_code for candidate in mapped.candidates] == [
+        "OPERATE_INCOME",
+        None,
+    ]
+    assert [
+        candidate.raw_field_code
+        for candidate in mapped.policy_evidence_candidates
+    ] == ["TOTAL_OPERATE_INCOME"]
+```
+
+If the existing `_record()` helper does not accept `raw_field_code`, extend it with an optional `raw_field_code: str | None = None` parameter and pass it into `SourceInventoryRecord`.
+
+- [ ] **Step 2: Run the focused mapping test and verify it fails**
+
+Run:
+
+```bash
+uv run pytest tests/test_source_mapping.py::test_map_source_inventory_preserves_related_policy_evidence_candidates -v
+```
+
+Expected: fail because `MappedTurtleField` has no `policy_evidence_candidates`.
+
+- [ ] **Step 3: Preserve policy evidence candidates in mapping**
+
+In `src/financial_report_llm_extractor/structured_sources/mapping.py`, add this field to `MappedTurtleField`:
+
+```python
+policy_evidence_candidates: tuple[TurtleMappingCandidate, ...] = field(default_factory=tuple)
+```
+
+Add it to `MappedTurtleField.to_dict()`:
+
+```python
+"policy_evidence_candidates": [
+    candidate.to_dict() for candidate in self.policy_evidence_candidates
+],
+```
+
+In `_map_direct_field()`, keep valid candidates before alias precedence:
+
+```python
+valid_candidates = tuple(
+    candidate for candidate in matched_candidates if not candidate.errors
+)
+```
+
+Use `valid_candidates` for the blocked check and alias precedence:
+
+```python
+if not valid_candidates:
+    return MappedTurtleField(...)
+candidates = _apply_alias_precedence(entry, valid_candidates)
+policy_evidence_candidates = tuple(
+    candidate for candidate in valid_candidates if candidate not in candidates
+)
+```
+
+Pass `policy_evidence_candidates=policy_evidence_candidates` in both the ambiguous and single-candidate `MappedTurtleField` returns.
+
+- [ ] **Step 4: Run source mapping tests**
+
+Run:
+
+```bash
+uv run pytest tests/test_source_mapping.py -v
+```
+
+Expected: pass.
+
+- [ ] **Step 5: Write tests for semantic mismatch and source selection**
 
 Create `tests/test_source_policy.py` with these tests and helpers:
 
@@ -516,6 +642,7 @@ def test_source_policy_classifies_revenue_semantic_mismatch_and_selects_primary(
 
     item = report.items["revenue"]
     assert item.selection_status == "selected_primary"
+    assert item.selected_candidate is not None
     assert item.selected_candidate.source == "akshare"
     assert item.selected_candidate.raw_field_code == "OPERATE_INCOME"
     assert item.verification_required is True
@@ -567,6 +694,7 @@ def test_source_policy_classifies_hk_fx_like_ratio_across_multiple_fields() -> N
     )
 
     assert report.items["total_assets"].selection_status == "selected_primary"
+    assert report.items["total_assets"].selected_candidate is not None
     assert report.items["total_assets"].selected_candidate.source == "akshare"
     assert report.items["total_assets"].verification_required is True
     assert report.items["total_assets"].conflict_classifications == (
@@ -575,7 +703,7 @@ def test_source_policy_classifies_hk_fx_like_ratio_across_multiple_fields() -> N
     )
 ```
 
-Use these helpers:
+Use these helpers. The `policy_evidence_candidates` value in `_mapping()` is required because real `600519` revenue needs the non-selected AKShare `TOTAL_OPERATE_INCOME` candidate to prove that Yahoo aligns with a related semantic variant:
 
 ```python
 def _catalog(field_id: str, policy: SourcePolicy) -> SourceMappingCatalog:
@@ -611,6 +739,17 @@ def _mapping(
                 field_id=field_id,
                 status="ambiguous",
                 candidates=candidates,
+                policy_evidence_candidates=(
+                    _candidate(
+                        source="akshare",
+                        raw_field_name="营业总收入",
+                        raw_field_code="TOTAL_OPERATE_INCOME",
+                        normalized_value=Decimal("172054171890.91"),
+                        currency="CNY",
+                    ),
+                )
+                if field_id == "revenue"
+                else (),
                 errors=("multiple source candidates matched catalog aliases",),
             )
         },
@@ -667,7 +806,7 @@ def _candidate(
     )
 ```
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [ ] **Step 6: Run tests and verify they fail**
 
 Run:
 
@@ -677,7 +816,7 @@ uv run pytest tests/test_source_policy.py -v
 
 Expected: fail because `source_policy.py` does not exist.
 
-- [ ] **Step 3: Implement source policy report dataclasses**
+- [ ] **Step 7: Implement source policy report dataclasses**
 
 Create `src/financial_report_llm_extractor/structured_sources/source_policy.py`:
 
@@ -693,6 +832,7 @@ from pathlib import Path
 from typing import Literal
 
 from financial_report_llm_extractor.structured_sources.catalog import (
+    MarketSourcePolicy,
     SourceMappingCatalog,
     SourceMappingEntry,
 )
@@ -701,7 +841,6 @@ from financial_report_llm_extractor.structured_sources.mapping import (
     TurtleMappingCandidate,
     TurtleMappingResult,
 )
-from financial_report_llm_extractor.structured_sources.models import SourceName
 from financial_report_llm_extractor.structured_sources.reconciliation import (
     ReconciliationReport,
     ReconciliationStatus,
@@ -714,6 +853,7 @@ ConflictClassification = Literal[
     "normalized_value_conflict",
     "missing_source_candidate",
     "single_source_unverified",
+    "currency_metadata_required",
 ]
 SelectionStatus = Literal[
     "selected_primary",
@@ -771,7 +911,7 @@ class SourcePolicyReport:
         }
 ```
 
-- [ ] **Step 4: Implement report builder and helpers**
+- [ ] **Step 8: Implement report builder and helpers**
 
 Continue in the same file:
 
@@ -852,6 +992,16 @@ def _resolve_field(
     classifications = _classifications(entry, field, fx_like=fx_like)
     candidate = _primary_candidate(entry, field, market)
     market_policy = _market_policy(entry, market)
+    if candidate is not None and _requires_currency_metadata(candidate):
+        return SourcePolicyItem(
+            field_id=field.field_id,
+            selection_status="unresolved_conflict",
+            conflict_classifications=classifications
+            + ("currency_metadata_required",),
+            verification_required=True,
+            warnings=("selected primary candidate lacks proven currency metadata",),
+            reconciliation_status=reconciliation_status,
+        )
     if (
         candidate is not None
         and market_policy is not None
@@ -878,7 +1028,7 @@ def _resolve_field(
     )
 ```
 
-- [ ] **Step 5: Implement classification helpers**
+- [ ] **Step 9: Implement classification helpers**
 
 Continue in the same file:
 
@@ -932,7 +1082,7 @@ def _semantic_mismatch(entry: SourceMappingEntry, field: MappedTurtleField) -> b
     policy = entry.source_policy
     if policy is None:
         return False
-    for candidate in field.candidates:
+    for candidate in field.candidates + field.policy_evidence_candidates:
         variants = policy.semantic_variants.get(candidate.source)
         if variants is None:
             continue
@@ -951,7 +1101,18 @@ def _values_differ(field: MappedTurtleField) -> bool:
     return len(values) > 1
 
 
-def _market_policy(entry: SourceMappingEntry, market: str | None):
+def _requires_currency_metadata(candidate: TurtleMappingCandidate) -> bool:
+    return (
+        candidate.currency in {"unknown", "ambiguous"}
+        or candidate.unit is None
+        or candidate.canonical_unit is None
+    )
+
+
+def _market_policy(
+    entry: SourceMappingEntry,
+    market: str | None,
+) -> MarketSourcePolicy | None:
     if entry.source_policy is None or market is None:
         return None
     return entry.source_policy.market_policies.get(market)
@@ -1032,20 +1193,22 @@ def _relative_difference(left: Decimal, right: Decimal) -> Decimal:
     return abs(left - right) / denominator
 ```
 
-- [ ] **Step 6: Run source policy tests**
+- [ ] **Step 10: Run source policy tests and static checks**
 
 Run:
 
 ```bash
 uv run pytest tests/test_source_policy.py -v
+uv run ruff check src/financial_report_llm_extractor/structured_sources/source_policy.py tests/test_source_policy.py
+uv run mypy src/financial_report_llm_extractor/structured_sources/source_policy.py tests/test_source_policy.py
 ```
 
 Expected: pass.
 
-- [ ] **Step 7: Commit Task 3**
+- [ ] **Step 11: Commit Task 3**
 
 ```bash
-git add src/financial_report_llm_extractor/structured_sources/source_policy.py tests/test_source_policy.py
+git add src/financial_report_llm_extractor/structured_sources/mapping.py src/financial_report_llm_extractor/structured_sources/source_policy.py tests/test_source_mapping.py tests/test_source_policy.py
 git commit -m "feat: classify source conflicts by policy"
 ```
 
@@ -1346,6 +1509,8 @@ Pass `company_id=company_id` and `market=company_groups["akshare"].market` from 
 
 - [ ] **Step 4: Update coverage and review helpers**
 
+If the branch already has `_export_coverage(export)` and `_review_lists(export)` from the provider replay review fix, extend those helpers in place. Do not recreate the older mapping/reconciliation-based helpers.
+
 In `_export_coverage()`, keep existing keys and add:
 
 ```python
@@ -1390,7 +1555,20 @@ In `_review_lists()`, add:
 
 Include those fields in Markdown after `conflict_fields`.
 
-- [ ] **Step 5: Run provider replay tests**
+- [ ] **Step 5: Update existing provider replay conflict assertions**
+
+In `tests/test_provider_baseline_replay.py`, update the existing `test_provider_baseline_replay_combined_uses_canonical_units_for_600519` assertions so they match the new policy-selected semantics. Replace the assertion that `revenue` and `net_profit` are both conflict fields with:
+
+```python
+assert "revenue" in combined_review["selected_with_warnings_fields"]
+assert "net_profit" in combined_review["present_fields"]
+assert "revenue" not in combined_review["conflict_fields"]
+assert "net_profit" not in combined_review["conflict_fields"]
+```
+
+Update the existing reconciliation-report assertions too: `revenue` may still be a raw reconciliation conflict before policy selection, while `net_profit` should become `equivalent` after `PARENT_NETPROFIT` alias priority is corrected. Add a comment in the test explaining that raw reconciliation and export/review intentionally report different layers.
+
+- [ ] **Step 6: Run provider replay tests**
 
 Run:
 
@@ -1400,7 +1578,7 @@ uv run pytest tests/test_provider_baseline_replay.py -v
 
 Expected: pass.
 
-- [ ] **Step 6: Commit Task 5**
+- [ ] **Step 7: Commit Task 5**
 
 ```bash
 git add src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py tests/test_provider_baseline_replay.py

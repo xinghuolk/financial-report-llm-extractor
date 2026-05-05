@@ -29,6 +29,7 @@ This phase must provide:
   - `normalized_value_conflict`
   - `missing_source_candidate`
   - `single_source_unverified`
+  - `currency_metadata_required`
 - A source policy resolver that can select a primary candidate without pretending cross-source conflicts disappeared.
 - Export metadata that preserves:
   - selected primary source value,
@@ -88,7 +89,7 @@ For HK `total_assets`, `total_cur_assets`, `total_cur_liab`, and `total_liabilit
 - Cross-check source: Yahoo standardized balance-sheet fields.
 - If Yahoo and AKShare share period and nominal currency but differ by a stable near-constant ratio across multiple fields in the same company/slice, classify as `fx_like_ratio` and `metadata_currency_suspected`.
 - Do not convert values.
-- Export may select AKShare as primary candidate with warning and PDF verification requirement.
+- Export may select AKShare as the primary candidate only when the selected AKShare candidate has proven statement-level currency/unit metadata, such as AKShare HK metadata join evidence. If the selected primary candidate itself has suspected currency/unit metadata, the field must remain unresolved and require currency metadata or PDF evidence before selection. If the suspicion applies only to the Yahoo cross-check candidate, export may select AKShare with warning and PDF verification requirement.
 
 ### 4.4 HK `gross_profit`
 
@@ -151,9 +152,10 @@ Classification rules:
 1. `missing_source_candidate`: field has no candidates.
 2. `semantic_mismatch`: candidates correspond to known related semantic variants for the same Turtle field.
 3. `metadata_currency_suspected`: candidates claim the same currency, but the source is known to derive currency from ticker/market defaults rather than provider statement metadata.
-4. `fx_like_ratio`: two or more same-company same-period fields from the same provider pair have nearly identical ratios beyond tolerance.
+4. `fx_like_ratio`: at least three same-company same-period fields from the same provider pair have nearly identical ratios beyond tolerance.
 5. `normalized_value_conflict`: normalized values differ and no more specific semantic or FX-like explanation is available.
 6. `single_source_unverified`: exactly one source candidate exists and the source policy requires additional evidence.
+7. `currency_metadata_required`: the candidate that would otherwise be selected lacks proven statement-level currency/unit metadata.
 
 The ratio detector should be conservative:
 
@@ -229,7 +231,7 @@ Using the checked-in provider baseline fixture:
   - `net_profit` selected from AKShare `PARENT_NETPROFIT`, expected to reconcile with Yahoo `Net Income` once catalog alias priority is corrected.
   - `bond_payable` remains blocked/missing unless a valid source candidate exists.
 - `00001` and `01113`:
-  - HK balance-sheet totals selected from AKShare with `fx_like_ratio` or `metadata_currency_suspected` warnings.
+  - HK balance-sheet totals selected from AKShare with `fx_like_ratio` or `metadata_currency_suspected` warnings only when AKShare statement metadata proves the selected value's currency/unit; otherwise those fields remain unresolved and require currency metadata or PDF evidence.
   - HK Yahoo-only fields remain selected candidates with `single_source_unverified` warnings unless covered by improved AKShare aliases.
   - `gross_profit` requires PDF verification; automatic acceptance is not allowed.
 
@@ -254,7 +256,8 @@ Tests must cover:
 This phase is complete when:
 
 - Source mapping catalog entries can express field semantics and market-specific source policy.
-- `600519` remaining revenue/net-profit issues are explained by semantic policy rather than raw normalized-value conflict.
+- `600519` `revenue` is explained by semantic policy rather than raw normalized-value conflict.
+- `600519` `net_profit` uses the `PARENT_NETPROFIT` primary semantic and reconciles with Yahoo `Net Income` when both sources provide matching values.
 - HK balance-sheet conflicts are classified as FX-like or metadata-currency suspected where the stable-ratio evidence exists.
 - Combined replay no longer lowers useful primary-source coverage solely because a cross-check source disagrees.
 - Review artifacts still preserve every disagreement and verification requirement.
