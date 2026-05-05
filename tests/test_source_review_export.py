@@ -70,6 +70,86 @@ def test_source_export_marks_reconciliation_conflict() -> None:
     assert result.summary["conflict_fields"] == ["revenue"]
 
 
+def test_source_first_export_promotes_equivalent_ambiguous_candidates_with_candidate_metadata() -> None:
+    akshare_evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function="fixture",
+        artifact_id="akshare_cash",
+        raw_record_id="a",
+        raw_field_name="货币资金",
+    )
+    yahoo_evidence = SourceEvidence(
+        source="yahoo",
+        adapter="yahoo",
+        function="fixture",
+        artifact_id="yahoo_cash",
+        raw_record_id="y",
+        raw_field_name="Cash And Cash Equivalents",
+    )
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "cash": MappedTurtleField(
+                field_id="cash",
+                status="ambiguous",
+                candidates=(
+                    TurtleMappingCandidate(
+                        source="akshare",
+                        raw_field_name="货币资金",
+                        raw_field_code="MONETARYFUNDS",
+                        raw_value="100",
+                        value=Decimal("100"),
+                        normalized_value=Decimal("100"),
+                        currency="CNY",
+                        unit="yuan",
+                        canonical_unit="CNY",
+                        period="2025-12-31",
+                        scope="consolidated",
+                        source_evidence=(akshare_evidence,),
+                    ),
+                    TurtleMappingCandidate(
+                        source="yahoo",
+                        raw_field_name="Cash And Cash Equivalents",
+                        raw_field_code=None,
+                        raw_value="100",
+                        value=Decimal("100"),
+                        normalized_value=Decimal("100"),
+                        currency="CNY",
+                        unit="raw",
+                        canonical_unit="CNY",
+                        period="2025-12-31",
+                        scope="consolidated",
+                        source_evidence=(yahoo_evidence,),
+                    ),
+                ),
+                errors=("multiple source candidates matched catalog aliases",),
+            )
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    exported = build_source_first_export(
+        mapping,
+        reconciliation,
+        profile="source_only",
+    )
+
+    item = exported.items["cash"]
+    assert item.status == "present"
+    assert item.value == Decimal("100")
+    assert item.normalized_value == Decimal("100")
+    assert item.currency == "CNY"
+    assert item.unit == "yuan"
+    assert item.canonical_unit == "CNY"
+    assert item.period == "2025-12-31"
+    assert item.scope == "consolidated"
+    assert len(item.source_evidence) == 2
+    assert item.errors == ()
+    assert item.warnings == ("multiple source candidates reconciled as equivalent",)
+
+
 def test_pdf_required_export_lists_fields_needing_pdf_evidence() -> None:
     mapping = _mapping(
         "cash",

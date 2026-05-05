@@ -12,6 +12,7 @@ from typing import Literal
 from financial_report_llm_extractor.models import Currency, Evidence
 from financial_report_llm_extractor.structured_sources.mapping import (
     MappedTurtleField,
+    TurtleMappingCandidate,
     TurtleMappingResult,
 )
 from financial_report_llm_extractor.structured_sources.models import SourceEvidence
@@ -40,6 +41,7 @@ class SourceFirstExportItem:
     normalized_value: Decimal | None = None
     currency: Currency = "unknown"
     unit: str | None = None
+    canonical_unit: Currency | None = None
     period: str | None = None
     scope: str = "unknown"
     source_evidence: tuple[SourceEvidence, ...] = field(default_factory=tuple)
@@ -60,6 +62,7 @@ class SourceFirstExportItem:
             ),
             "currency": self.currency,
             "unit": self.unit,
+            "canonical_unit": self.canonical_unit,
             "period": self.period,
             "scope": self.scope,
             "source_evidence": [
@@ -179,17 +182,28 @@ def _build_item(
     warnings: tuple[str, ...] = ()
     value = field.value
     normalized_value = field.normalized_value
+    currency = field.currency
+    unit = field.unit
+    canonical_unit = field.canonical_unit
+    period = field.period
+    scope = field.scope
     source_evidence = field.source_evidence
 
     if field.status == "ambiguous" and reconciliation_status in {"equivalent", "close"}:
-        candidate = field.candidates[0]
+        candidate = _representative_candidate(field.candidates)
         value = candidate.value
         normalized_value = candidate.normalized_value
+        currency = candidate.currency
+        unit = candidate.unit
+        canonical_unit = candidate.canonical_unit
+        period = candidate.period
+        scope = candidate.scope
         source_evidence = tuple(
             evidence
             for candidate in field.candidates
             for evidence in candidate.source_evidence
         )
+        errors = ()
         warnings = (f"multiple source candidates reconciled as {reconciliation_status}",)
 
     if status == "present" and profile == "pdf_required" and not pdf_evidence:
@@ -201,10 +215,11 @@ def _build_item(
         status=status,
         value=value,
         normalized_value=normalized_value,
-        currency=field.currency,
-        unit=field.unit,
-        period=field.period,
-        scope=field.scope,
+        currency=currency,
+        unit=unit,
+        canonical_unit=canonical_unit,
+        period=period,
+        scope=scope,
         source_evidence=source_evidence,
         pdf_evidence=pdf_evidence,
         mapping_status=field.status,
@@ -232,6 +247,21 @@ def _export_status(
             return "present"
         return "ambiguous"
     return "blocked"
+
+
+def _representative_candidate(
+    candidates: tuple[TurtleMappingCandidate, ...],
+) -> TurtleMappingCandidate:
+    source_rank = {"akshare": 0, "yahoo": 1}
+    return sorted(
+        candidates,
+        key=lambda candidate: (
+            source_rank.get(candidate.source, 99),
+            candidate.source,
+            candidate.raw_field_name,
+            candidate.raw_field_code or "",
+        ),
+    )[0]
 
 
 def _fields_with_status(
