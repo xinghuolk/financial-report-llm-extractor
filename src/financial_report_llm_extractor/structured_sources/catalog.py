@@ -68,6 +68,12 @@ class MarketSourcePolicy:
             "source_policy market policy cross_check_routes",
             self.cross_check_routes,
         )
+        for route in self.cross_check_routes:
+            _validate_literal(
+                "source_policy cross_check_route",
+                route,
+                PrimaryRoute,
+            )
         _validate_supported_value(
             "source_policy on_conflict",
             self.on_conflict,

@@ -198,6 +198,17 @@ def test_source_mapping_catalog_loads_optional_source_policy(tmp_path: Path) -> 
             "source_policy primary_route has unsupported value: akshare_lookup",
         ),
         (
+            {
+                "market_policies": {
+                    "CN": {
+                        "primary_route": "akshare_direct",
+                        "cross_check_routes": ["akshare_lookup"],
+                    }
+                }
+            },
+            "source_policy cross_check_route has unsupported value: akshare_lookup",
+        ),
+        (
             {"verification_requirement": "pdf_always"},
             "source_policy verification_requirement has unsupported value: pdf_always",
         ),
