@@ -273,6 +273,58 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         assert "candidate periods differ" not in reasons
 
 
+def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
+    tmp_path: Path,
+) -> None:
+    result = write_provider_baseline_period_replay(
+        inventory_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
+        ),
+        inventory_summary_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json"
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path,
+        company_ids=("600519",),
+    )
+
+    payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
+    company = payload["companies"][0]
+    review_summary_path = Path(company["artifact_paths"]["combined"]["review_summary"])
+    combined_review = json.loads(review_summary_path.read_text(encoding="utf-8"))
+    combined_coverage = {
+        "covered_count": combined_review["status_counts"]["present"],
+    }
+
+    assert company["company_id"] == "600519"
+    assert combined_coverage["covered_count"] >= 12
+    assert set(combined_review["present_fields"]) >= {
+        "cash",
+        "operating_cash_flow",
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    }
+    assert set(combined_review["conflict_fields"]) >= {"revenue", "net_profit"}
+
+    report_path = Path(
+        company["artifact_paths"]["combined"]["reconciliation_report"]
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert report["items"]["cash"]["status"] == "equivalent"
+    assert (
+        report["items"]["cash"]["reason"]
+        == "candidate normalized values are equal"
+    )
+    assert report["items"]["revenue"]["status"] == "conflict"
+    assert (
+        report["items"]["revenue"]["reason"]
+        == "candidate normalized values differ"
+    )
+
+
 def test_provider_baseline_period_replay_script_is_local_fixture_entrypoint() -> None:
     script = Path("scripts/run-provider-baseline-period-replay.sh").read_text(
         encoding="utf-8"
