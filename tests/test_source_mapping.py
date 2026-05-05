@@ -339,6 +339,85 @@ def test_map_source_inventory_blocks_derivation_when_currencies_differ() -> None
     assert mapped.errors == ("derivation inputs use different currencies",)
 
 
+def test_map_source_inventory_reports_period_mismatch_before_canonical_unit_mismatch() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Total Assets",)},
+            ),
+            "total_liabilities": _entry(
+                "total_liabilities",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Total Liabilities",)},
+            ),
+            "equity": _entry(
+                "equity",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Stockholders Equity",)},
+                derivation="total_assets - total_liabilities",
+            ),
+        },
+    )
+    records = [
+        SourceInventoryRecord(
+            source="yahoo",
+            market="US",
+            ticker="TEST",
+            statement_type="balance_sheet",
+            period="2024-12-31",
+            raw_field_name="Total Assets",
+            raw_value="1000",
+            parsed_numeric_value=Decimal("1000"),
+            currency="USD",
+            unit="raw",
+            scope="consolidated",
+            source_evidence=(
+                SourceEvidence(
+                    source="yahoo",
+                    adapter="yahoo",
+                    function="fixture",
+                    artifact_id="yahoo_artifact",
+                    raw_record_id="yahoo:Total Assets",
+                    raw_field_name="Total Assets",
+                ),
+            ),
+        ),
+        SourceInventoryRecord(
+            source="yahoo",
+            market="US",
+            ticker="TEST",
+            statement_type="balance_sheet",
+            period="2025-12-31",
+            raw_field_name="Total Liabilities",
+            raw_value="400",
+            parsed_numeric_value=Decimal("400"),
+            currency="USD",
+            unit="CNY",
+            scope="consolidated",
+            source_evidence=(
+                SourceEvidence(
+                    source="yahoo",
+                    adapter="yahoo",
+                    function="fixture",
+                    artifact_id="yahoo_artifact",
+                    raw_record_id="yahoo:Total Liabilities",
+                    raw_field_name="Total Liabilities",
+                ),
+            ),
+        ),
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["equity"]
+    assert mapped.status == "blocked"
+    assert mapped.errors == ("derivation inputs use different periods",)
+
+
 def test_turtle_mapping_candidate_preserves_old_positional_constructor_shape() -> None:
     evidence = SourceEvidence(
         source="akshare",
