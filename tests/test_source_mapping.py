@@ -252,6 +252,24 @@ def test_turtle_mapping_candidate_preserves_old_positional_constructor_shape() -
     assert candidate.source_evidence == (evidence,)
     assert candidate.canonical_unit is None
 
+    candidate_with_errors = TurtleMappingCandidate(
+        "akshare",
+        "Revenue",
+        None,
+        "100",
+        Decimal("100"),
+        Decimal("100"),
+        "CNY",
+        "yuan",
+        "2024-12-31",
+        "consolidated",
+        (evidence,),
+        ("bad",),
+    )
+
+    assert candidate_with_errors.errors == ("bad",)
+    assert candidate_with_errors.canonical_unit is None
+
 
 def test_write_turtle_mapping_artifacts_writes_json_and_markdown(
     tmp_path: Path,

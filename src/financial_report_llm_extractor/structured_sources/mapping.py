@@ -38,8 +38,8 @@ class TurtleMappingCandidate:
     period: str | None
     scope: str
     source_evidence: tuple[SourceEvidence, ...]
-    canonical_unit: Currency | None = None
     errors: tuple[str, ...] = field(default_factory=tuple)
+    canonical_unit: Currency | None = None
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
