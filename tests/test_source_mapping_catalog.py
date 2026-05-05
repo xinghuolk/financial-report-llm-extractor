@@ -73,6 +73,82 @@ def test_source_mapping_entry_allows_default_unknown_domain_for_in_memory_catalo
     assert entry.domain == "unknown"
 
 
+def test_source_mapping_catalog_loads_optional_source_policy(tmp_path: Path) -> None:
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "test",
+                "version": "1",
+                "priorities": [{"priority": "P0", "fields": ["net_profit"]}],
+                "source_mappings": {
+                    "net_profit": {
+                        "value_type": "money",
+                        "statement_type": "income_statement",
+                        "domain": "income_statement",
+                        "source_mode": "direct",
+                        "primary_route": "akshare_direct",
+                        "verification_status": "verified",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "fallback_policy": "pdf_allowed",
+                        "source_aliases": {
+                            "akshare": [
+                                "PARENT_NETPROFIT",
+                                "归属于母公司股东的净利润",
+                                "NETPROFIT",
+                                "净利润",
+                            ],
+                            "yahoo": ["Net Income"],
+                        },
+                        "source_policy": {
+                            "semantic_concept": (
+                                "profit attributable to parent-company shareholders"
+                            ),
+                            "semantic_variants": {
+                                "akshare": {
+                                    "primary": [
+                                        "PARENT_NETPROFIT",
+                                        "归属于母公司股东的净利润",
+                                    ],
+                                    "related": ["NETPROFIT", "净利润"],
+                                },
+                                "yahoo": {"primary": ["Net Income"]},
+                            },
+                            "market_policies": {
+                                "CN": {
+                                    "primary_route": "akshare_direct",
+                                    "cross_check_routes": ["yahoo_direct"],
+                                    "on_conflict": "select_primary_require_pdf",
+                                    "single_source_requires_pdf": False,
+                                }
+                            },
+                            "verification_requirement": "pdf_required_on_conflict",
+                        },
+                    }
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0",))
+
+    policy = catalog.entries["net_profit"].source_policy
+    assert policy is not None
+    assert (
+        policy.semantic_concept
+        == "profit attributable to parent-company shareholders"
+    )
+    assert policy.semantic_variants["akshare"].primary == (
+        "PARENT_NETPROFIT",
+        "归属于母公司股东的净利润",
+    )
+    assert policy.semantic_variants["akshare"].related == ("NETPROFIT", "净利润")
+    assert policy.market_policies["CN"].on_conflict == "select_primary_require_pdf"
+
+
 @pytest.mark.parametrize(
     ("payload", "expected_message"),
     [

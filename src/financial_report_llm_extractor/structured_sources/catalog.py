@@ -33,6 +33,28 @@ REFERENCED_REQUIRED_METADATA = (
 
 
 @dataclass(frozen=True)
+class SourceSemanticVariants:
+    primary: tuple[str, ...] = field(default_factory=tuple)
+    related: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class MarketSourcePolicy:
+    primary_route: str
+    cross_check_routes: tuple[str, ...] = field(default_factory=tuple)
+    on_conflict: str = "preserve_conflict"
+    single_source_requires_pdf: bool = False
+
+
+@dataclass(frozen=True)
+class SourcePolicy:
+    semantic_concept: str
+    semantic_variants: dict[str, SourceSemanticVariants] = field(default_factory=dict)
+    market_policies: dict[str, MarketSourcePolicy] = field(default_factory=dict)
+    verification_requirement: str = "none"
+
+
+@dataclass(frozen=True)
 class SourceMappingEntry:
     field_id: str
     priority: str
@@ -50,6 +72,7 @@ class SourceMappingEntry:
     pdf_aliases: tuple[str, ...] = field(default_factory=tuple)
     derivation: str | None = None
     fallback_policy: str = "pdf_allowed"
+    source_policy: SourcePolicy | None = None
 
     def validate(self) -> None:
         if not self.field_id:
@@ -160,6 +183,7 @@ def load_source_mapping_catalog(
             pdf_aliases=tuple(str(alias) for alias in mapping.get("pdf_aliases", [])),
             derivation=mapping.get("derivation"),
             fallback_policy=mapping.get("fallback_policy", "pdf_allowed"),
+            source_policy=_parse_source_policy(mapping.get("source_policy")),
         )
         entry.validate()
         entries[field_id] = entry
@@ -171,6 +195,50 @@ def load_source_mapping_catalog(
     )
     catalog.validate()
     return catalog
+
+
+def _parse_source_policy(raw_policy: object) -> SourcePolicy | None:
+    if raw_policy is None:
+        return None
+    if not isinstance(raw_policy, dict):
+        raise ValueError("source_policy must be an object")
+
+    raw_variants = raw_policy.get("semantic_variants", {})
+    if not isinstance(raw_variants, dict):
+        raise ValueError("source_policy semantic_variants must be an object")
+    variants: dict[str, SourceSemanticVariants] = {}
+    for source, value in raw_variants.items():
+        if not isinstance(value, dict):
+            raise ValueError("source_policy semantic variant must be an object")
+        variants[str(source)] = SourceSemanticVariants(
+            primary=tuple(str(item) for item in value.get("primary", [])),
+            related=tuple(str(item) for item in value.get("related", [])),
+        )
+
+    raw_market_policies = raw_policy.get("market_policies", {})
+    if not isinstance(raw_market_policies, dict):
+        raise ValueError("source_policy market_policies must be an object")
+    market_policies: dict[str, MarketSourcePolicy] = {}
+    for market, value in raw_market_policies.items():
+        if not isinstance(value, dict):
+            raise ValueError("source_policy market policy must be an object")
+        market_policies[str(market)] = MarketSourcePolicy(
+            primary_route=str(value.get("primary_route", "")),
+            cross_check_routes=tuple(
+                str(item) for item in value.get("cross_check_routes", [])
+            ),
+            on_conflict=str(value.get("on_conflict", "preserve_conflict")),
+            single_source_requires_pdf=bool(
+                value.get("single_source_requires_pdf", False)
+            ),
+        )
+
+    return SourcePolicy(
+        semantic_concept=str(raw_policy.get("semantic_concept", "")),
+        semantic_variants=variants,
+        market_policies=market_policies,
+        verification_requirement=str(raw_policy.get("verification_requirement", "none")),
+    )
 
 
 def _require_referenced_metadata(field_id: str, mapping: dict[str, Any]) -> None:
