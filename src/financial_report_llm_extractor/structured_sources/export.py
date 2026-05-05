@@ -234,8 +234,6 @@ def _export_status(
     field: MappedTurtleField,
     reconciliation_status: ReconciliationStatus | None,
 ) -> ExportItemStatus:
-    if reconciliation_status == "conflict":
-        return "conflict"
     if field.status in {"present", "derived"}:
         return "present"
     if field.status == "missing":
@@ -243,6 +241,10 @@ def _export_status(
     if field.status == "blocked":
         return "blocked"
     if field.status == "ambiguous":
+        if reconciliation_status == "blocked":
+            return "blocked"
+        if reconciliation_status == "conflict":
+            return "conflict"
         if reconciliation_status in {"equivalent", "close"}:
             return "present"
         return "ambiguous"

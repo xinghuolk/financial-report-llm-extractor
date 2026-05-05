@@ -2,7 +2,7 @@ from decimal import Decimal
 import json
 from pathlib import Path
 
-from financial_report_llm_extractor.models import Evidence
+from financial_report_llm_extractor.models import Currency, Evidence
 from financial_report_llm_extractor.structured_sources.export import (
     build_source_first_export,
     write_source_first_export_artifacts,
@@ -150,6 +150,33 @@ def test_source_first_export_promotes_equivalent_ambiguous_candidates_with_candi
     assert item.warnings == ("multiple source candidates reconciled as equivalent",)
 
 
+def test_source_first_export_marks_reconciliation_blocked() -> None:
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "cash": MappedTurtleField(
+                field_id="cash",
+                status="ambiguous",
+                candidates=(
+                    _candidate("akshare", Decimal("100"), canonical_unit=None),
+                    _candidate("yahoo", Decimal("100"), canonical_unit="CNY"),
+                ),
+                errors=("multiple source candidates matched catalog aliases",),
+            )
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    result = build_source_first_export(mapping, reconciliation, profile="source_only")
+
+    item = result.items["cash"]
+    assert reconciliation.items["cash"].status == "blocked"
+    assert item.status == "blocked"
+    assert item.reconciliation_status == "blocked"
+    assert result.summary["blocked_fields"] == ["cash"]
+
+
 def test_pdf_required_export_lists_fields_needing_pdf_evidence() -> None:
     mapping = _mapping(
         "cash",
@@ -262,7 +289,7 @@ def _candidate(
     source: SourceName,
     normalized_value: Decimal,
     *,
-    canonical_unit: str = "CNY",
+    canonical_unit: Currency | None = "CNY",
 ) -> TurtleMappingCandidate:
     return TurtleMappingCandidate(
         source=source,
@@ -273,7 +300,7 @@ def _candidate(
         normalized_value=normalized_value,
         currency="CNY",
         unit="yuan",
-        canonical_unit=canonical_unit,  # type: ignore[arg-type]
+        canonical_unit=canonical_unit,
         period="2024-12-31",
         scope="consolidated",
         source_evidence=(_source_evidence(source),),

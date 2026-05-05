@@ -18,11 +18,11 @@ from financial_report_llm_extractor.structured_sources.catalog import (
     load_source_mapping_catalog,
 )
 from financial_report_llm_extractor.structured_sources.export import (
+    SourceFirstExportResult,
     build_source_first_export,
     write_source_first_export_artifacts,
 )
 from financial_report_llm_extractor.structured_sources.mapping import (
-    TurtleMappingResult,
     map_source_inventory,
     write_turtle_mapping_artifacts,
 )
@@ -31,7 +31,6 @@ from financial_report_llm_extractor.structured_sources.models import (
     SourceName,
 )
 from financial_report_llm_extractor.structured_sources.reconciliation import (
-    ReconciliationReport,
     reconcile_mapped_fields,
     write_reconciliation_report,
 )
@@ -232,8 +231,8 @@ def _write_slice(
     write_source_first_export_artifacts(export, output_dir)
 
     return {
-        "coverage": _mapping_coverage(mapping),
-        "review": _review_lists(mapping, reconciliation),
+        "coverage": _export_coverage(export),
+        "review": _review_lists(export),
         "artifact_paths": {
             "source_inventory": str(output_dir / "source_inventory.jsonl"),
             "turtle_mapping": str(output_dir / "turtle_mapping.json"),
@@ -245,13 +244,13 @@ def _write_slice(
     }
 
 
-def _mapping_coverage(mapping: TurtleMappingResult) -> dict[str, object]:
+def _export_coverage(export: SourceFirstExportResult) -> dict[str, object]:
     covered = sorted(
         field_id
-        for field_id, field in mapping.fields.items()
-        if field.status in {"present", "derived"}
+        for field_id, item in export.items.items()
+        if item.status == "present"
     )
-    total = len(mapping.fields)
+    total = len(export.items)
     return {
         "covered_fields": covered,
         "covered_count": len(covered),
@@ -261,31 +260,34 @@ def _mapping_coverage(mapping: TurtleMappingResult) -> dict[str, object]:
 
 
 def _review_lists(
-    mapping: TurtleMappingResult,
-    reconciliation: ReconciliationReport,
+    export: SourceFirstExportResult,
 ) -> dict[str, object]:
     field_lists = {
         "present_fields": sorted(
             field_id
-            for field_id, field in mapping.fields.items()
-            if field.status in {"present", "derived"}
+            for field_id, item in export.items.items()
+            if item.status == "present"
         ),
         "missing_fields": sorted(
             field_id
-            for field_id, field in mapping.fields.items()
-            if field.status == "missing"
+            for field_id, item in export.items.items()
+            if item.status == "missing"
         ),
         "ambiguous_fields": sorted(
             field_id
-            for field_id, field in mapping.fields.items()
-            if field.status == "ambiguous"
+            for field_id, item in export.items.items()
+            if item.status == "ambiguous"
         ),
         "blocked_fields": sorted(
             field_id
-            for field_id, field in mapping.fields.items()
-            if field.status == "blocked"
+            for field_id, item in export.items.items()
+            if item.status == "blocked"
         ),
-        "conflict_fields": list(reconciliation.conflict_fields),
+        "conflict_fields": sorted(
+            field_id
+            for field_id, item in export.items.items()
+            if item.status == "conflict"
+        ),
     }
     return {**field_lists, "gap_categories": _gap_categories(field_lists)}
 

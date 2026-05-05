@@ -290,11 +290,8 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
 
     payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
     company = payload["companies"][0]
-    review_summary_path = Path(company["artifact_paths"]["combined"]["review_summary"])
-    combined_review = json.loads(review_summary_path.read_text(encoding="utf-8"))
-    combined_coverage = {
-        "covered_count": combined_review["status_counts"]["present"],
-    }
+    combined_coverage = company["coverage"]["combined"]
+    combined_review = company["review"]["combined"]
 
     assert company["company_id"] == "600519"
     assert combined_coverage["covered_count"] >= 12
