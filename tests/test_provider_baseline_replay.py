@@ -13,6 +13,7 @@ from financial_report_llm_extractor.structured_sources.models import (
 )
 from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
     ProviderBaselineGroup,
+    _company_market,
     company_source_groups,
     select_latest_annual_records,
     write_provider_baseline_period_replay,
@@ -133,6 +134,26 @@ def test_company_source_groups_resolve_provider_tickers_from_targets() -> None:
     assert groups["01113"]["yahoo"].provider_ticker == "1113.HK"
 
 
+def test_company_market_rejects_mixed_provider_markets() -> None:
+    with pytest.raises(ValueError, match="provider markets differ for 600519"):
+        _company_market(
+            {
+                "akshare": ProviderBaselineGroup(
+                    company_id="600519",
+                    source="akshare",
+                    market="CN",
+                    provider_ticker="600519",
+                ),
+                "yahoo": ProviderBaselineGroup(
+                    company_id="600519",
+                    source="yahoo",
+                    market="HK",
+                    provider_ticker="600519.HK",
+                ),
+            }
+        )
+
+
 def test_write_provider_baseline_period_replay_selects_one_period_per_source(
     tmp_path: Path,
 ) -> None:
@@ -201,6 +222,7 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
     markdown = result.markdown_path.read_text(encoding="utf-8")
     assert "present_fields: cash, revenue" in markdown
     assert "source_availability:" in markdown
+    assert "policy_unresolved_conflict:" in markdown
     assert "review_summary: " in markdown
     assert (tmp_path / "replay" / "600519" / "combined" / "review_summary.json").exists()
 
@@ -342,6 +364,13 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
     assert "net_profit" in combined_review["present_fields"]
     assert "revenue" not in combined_review["conflict_fields"]
     assert "net_profit" not in combined_review["conflict_fields"]
+    assert "revenue" in combined_review["gap_categories"][
+        "real_reconciliation_conflict"
+    ]
+    assert "revenue" not in combined_review["gap_categories"][
+        "policy_unresolved_conflict"
+    ]
+    assert "policy_unresolved_conflict" in combined_review["gap_categories"]
 
     report_path = Path(
         company["artifact_paths"]["combined"]["reconciliation_report"]

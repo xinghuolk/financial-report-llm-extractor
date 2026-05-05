@@ -84,6 +84,18 @@ def records_for_group(
     )
 
 
+def _company_market(company_groups: dict[SourceName, ProviderBaselineGroup]) -> str:
+    akshare_market = company_groups["akshare"].market
+    yahoo_market = company_groups["yahoo"].market
+    if akshare_market != yahoo_market:
+        company_id = company_groups["akshare"].company_id
+        raise ValueError(
+            f"provider markets differ for {company_id}: "
+            f"akshare={akshare_market}, yahoo={yahoo_market}"
+        )
+    return akshare_market
+
+
 def select_latest_annual_records(
     records: tuple[SourceInventoryRecord, ...],
 ) -> tuple[SourceInventoryRecord, ...]:
@@ -138,6 +150,7 @@ def write_provider_baseline_period_replay(
         yahoo_group_records = records_for_group(records, company_groups["yahoo"])
         akshare_records = select_latest_annual_records(akshare_group_records)
         yahoo_records = select_latest_annual_records(yahoo_group_records)
+        company_market = _company_market(company_groups)
 
         company_dir = output_dir / company_id
         akshare_report = _write_slice(
@@ -152,14 +165,14 @@ def write_provider_baseline_period_replay(
             catalog=catalog,
             records=yahoo_records,
             company_id=company_id,
-            market=company_groups["akshare"].market,
+            market=company_groups["yahoo"].market,
         )
         combined_report = _write_slice(
             company_dir / "combined",
             catalog=catalog,
             records=akshare_records + yahoo_records,
             company_id=company_id,
-            market=company_groups["akshare"].market,
+            market=company_market,
         )
 
         companies.append(
@@ -325,6 +338,17 @@ def _review_lists(
             for field_id, item in export.items.items()
             if item.status == "conflict"
         ),
+        "real_reconciliation_conflict_fields": sorted(
+            field_id
+            for field_id, item in export.items.items()
+            if item.reconciliation_status == "conflict"
+        ),
+        "policy_unresolved_conflict_fields": sorted(
+            field_id
+            for field_id, item in export.items.items()
+            if item.status == "conflict"
+            or item.selection_status == "unresolved_conflict"
+        ),
         "selected_with_warnings_fields": sorted(
             field_id
             for field_id, item in export.items.items()
@@ -344,12 +368,14 @@ def _gap_categories(review: dict[str, list[str]]) -> dict[str, list[str]]:
     source_availability = review["missing_fields"]
     mapping_ambiguity = sorted(set(review["ambiguous_fields"]) - conflict_fields)
     mapping_blocker = review["blocked_fields"]
-    real_reconciliation_conflict = sorted(conflict_fields)
+    real_reconciliation_conflict = review["real_reconciliation_conflict_fields"]
+    policy_unresolved_conflict = review["policy_unresolved_conflict_fields"]
     fields_requiring_pdf_evidence = review["fields_requiring_pdf_evidence"]
     pdf_llm_supplement_candidates = sorted(
         set(source_availability)
         | set(mapping_ambiguity)
         | set(mapping_blocker)
+        | set(policy_unresolved_conflict)
         | set(real_reconciliation_conflict)
         | set(fields_requiring_pdf_evidence)
     )
@@ -358,6 +384,7 @@ def _gap_categories(review: dict[str, list[str]]) -> dict[str, list[str]]:
         "mapping_ambiguity": mapping_ambiguity,
         "mapping_blocker": mapping_blocker,
         "real_reconciliation_conflict": real_reconciliation_conflict,
+        "policy_unresolved_conflict": policy_unresolved_conflict,
         "pdf_llm_supplement_candidates": pdf_llm_supplement_candidates,
     }
 
@@ -435,6 +462,8 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
                     f"{_format_field_list(gap_categories['mapping_blocker'])}",
                     "    - real_reconciliation_conflict: "
                     f"{_format_field_list(gap_categories['real_reconciliation_conflict'])}",
+                    "    - policy_unresolved_conflict: "
+                    f"{_format_field_list(gap_categories['policy_unresolved_conflict'])}",
                     "    - pdf_llm_supplement_candidates: "
                     f"{_format_field_list(gap_categories['pdf_llm_supplement_candidates'])}",
                     "  - artifacts:",
