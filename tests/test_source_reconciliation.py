@@ -153,6 +153,7 @@ def _candidate(
     period: str = "2024-12-31",
     currency: str = "CNY",
     unit: str = "yuan",
+    canonical_unit: str = "CNY",
 ) -> TurtleMappingCandidate:
     return TurtleMappingCandidate(
         source=source,
@@ -163,6 +164,7 @@ def _candidate(
         normalized_value=normalized_value,
         currency=currency,  # type: ignore[arg-type]
         unit=unit,
+        canonical_unit=canonical_unit,  # type: ignore[arg-type]
         period=period,
         scope="consolidated",
         source_evidence=(

@@ -181,6 +181,8 @@ def _mapping(field_id: str, field: MappedTurtleField) -> TurtleMappingResult:
 def _candidate(
     source: SourceName,
     normalized_value: Decimal,
+    *,
+    canonical_unit: str = "CNY",
 ) -> TurtleMappingCandidate:
     return TurtleMappingCandidate(
         source=source,
@@ -191,6 +193,7 @@ def _candidate(
         normalized_value=normalized_value,
         currency="CNY",
         unit="yuan",
+        canonical_unit=canonical_unit,  # type: ignore[arg-type]
         period="2024-12-31",
         scope="consolidated",
         source_evidence=(_source_evidence(source),),
