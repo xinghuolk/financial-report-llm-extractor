@@ -170,7 +170,7 @@ def _resolve_field(
         )
     if candidate is not None and (
         _requires_currency_metadata(candidate)
-        or _requires_hk_akshare_statement_metadata(market, candidate, classifications)
+        or _requires_hk_primary_statement_metadata(market, candidate, classifications)
     ):
         return SourcePolicyItem(
             field_id=field.field_id,
@@ -340,14 +340,13 @@ def _requires_currency_metadata(candidate: TurtleMappingCandidate) -> bool:
     )
 
 
-def _requires_hk_akshare_statement_metadata(
+def _requires_hk_primary_statement_metadata(
     market: str | None,
     candidate: TurtleMappingCandidate,
     classifications: tuple[ConflictClassification, ...],
 ) -> bool:
     return (
         market == "HK"
-        and candidate.source == "akshare"
         and "metadata_currency_suspected" in classifications
         and not candidate.statement_metadata_proven
     )
@@ -415,7 +414,7 @@ def _fx_like_fields(
     *,
     relative_tolerance: Decimal = Decimal("0.001"),
 ) -> set[str]:
-    ratios: list[tuple[str, tuple[str, str], Decimal]] = []
+    ratios: list[tuple[str, tuple[str, str, str | None, str], Decimal]] = []
     for field_id, mapped_field in mapping.fields.items():
         if len(mapped_field.candidates) != 2:
             continue
@@ -436,12 +435,18 @@ def _fx_like_fields(
         ratio = other / base
         if ratio == 1:
             continue
-        ratios.append((field_id, (left.source, right.source), ratio))
-    for _, provider_pair, ratio in ratios:
+        ratios.append(
+            (
+                field_id,
+                (left.source, right.source, left.period, left.currency),
+                ratio,
+            )
+        )
+    for _, grouping_key, ratio in ratios:
         similar = [
             other_field_id
-            for other_field_id, other_provider_pair, other_ratio in ratios
-            if other_provider_pair == provider_pair
+            for other_field_id, other_grouping_key, other_ratio in ratios
+            if other_grouping_key == grouping_key
             and _relative_difference(ratio, other_ratio) <= relative_tolerance
         ]
         if len(similar) >= 3:
