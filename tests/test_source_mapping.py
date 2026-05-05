@@ -223,6 +223,122 @@ def test_map_source_inventory_derives_money_field_from_compatible_inputs() -> No
     assert len(mapped.source_evidence) == 2
 
 
+def test_map_source_inventory_derives_when_provider_units_differ_but_canonical_units_match() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"akshare": ("资产总计",)},
+            ),
+            "total_liabilities": _entry(
+                "total_liabilities",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Total Liabilities",)},
+            ),
+            "equity": _entry(
+                "equity",
+                statement_type="balance_sheet",
+                source_aliases={"akshare": ("所有者权益合计",)},
+                derivation="total_assets - total_liabilities",
+            ),
+        },
+    )
+    records = [
+        _record("资产总计", "1000", Decimal("1000"), statement_type="balance_sheet"),
+        SourceInventoryRecord(
+            source="yahoo",
+            market="CN",
+            ticker="600519.SS",
+            statement_type="balance_sheet",
+            period="2024-12-31",
+            raw_field_name="Total Liabilities",
+            raw_value="400",
+            parsed_numeric_value=Decimal("400"),
+            currency="CNY",
+            unit="raw",
+            scope="consolidated",
+            source_evidence=(
+                SourceEvidence(
+                    source="yahoo",
+                    adapter="yahoo",
+                    function="fixture",
+                    artifact_id="yahoo_artifact",
+                    raw_record_id="yahoo:Total Liabilities",
+                    raw_field_name="Total Liabilities",
+                ),
+            ),
+        ),
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["equity"]
+    assert mapped.status == "derived"
+    assert mapped.value == Decimal("600")
+    assert mapped.unit == "yuan"
+    assert mapped.canonical_unit == "CNY"
+
+
+def test_map_source_inventory_blocks_derivation_when_currencies_differ() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"akshare": ("资产总计",)},
+            ),
+            "total_liabilities": _entry(
+                "total_liabilities",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Total Liabilities",)},
+            ),
+            "equity": _entry(
+                "equity",
+                statement_type="balance_sheet",
+                source_aliases={"akshare": ("所有者权益合计",)},
+                derivation="total_assets - total_liabilities",
+            ),
+        },
+    )
+    records = [
+        _record("资产总计", "1000", Decimal("1000"), statement_type="balance_sheet"),
+        SourceInventoryRecord(
+            source="yahoo",
+            market="HK",
+            ticker="00001.HK",
+            statement_type="balance_sheet",
+            period="2024-12-31",
+            raw_field_name="Total Liabilities",
+            raw_value="400",
+            parsed_numeric_value=Decimal("400"),
+            currency="HKD",
+            unit="raw",
+            scope="consolidated",
+            source_evidence=(
+                SourceEvidence(
+                    source="yahoo",
+                    adapter="yahoo",
+                    function="fixture",
+                    artifact_id="yahoo_artifact",
+                    raw_record_id="yahoo:Total Liabilities",
+                    raw_field_name="Total Liabilities",
+                ),
+            ),
+        ),
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["equity"]
+    assert mapped.status == "blocked"
+    assert mapped.errors == ("derivation inputs use different currencies",)
+
+
 def test_turtle_mapping_candidate_preserves_old_positional_constructor_shape() -> None:
     evidence = SourceEvidence(
         source="akshare",

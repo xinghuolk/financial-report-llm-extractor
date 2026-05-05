@@ -366,8 +366,8 @@ def _compatibility_error(
 ) -> str | None:
     if left.currency != right.currency:
         return "derivation inputs use different currencies"
-    if left.unit != right.unit:
-        return "derivation inputs use different units"
+    if left.canonical_unit != right.canonical_unit:
+        return "derivation inputs use different canonical units"
     if left.period != right.period:
         return "derivation inputs use different periods"
     if left.scope != right.scope:
