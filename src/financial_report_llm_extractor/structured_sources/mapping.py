@@ -35,10 +35,10 @@ class TurtleMappingCandidate:
     normalized_value: Decimal | None
     currency: Currency
     unit: str | None
-    canonical_unit: Currency | None
     period: str | None
     scope: str
     source_evidence: tuple[SourceEvidence, ...]
+    canonical_unit: Currency | None = None
     errors: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, object]:
@@ -280,6 +280,7 @@ def _derive_field(
         normalized_value=normalized_value,
         currency=left.currency,
         unit=left.unit,
+        canonical_unit=left.canonical_unit,
         period=left.period,
         scope=left.scope,
         source_evidence=left.source_evidence + right.source_evidence,
@@ -325,10 +326,10 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
         normalized_value=normalized_value,
         currency=record.currency,
         unit=record.unit,
-        canonical_unit=canonical_unit,
         period=record.period,
         scope=record.scope,
         source_evidence=record.source_evidence,
+        canonical_unit=canonical_unit,
         errors=tuple(errors),
     )
 

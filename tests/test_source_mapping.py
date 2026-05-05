@@ -12,6 +12,7 @@ from financial_report_llm_extractor.structured_sources.artifacts import (
 )
 from financial_report_llm_extractor.structured_sources.mapping import (
     map_source_inventory,
+    TurtleMappingCandidate,
     write_turtle_mapping_artifacts,
 )
 from financial_report_llm_extractor.structured_sources.models import (
@@ -217,8 +218,39 @@ def test_map_source_inventory_derives_money_field_from_compatible_inputs() -> No
     assert mapped.value == Decimal("600")
     assert mapped.currency == "CNY"
     assert mapped.unit == "yuan"
+    assert mapped.canonical_unit == "CNY"
     assert mapped.derived_from == ("total_assets", "total_liabilities")
     assert len(mapped.source_evidence) == 2
+
+
+def test_turtle_mapping_candidate_preserves_old_positional_constructor_shape() -> None:
+    evidence = SourceEvidence(
+        source="akshare",
+        adapter="akshare",
+        function="fixture",
+        artifact_id="akshare_artifact",
+        raw_record_id="akshare:revenue",
+        raw_field_name="Revenue",
+    )
+
+    candidate = TurtleMappingCandidate(
+        "akshare",
+        "Revenue",
+        None,
+        "100",
+        Decimal("100"),
+        Decimal("100"),
+        "CNY",
+        "yuan",
+        "2024-12-31",
+        "consolidated",
+        (evidence,),
+    )
+
+    assert candidate.period == "2024-12-31"
+    assert candidate.scope == "consolidated"
+    assert candidate.source_evidence == (evidence,)
+    assert candidate.canonical_unit is None
 
 
 def test_write_turtle_mapping_artifacts_writes_json_and_markdown(
