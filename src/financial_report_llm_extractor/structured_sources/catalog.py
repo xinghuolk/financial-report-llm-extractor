@@ -31,11 +31,24 @@ REFERENCED_REQUIRED_METADATA = (
     "fallback_policy",
 )
 
+SOURCE_POLICY_CONFLICT_POLICIES = ("preserve_conflict", "select_primary_require_pdf")
+SOURCE_POLICY_VERIFICATION_REQUIREMENTS = ("none", "pdf_required_on_conflict")
+
 
 @dataclass(frozen=True)
 class SourceSemanticVariants:
     primary: tuple[str, ...] = field(default_factory=tuple)
     related: tuple[str, ...] = field(default_factory=tuple)
+
+    def validate(self) -> None:
+        _validate_string_tuple(
+            "source_policy semantic variant primary",
+            self.primary,
+        )
+        _validate_string_tuple(
+            "source_policy semantic variant related",
+            self.related,
+        )
 
 
 @dataclass(frozen=True)
@@ -45,6 +58,26 @@ class MarketSourcePolicy:
     on_conflict: str = "preserve_conflict"
     single_source_requires_pdf: bool = False
 
+    def validate(self) -> None:
+        _validate_literal(
+            "source_policy primary_route",
+            self.primary_route,
+            PrimaryRoute,
+        )
+        _validate_string_tuple(
+            "source_policy market policy cross_check_routes",
+            self.cross_check_routes,
+        )
+        _validate_supported_value(
+            "source_policy on_conflict",
+            self.on_conflict,
+            SOURCE_POLICY_CONFLICT_POLICIES,
+        )
+        if not isinstance(self.single_source_requires_pdf, bool):
+            raise ValueError(
+                "source_policy market policy single_source_requires_pdf must be a bool"
+            )
+
 
 @dataclass(frozen=True)
 class SourcePolicy:
@@ -52,6 +85,17 @@ class SourcePolicy:
     semantic_variants: dict[str, SourceSemanticVariants] = field(default_factory=dict)
     market_policies: dict[str, MarketSourcePolicy] = field(default_factory=dict)
     verification_requirement: str = "none"
+
+    def validate(self) -> None:
+        for variants in self.semantic_variants.values():
+            variants.validate()
+        for policy in self.market_policies.values():
+            policy.validate()
+        _validate_supported_value(
+            "source_policy verification_requirement",
+            self.verification_requirement,
+            SOURCE_POLICY_VERIFICATION_REQUIREMENTS,
+        )
 
 
 @dataclass(frozen=True)
@@ -97,6 +141,8 @@ class SourceMappingEntry:
         _validate_literal("currency_requirement", self.currency_requirement, Requirement)
         _validate_literal("unit_requirement", self.unit_requirement, Requirement)
         _validate_literal("invalid fallback_policy", self.fallback_policy, FallbackPolicy)
+        if self.source_policy is not None:
+            self.source_policy.validate()
 
 
 @dataclass(frozen=True)
@@ -211,8 +257,14 @@ def _parse_source_policy(raw_policy: object) -> SourcePolicy | None:
         if not isinstance(value, dict):
             raise ValueError("source_policy semantic variant must be an object")
         variants[str(source)] = SourceSemanticVariants(
-            primary=tuple(str(item) for item in value.get("primary", [])),
-            related=tuple(str(item) for item in value.get("related", [])),
+            primary=_parse_string_list(
+                value.get("primary", []),
+                "source_policy semantic variant primary must be a list",
+            ),
+            related=_parse_string_list(
+                value.get("related", []),
+                "source_policy semantic variant related must be a list",
+            ),
         )
 
     raw_market_policies = raw_policy.get("market_policies", {})
@@ -222,15 +274,19 @@ def _parse_source_policy(raw_policy: object) -> SourcePolicy | None:
     for market, value in raw_market_policies.items():
         if not isinstance(value, dict):
             raise ValueError("source_policy market policy must be an object")
+        single_source_requires_pdf = value.get("single_source_requires_pdf", False)
+        if not isinstance(single_source_requires_pdf, bool):
+            raise ValueError(
+                "source_policy market policy single_source_requires_pdf must be a bool"
+            )
         market_policies[str(market)] = MarketSourcePolicy(
             primary_route=str(value.get("primary_route", "")),
-            cross_check_routes=tuple(
-                str(item) for item in value.get("cross_check_routes", [])
+            cross_check_routes=_parse_string_list(
+                value.get("cross_check_routes", []),
+                "source_policy market policy cross_check_routes must be a list",
             ),
             on_conflict=str(value.get("on_conflict", "preserve_conflict")),
-            single_source_requires_pdf=bool(
-                value.get("single_source_requires_pdf", False)
-            ),
+            single_source_requires_pdf=single_source_requires_pdf,
         )
 
     return SourcePolicy(
@@ -239,6 +295,12 @@ def _parse_source_policy(raw_policy: object) -> SourcePolicy | None:
         market_policies=market_policies,
         verification_requirement=str(raw_policy.get("verification_requirement", "none")),
     )
+
+
+def _parse_string_list(raw_values: object, message: str) -> tuple[str, ...]:
+    if not isinstance(raw_values, list):
+        raise ValueError(message)
+    return tuple(str(item) for item in raw_values)
 
 
 def _require_referenced_metadata(field_id: str, mapping: dict[str, Any]) -> None:
@@ -264,3 +326,19 @@ def _default_domain(statement_type: str) -> str:
 def _validate_literal(name: str, value: str, literal: Any) -> None:
     if value not in get_args(literal):
         raise ValueError(f"{name} has unsupported value: {value}")
+
+
+def _validate_supported_value(
+    name: str,
+    value: str,
+    supported_values: tuple[str, ...],
+) -> None:
+    if value not in supported_values:
+        raise ValueError(f"{name} has unsupported value: {value}")
+
+
+def _validate_string_tuple(name: str, values: object) -> None:
+    if not isinstance(values, tuple) or not all(
+        isinstance(value, str) for value in values
+    ):
+        raise ValueError(f"{name} must be a tuple of strings")

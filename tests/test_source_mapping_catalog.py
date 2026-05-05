@@ -150,6 +150,97 @@ def test_source_mapping_catalog_loads_optional_source_policy(tmp_path: Path) -> 
 
 
 @pytest.mark.parametrize(
+    ("source_policy", "expected_message"),
+    [
+        (
+            {"semantic_variants": {"akshare": {"primary": "NETPROFIT"}}},
+            "source_policy semantic variant primary must be a list",
+        ),
+        (
+            {
+                "market_policies": {
+                    "CN": {
+                        "primary_route": "akshare_direct",
+                        "cross_check_routes": "yahoo_direct",
+                    }
+                }
+            },
+            "source_policy market policy cross_check_routes must be a list",
+        ),
+        (
+            {
+                "market_policies": {
+                    "CN": {
+                        "primary_route": "akshare_direct",
+                        "single_source_requires_pdf": "false",
+                    }
+                }
+            },
+            "source_policy market policy single_source_requires_pdf must be a bool",
+        ),
+        (
+            {
+                "market_policies": {
+                    "CN": {
+                        "primary_route": "akshare_direct",
+                        "on_conflict": "select_secondary",
+                    }
+                }
+            },
+            "source_policy on_conflict has unsupported value: select_secondary",
+        ),
+        (
+            {
+                "market_policies": {
+                    "CN": {"primary_route": "akshare_lookup"}
+                }
+            },
+            "source_policy primary_route has unsupported value: akshare_lookup",
+        ),
+        (
+            {"verification_requirement": "pdf_always"},
+            "source_policy verification_requirement has unsupported value: pdf_always",
+        ),
+    ],
+)
+def test_source_mapping_catalog_rejects_invalid_source_policy_metadata(
+    tmp_path: Path,
+    source_policy: object,
+    expected_message: str,
+) -> None:
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "catalog_id": "test",
+                "version": "1",
+                "priorities": [{"priority": "P0", "fields": ["net_profit"]}],
+                "source_mappings": {
+                    "net_profit": {
+                        "value_type": "money",
+                        "statement_type": "income_statement",
+                        "domain": "income_statement",
+                        "source_mode": "direct",
+                        "primary_route": "akshare_direct",
+                        "verification_status": "verified",
+                        "currency_requirement": "required",
+                        "unit_requirement": "required",
+                        "fallback_policy": "pdf_allowed",
+                        "source_aliases": {"akshare": ["PARENT_NETPROFIT"]},
+                        "source_policy": source_policy,
+                    }
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=expected_message):
+        load_source_mapping_catalog(catalog_path, priorities=("P0",))
+
+
+@pytest.mark.parametrize(
     ("payload", "expected_message"),
     [
         ([], "source mapping catalog must be an object"),
