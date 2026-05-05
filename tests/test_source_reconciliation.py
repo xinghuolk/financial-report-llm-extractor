@@ -190,7 +190,7 @@ def test_reconcile_conflicts_when_known_scopes_differ() -> None:
             "revenue",
             _candidate("akshare", Decimal("100"), scope="consolidated"),
             _candidate("yahoo", Decimal("100"), scope="standalone"),
-            _candidate("eastmoney", Decimal("100"), scope="unknown"),
+            _candidate("fixture", Decimal("100"), scope="unknown"),
         ),
     )
 
