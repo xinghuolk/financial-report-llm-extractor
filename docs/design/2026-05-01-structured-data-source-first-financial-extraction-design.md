@@ -49,6 +49,7 @@ AKShare adapter
 -> Turtle field mapping / derivation
 -> currency/unit normalization
 -> coverage and conflict gate
+-> source policy conflict resolution
 -> selected PDF financial report analysis for missing/conflict/evidence fields
 -> LLM only for ambiguous mapping/evidence review
 -> review/export JSON
@@ -73,11 +74,16 @@ AKShare + Yahoo/yfinance -> deterministic Turtle mapping -> coverage gate
 AKShare
 -> Yahoo/yfinance
 -> cross-source reconciliation
+-> source policy conflict classification and primary-candidate selection
 -> PDF financial report analysis
 -> LLM-assisted evidence / ambiguity review
 ```
 
 PDF 财报分析是最后阶段，不参与第一轮 broad field coverage。它只处理结构化数据源无法稳定解决的问题。
+
+### Source Policy Conflict Resolution
+
+After canonical-unit reconciliation, remaining provider disagreements are routed through a deterministic source policy layer. The policy layer does not canonicalize facts. It classifies conflicts such as field semantic mismatch, FX-like ratio, suspected reporting-currency metadata, and single-source unverified coverage. When the catalog defines a market-specific primary source, the export may select that primary candidate while preserving warnings, cross-check candidates, and PDF verification requirements.
 
 ### 3.1 Turtle 字段分类
 
@@ -384,7 +390,8 @@ MCP 合适的角色：
 4. 对 `00001`、`01113`、`600519` 生成 raw source inventory。
 5. 实现最小 Turtle mapping：revenue、net income、total assets、total liabilities、cash flow from operations。
 6. 实现 cross-source reconciliation：period、currency、unit、raw value、normalized value。
-7. 跑 source-first coverage gate，比较 AKShare、Yahoo 和组合覆盖率。
-8. 只对 missing、ambiguous、conflict、需要年报证据的字段进入 PDF fallback。
+7. 实现 source policy conflict resolution：semantic mismatch、FX-like ratio、currency metadata risk 和 single-source warning。
+8. 跑 source-first coverage gate，比较 AKShare、Yahoo 和组合覆盖率。
+9. 只对 missing、ambiguous、conflict、需要年报证据的字段进入 PDF fallback。
 
 如果第一轮 AKShare/Yahoo 组合 coverage 明显高于当前 PDF retrieval，后续路线图应正式调整为 source-first；PDF/LLM 保留为最后阶段的 evidence supplement、consistency review 和 hard-case fallback。

@@ -21,6 +21,7 @@ Turtle full field taxonomy
 -> money and unit normalization
 -> source coverage gate
 -> cross-source reconciliation
+-> source policy conflict classification and primary-candidate selection
 -> selected PDF/LLM fallback
 -> reviewable JSON artifacts
 ```
@@ -40,6 +41,7 @@ Required direction:
 - Field mapping must preserve raw field, raw value, period, scope, currency, unit, source, and evidence.
 - Money normalization remains deterministic code.
 - Cross-source conflicts must be explicit, not silently resolved.
+- Cross-source conflicts must pass through source policy; primary-source selection must preserve warnings and verification requirements.
 - PDF/LLM fallback is selected-field only and runs after source coverage/reconciliation.
 - LLM is an assistant for ambiguity, source-field semantics, PDF evidence supplement, and consistency review; it is not the production data acquisition path.
 - Existing PDF ingestion, chunking, retrieval, LLM transport, and evidence validation work remains useful as fallback infrastructure.
