@@ -35,6 +35,7 @@ class TurtleMappingCandidate:
     normalized_value: Decimal | None
     currency: Currency
     unit: str | None
+    canonical_unit: Currency | None
     period: str | None
     scope: str
     source_evidence: tuple[SourceEvidence, ...]
@@ -56,6 +57,7 @@ class MappedTurtleField:
     normalized_value: Decimal | None = None
     currency: Currency = "unknown"
     unit: str | None = None
+    canonical_unit: Currency | None = None
     period: str | None = None
     scope: str = "unknown"
     candidates: tuple[TurtleMappingCandidate, ...] = field(default_factory=tuple)
@@ -73,6 +75,7 @@ class MappedTurtleField:
             ),
             "currency": self.currency,
             "unit": self.unit,
+            "canonical_unit": self.canonical_unit,
             "period": self.period,
             "scope": self.scope,
             "candidates": [candidate.to_dict() for candidate in self.candidates],
@@ -212,6 +215,7 @@ def _map_direct_field(
         normalized_value=candidate.normalized_value,
         currency=candidate.currency,
         unit=candidate.unit,
+        canonical_unit=candidate.canonical_unit,
         period=candidate.period,
         scope=candidate.scope,
         candidates=candidates,
@@ -299,6 +303,7 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
     errors: list[str] = []
     value: Decimal | None = None
     normalized_value: Decimal | None = None
+    canonical_unit: Currency | None = None
     try:
         record.validate()
         money = normalize_money(
@@ -307,6 +312,7 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
         )
         value = money.value
         normalized_value = money.normalized_value
+        canonical_unit = money.normalized_unit
     except (ValueError, MoneyNormalizationError) as exc:
         errors.append(str(exc))
 
@@ -319,6 +325,7 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
         normalized_value=normalized_value,
         currency=record.currency,
         unit=record.unit,
+        canonical_unit=canonical_unit,
         period=record.period,
         scope=record.scope,
         source_evidence=record.source_evidence,

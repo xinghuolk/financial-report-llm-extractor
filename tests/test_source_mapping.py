@@ -44,6 +44,54 @@ def test_map_source_inventory_maps_present_money_field() -> None:
     assert mapped.source_evidence[0].raw_field_name == "营业收入"
 
 
+def test_map_source_inventory_preserves_provider_unit_and_adds_canonical_unit() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "cash": _entry(
+                "cash",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Cash And Cash Equivalents",)},
+            )
+        },
+    )
+    records = [
+        SourceInventoryRecord(
+            source="yahoo",
+            market="CN",
+            ticker="600519.SS",
+            statement_type="balance_sheet",
+            period="2025-12-31",
+            raw_field_name="Cash And Cash Equivalents",
+            raw_value="51690610946.5",
+            parsed_numeric_value=Decimal("51690610946.5"),
+            currency="CNY",
+            unit="raw",
+            scope="consolidated",
+            source_evidence=(
+                SourceEvidence(
+                    source="yahoo",
+                    adapter="yahoo",
+                    function="fixture",
+                    artifact_id="yahoo_cn_600519_ss_balance_sheet",
+                    raw_record_id="cash",
+                    raw_field_name="Cash And Cash Equivalents",
+                ),
+            ),
+        )
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["cash"]
+    assert mapped.status == "present"
+    assert mapped.unit == "raw"
+    assert mapped.canonical_unit == "CNY"
+    assert mapped.candidates[0].unit == "raw"
+    assert mapped.candidates[0].canonical_unit == "CNY"
+
+
 def test_map_source_inventory_marks_missing_field() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",
