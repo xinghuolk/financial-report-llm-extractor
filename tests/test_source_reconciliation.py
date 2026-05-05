@@ -166,6 +166,23 @@ def test_reconcile_blocks_when_canonical_unit_missing() -> None:
     assert item.reason == "candidate canonical unit missing"
 
 
+def test_reconcile_blocks_when_one_canonical_unit_missing() -> None:
+    result = _result(
+        "cash",
+        _field(
+            "cash",
+            _candidate("akshare", Decimal("100"), canonical_unit=None),
+            _candidate("yahoo", Decimal("100"), canonical_unit="CNY"),
+        ),
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    item = report.items["cash"]
+    assert item.status == "blocked"
+    assert item.reason == "candidate canonical unit missing"
+
+
 def test_reconcile_conflicts_when_known_scopes_differ() -> None:
     result = _result(
         "revenue",
