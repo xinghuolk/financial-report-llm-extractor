@@ -163,7 +163,11 @@ def build_review_summary(result: SourceFirstExportResult) -> dict[str, object]:
             for field_id, item in result.items.items()
             if item.status == "present" and (item.warnings or item.verification_required)
         ),
-        "unresolved_conflict_fields": _fields_with_status(result, "conflict"),
+        "unresolved_conflict_fields": sorted(
+            field_id
+            for field_id, item in result.items.items()
+            if item.selection_status == "unresolved_conflict"
+        ),
         "fields_requiring_pdf_evidence": sorted(
             field_id
             for field_id, item in result.items.items()
@@ -228,8 +232,18 @@ def _build_item(
     review_notes = (
         tuple(policy_item.conflict_classifications) if policy_item is not None else ()
     )
+    if policy_item is not None:
+        warnings = policy_item.warnings
+    policy_unresolved = (
+        policy_item is not None
+        and policy_item.selection_status == "unresolved_conflict"
+    )
 
-    if field.status == "ambiguous" and reconciliation_status in {"equivalent", "close"}:
+    if (
+        field.status == "ambiguous"
+        and reconciliation_status in {"equivalent", "close"}
+        and not policy_unresolved
+    ):
         candidate = _representative_candidate(field.candidates)
         value = candidate.value
         normalized_value = candidate.normalized_value
@@ -244,7 +258,13 @@ def _build_item(
             for evidence in candidate.source_evidence
         )
         errors = ()
-        warnings = (f"multiple source candidates reconciled as {reconciliation_status}",)
+        if policy_item is None:
+            warnings = (
+                f"multiple source candidates reconciled as {reconciliation_status}",
+            )
+
+    if policy_unresolved:
+        status = "conflict"
 
     if (
         policy_item is not None

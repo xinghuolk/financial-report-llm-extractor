@@ -72,6 +72,7 @@ def test_source_export_marks_reconciliation_conflict() -> None:
     assert item.status == "conflict"
     assert item.reconciliation_status == "conflict"
     assert result.summary["conflict_fields"] == ["revenue"]
+    assert result.summary["unresolved_conflict_fields"] == []
 
 
 def test_source_first_export_preserves_policy_selected_conflict_metadata() -> None:
@@ -264,6 +265,58 @@ def test_source_first_export_promotes_equivalent_ambiguous_candidates_with_candi
     assert len(item.source_evidence) == 2
     assert item.errors == ()
     assert item.warnings == ("multiple source candidates reconciled as equivalent",)
+
+
+def test_source_first_export_does_not_promote_policy_unresolved_equivalent_conflict() -> None:
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "cash": MappedTurtleField(
+                field_id="cash",
+                status="ambiguous",
+                candidates=(
+                    _candidate("akshare", Decimal("100"), canonical_unit="CNY"),
+                    _candidate("yahoo", Decimal("100"), canonical_unit="CNY"),
+                ),
+                errors=("multiple source candidates matched catalog aliases",),
+            )
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+    policy_report = SourcePolicyReport(
+        catalog_id="test",
+        catalog_version="1",
+        company_id="00001",
+        market="HK",
+        items={
+            "cash": SourcePolicyItem(
+                field_id="cash",
+                selection_status="unresolved_conflict",
+                conflict_classifications=("currency_metadata_required",),
+                verification_required=True,
+                warnings=("selected primary candidate lacks proven currency metadata",),
+                reconciliation_status="equivalent",
+            )
+        },
+    )
+
+    result = build_source_first_export(
+        mapping,
+        reconciliation,
+        profile="source_only",
+        source_policy_report=policy_report,
+    )
+
+    item = result.items["cash"]
+    assert reconciliation.items["cash"].status == "equivalent"
+    assert item.status == "conflict"
+    assert item.selection_status == "unresolved_conflict"
+    assert item.verification_required is True
+    assert item.conflict_classifications == ("currency_metadata_required",)
+    assert item.review_notes == ("currency_metadata_required",)
+    assert item.warnings == ("selected primary candidate lacks proven currency metadata",)
+    assert result.summary["unresolved_conflict_fields"] == ["cash"]
 
 
 def test_source_first_export_marks_reconciliation_blocked() -> None:
