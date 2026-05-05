@@ -168,6 +168,11 @@ def _metadata_error(candidates: tuple[TurtleMappingCandidate, ...]) -> str | Non
         return "candidate periods differ"
     if len({candidate.currency for candidate in candidates}) > 1:
         return "candidate currencies differ"
-    if len({candidate.unit for candidate in candidates}) > 1:
-        return "candidate units differ"
+    if len({candidate.canonical_unit for candidate in candidates}) > 1:
+        return "candidate canonical units differ"
+    known_scopes = {
+        candidate.scope for candidate in candidates if candidate.scope != "unknown"
+    }
+    if len(known_scopes) > 1:
+        return "candidate scopes differ"
     return None

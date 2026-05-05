@@ -33,6 +33,41 @@ def test_reconcile_marks_equal_candidates_equivalent() -> None:
     assert report.items["revenue"].reason == "candidate normalized values are equal"
 
 
+def test_reconcile_treats_provider_unit_labels_as_equivalent_when_canonical_units_match() -> None:
+    result = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "cash": MappedTurtleField(
+                field_id="cash",
+                status="ambiguous",
+                candidates=(
+                    _candidate(
+                        "akshare",
+                        Decimal("51690610946.5"),
+                        unit="yuan",
+                        canonical_unit="CNY",
+                    ),
+                    _candidate(
+                        "yahoo",
+                        Decimal("51690610946.5"),
+                        unit="raw",
+                        canonical_unit="CNY",
+                    ),
+                ),
+                errors=("multiple source candidates matched catalog aliases",),
+            )
+        },
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    item = report.items["cash"]
+    assert item.status == "equivalent"
+    assert item.reason == "candidate normalized values are equal"
+    assert item.max_difference == Decimal("0.0")
+
+
 def test_reconcile_marks_different_values_conflict() -> None:
     result = _result(
         "revenue",
@@ -48,6 +83,103 @@ def test_reconcile_marks_different_values_conflict() -> None:
     assert report.items["revenue"].status == "conflict"
     assert report.items["revenue"].reason == "candidate normalized values differ"
     assert report.conflict_fields == ("revenue",)
+
+
+def test_reconcile_keeps_same_canonical_unit_value_disagreements_as_conflicts() -> None:
+    result = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "revenue": MappedTurtleField(
+                field_id="revenue",
+                status="ambiguous",
+                candidates=(
+                    _candidate(
+                        "akshare",
+                        Decimal("168838102514.79"),
+                        unit="yuan",
+                        canonical_unit="CNY",
+                    ),
+                    _candidate(
+                        "yahoo",
+                        Decimal("172054171890.91"),
+                        unit="raw",
+                        canonical_unit="CNY",
+                    ),
+                ),
+                errors=("multiple source candidates matched catalog aliases",),
+            )
+        },
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    item = report.items["revenue"]
+    assert item.status == "conflict"
+    assert item.reason == "candidate normalized values differ"
+    assert item.max_difference == Decimal("3216069376.12")
+
+
+def test_reconcile_conflicts_when_canonical_units_differ() -> None:
+    result = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "cash": MappedTurtleField(
+                field_id="cash",
+                status="ambiguous",
+                candidates=(
+                    _candidate("akshare", Decimal("100"), canonical_unit="CNY"),
+                    _candidate(
+                        "yahoo",
+                        Decimal("100"),
+                        unit="raw",
+                        canonical_unit="HKD",
+                    ),
+                ),
+                errors=("multiple source candidates matched catalog aliases",),
+            )
+        },
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    item = report.items["cash"]
+    assert item.status == "conflict"
+    assert item.reason == "candidate canonical units differ"
+
+
+def test_reconcile_conflicts_when_known_scopes_differ() -> None:
+    result = _result(
+        "revenue",
+        _field(
+            "revenue",
+            _candidate("akshare", Decimal("100"), scope="consolidated"),
+            _candidate("yahoo", Decimal("100"), scope="standalone"),
+            _candidate("eastmoney", Decimal("100"), scope="unknown"),
+        ),
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    assert report.items["revenue"].status == "conflict"
+    assert report.items["revenue"].reason == "candidate scopes differ"
+
+
+def test_reconcile_ignores_unknown_scope_when_known_scope_matches() -> None:
+    result = _result(
+        "revenue",
+        _field(
+            "revenue",
+            _candidate("akshare", Decimal("100"), scope="consolidated"),
+            _candidate("yahoo", Decimal("100"), unit="raw", scope="unknown"),
+        ),
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    assert report.items["revenue"].status == "equivalent"
+    assert report.items["revenue"].reason == "candidate normalized values are equal"
 
 
 def test_reconcile_marks_close_values_within_tolerance() -> None:
@@ -153,7 +285,8 @@ def _candidate(
     period: str = "2024-12-31",
     currency: str = "CNY",
     unit: str = "yuan",
-    canonical_unit: str = "CNY",
+    canonical_unit: str | None = "CNY",
+    scope: str = "consolidated",
 ) -> TurtleMappingCandidate:
     return TurtleMappingCandidate(
         source=source,
@@ -166,7 +299,7 @@ def _candidate(
         unit=unit,
         canonical_unit=canonical_unit,  # type: ignore[arg-type]
         period=period,
-        scope="consolidated",
+        scope=scope,
         source_evidence=(
             SourceEvidence(
                 source=source,
