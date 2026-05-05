@@ -179,8 +179,8 @@ def test_map_source_inventory_uses_catalog_alias_order_for_same_source_candidate
     assert revenue.source_evidence[0].raw_field_code == "OPERATE_INCOME"
     net_profit = result.fields["net_profit"]
     assert net_profit.status == "present"
-    assert net_profit.value == Decimal("85310324833.67")
-    assert net_profit.source_evidence[0].raw_field_code == "NETPROFIT"
+    assert net_profit.value == Decimal("82320067101.68")
+    assert net_profit.source_evidence[0].raw_field_code == "PARENT_NETPROFIT"
 
 
 def test_map_source_inventory_derives_money_field_from_compatible_inputs() -> None:

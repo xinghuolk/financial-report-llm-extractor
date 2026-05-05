@@ -1,15 +1,18 @@
 import json
 from pathlib import Path
+from typing import cast
 
 import pytest
 
+from financial_report_llm_extractor.field_metadata import (
+    PRIMARY_ROUTE_MATCHES,
+    PrimaryRoute,
+    load_coverage_matrix,
+    load_field_taxonomy,
+)
 from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingEntry,
     load_source_mapping_catalog,
-)
-from financial_report_llm_extractor.field_metadata import (
-    load_coverage_matrix,
-    load_field_taxonomy,
 )
 
 
@@ -183,6 +186,61 @@ def test_minimal_source_mapping_revenue_declares_operating_revenue_policy() -> N
         "TOTAL_OPERATE_INCOME",
         "营业总收入",
     )
+
+
+@pytest.mark.parametrize("field_id", ["revenue", "net_profit"])
+def test_minimal_source_mapping_revenue_and_profit_market_policies(
+    field_id: str,
+) -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+
+    policy = catalog.entries[field_id].source_policy
+    assert policy is not None
+    cn_policy = policy.market_policies["CN"]
+    assert cn_policy.primary_route == "akshare_direct"
+    assert cn_policy.cross_check_routes == ("yahoo_direct",)
+    assert cn_policy.on_conflict == "select_primary_require_pdf"
+    assert cn_policy.single_source_requires_pdf is False
+
+    hk_policy = policy.market_policies["HK"]
+    assert hk_policy.primary_route == "yahoo_direct"
+    assert hk_policy.cross_check_routes == ("akshare_direct",)
+    assert hk_policy.on_conflict == "select_primary_require_pdf"
+    assert hk_policy.single_source_requires_pdf is True
+
+
+@pytest.mark.parametrize(
+    "field_id",
+    [
+        "gross_profit",
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    ],
+)
+def test_minimal_source_mapping_statement_line_market_policies(field_id: str) -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+
+    policy = catalog.entries[field_id].source_policy
+    assert policy is not None
+    hk_policy = policy.market_policies["HK"]
+    assert hk_policy.primary_route == "akshare_direct"
+    assert hk_policy.cross_check_routes == ("yahoo_direct",)
+    assert hk_policy.on_conflict == "select_primary_require_pdf"
+    assert hk_policy.single_source_requires_pdf is False
+
+    cn_policy = policy.market_policies["CN"]
+    assert cn_policy.primary_route == "akshare_direct"
+    assert cn_policy.cross_check_routes == ("yahoo_direct",)
+    assert cn_policy.on_conflict == "preserve_conflict"
+    assert cn_policy.single_source_requires_pdf is False
 
 
 @pytest.mark.parametrize(
@@ -632,6 +690,38 @@ def test_minimal_source_mapping_references_taxonomy_and_coverage() -> None:
     assert revenue.verification_status in {"verified", "expected", "unknown"}
 
 
+def test_source_policy_routes_are_advertised_by_coverage_matrix() -> None:
+    coverage = load_coverage_matrix(
+        Path("field_catalog/turtle_v015_coverage_matrix.json")
+    )
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+
+    for field_id, entry in catalog.entries.items():
+        if entry.source_policy is None:
+            continue
+        coverage_routes = {
+            (route.source, route.mode)
+            for route in coverage.fields[field_id].routes
+        }
+        for market_policy in entry.source_policy.market_policies.values():
+            route_ids = (
+                market_policy.primary_route,
+                *market_policy.cross_check_routes,
+            )
+            for route_id in route_ids:
+                assert route_id in PRIMARY_ROUTE_MATCHES
+                expected_route = PRIMARY_ROUTE_MATCHES[
+                    cast(PrimaryRoute, route_id)
+                ]
+                assert expected_route in coverage_routes, (
+                    f"{field_id} source_policy route {route_id} is missing from "
+                    "coverage routes"
+                )
+
+
 def test_minimal_source_mapping_entries_match_taxonomy_and_coverage() -> None:
     taxonomy = load_field_taxonomy(
         Path("field_catalog/turtle_v015_field_taxonomy.json")
@@ -647,12 +737,9 @@ def test_minimal_source_mapping_entries_match_taxonomy_and_coverage() -> None:
     for field_id, entry in catalog.entries.items():
         taxonomy_entry = taxonomy.fields[field_id]
         coverage_entry = coverage.fields[field_id]
-        expected_primary_route = coverage_entry.primary_route
-        if field_id in {"financing_cash_flow", "investing_cash_flow"}:
-            expected_primary_route = "yahoo_direct"
         assert entry.domain == taxonomy_entry.domain
         assert entry.source_mode == taxonomy_entry.source_mode
-        assert entry.primary_route == expected_primary_route
+        assert entry.primary_route == coverage_entry.primary_route
         assert entry.verification_status == coverage_entry.verification
         if taxonomy_entry.statement_type != "mixed":
             assert entry.statement_type == taxonomy_entry.statement_type
