@@ -156,9 +156,22 @@ def _resolve_field(
     if field.status in {"present", "derived"} and field.candidates:
         return _resolve_single_source(entry, field, market, reconciliation_status)
 
-    classifications = _classifications(entry, field, fx_like=fx_like)
+    classifications = _classifications(entry, field, market=market, fx_like=fx_like)
     candidate = _primary_candidate(entry, field, market)
-    if candidate is not None and _requires_currency_metadata(candidate):
+    market_policy = _market_policy(entry, market)
+    if market_policy is not None and candidate is None:
+        return SourcePolicyItem(
+            field_id=field.field_id,
+            selection_status="unresolved_conflict",
+            conflict_classifications=("missing_source_candidate",),
+            verification_required=True,
+            warnings=("market source policy primary candidate missing",),
+            reconciliation_status=reconciliation_status,
+        )
+    if candidate is not None and (
+        _requires_currency_metadata(candidate)
+        or _requires_hk_akshare_statement_metadata(market, candidate, classifications)
+    ):
         return SourcePolicyItem(
             field_id=field.field_id,
             selection_status="unresolved_conflict",
@@ -172,11 +185,10 @@ def _resolve_field(
         return SourcePolicyItem(
             field_id=field.field_id,
             selection_status="selected_primary",
-            selected_candidate=candidate or field.candidates[0],
+            selected_candidate=candidate or _deterministic_candidate(field.candidates),
             reconciliation_status=reconciliation_status,
         )
 
-    market_policy = _market_policy(entry, market)
     if (
         candidate is not None
         and market_policy is not None
@@ -236,10 +248,11 @@ def _classifications(
     entry: SourceMappingEntry,
     field: MappedTurtleField,
     *,
+    market: str | None,
     fx_like: bool,
 ) -> tuple[ConflictClassification, ...]:
     classifications: list[ConflictClassification] = []
-    if _semantic_mismatch(entry, field):
+    if _semantic_mismatch(entry, field, market):
         classifications.append("semantic_mismatch")
     if fx_like:
         classifications.extend(["fx_like_ratio", "metadata_currency_suspected"])
@@ -248,18 +261,66 @@ def _classifications(
     return tuple(classifications)
 
 
-def _semantic_mismatch(entry: SourceMappingEntry, field: MappedTurtleField) -> bool:
+def _semantic_mismatch(
+    entry: SourceMappingEntry,
+    field: MappedTurtleField,
+    market: str | None,
+) -> bool:
     policy = entry.source_policy
     if policy is None:
         return False
-    for candidate in field.candidates + field.policy_evidence_candidates:
-        variants = policy.semantic_variants.get(candidate.source)
-        if variants is None:
-            continue
-        label = candidate.raw_field_code or candidate.raw_field_name
-        if label in variants.related:
-            return True
+    primary_candidate = _primary_candidate(entry, field, market)
+    if primary_candidate is None or primary_candidate.normalized_value is None:
+        return False
+    variants = policy.semantic_variants.get(primary_candidate.source)
+    if variants is None:
+        return False
+    related_candidates = tuple(
+        candidate
+        for candidate in field.candidates + field.policy_evidence_candidates
+        if candidate.source == primary_candidate.source
+        and candidate.normalized_value is not None
+        and _candidate_label(candidate) in variants.related
+    )
+    if not related_candidates:
+        return False
+    cross_check_sources = _cross_check_sources(entry, market)
+    cross_check_candidates = tuple(
+        candidate
+        for candidate in field.candidates
+        if candidate.source in cross_check_sources
+        and candidate.normalized_value is not None
+    )
+    for related_candidate in related_candidates:
+        for cross_check_candidate in cross_check_candidates:
+            if (
+                cross_check_candidate.normalized_value
+                == related_candidate.normalized_value
+                and cross_check_candidate.normalized_value
+                != primary_candidate.normalized_value
+            ):
+                return True
     return False
+
+
+def _candidate_label(candidate: TurtleMappingCandidate) -> str:
+    return candidate.raw_field_code or candidate.raw_field_name
+
+
+def _cross_check_sources(
+    entry: SourceMappingEntry,
+    market: str | None,
+) -> set[str]:
+    market_policy = _market_policy(entry, market)
+    if market_policy is None:
+        if entry.source_policy is None:
+            return set()
+        return {
+            source
+            for source, variants in entry.source_policy.semantic_variants.items()
+            if variants.primary
+        }
+    return {_source_from_route(route) for route in market_policy.cross_check_routes}
 
 
 def _values_differ(field: MappedTurtleField) -> bool:
@@ -276,6 +337,19 @@ def _requires_currency_metadata(candidate: TurtleMappingCandidate) -> bool:
         candidate.currency in {"unknown", "ambiguous"}
         or candidate.unit is None
         or candidate.canonical_unit is None
+    )
+
+
+def _requires_hk_akshare_statement_metadata(
+    market: str | None,
+    candidate: TurtleMappingCandidate,
+    classifications: tuple[ConflictClassification, ...],
+) -> bool:
+    return (
+        market == "HK"
+        and candidate.source == "akshare"
+        and "metadata_currency_suspected" in classifications
+        and not candidate.statement_metadata_proven
     )
 
 
@@ -319,48 +393,75 @@ def _primary_candidate(
     return source_candidates[0]
 
 
+def _source_from_route(route: str) -> str:
+    return route.split("_", 1)[0]
+
+
+def _deterministic_candidate(
+    candidates: tuple[TurtleMappingCandidate, ...],
+) -> TurtleMappingCandidate:
+    return sorted(
+        candidates,
+        key=lambda candidate: (
+            candidate.source,
+            candidate.raw_field_name,
+            candidate.raw_field_code or "",
+        ),
+    )[0]
+
+
 def _fx_like_fields(
     mapping: TurtleMappingResult,
     *,
     relative_tolerance: Decimal = Decimal("0.001"),
 ) -> set[str]:
-    ratios: list[tuple[str, Decimal]] = []
+    ratios: list[tuple[str, tuple[str, str], Decimal]] = []
     for field_id, mapped_field in mapping.fields.items():
         if len(mapped_field.candidates) != 2:
             continue
-        akshare_candidate = _candidate_for_source(mapped_field, "akshare")
-        yahoo_candidate = _candidate_for_source(mapped_field, "yahoo")
-        if akshare_candidate is None or yahoo_candidate is None:
+        left, right = _ordered_pair(mapped_field.candidates)
+        if left.period != right.period:
             continue
-        if akshare_candidate.period != yahoo_candidate.period:
+        if left.currency != right.currency:
             continue
-        base = akshare_candidate.normalized_value
-        other = yahoo_candidate.normalized_value
-        if base is None or base == Decimal("0") or other is None:
+        base = left.normalized_value
+        other = right.normalized_value
+        if (
+            base is None
+            or base == Decimal("0")
+            or other is None
+            or other == Decimal("0")
+        ):
             continue
         ratio = other / base
         if ratio == 1:
             continue
-        ratios.append((field_id, ratio))
-    for _, ratio in ratios:
+        ratios.append((field_id, (left.source, right.source), ratio))
+    for _, provider_pair, ratio in ratios:
         similar = [
             other_field_id
-            for other_field_id, other_ratio in ratios
-            if _relative_difference(ratio, other_ratio) <= relative_tolerance
+            for other_field_id, other_provider_pair, other_ratio in ratios
+            if other_provider_pair == provider_pair
+            and _relative_difference(ratio, other_ratio) <= relative_tolerance
         ]
         if len(similar) >= 3:
             return set(similar)
     return set()
 
 
-def _candidate_for_source(
-    field: MappedTurtleField,
-    source: str,
-) -> TurtleMappingCandidate | None:
-    for candidate in field.candidates:
-        if candidate.source == source:
-            return candidate
-    return None
+def _ordered_pair(
+    candidates: tuple[TurtleMappingCandidate, ...],
+) -> tuple[TurtleMappingCandidate, TurtleMappingCandidate]:
+    assert len(candidates) == 2
+    left, right = sorted(
+        candidates,
+        key=lambda candidate: (
+            candidate.source,
+            candidate.raw_field_name,
+            candidate.raw_field_code or "",
+        ),
+    )
+    return left, right
 
 
 def _relative_difference(left: Decimal, right: Decimal) -> Decimal:

@@ -81,6 +81,71 @@ def test_source_policy_classifies_revenue_semantic_mismatch_and_selects_primary(
     assert item.conflict_classifications == ("semantic_mismatch",)
 
 
+def test_source_policy_requires_related_value_match_for_semantic_mismatch() -> None:
+    catalog = _catalog(
+        "revenue",
+        SourcePolicy(
+            semantic_concept="operating revenue",
+            semantic_variants={
+                "akshare": SourceSemanticVariants(
+                    primary=("OPERATE_INCOME", "营业收入"),
+                    related=("TOTAL_OPERATE_INCOME", "营业总收入"),
+                ),
+                "yahoo": SourceSemanticVariants(primary=("Total Revenue",)),
+            },
+            market_policies={
+                "CN": MarketSourcePolicy(
+                    primary_route="akshare_direct",
+                    cross_check_routes=("yahoo_direct",),
+                    on_conflict="select_primary_require_pdf",
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = _mapping(
+        "revenue",
+        (
+            _candidate(
+                source="akshare",
+                raw_field_name="营业收入",
+                raw_field_code="OPERATE_INCOME",
+                normalized_value=Decimal("100"),
+                currency="CNY",
+            ),
+            _candidate(
+                source="yahoo",
+                raw_field_name="Total Revenue",
+                raw_field_code=None,
+                normalized_value=Decimal("101"),
+                currency="CNY",
+            ),
+        ),
+        policy_evidence_candidates=(
+            _candidate(
+                source="akshare",
+                raw_field_name="营业总收入",
+                raw_field_code="TOTAL_OPERATE_INCOME",
+                normalized_value=Decimal("102"),
+                currency="CNY",
+            ),
+        ),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="CN",
+        company_id="600519",
+    )
+
+    item = report.items["revenue"]
+    assert item.selection_status == "selected_primary"
+    assert item.conflict_classifications == ("normalized_value_conflict",)
+
+
 def test_source_policy_classifies_hk_fx_like_ratio_across_multiple_fields() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",
@@ -144,6 +209,123 @@ def test_source_policy_classifies_hk_fx_like_ratio_across_multiple_fields() -> N
     )
 
 
+def test_source_policy_ignores_fx_like_ratio_when_cross_check_values_are_zero() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            field_id: _entry(
+                field_id,
+                SourcePolicy(
+                    semantic_concept="reported statement line",
+                    market_policies={
+                        "HK": MarketSourcePolicy(
+                            primary_route="akshare_direct",
+                            cross_check_routes=("yahoo_direct",),
+                            on_conflict="select_primary_require_pdf",
+                        )
+                    },
+                    verification_requirement="pdf_required_on_conflict",
+                ),
+            )
+            for field_id in ("total_assets", "total_cur_assets", "total_liabilities")
+        },
+    )
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "total_assets": _field("total_assets", Decimal("100"), Decimal("0")),
+            "total_cur_assets": _field("total_cur_assets", Decimal("50"), Decimal("0")),
+            "total_liabilities": _field(
+                "total_liabilities",
+                Decimal("20"),
+                Decimal("0"),
+            ),
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+    )
+
+    item = report.items["total_assets"]
+    assert item.selection_status == "selected_primary"
+    assert item.conflict_classifications == ("normalized_value_conflict",)
+
+
+def test_source_policy_requires_hk_akshare_statement_metadata_proof() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            field_id: _entry(
+                field_id,
+                SourcePolicy(
+                    semantic_concept="reported statement line",
+                    market_policies={
+                        "HK": MarketSourcePolicy(
+                            primary_route="akshare_direct",
+                            cross_check_routes=("yahoo_direct",),
+                            on_conflict="select_primary_require_pdf",
+                        )
+                    },
+                    verification_requirement="pdf_required_on_conflict",
+                ),
+            )
+            for field_id in ("total_assets", "total_cur_assets", "total_liabilities")
+        },
+    )
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "total_assets": _field(
+                "total_assets",
+                Decimal("100"),
+                Decimal("110.71499745"),
+                akshare_statement_metadata_proven=False,
+            ),
+            "total_cur_assets": _field(
+                "total_cur_assets",
+                Decimal("50"),
+                Decimal("55.357498725"),
+                akshare_statement_metadata_proven=False,
+            ),
+            "total_liabilities": _field(
+                "total_liabilities",
+                Decimal("20"),
+                Decimal("22.14299949"),
+                akshare_statement_metadata_proven=False,
+            ),
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+    )
+
+    item = report.items["total_assets"]
+    assert item.selection_status == "unresolved_conflict"
+    assert item.selected_candidate is None
+    assert item.verification_required is True
+    assert item.conflict_classifications == (
+        "fx_like_ratio",
+        "metadata_currency_suspected",
+        "currency_metadata_required",
+    )
+
+
 def test_source_policy_does_not_select_primary_without_currency_metadata() -> None:
     catalog = _catalog(
         "revenue",
@@ -199,6 +381,58 @@ def test_source_policy_does_not_select_primary_without_currency_metadata() -> No
         "normalized_value_conflict",
         "currency_metadata_required",
     )
+
+
+def test_source_policy_does_not_select_inventory_order_fallback_when_primary_missing() -> None:
+    catalog = _catalog(
+        "revenue",
+        SourcePolicy(
+            semantic_concept="operating revenue",
+            market_policies={
+                "CN": MarketSourcePolicy(
+                    primary_route="akshare_direct",
+                    cross_check_routes=("yahoo_direct",),
+                    on_conflict="select_primary_require_pdf",
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = _mapping(
+        "revenue",
+        (
+            _candidate(
+                source="yahoo",
+                raw_field_name="Total Revenue",
+                raw_field_code=None,
+                normalized_value=Decimal("100"),
+                currency="CNY",
+            ),
+            _candidate(
+                source="fixture",
+                raw_field_name="Revenue",
+                raw_field_code=None,
+                normalized_value=Decimal("100"),
+                currency="CNY",
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="CN",
+        company_id="600519",
+    )
+
+    item = report.items["revenue"]
+    assert item.selection_status == "unresolved_conflict"
+    assert item.selected_candidate is None
+    assert item.verification_required is True
+    assert item.conflict_classifications == ("missing_source_candidate",)
 
 
 def _catalog(field_id: str, policy: SourcePolicy) -> SourceMappingCatalog:
@@ -257,12 +491,21 @@ def _field(
     field_id: str,
     akshare_value: Decimal,
     yahoo_value: Decimal,
+    *,
+    akshare_statement_metadata_proven: bool = True,
 ) -> MappedTurtleField:
     return MappedTurtleField(
         field_id=field_id,
         status="ambiguous",
         candidates=(
-            _candidate("akshare", "总资产", "TOTAL_ASSETS", akshare_value, currency="HKD"),
+            _candidate(
+                "akshare",
+                "总资产",
+                "TOTAL_ASSETS",
+                akshare_value,
+                currency="HKD",
+                statement_metadata_proven=akshare_statement_metadata_proven,
+            ),
             _candidate("yahoo", "Total Assets", None, yahoo_value, currency="HKD"),
         ),
         errors=("multiple source candidates matched catalog aliases",),
@@ -278,6 +521,7 @@ def _candidate(
     currency: str,
     unit: str | None = "default",
     canonical_unit: str | None = "default",
+    statement_metadata_proven: bool = False,
 ) -> TurtleMappingCandidate:
     resolved_unit = "raw" if unit == "default" and source == "yahoo" else unit
     if resolved_unit == "default":
@@ -293,6 +537,7 @@ def _candidate(
         currency=currency,  # type: ignore[arg-type]
         unit=resolved_unit,
         canonical_unit=resolved_canonical_unit,  # type: ignore[arg-type]
+        statement_metadata_proven=statement_metadata_proven,
         period="2025-12-31",
         scope="unknown",
         source_evidence=(

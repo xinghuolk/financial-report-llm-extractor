@@ -303,7 +303,8 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
         "total_cur_liab",
         "total_liabilities",
     }
-    assert set(combined_review["conflict_fields"]) >= {"revenue", "net_profit"}
+    assert "revenue" in combined_review["conflict_fields"]
+    assert "net_profit" not in combined_review["conflict_fields"]
 
     report_path = Path(
         company["artifact_paths"]["combined"]["reconciliation_report"]
@@ -320,6 +321,7 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
         report["items"]["revenue"]["reason"]
         == "candidate normalized values differ"
     )
+    assert report["items"]["net_profit"]["status"] != "conflict"
 
 
 def test_provider_baseline_period_replay_script_is_local_fixture_entrypoint() -> None:

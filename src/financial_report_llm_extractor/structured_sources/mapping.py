@@ -40,6 +40,7 @@ class TurtleMappingCandidate:
     source_evidence: tuple[SourceEvidence, ...]
     errors: tuple[str, ...] = field(default_factory=tuple)
     canonical_unit: Currency | None = None
+    statement_metadata_proven: bool = False
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
@@ -354,6 +355,17 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
         source_evidence=record.source_evidence,
         canonical_unit=canonical_unit,
         errors=tuple(errors),
+        statement_metadata_proven=_statement_metadata_proven(record),
+    )
+
+
+def _statement_metadata_proven(record: SourceInventoryRecord) -> bool:
+    return (
+        record.source == "akshare"
+        and record.market == "HK"
+        and bool(record.report_type)
+        and record.currency not in {"unknown", "ambiguous"}
+        and record.unit is not None
     )
 
 

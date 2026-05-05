@@ -93,6 +93,52 @@ def test_map_source_inventory_preserves_provider_unit_and_adds_canonical_unit() 
     assert mapped.candidates[0].canonical_unit == "CNY"
 
 
+def test_map_source_inventory_marks_hk_akshare_statement_metadata_as_proven() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"akshare": ("资产总计",)},
+            )
+        },
+    )
+    records = [
+        SourceInventoryRecord(
+            source="akshare",
+            market="HK",
+            ticker="00001",
+            statement_type="balance_sheet",
+            period="2025-12-31",
+            raw_field_name="资产总计",
+            raw_value="100",
+            parsed_numeric_value=Decimal("100"),
+            report_type="annual",
+            currency="HKD",
+            unit="million",
+            scope="consolidated",
+            source_evidence=(
+                SourceEvidence(
+                    source="akshare",
+                    adapter="akshare",
+                    function="fixture",
+                    artifact_id="akshare_hk_balance_sheet",
+                    raw_record_id="akshare:total_assets",
+                    raw_field_name="资产总计",
+                ),
+            ),
+        )
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    candidate = result.fields["total_assets"].candidates[0]
+    assert candidate.statement_metadata_proven is True
+    assert candidate.to_dict()["statement_metadata_proven"] is True
+
+
 def test_map_source_inventory_marks_missing_field() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",
@@ -584,6 +630,7 @@ def test_turtle_mapping_candidate_preserves_old_positional_constructor_shape() -
     assert candidate.scope == "consolidated"
     assert candidate.source_evidence == (evidence,)
     assert candidate.canonical_unit is None
+    assert candidate.statement_metadata_proven is False
 
     candidate_with_errors = TurtleMappingCandidate(
         "akshare",
@@ -602,6 +649,7 @@ def test_turtle_mapping_candidate_preserves_old_positional_constructor_shape() -
 
     assert candidate_with_errors.errors == ("bad",)
     assert candidate_with_errors.canonical_unit is None
+    assert candidate_with_errors.statement_metadata_proven is False
 
 
 def test_write_turtle_mapping_artifacts_writes_json_and_markdown(
