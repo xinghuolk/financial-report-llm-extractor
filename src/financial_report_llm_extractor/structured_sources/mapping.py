@@ -267,19 +267,31 @@ def _derive_field(
             errors=("derivation input value missing",),
         )
 
-    value = left.value - right.value
-    normalized_value = (
-        left.normalized_value - right.normalized_value
-        if left.normalized_value is not None and right.normalized_value is not None
-        else None
-    )
+    if left.unit == right.unit:
+        value = left.value - right.value
+        normalized_value = (
+            left.normalized_value - right.normalized_value
+            if left.normalized_value is not None and right.normalized_value is not None
+            else None
+        )
+        unit = left.unit
+    else:
+        if left.normalized_value is None or right.normalized_value is None:
+            return MappedTurtleField(
+                field_id=entry.field_id,
+                status="blocked",
+                errors=("derivation input normalized value missing",),
+            )
+        value = left.normalized_value - right.normalized_value
+        normalized_value = value
+        unit = left.canonical_unit
     return MappedTurtleField(
         field_id=entry.field_id,
         status="derived",
         value=value,
         normalized_value=normalized_value,
         currency=left.currency,
-        unit=left.unit,
+        unit=unit,
         canonical_unit=left.canonical_unit,
         period=left.period,
         scope=left.scope,

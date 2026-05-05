@@ -278,8 +278,90 @@ def test_map_source_inventory_derives_when_provider_units_differ_but_canonical_u
     mapped = result.fields["equity"]
     assert mapped.status == "derived"
     assert mapped.value == Decimal("600")
-    assert mapped.unit == "yuan"
+    assert mapped.unit == "CNY"
     assert mapped.canonical_unit == "CNY"
+
+
+def test_map_source_inventory_derives_mixed_provider_scales_in_canonical_scale() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Total Assets",)},
+            ),
+            "total_liabilities": _entry(
+                "total_liabilities",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Total Liabilities",)},
+            ),
+            "equity": _entry(
+                "equity",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Stockholders Equity",)},
+                derivation="total_assets - total_liabilities",
+            ),
+        },
+    )
+    records = [
+        SourceInventoryRecord(
+            source="yahoo",
+            market="HK",
+            ticker="00001.HK",
+            statement_type="balance_sheet",
+            period="2024-12-31",
+            raw_field_name="Total Assets",
+            raw_value="100",
+            parsed_numeric_value=Decimal("100"),
+            currency="HKD",
+            unit="million",
+            scope="consolidated",
+            source_evidence=(
+                SourceEvidence(
+                    source="yahoo",
+                    adapter="yahoo",
+                    function="fixture",
+                    artifact_id="yahoo_artifact",
+                    raw_record_id="yahoo:Total Assets",
+                    raw_field_name="Total Assets",
+                ),
+            ),
+        ),
+        SourceInventoryRecord(
+            source="yahoo",
+            market="HK",
+            ticker="00001.HK",
+            statement_type="balance_sheet",
+            period="2024-12-31",
+            raw_field_name="Total Liabilities",
+            raw_value="400",
+            parsed_numeric_value=Decimal("400"),
+            currency="HKD",
+            unit="raw",
+            scope="consolidated",
+            source_evidence=(
+                SourceEvidence(
+                    source="yahoo",
+                    adapter="yahoo",
+                    function="fixture",
+                    artifact_id="yahoo_artifact",
+                    raw_record_id="yahoo:Total Liabilities",
+                    raw_field_name="Total Liabilities",
+                ),
+            ),
+        ),
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["equity"]
+    assert mapped.status == "derived"
+    assert mapped.value == Decimal("99999600")
+    assert mapped.normalized_value == Decimal("99999600")
+    assert mapped.unit == "HKD"
+    assert mapped.canonical_unit == "HKD"
 
 
 def test_map_source_inventory_blocks_derivation_when_currencies_differ() -> None:
