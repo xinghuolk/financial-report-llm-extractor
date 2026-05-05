@@ -127,6 +127,13 @@ def _reconcile_field(
             sources=sources,
             reason=metadata_error,
         )
+    if any(candidate.canonical_unit is None for candidate in candidates):
+        return ReconciliationItem(
+            field_id=field_id,
+            status="blocked",
+            sources=sources,
+            reason="candidate canonical unit missing",
+        )
 
     values = [candidate.normalized_value for candidate in candidates]
     if any(value is None for value in values):
