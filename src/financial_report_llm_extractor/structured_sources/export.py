@@ -20,6 +20,10 @@ from financial_report_llm_extractor.structured_sources.reconciliation import (
     ReconciliationReport,
     ReconciliationStatus,
 )
+from financial_report_llm_extractor.structured_sources.source_policy import (
+    SourcePolicyItem,
+    SourcePolicyReport,
+)
 
 
 ExportProfile = Literal["source_only", "pdf_required"]
@@ -51,6 +55,11 @@ class SourceFirstExportItem:
     derived_from: tuple[str, ...] = field(default_factory=tuple)
     errors: tuple[str, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
+    selection_status: str | None = None
+    selected_source: str | None = None
+    verification_required: bool = False
+    conflict_classifications: tuple[str, ...] = field(default_factory=tuple)
+    review_notes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -76,6 +85,11 @@ class SourceFirstExportItem:
             "derived_from": list(self.derived_from),
             "errors": list(self.errors),
             "warnings": list(self.warnings),
+            "selection_status": self.selection_status,
+            "selected_source": self.selected_source,
+            "verification_required": self.verification_required,
+            "conflict_classifications": list(self.conflict_classifications),
+            "review_notes": list(self.review_notes),
         }
 
 
@@ -108,16 +122,23 @@ def build_source_first_export(
     *,
     profile: ExportProfile,
     pdf_evidence_by_field: dict[str, tuple[Evidence, ...]] | None = None,
+    source_policy_report: SourcePolicyReport | None = None,
 ) -> SourceFirstExportResult:
     pdf_evidence_by_field = pdf_evidence_by_field or {}
     items: dict[str, SourceFirstExportItem] = {}
     for field_id, mapped_field in mapping_result.fields.items():
         reconciliation_item = reconciliation_report.items.get(field_id)
+        policy_item = (
+            source_policy_report.items.get(field_id)
+            if source_policy_report is not None
+            else None
+        )
         items[field_id] = _build_item(
             mapped_field,
             reconciliation_item.status if reconciliation_item is not None else None,
             profile=profile,
             pdf_evidence=pdf_evidence_by_field.get(field_id, ()),
+            policy_item=policy_item,
         )
     return SourceFirstExportResult(
         profile=profile,
@@ -137,9 +158,16 @@ def build_review_summary(result: SourceFirstExportResult) -> dict[str, object]:
         "status_counts": dict(sorted(status_counts.items())),
         "present_fields": _fields_with_status(result, "present"),
         "conflict_fields": _fields_with_status(result, "conflict"),
-        "fields_requiring_pdf_evidence": _fields_with_status(
-            result,
-            "needs_pdf_evidence",
+        "selected_with_warnings_fields": sorted(
+            field_id
+            for field_id, item in result.items.items()
+            if item.status == "present" and (item.warnings or item.verification_required)
+        ),
+        "unresolved_conflict_fields": _fields_with_status(result, "conflict"),
+        "fields_requiring_pdf_evidence": sorted(
+            field_id
+            for field_id, item in result.items.items()
+            if item.status == "needs_pdf_evidence" or item.verification_required
         ),
         "missing_fields": _fields_with_status(result, "missing"),
         "ambiguous_fields": _fields_with_status(result, "ambiguous"),
@@ -176,6 +204,7 @@ def _build_item(
     *,
     profile: ExportProfile,
     pdf_evidence: tuple[Evidence, ...],
+    policy_item: SourcePolicyItem | None = None,
 ) -> SourceFirstExportItem:
     status = _export_status(field, reconciliation_status)
     errors = field.errors
@@ -188,6 +217,17 @@ def _build_item(
     period = field.period
     scope = field.scope
     source_evidence = field.source_evidence
+    selection_status = policy_item.selection_status if policy_item is not None else None
+    selected_source: str | None = None
+    verification_required = (
+        policy_item.verification_required if policy_item is not None else False
+    )
+    conflict_classifications = (
+        policy_item.conflict_classifications if policy_item is not None else ()
+    )
+    review_notes = (
+        tuple(policy_item.conflict_classifications) if policy_item is not None else ()
+    )
 
     if field.status == "ambiguous" and reconciliation_status in {"equivalent", "close"}:
         candidate = _representative_candidate(field.candidates)
@@ -205,6 +245,25 @@ def _build_item(
         )
         errors = ()
         warnings = (f"multiple source candidates reconciled as {reconciliation_status}",)
+
+    if (
+        policy_item is not None
+        and policy_item.selection_status in {"selected_primary", "selected_single_source"}
+        and policy_item.selected_candidate is not None
+    ):
+        candidate = policy_item.selected_candidate
+        status = "present"
+        value = candidate.value
+        normalized_value = candidate.normalized_value
+        currency = candidate.currency
+        unit = candidate.unit
+        canonical_unit = candidate.canonical_unit
+        period = candidate.period
+        scope = candidate.scope
+        source_evidence = candidate.source_evidence
+        errors = ()
+        warnings = policy_item.warnings
+        selected_source = candidate.source
 
     if status == "present" and profile == "pdf_required" and not pdf_evidence:
         status = "needs_pdf_evidence"
@@ -227,6 +286,11 @@ def _build_item(
         derived_from=field.derived_from,
         errors=errors,
         warnings=warnings,
+        selection_status=selection_status,
+        selected_source=selected_source,
+        verification_required=verification_required,
+        conflict_classifications=conflict_classifications,
+        review_notes=review_notes,
     )
 
 

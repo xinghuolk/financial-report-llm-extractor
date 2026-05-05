@@ -19,6 +19,10 @@ from financial_report_llm_extractor.structured_sources.models import (
 from financial_report_llm_extractor.structured_sources.reconciliation import (
     reconcile_mapped_fields,
 )
+from financial_report_llm_extractor.structured_sources.source_policy import (
+    SourcePolicyItem,
+    SourcePolicyReport,
+)
 
 
 def test_source_only_export_keeps_source_evidence_separate() -> None:
@@ -68,6 +72,118 @@ def test_source_export_marks_reconciliation_conflict() -> None:
     assert item.status == "conflict"
     assert item.reconciliation_status == "conflict"
     assert result.summary["conflict_fields"] == ["revenue"]
+
+
+def test_source_first_export_preserves_policy_selected_conflict_metadata() -> None:
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "revenue": MappedTurtleField(
+                field_id="revenue",
+                status="ambiguous",
+                candidates=(
+                    _candidate("akshare", Decimal("168"), canonical_unit="CNY"),
+                    _candidate("yahoo", Decimal("172"), canonical_unit="CNY"),
+                ),
+                errors=("multiple source candidates matched catalog aliases",),
+            )
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+    policy_report = SourcePolicyReport(
+        catalog_id="test",
+        catalog_version="1",
+        company_id="600519",
+        market="CN",
+        items={
+            "revenue": SourcePolicyItem(
+                field_id="revenue",
+                selection_status="selected_primary",
+                selected_candidate=mapping.fields["revenue"].candidates[0],
+                conflict_classifications=("semantic_mismatch",),
+                verification_required=True,
+                warnings=(
+                    "source policy selected primary candidate despite semantic_mismatch",
+                ),
+                reconciliation_status="conflict",
+            )
+        },
+    )
+
+    result = build_source_first_export(
+        mapping,
+        reconciliation,
+        profile="source_only",
+        source_policy_report=policy_report,
+    )
+
+    item = result.items["revenue"]
+    assert item.status == "present"
+    assert item.selection_status == "selected_primary"
+    assert item.selected_source == "akshare"
+    assert item.verification_required is True
+    assert item.conflict_classifications == ("semantic_mismatch",)
+    assert item.warnings == (
+        "source policy selected primary candidate despite semantic_mismatch",
+    )
+    assert item.value == Decimal("168")
+    assert result.summary["selected_with_warnings_fields"] == ["revenue"]
+    assert result.summary["fields_requiring_pdf_evidence"] == ["revenue"]
+
+
+def test_pdf_required_policy_selected_without_pdf_keeps_selection_metadata() -> None:
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "revenue": MappedTurtleField(
+                field_id="revenue",
+                status="ambiguous",
+                candidates=(
+                    _candidate("akshare", Decimal("168"), canonical_unit="CNY"),
+                    _candidate("yahoo", Decimal("172"), canonical_unit="CNY"),
+                ),
+                errors=("multiple source candidates matched catalog aliases",),
+            )
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+    policy_report = SourcePolicyReport(
+        catalog_id="test",
+        catalog_version="1",
+        company_id="600519",
+        market="CN",
+        items={
+            "revenue": SourcePolicyItem(
+                field_id="revenue",
+                selection_status="selected_primary",
+                selected_candidate=mapping.fields["revenue"].candidates[0],
+                conflict_classifications=("semantic_mismatch",),
+                verification_required=True,
+                warnings=(
+                    "source policy selected primary candidate despite semantic_mismatch",
+                ),
+                reconciliation_status="conflict",
+            )
+        },
+    )
+
+    result = build_source_first_export(
+        mapping,
+        reconciliation,
+        profile="pdf_required",
+        source_policy_report=policy_report,
+    )
+
+    item = result.items["revenue"]
+    assert item.status == "needs_pdf_evidence"
+    assert item.selection_status == "selected_primary"
+    assert item.selected_source == "akshare"
+    assert item.verification_required is True
+    assert item.conflict_classifications == ("semantic_mismatch",)
+    assert item.value == Decimal("168")
+    assert result.summary["fields_requiring_pdf_evidence"] == ["revenue"]
 
 
 def test_source_first_export_promotes_equivalent_ambiguous_candidates_with_candidate_metadata() -> None:
