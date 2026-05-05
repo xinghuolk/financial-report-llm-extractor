@@ -34,6 +34,10 @@ from financial_report_llm_extractor.structured_sources.reconciliation import (
     reconcile_mapped_fields,
     write_reconciliation_report,
 )
+from financial_report_llm_extractor.structured_sources.source_policy import (
+    build_source_policy_report,
+    write_source_policy_report,
+)
 
 
 ReplaySliceName = Literal["akshare_only", "yahoo_only", "combined"]
@@ -140,16 +144,22 @@ def write_provider_baseline_period_replay(
             company_dir / "akshare_only",
             catalog=catalog,
             records=akshare_records,
+            company_id=company_id,
+            market=company_groups["akshare"].market,
         )
         yahoo_report = _write_slice(
             company_dir / "yahoo_only",
             catalog=catalog,
             records=yahoo_records,
+            company_id=company_id,
+            market=company_groups["akshare"].market,
         )
         combined_report = _write_slice(
             company_dir / "combined",
             catalog=catalog,
             records=akshare_records + yahoo_records,
+            company_id=company_id,
+            market=company_groups["akshare"].market,
         )
 
         companies.append(
@@ -219,15 +229,30 @@ def _write_slice(
     *,
     catalog: Any,
     records: tuple[SourceInventoryRecord, ...],
+    company_id: str,
+    market: str,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     write_source_inventory(output_dir / "source_inventory.jsonl", records)
     mapping = map_source_inventory(catalog, records)
     reconciliation = reconcile_mapped_fields(mapping)
-    export = build_source_first_export(mapping, reconciliation, profile="source_only")
+    policy_report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market=market,
+        company_id=company_id,
+    )
+    export = build_source_first_export(
+        mapping,
+        reconciliation,
+        profile="source_only",
+        source_policy_report=policy_report,
+    )
 
     write_turtle_mapping_artifacts(mapping, output_dir)
     write_reconciliation_report(reconciliation, output_dir / "reconciliation_report.json")
+    write_source_policy_report(policy_report, output_dir / "source_policy_report.json")
     write_source_first_export_artifacts(export, output_dir)
 
     return {
@@ -238,6 +263,7 @@ def _write_slice(
             "turtle_mapping": str(output_dir / "turtle_mapping.json"),
             "source_coverage_summary": str(output_dir / "source_coverage_summary.json"),
             "reconciliation_report": str(output_dir / "reconciliation_report.json"),
+            "source_policy_report": str(output_dir / "source_policy_report.json"),
             "extraction_result": str(output_dir / "extraction_result.json"),
             "review_summary": str(output_dir / "review_summary.json"),
         },
@@ -245,17 +271,28 @@ def _write_slice(
 
 
 def _export_coverage(export: SourceFirstExportResult) -> dict[str, object]:
-    covered = sorted(
+    selected = sorted(
         field_id
         for field_id, item in export.items.items()
         if item.status == "present"
     )
+    clean_present = sorted(
+        field_id
+        for field_id, item in export.items.items()
+        if item.status == "present"
+        and not item.warnings
+        and not item.verification_required
+    )
     total = len(export.items)
     return {
-        "covered_fields": covered,
-        "covered_count": len(covered),
+        "covered_fields": selected,
+        "covered_count": len(selected),
+        "selected_fields": selected,
+        "selected_count": len(selected),
+        "clean_present_fields": clean_present,
+        "clean_present_count": len(clean_present),
         "total_fields": total,
-        "coverage_ratio": len(covered) / total if total else 0.0,
+        "coverage_ratio": len(selected) / total if total else 0.0,
     }
 
 
@@ -288,6 +325,16 @@ def _review_lists(
             for field_id, item in export.items.items()
             if item.status == "conflict"
         ),
+        "selected_with_warnings_fields": sorted(
+            field_id
+            for field_id, item in export.items.items()
+            if item.status == "present" and (item.warnings or item.verification_required)
+        ),
+        "fields_requiring_pdf_evidence": sorted(
+            field_id
+            for field_id, item in export.items.items()
+            if item.verification_required or item.status == "needs_pdf_evidence"
+        ),
     }
     return {**field_lists, "gap_categories": _gap_categories(field_lists)}
 
@@ -298,11 +345,13 @@ def _gap_categories(review: dict[str, list[str]]) -> dict[str, list[str]]:
     mapping_ambiguity = sorted(set(review["ambiguous_fields"]) - conflict_fields)
     mapping_blocker = review["blocked_fields"]
     real_reconciliation_conflict = sorted(conflict_fields)
+    fields_requiring_pdf_evidence = review["fields_requiring_pdf_evidence"]
     pdf_llm_supplement_candidates = sorted(
         set(source_availability)
         | set(mapping_ambiguity)
         | set(mapping_blocker)
         | set(real_reconciliation_conflict)
+        | set(fields_requiring_pdf_evidence)
     )
     return {
         "source_availability": source_availability,
@@ -368,6 +417,10 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
                     f"  - ambiguous_fields: {_format_field_list(review['ambiguous_fields'])}",
                     f"  - blocked_fields: {_format_field_list(review['blocked_fields'])}",
                     f"  - conflict_fields: {_format_field_list(review['conflict_fields'])}",
+                    "  - selected_with_warnings_fields: "
+                    f"{_format_field_list(review['selected_with_warnings_fields'])}",
+                    "  - fields_requiring_pdf_evidence: "
+                    f"{_format_field_list(review['fields_requiring_pdf_evidence'])}",
                 ]
             )
             gap_categories = review["gap_categories"]
@@ -387,6 +440,7 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
                     "  - artifacts:",
                     f"    - review_summary: {artifact_paths['review_summary']}",
                     f"    - reconciliation_report: {artifact_paths['reconciliation_report']}",
+                    f"    - source_policy_report: {artifact_paths['source_policy_report']}",
                     f"    - extraction_result: {artifact_paths['extraction_result']}",
                 ]
             )

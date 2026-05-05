@@ -257,8 +257,8 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
     assert companies["600519"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["00001"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["01113"]["coverage"]["yahoo_only"]["covered_count"] >= 11
-    assert companies["600519"]["review"]["combined"]["gap_categories"][
-        "real_reconciliation_conflict"
+    assert companies["600519"]["review"]["combined"][
+        "selected_with_warnings_fields"
     ]
     assert companies["00001"]["review"]["combined"]["gap_categories"][
         "pdf_llm_supplement_candidates"
@@ -271,6 +271,41 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         report = json.loads(report_path.read_text(encoding="utf-8"))
         reasons = {item["reason"] for item in report["items"].values()}
         assert "candidate periods differ" not in reasons
+
+
+def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
+    tmp_path: Path,
+) -> None:
+    result = write_provider_baseline_period_replay(
+        inventory_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
+        ),
+        inventory_summary_path=Path(
+            "tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json"
+        ),
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        output_dir=tmp_path / "baseline",
+        company_ids=("600519", "00001"),
+    )
+
+    payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
+    companies = {company["company_id"]: company for company in payload["companies"]}
+
+    maotai_combined = companies["600519"]["coverage"]["combined"]
+    assert maotai_combined["selected_count"] >= maotai_combined["covered_count"]
+    assert maotai_combined["clean_present_count"] <= maotai_combined["selected_count"]
+    assert "revenue" in companies["600519"]["review"]["combined"][
+        "selected_with_warnings_fields"
+    ]
+
+    hk_combined = companies["00001"]["review"]["combined"]
+    assert set(hk_combined["selected_with_warnings_fields"]) >= {
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    }
+    assert "source_policy_report" in companies["00001"]["artifact_paths"]["combined"]
 
 
 def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
@@ -303,7 +338,9 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
         "total_cur_liab",
         "total_liabilities",
     }
-    assert "revenue" in combined_review["conflict_fields"]
+    assert "revenue" in combined_review["selected_with_warnings_fields"]
+    assert "net_profit" in combined_review["present_fields"]
+    assert "revenue" not in combined_review["conflict_fields"]
     assert "net_profit" not in combined_review["conflict_fields"]
 
     report_path = Path(
@@ -311,6 +348,9 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
     )
     report = json.loads(report_path.read_text(encoding="utf-8"))
 
+    # Raw reconciliation and policy-selected export/review intentionally report
+    # different layers: revenue is still a provider disagreement before policy
+    # selection, while net_profit is equivalent after PARENT_NETPROFIT alias priority.
     assert report["items"]["cash"]["status"] == "equivalent"
     assert (
         report["items"]["cash"]["reason"]
