@@ -44,8 +44,35 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["营业收入", "营业总收入", "Total revenue", "Revenue", "OPERATE_INCOME", "TOTAL_OPERATE_INCOME"],
+        "akshare": ["OPERATE_INCOME", "营业收入", "Revenue", "TOTAL_OPERATE_INCOME", "营业总收入", "Total revenue"],
         "yahoo": ["Total Revenue", "Operating Revenue"]
+      },
+      "source_policy": {
+        "semantic_concept": "operating revenue",
+        "semantic_variants": {
+          "akshare": {
+            "primary": ["OPERATE_INCOME", "营业收入"],
+            "related": ["TOTAL_OPERATE_INCOME", "营业总收入"]
+          },
+          "yahoo": {
+            "primary": ["Total Revenue", "Operating Revenue"]
+          }
+        },
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": ["akshare_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": true
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
       },
       "pdf_aliases": ["revenue", "营业收入"]
     },
@@ -60,8 +87,35 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["净利润", "归属于母公司股东的净利润", "Profit attributable to shareholders", "NETPROFIT", "PARENT_NETPROFIT"],
+        "akshare": ["PARENT_NETPROFIT", "归属于母公司股东的净利润", "Profit attributable to shareholders", "NETPROFIT", "净利润"],
         "yahoo": ["Net Income", "Net Income Common Stockholders"]
+      },
+      "source_policy": {
+        "semantic_concept": "profit attributable to parent-company shareholders",
+        "semantic_variants": {
+          "akshare": {
+            "primary": ["PARENT_NETPROFIT", "归属于母公司股东的净利润"],
+            "related": ["NETPROFIT", "净利润"]
+          },
+          "yahoo": {
+            "primary": ["Net Income", "Net Income Common Stockholders"]
+          }
+        },
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": ["akshare_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": true
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
       },
       "pdf_aliases": ["net profit", "profit attributable", "净利润"]
     },
@@ -79,6 +133,25 @@
         "akshare": ["资产总计", "总资产", "Total assets", "TOTAL_ASSETS"],
         "yahoo": ["Total Assets"]
       },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
       "pdf_aliases": ["total assets", "资产总计"]
     },
     "total_liabilities": {
@@ -94,6 +167,25 @@
       "source_aliases": {
         "akshare": ["负债合计", "总负债", "Total liabilities", "TOTAL_LIABILITIES"],
         "yahoo": ["Total Liabilities Net Minority Interest", "Total Liabilities"]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
       },
       "pdf_aliases": ["total liabilities", "负债合计"]
     },
@@ -218,6 +310,25 @@
         "akshare": ["毛利", "Gross profit", "GROSSPROFIT", "GROSS_PROFIT"],
         "yahoo": ["Gross Profit"]
       },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
       "pdf_aliases": ["gross profit", "毛利"]
     },
     "total_cur_assets": {
@@ -234,6 +345,25 @@
         "akshare": ["流动资产合计", "Total current assets", "TOTAL_CURRENT_ASSETS"],
         "yahoo": ["Current Assets", "Total Current Assets"]
       },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
       "pdf_aliases": ["current assets", "流动资产合计"]
     },
     "total_cur_liab": {
@@ -249,6 +379,25 @@
       "source_aliases": {
         "akshare": ["流动负债合计", "Total current liabilities", "TOTAL_CURRENT_LIAB"],
         "yahoo": ["Current Liabilities", "Total Current Liabilities"]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": ["yahoo_direct"],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
       },
       "pdf_aliases": ["current liabilities", "流动负债合计"]
     },

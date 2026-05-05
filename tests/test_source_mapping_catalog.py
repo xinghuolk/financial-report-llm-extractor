@@ -149,6 +149,42 @@ def test_source_mapping_catalog_loads_optional_source_policy(tmp_path: Path) -> 
     assert policy.market_policies["CN"].on_conflict == "select_primary_require_pdf"
 
 
+def test_minimal_source_mapping_net_profit_prefers_parent_profit() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+
+    entry = catalog.entries["net_profit"]
+
+    assert entry.source_aliases["akshare"][:2] == (
+        "PARENT_NETPROFIT",
+        "归属于母公司股东的净利润",
+    )
+    assert "NETPROFIT" in entry.source_aliases["akshare"][2:]
+    assert entry.source_policy is not None
+    assert (
+        entry.source_policy.semantic_concept
+        == "profit attributable to parent-company shareholders"
+    )
+
+
+def test_minimal_source_mapping_revenue_declares_operating_revenue_policy() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+
+    entry = catalog.entries["revenue"]
+
+    assert entry.source_aliases["akshare"][:2] == ("OPERATE_INCOME", "营业收入")
+    assert entry.source_policy is not None
+    assert entry.source_policy.semantic_variants["akshare"].related == (
+        "TOTAL_OPERATE_INCOME",
+        "营业总收入",
+    )
+
+
 @pytest.mark.parametrize(
     ("source_policy", "expected_message"),
     [
