@@ -183,6 +183,62 @@ def test_map_source_inventory_uses_catalog_alias_order_for_same_source_candidate
     assert net_profit.source_evidence[0].raw_field_code == "PARENT_NETPROFIT"
 
 
+def test_map_source_inventory_preserves_related_policy_evidence_candidates() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "revenue": _entry(
+                "revenue",
+                statement_type="income_statement",
+                source_aliases={
+                    "akshare": (
+                        "OPERATE_INCOME",
+                        "营业收入",
+                        "TOTAL_OPERATE_INCOME",
+                        "营业总收入",
+                    ),
+                    "yahoo": ("Total Revenue",),
+                },
+            )
+        },
+    )
+    records = (
+        _record(
+            "营业收入",
+            "168838102514.79",
+            Decimal("168838102514.79"),
+            raw_field_code="OPERATE_INCOME",
+        ),
+        _record(
+            "营业总收入",
+            "172054171890.91",
+            Decimal("172054171890.91"),
+            raw_field_code="TOTAL_OPERATE_INCOME",
+        ),
+        _record(
+            "Total Revenue",
+            "172054171890.91",
+            Decimal("172054171890.91"),
+            source="yahoo",
+            raw_field_code=None,
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["revenue"]
+    assert mapped.status == "ambiguous"
+    assert [candidate.raw_field_code for candidate in mapped.candidates] == [
+        "OPERATE_INCOME",
+        None,
+    ]
+    assert [
+        candidate.raw_field_code
+        for candidate in mapped.policy_evidence_candidates
+    ] == ["TOTAL_OPERATE_INCOME"]
+
+
 def test_map_source_inventory_derives_money_field_from_compatible_inputs() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",
@@ -614,6 +670,7 @@ def _record(
     *,
     source: str = "akshare",
     statement_type: str = "income_statement",
+    raw_field_code: str | None = None,
 ) -> SourceInventoryRecord:
     return SourceInventoryRecord(
         source=source,  # type: ignore[arg-type]
@@ -626,6 +683,7 @@ def _record(
         parsed_numeric_value=parsed_value,
         currency="CNY",
         unit="yuan",
+        raw_field_code=raw_field_code,
         scope="consolidated",
         source_evidence=(
             SourceEvidence(
@@ -635,6 +693,7 @@ def _record(
                 artifact_id=f"{source}_artifact",
                 raw_record_id=f"{source}:{raw_field_name}",
                 raw_field_name=raw_field_name,
+                raw_field_code=raw_field_code,
             ),
         ),
     )

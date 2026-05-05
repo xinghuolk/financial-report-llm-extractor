@@ -64,6 +64,9 @@ class MappedTurtleField:
     source_evidence: tuple[SourceEvidence, ...] = field(default_factory=tuple)
     derived_from: tuple[str, ...] = field(default_factory=tuple)
     errors: tuple[str, ...] = field(default_factory=tuple)
+    policy_evidence_candidates: tuple[TurtleMappingCandidate, ...] = field(
+        default_factory=tuple
+    )
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -79,6 +82,9 @@ class MappedTurtleField:
             "period": self.period,
             "scope": self.scope,
             "candidates": [candidate.to_dict() for candidate in self.candidates],
+            "policy_evidence_candidates": [
+                candidate.to_dict() for candidate in self.policy_evidence_candidates
+            ],
             "source_evidence": [evidence.to_dict() for evidence in self.source_evidence],
             "derived_from": list(self.derived_from),
             "errors": list(self.errors),
@@ -189,22 +195,26 @@ def _map_direct_field(
             status="missing",
             errors=("no source candidates matched catalog aliases",),
         )
-    candidates = tuple(
+    valid_candidates = tuple(
         candidate for candidate in matched_candidates if not candidate.errors
     )
-    if not candidates:
+    if not valid_candidates:
         return MappedTurtleField(
             field_id=entry.field_id,
             status="blocked",
             candidates=matched_candidates,
             errors=("matched source candidates failed validation or normalization",),
         )
-    candidates = _apply_alias_precedence(entry, candidates)
+    candidates = _apply_alias_precedence(entry, valid_candidates)
+    policy_evidence_candidates = tuple(
+        candidate for candidate in valid_candidates if candidate not in candidates
+    )
     if len(candidates) > 1:
         return MappedTurtleField(
             field_id=entry.field_id,
             status="ambiguous",
             candidates=candidates,
+            policy_evidence_candidates=policy_evidence_candidates,
             errors=("multiple source candidates matched catalog aliases",),
         )
     candidate = candidates[0]
@@ -220,6 +230,7 @@ def _map_direct_field(
         scope=candidate.scope,
         candidates=candidates,
         source_evidence=candidate.source_evidence,
+        policy_evidence_candidates=policy_evidence_candidates,
     )
 
 
