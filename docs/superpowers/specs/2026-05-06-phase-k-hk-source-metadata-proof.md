@@ -56,7 +56,14 @@ Phase K 的目标是让港股 source candidates 在进入 source policy 和 expo
 - `statement_metadata_proven`
 - `errors`
 
-Phase K 不先引入大型 metadata 子模型。优先复用这些字段，并加强生成、读取、映射和 policy 判断。只有当实现中发现 `unit` 无法表达 multiplier proof 时，再增加最小字段，例如 `unit_multiplier` 或独立 proof artifact。
+Phase K 不引入大型 metadata 子模型，但需要补充最小 proof 字段，让 review artifact 能解释单位和口径证明来源。推荐在 `TurtleMappingCandidate` 上增加：
+
+- `unit_multiplier`
+- `currency_proof_source`
+- `unit_proof_source`
+- `reporting_metadata_proof_source`
+
+这些字段只解释 source candidate 的 metadata proof，不改变 source data 的事实含义，也不做 FX conversion。
 
 ### 2. `currency` 与 `unit` 语义必须分离
 
@@ -139,6 +146,7 @@ Provider baseline replay summary 应继续输出：
 Phase K 需要额外保证：
 
 - `source_policy_report.json` 中 selected candidate 的 metadata proof 可审查。
+- selected candidate 至少能展示 `currency`、`unit`、`unit_multiplier`、`currency_proof_source`、`unit_proof_source`。
 - clean present 不包含 `unit == currency` 的 HK money fields。
 - HK metadata warning 的原因可读，至少区分 missing metadata、currency-as-unit、FX-like ratio、semantic conflict。
 
@@ -146,7 +154,7 @@ Phase K 需要额外保证：
 
 - AKShare HK adapter tests 使用 `unit="raw"` 或等价倍率语义，不再把 `HKD` 当作 unit。
 - Yahoo HK metadata proof 可以在没有 `account_standard` 时仍表达 annual + currency + raw-unit proof。
-- Mapping tests 覆盖 `statement_metadata_proven` 的 AKShare HK 和 Yahoo HK 场景。
+- Mapping tests 覆盖 `statement_metadata_proven`、`unit_multiplier`、`currency_proof_source`、`unit_proof_source` 的 AKShare HK 和 Yahoo HK 场景。
 - Source policy tests 覆盖：
   - HK primary candidate metadata proof 通过。
   - HK primary candidate `unit == currency` 时不能 clean present。
