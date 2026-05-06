@@ -537,6 +537,45 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
     assert "hk_yahoo_trust_policy_report: " in markdown
 
 
+def test_checked_in_hk_replay_reports_exact_15_field_closure_buckets(
+    checked_in_provider_baseline_replay: CheckedInReplay,
+) -> None:
+    _, payload = checked_in_provider_baseline_replay
+    companies = _companies_by_id(payload)
+    expected_clean = {
+        "cash",
+        "financing_cash_flow",
+        "investing_cash_flow",
+        "operating_cash_flow",
+        "revenue",
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    }
+
+    for company_id in HK_COMPANY_IDS:
+        combined = companies[company_id]["coverage"]["combined"]
+        review = companies[company_id]["review"]["combined"]
+        warning_fields = review["warning_classification"]["fields_by_category"]
+
+        assert set(combined["clean_present_fields"]) == expected_clean
+        assert combined["clean_present_count"] == 9
+        assert combined["total_fields"] == 15
+        assert set(review["yahoo_definition_unverified_fields"]) == {
+            "gross_profit",
+            "net_profit",
+        }
+        assert warning_fields["mapping_expansion_required"] == [
+            "defer_tax_liab"
+        ]
+        assert set(warning_fields["source_unavailable"]) == {
+            "bond_payable",
+            "cip",
+            "invest_income",
+        }
+
+
 def test_provider_baseline_replay_can_disable_hk_yahoo_trust_policy(
     tmp_path: Path,
 ) -> None:
