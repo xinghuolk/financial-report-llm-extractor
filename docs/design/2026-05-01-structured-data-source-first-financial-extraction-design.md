@@ -301,6 +301,43 @@ AKShare explicit metadata
 
 市场默认 heuristic 只能用于 review 提示，不能用于自动 present value。
 
+### 6.1 港股 Yahoo Raw HKD Trust Policy
+
+当前 HK provider baseline 显示，Yahoo/yfinance 对港股三大表会返回：
+
+- `currency = HKD`
+- `unit = raw`
+- `unit_multiplier = 1`
+- 完整 HKD 金额，而不是年报表内的 million/thousand 显示值。
+
+这并不等于所有 Yahoo HK 字段都可以直接提升为 clean source value。需要区分三层证明：
+
+1. **adapter metadata proof**：Yahoo 返回 HKD raw，当前 source inventory 能表达货币和单位。
+2. **PDF spot-check policy proof**：代表性年报样本证明 Yahoo raw HKD 等于年报 `HK$ million` / `$ Million` 值乘以 1,000,000，且字段语义一致。
+3. **final export PDF evidence**：某一次最终输出是否需要 page/block/snippet 级年报证据。
+
+Phase L 之后，`00001` 和 `01113` 的 quick-validation PDF artifacts 已经提供了初步 spot-check 证据：
+
+- `00001` annual report:
+  - `Revenue = 280,036 HK$ million`，匹配 Yahoo `Total Revenue = 280,036,000,000`。
+  - `Current assets = 212,743 HK$ million`，匹配 Yahoo `Current Assets = 212,743,000,000`。
+  - `Current liabilities = 135,399 HK$ million`，匹配 Yahoo `Current Liabilities = 135,399,000,000`。
+- `01113` annual report:
+  - `Group revenue = 57,935 $ Million`，匹配 Yahoo `Total Revenue = 57,935,000,000`。
+  - `Current assets = 174,106 $ Million`，匹配 Yahoo `Current Assets = 174,106,000,000`。
+  - `Current liabilities = 39,072 $ Million`，匹配 Yahoo `Current Liabilities = 39,072,000,000`。
+  - `Total assets` 可由年报 subtotals `335,392 + 174,106 = 509,498` HK$ million 证明，匹配 Yahoo `509,498,000,000`。
+  - `Total liabilities` 可由年报 subtotals `39,072 + 61,745 = 100,817` HK$ million 证明，匹配 Yahoo `100,817,000,000`。
+
+因此，下一步应建立 deterministic HK Yahoo trust policy，而不是逐家公司完整人工分析年报。建议规则：
+
+- 对 `revenue`、`net_profit`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities`，用 `00001` 和 `01113` 作为 sampled PDF proof，允许 HK Yahoo raw HKD 成为 market-specific primary source。
+- 对 `gross_profit`，继续保留 PDF verification requirement，直到正式年报表内能证明同名或等价 gross-profit row；当前样本的正式 income statement 不稳定暴露简单同名毛利行。
+- 对 `defer_tax_liab`，先做 Yahoo mapping expansion，再做 PDF spot-check。
+- 对 `bond_payable`、`cip`、`invest_income`，当前 AKShare/Yahoo captured data 没有可用候选，仍应进入 PDF 或新增数据源路径。
+
+HK Yahoo trust policy artifact 必须记录 sampled annual report page、statement line、reported unit、PDF value、expected raw HKD value、Yahoo raw field 和 match result。它证明的是“这个市场/字段的 Yahoo raw HKD 规则可信”，不是替代所有最终导出的 PDF page evidence。
+
 ## 7. LLM 和 MCP 的角色
 
 生产主路径不建议让 LLM 调 MCP 获取财务数据。
@@ -337,11 +374,12 @@ MCP 合适的角色：
 - Provider field baseline 已扩展为 AKShare + Yahoo across `600519`、`00001`、`01113` 的最新五年捕获数据，并压缩保存为 fixture。
 - Period-scoped provider baseline replay 已完成 source policy conflict layer 接入：
   - `600519` combined selected coverage: 14/15，`revenue` 被 source policy 选为 primary 但保留 warning 和 PDF verification requirement。
-  - `00001` 和 `01113` combined selected coverage: 11/15，HK balance-sheet totals 和 `gross_profit` 保留 FX-like / metadata-currency warning。
+  - `00001` 和 `01113` combined selected coverage: 6/15，clean present 为 4/15；`revenue`、`net_profit` 为 Yahoo single-source warning，资产负债表 totals 和 `gross_profit` 进入 PDF verification queue。
+  - Phase L warning classification 已把 HK 剩余字段拆成 `pdf_verification_required`、`mapping_expansion_required` 和 `source_unavailable`。
   - 每个 company/source slice 都写出 `source_policy_report.json`，同时区分 raw reconciliation conflict、policy unresolved conflict、selected with warnings 和 clean present fields。
 - 真实 provider 调用只用于创建或刷新 captured artifacts；日常 mapping、coverage、reconciliation 迭代应使用 captured replay，避免重复请求和接口波动。
 
-这说明 source-first 路线对核心三大表字段是可行的。当前剩余风险不再是 broad PDF retrieval，而是 source catalog 覆盖、provider 字段语义、货币单位 metadata proof，以及 selected PDF evidence supplement。
+这说明 source-first 路线对核心三大表字段是可行的。当前剩余风险不再是 broad PDF retrieval，而是 source catalog 覆盖、provider 字段语义、货币单位 metadata proof、HK Yahoo trust policy，以及 selected PDF evidence supplement。
 
 ### 风险：结构化来源覆盖不足
 
@@ -388,16 +426,14 @@ MCP 合适的角色：
 
 ## 9. 推荐下一步
 
-第一步不应继续扩大 PDF alias/statement 规则，而应先做 AKShare + Yahoo/yfinance source-first spike：
+下一步不应继续扩大 PDF alias/statement 规则，也不应直接扩展到完整 33 字段。应先做 HK Yahoo trust policy：
 
-1. 定义 `StructuredFinancialRecord` 和 `StructuredSourceRun` 合同。
-2. 实现 AKShare adapter 的 fixture-backed tests，并将 AKShare 设为第一优先级 source。
-3. 实现 Yahoo/yfinance adapter 或 deterministic wrapper，并将其设为第二优先级 source。
-4. 对 `00001`、`01113`、`600519` 生成 raw source inventory。
-5. 实现最小 Turtle mapping：revenue、net income、total assets、total liabilities、cash flow from operations。
-6. 实现 cross-source reconciliation：period、currency、unit、raw value、normalized value。
-7. 实现 source policy conflict resolution：semantic mismatch、FX-like ratio、currency metadata risk 和 single-source warning。
-8. 跑 source-first coverage gate，比较 AKShare、Yahoo 和组合覆盖率。
-9. 只对 missing、ambiguous、conflict、需要年报证据的字段进入 PDF fallback。
+1. 从已有 `00001_2025_en` 和 `01113_2025_en` quick-validation artifacts 构建 PDF spot-check fixture。
+2. 对 `revenue`、`net_profit`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities` 记录 PDF value、reported unit、Yahoo raw value 和 match result。
+3. 将 spot-check 结果接入 source policy，使 HK Yahoo verified fields 可以从 `pdf_verification_required` 转为 clean present。
+4. 保留 `gross_profit` 的 PDF verification requirement，避免把 Yahoo 标准化字段误当年报披露字段。
+5. 对 `defer_tax_liab` 先做 mapping expansion，再用 PDF spot-check 验证。
+6. 对 `bond_payable`、`cip`、`invest_income` 保持 source-unavailable 状态，除非新增 provider/source fixture。
+7. trust policy 稳定后，再进入完整 33 字段 source mapping 扩展。
 
-如果第一轮 AKShare/Yahoo 组合 coverage 明显高于当前 PDF retrieval，后续路线图应正式调整为 source-first；PDF/LLM 保留为最后阶段的 evidence supplement、consistency review 和 hard-case fallback。
+路线图已经正式调整为 source-first：先固化 AKShare/Yahoo source policy 和 HK Yahoo trust policy，再做字段扩展；PDF/LLM 保留为后续的 evidence supplement、consistency review 和 hard-case fallback。

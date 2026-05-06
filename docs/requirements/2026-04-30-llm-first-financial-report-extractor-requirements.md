@@ -210,10 +210,19 @@ Yahoo/yfinance adapter 必须：
 - 保存 raw JSON artifact。
 - 输出 source inventory rows。
 - 记录 ticker、market suffix、period、statement type、raw field name、raw value。
+- 记录 explicit metadata：currency、unit、unit multiplier、metadata proof source。
 - 明确标记 Yahoo 字段为标准化字段，不等同于年报原始披露字段。
 - 对年份不足、字段缺失、接口失败输出结构化状态。
 
 Yahoo Finance 没有稳定官方公开 HTTP API；实现上可以直接使用 yfinance，也可以包装 `../yahoo-finance-mcp/` 中的确定性接口。但生产主路径不应让 LLM 自由调用 MCP。
+
+港股 Yahoo/yfinance 额外要求：
+
+- 如果 Yahoo 返回 `currency=HKD`、`unit=raw`、`unit_multiplier=1`，adapter 可以表达为完整 HKD raw value。
+- 该 metadata 只能证明 Yahoo 返回值的货币和倍率，不能单独证明字段语义等价于年报披露字段。
+- HK Yahoo 字段只有在 sampled PDF trust policy 证明后，才能作为 market-specific clean primary source。
+- sampled PDF trust policy 必须记录年报 page、statement line、reported unit、PDF value、expected Yahoo raw value、Yahoo raw field 和 match result。
+- 未经 PDF trust policy 覆盖的 HK Yahoo standardized fields 必须保留 warning 或 PDF verification requirement。
 
 ## 8. Source Inventory
 
@@ -441,10 +450,14 @@ PDF artifacts 只在 fallback/supplement 阶段生成。source artifacts 是第�
 - AKShare captured replay 能通过 source inventory、Turtle mapping、reconciliation、source-only export 全链路，当前覆盖 8/9 个 minimal source-mapping 字段，缺口是 `gross_profit`。
 - Yahoo/yfinance `0001.HK` income statement 已做一次真实 opt-in 请求，并保存为 `tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl`。
 - Yahoo captured replay 能通过同一全链路，当前覆盖 3/9 个 minimal source-mapping 字段：`revenue`、`net_profit`、`gross_profit`。
+- Provider field baseline 已扩展为 AKShare + Yahoo across `600519`、`00001`、`01113` 的 latest-five-annual captured inventory，并支持 period-scoped replay。
+- Phase L replay 当前显示：`600519` clean present 13/15；`00001` 和 `01113` clean present 4/15，HK remaining queue 被拆成 PDF verification、mapping expansion 和 source unavailable。
+- PDF spot-check 已显示 `00001` 和 `01113` 的部分 Yahoo HK raw values 与年报 `$ Million` / `HK$ million` 披露值乘以 1,000,000 一致；下一步应把这一证据沉淀为 HK Yahoo trust policy，而不是逐家公司完整人工分析。
 - 后续 mapping/reconciliation 调整应优先使用 captured replay，不应反复请求 AKShare/Yahoo；只有需要新增 statement family、刷新 provider 返回或确认 source availability 时才运行真实 provider。
 
 当前还不能宣称完整完成：
 
-- `00001`、`01113` 的 AKShare/Yahoo captured validation 仍需补齐。
-- Yahoo balance sheet 和 cash flow captured validation 仍需补齐。
-- 跨 source 同字段 period、currency、unit、value reconciliation 仍需用真实/captured 组合数据验证。
+- HK Yahoo trust policy 尚未实现；`revenue`、`net_profit`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities` 仍需通过 sampled PDF proof 后才能 clean。
+- `gross_profit` 在 HK 样本中仍需 PDF verification，不能仅凭 Yahoo standardized field clean。
+- `defer_tax_liab` 需要先做 mapping expansion，再做 PDF spot-check。
+- `bond_payable`、`cip`、`invest_income` 在当前 AKShare/Yahoo captured data 中仍是 source unavailable，除非新增 provider/source fixture。

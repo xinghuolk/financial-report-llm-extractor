@@ -77,6 +77,12 @@
   - `financial-report-llm-extractor discover-provider-fields` 可从压缩 fixture 生成 `provider_field_candidate_report.json` 和 Markdown review report。
   - `src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py` 已实现 period-scoped baseline replay。
   - `financial-report-llm-extractor replay-provider-baseline` / `scripts/run-provider-baseline-period-replay.sh` 会按 company/source 选择最新年度 date part，并把 AKShare/Yahoo period 归一化后再做 combined replay。
+  - Phase L 已实现 HK warning classification：每个 replay slice 写出 `warning_classification.json` / `.md`，并把 HK non-clean fields 分成 `pdf_verification_required`、`mapping_expansion_required`、`source_unavailable`。
+  - 当前 latest replay 口径：`600519` clean present 13/15；`00001` 和 `01113` clean present 4/15。
+  - HK `00001` / `01113` 当前队列：
+    - `pdf_verification_required`: `gross_profit`, `net_profit`, `revenue`, `total_assets`, `total_cur_assets`, `total_cur_liab`, `total_liabilities`
+    - `mapping_expansion_required`: `defer_tax_liab`
+    - `source_unavailable`: `bond_payable`, `cip`, `invest_income`
 - field_catalog/turtle_v015_priority_fields.json 已包含 P0-P4 字段优先级。
 - tests/ 下已有 test_models.py、test_ingestion.py、test_cli.py、test_field_catalog.py。
 
@@ -99,7 +105,13 @@
 当前推荐方向：
 - Do not map the full 6,771-row provider baseline directly; it intentionally contains 5 annual periods and will produce period conflicts.
 - Use `scripts/run-provider-baseline-period-replay.sh` to inspect latest-period source-first coverage by company and provider; it normalizes AKShare/Yahoo period strings before combined replay.
-- Choose subsequent mapping/PDF/LLM work from the replay summary's missing, blocked, ambiguous, and conflict fields.
+- 下一步是 Phase M: HK Yahoo Trust Policy And PDF Spot-Check，不是直接扩完整 33 字段。
+- 已从 `downloads/hk_stocks/00001/annual/2025_annual_en.pdf` 和 `downloads/hk_stocks/01113/annual/2025_annual_en.pdf` 的 quick-validation artifacts 初步确认：
+  - Yahoo HK `currency=HKD`, `unit=raw`, `unit_multiplier=1` 返回完整 HKD raw value。
+  - `00001` / `01113` 的 `revenue`、`current assets`、`current liabilities` 等字段能与年报 `$ Million` / `HK$ million` 值乘以 1,000,000 对齐。
+  - `01113` 的 `total_assets` 和 `total_liabilities` 能由年报 subtotals 推导并匹配 Yahoo raw HKD。
+- Phase M 应把这些 sample proof 固化为 deterministic HK Yahoo trust-policy fixture，并只对已验证字段放行 market-specific Yahoo primary policy。
+- `gross_profit` 仍需 PDF verification；`defer_tax_liab` 先做 mapping expansion 再 spot-check；`bond_payable`、`cip`、`invest_income` 当前 source unavailable。
 - 最后才对仍缺失、冲突、歧义或需要页码证据的字段进入 PDF/LLM fallback。
 
 Phase 2 已完成的基础能力：

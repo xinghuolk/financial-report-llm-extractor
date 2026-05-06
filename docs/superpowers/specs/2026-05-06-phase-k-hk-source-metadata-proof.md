@@ -32,7 +32,7 @@ Phase K 的目标是让港股 source candidates 在进入 source policy 和 expo
 
 ## 非目标
 
-- 不扩展 minimal source mapping 到 33 字段。那是 Phase M。
+- 不扩展 minimal source mapping 到 33 字段。该工作应在 HK Yahoo trust policy 稳定后推进，当前路线图中跟踪为 Phase N。
 - 不实现 PDF evidence supplement。Phase K 只产出是否需要 PDF verification。
 - 不刷新真实 AKShare/Yahoo provider fixture，除非现有 fixture 无法支撑测试。
 - 不做隐式 FX conversion。
@@ -182,6 +182,7 @@ Phase K 完成后进入 Phase L：
 - 对 `00001` 和 `01113` 当前 15 字段 warning 做分类。
 - 将 warning 分成 source policy 可解决、必须 PDF verification、mapping expansion required、source unavailable。
 
-Phase L 完成后再进入 Phase M：
+Phase L 完成后先进入 HK Yahoo trust policy：
 
-- 把 minimal source mapping 从 15 扩到完整 P0/P1 33 字段。
+- 用 `00001` 和 `01113` 的 PDF spot-check 固化 Yahoo HK raw HKD 信任策略。
+- 信任策略稳定后，再把 minimal source mapping 从 15 扩到完整 P0/P1 33 字段。

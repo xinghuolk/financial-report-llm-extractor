@@ -15,7 +15,7 @@ The current provider baseline replay for `00001` and `01113` still leaves a usef
 - policy unresolved / metadata blocker / reconciliation conflict fields: `gross_profit`, `total_assets`, `total_cur_assets`, `total_cur_liab`, `total_liabilities`
 - missing fields: `bond_payable`, `cip`, `defer_tax_liab`, `invest_income`
 
-Phase L turns these fields into explicit next-action buckets so Phase M and PDF fallback do not start from a broad or ambiguous list.
+Phase L turns these fields into explicit next-action buckets so the HK Yahoo trust-policy phase, later source-mapping expansion, and PDF fallback do not start from a broad or ambiguous list.
 
 ## Goal
 
@@ -30,7 +30,7 @@ The classification must answer:
 
 ## Non-Goals
 
-- Do not expand the minimal source mapping denominator from 15 to 33 fields. That is Phase M.
+- Do not expand the minimal source mapping denominator from 15 to 33 fields. That now belongs after HK Yahoo trust-policy proof, currently tracked as Phase N in the roadmap.
 - Do not refresh AKShare or Yahoo fixtures.
 - Do not run PDF ingestion or LLM extraction.
 - Do not decide final canonical facts.

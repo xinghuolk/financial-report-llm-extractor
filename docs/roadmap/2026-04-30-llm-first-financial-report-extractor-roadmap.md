@@ -661,7 +661,40 @@ Exit criteria:
 - The roadmap can state exactly which HK fields should be fixed in source policy and which must proceed to PDF evidence supplement.
 - PDF fallback receives a bounded field list instead of broad P0/P1 retrieval.
 
-### Phase M: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
+### Phase M: HK Yahoo Trust Policy And PDF Spot-Check
+
+Goal: turn the current HK PDF verification queue into deterministic source policy rules where sampled annual-report evidence proves Yahoo HK raw values and field semantics.
+
+Current evidence:
+
+- `00001` and `01113` annual reports in `downloads/hk_stocks/*/annual/2025_annual_en.pdf` have already been parsed into quick-validation artifacts.
+- For `00001`, the annual report discloses `Revenue = 280,036 HK$ million`, `Current assets = 212,743 HK$ million`, and `Current liabilities = 135,399 HK$ million`; Yahoo returns the same values as full HKD raw amounts.
+- For `01113`, the annual report discloses `Group revenue = 57,935 $ Million`, `Current assets = 174,106 $ Million`, and `Current liabilities = 39,072 $ Million`; Yahoo returns the same values as full HKD raw amounts.
+- `01113` total assets and total liabilities can be proven from annual-report subtotals:
+  - `335,392 + 174,106 = 509,498` HK$ million, matching Yahoo `Total Assets`.
+  - `39,072 + 61,745 = 100,817` HK$ million, matching Yahoo `Total Liabilities Net Minority Interest`.
+
+Deliverables:
+
+- Add an HK Yahoo trust-policy fixture that records annual-report evidence for `00001` and `01113`, including page, statement line, reported unit, PDF value, expected Yahoo raw value, and matched Yahoo raw field.
+- Classify the current HK `pdf_verification_required` queue into:
+  - `yahoo_pdf_verified`: Yahoo HK raw value is proven equivalent to annual-report HK$ million disclosure multiplied by 1,000,000.
+  - `yahoo_definition_unverified`: Yahoo has a value, but annual-report row semantics are not directly proven.
+  - `pdf_required`: no current API path can prove the field.
+- Promote HK Yahoo primary policy only for sampled fields whose definition and unit are proven:
+  - likely candidates: `revenue`, `net_profit`, `total_assets`, `total_cur_assets`, `total_cur_liab`, `total_liabilities`.
+  - keep `gross_profit` in PDF verification until the annual-report row semantics are proven, because the sampled formal income statements do not expose a simple same-name gross-profit row.
+- Keep `defer_tax_liab` as mapping-expansion-first with PDF spot-check.
+- Keep `bond_payable`, `cip`, and `invest_income` as source-unavailable for the current AKShare/Yahoo captured data unless a new provider/source fixture is added.
+- Update provider replay so HK Yahoo-verified fields can become clean present while preserving the sampled PDF verification artifact as policy evidence.
+
+Exit criteria:
+
+- `00001` and `01113` combined slices show improved clean-present coverage for the current 15-field denominator without relying on every-company manual PDF analysis.
+- Source policy explains that HK Yahoo `currency=HKD`, `unit=raw`, `unit_multiplier=1` is trusted only for fields covered by the sampled PDF trust policy.
+- The project can distinguish "Yahoo raw HKD value is PDF-verified by policy" from "this company has page/block PDF evidence in the final export".
+
+### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 
 Goal: expand source-first coverage only after HK proof and warning classification are stable.
 
