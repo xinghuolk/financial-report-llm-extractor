@@ -38,6 +38,7 @@ PROVIDER_BASELINE_INVENTORY_SUMMARY_PATH = (
 PROVIDER_BASELINE_REPLAY_SCRIPT_PATH = (
     REPO_ROOT / "scripts" / "run-provider-baseline-period-replay.sh"
 )
+HK_YAHOO_TRUST_POLICY_PATH = REPO_ROOT / "field_catalog" / "hk_yahoo_trust_policy.json"
 
 HK_COMPANY_IDS = ("00001", "01113")
 EXPECTED_HK_METADATA_BLOCKER_FIELDS = frozenset(
@@ -47,6 +48,18 @@ EXPECTED_HK_METADATA_BLOCKER_FIELDS = frozenset(
         "total_cur_liab",
         "total_liabilities",
     }
+)
+EXPECTED_HK_YAHOO_VERIFIED_FIELDS = frozenset(
+    {
+        "revenue",
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    }
+)
+EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS = frozenset(
+    {"gross_profit", "net_profit"}
 )
 EXPECTED_HK_PDF_VERIFICATION_FIELDS = frozenset(
     {
@@ -94,11 +107,14 @@ def _assert_hk_warning_classification(
 ) -> None:
     warning_classification = company["review"]["combined"]["warning_classification"]
     assert (
-        warning_classification["counts_by_category"]["pdf_verification_required"] >= 7
+        warning_classification["counts_by_category"]["yahoo_pdf_verified"] >= 5
     )
     assert set(
-        warning_classification["fields_by_category"]["pdf_verification_required"]
-    ) >= EXPECTED_HK_PDF_VERIFICATION_FIELDS
+        warning_classification["fields_by_category"]["yahoo_pdf_verified"]
+    ) >= EXPECTED_HK_YAHOO_VERIFIED_FIELDS
+    assert set(
+        warning_classification["fields_by_category"]["yahoo_definition_unverified"]
+    ) <= EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS
     assert (
         warning_classification["fields_by_category"]["mapping_expansion_required"]
         == EXPECTED_HK_MAPPING_EXPANSION_FIELDS
@@ -114,7 +130,7 @@ def _assert_hk_warning_classification(
         artifact_payload = json.loads(artifact_path.read_text(encoding="utf-8"))
         assert (
             artifact_payload["items"]["revenue"]["category"]
-            == "pdf_verification_required"
+            == "yahoo_pdf_verified"
         )
 
 
@@ -406,9 +422,6 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
         hk_combined = companies[company_id]["review"]["combined"]
         assert "present_metadata_warning_fields" in hk_combined
         assert "metadata_blocker_fields" in hk_combined
-        assert set(hk_combined["metadata_blocker_fields"]) >= (
-            EXPECTED_HK_METADATA_BLOCKER_FIELDS
-        )
         assert set(hk_combined["selected_with_warnings_fields"]) >= set(
             hk_combined["present_metadata_warning_fields"]
         )
@@ -437,6 +450,112 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
         assert selected_candidate["unit_multiplier"] == "1"
         assert selected_candidate["currency_proof_source"] == "yahoo_statement_metadata"
         assert selected_candidate["unit_proof_source"] == "source_unit:raw"
+
+
+def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
+    checked_in_provider_baseline_replay: CheckedInReplay,
+) -> None:
+    _, payload = checked_in_provider_baseline_replay
+    companies = _companies_by_id(payload)
+
+    for company_id in HK_COMPANY_IDS:
+        company = companies[company_id]
+        combined_coverage = company["coverage"]["combined"]
+        combined_review = company["review"]["combined"]
+        warning_fields = combined_review["warning_classification"]["fields_by_category"]
+
+        assert EXPECTED_HK_YAHOO_VERIFIED_FIELDS <= set(
+            combined_coverage["clean_present_fields"]
+        )
+        assert not (
+            EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS
+            & set(combined_coverage["clean_present_fields"])
+        )
+        assert (
+            set(combined_review["yahoo_pdf_verified_fields"])
+            == EXPECTED_HK_YAHOO_VERIFIED_FIELDS
+        )
+        assert (
+            set(combined_review["yahoo_definition_unverified_fields"])
+            == EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS
+        )
+        assert set(warning_fields["yahoo_pdf_verified"]) == (
+            EXPECTED_HK_YAHOO_VERIFIED_FIELDS
+        )
+        assert set(warning_fields["yahoo_definition_unverified"]) == (
+            EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS
+            & set(warning_fields["yahoo_definition_unverified"])
+        )
+        assert EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS <= set(
+            warning_fields["source_unavailable"]
+        )
+        assert EXPECTED_HK_MAPPING_EXPANSION_FIELDS == warning_fields[
+            "mapping_expansion_required"
+        ]
+
+        artifact_paths = company["artifact_paths"]["combined"]
+        assert "hk_yahoo_trust_policy_report" in artifact_paths
+        trust_report_path = Path(artifact_paths["hk_yahoo_trust_policy_report"])
+        assert trust_report_path.exists()
+        trust_report = json.loads(trust_report_path.read_text(encoding="utf-8"))
+        assert set(trust_report["yahoo_pdf_verified_fields"]) == (
+            EXPECTED_HK_YAHOO_VERIFIED_FIELDS
+        )
+        assert set(trust_report["yahoo_definition_unverified_fields"]) == (
+            EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS
+        )
+        assert "pdf_required_fields" in trust_report
+
+        source_policy_path = Path(artifact_paths["source_policy_report"])
+        source_policy_report = json.loads(source_policy_path.read_text(encoding="utf-8"))
+        extraction_path = Path(artifact_paths["extraction_result"])
+        extraction_result = json.loads(extraction_path.read_text(encoding="utf-8"))
+        for field_id in EXPECTED_HK_YAHOO_VERIFIED_FIELDS:
+            policy_item = source_policy_report["items"][field_id]
+            export_item = extraction_result["items"][field_id]
+            assert policy_item["trust_policy_evidence"]["classification"] == (
+                "yahoo_pdf_verified"
+            )
+            assert export_item["trust_policy_evidence"]["classification"] == (
+                "yahoo_pdf_verified"
+            )
+            assert export_item["pdf_evidence"] == []
+        for field_id in EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS:
+            assert (
+                source_policy_report["items"][field_id]["trust_policy_evidence"]
+                is None
+            )
+            assert extraction_result["items"][field_id]["trust_policy_evidence"] is None
+            assert extraction_result["items"][field_id]["pdf_evidence"] == []
+
+    markdown = checked_in_provider_baseline_replay[0].markdown_path.read_text(
+        encoding="utf-8"
+    )
+    assert "yahoo_pdf_verified_fields: " in markdown
+    assert "yahoo_definition_unverified_fields: " in markdown
+    assert "pdf_required_fields: " in markdown
+    assert "hk_yahoo_trust_policy_report: " in markdown
+
+
+def test_provider_baseline_replay_can_disable_hk_yahoo_trust_policy(
+    tmp_path: Path,
+) -> None:
+    result = write_provider_baseline_period_replay(
+        inventory_path=PROVIDER_BASELINE_INVENTORY_PATH,
+        inventory_summary_path=PROVIDER_BASELINE_INVENTORY_SUMMARY_PATH,
+        catalog_path=SOURCE_MAPPING_CATALOG_PATH,
+        output_dir=tmp_path / "baseline",
+        company_ids=("00001",),
+        hk_yahoo_trust_policy_path=None,
+    )
+    payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
+    company = payload["companies"][0]
+
+    assert "hk_yahoo_trust_policy_report" not in company["artifact_paths"]["combined"]
+    assert not (
+        EXPECTED_HK_YAHOO_VERIFIED_FIELDS
+        <= set(company["coverage"]["combined"]["clean_present_fields"])
+    )
 
 
 def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(

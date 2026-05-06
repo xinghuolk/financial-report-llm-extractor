@@ -381,7 +381,8 @@ def test_replay_provider_baseline_command_calls_replay_layer(
     catalog_path = tmp_path / "catalog.json"
     taxonomy_path = tmp_path / "taxonomy.json"
     output_dir = tmp_path / "replay"
-    calls: list[tuple[Path, Path, Path, Path, Path]] = []
+    trust_policy_path = tmp_path / "hk_yahoo_trust_policy.json"
+    calls: list[tuple[Path, Path, Path, Path, Path, Path | None]] = []
 
     def fake_write_provider_baseline_period_replay(
         *,
@@ -392,6 +393,7 @@ def test_replay_provider_baseline_command_calls_replay_layer(
         output_dir: Path,
         output_summary_path: Path | None = None,
         company_ids: tuple[str, ...] | None = None,
+        hk_yahoo_trust_policy_path: Path | None = None,
     ) -> FakeProviderBaselineReplayResult:
         assert output_summary_path is None
         assert company_ids is None
@@ -402,6 +404,7 @@ def test_replay_provider_baseline_command_calls_replay_layer(
                 catalog_path,
                 taxonomy_path,
                 output_dir,
+                hk_yahoo_trust_policy_path,
             )
         )
         return FakeProviderBaselineReplayResult(
@@ -429,12 +432,21 @@ def test_replay_provider_baseline_command_calls_replay_layer(
             str(taxonomy_path),
             "--out",
             str(output_dir),
+            "--hk-yahoo-trust-policy",
+            str(trust_policy_path),
         ]
     )
 
     assert exit_code == 0
     assert calls == [
-        (inventory_path, inventory_summary_path, catalog_path, taxonomy_path, output_dir)
+        (
+            inventory_path,
+            inventory_summary_path,
+            catalog_path,
+            taxonomy_path,
+            output_dir,
+            trust_policy_path,
+        )
     ]
 
 

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any, cast
 
 from financial_report_llm_extractor.structured_sources.catalog import (
     MarketSourcePolicy,
@@ -11,6 +12,11 @@ from financial_report_llm_extractor.structured_sources.mapping import (
     MappedTurtleField,
     TurtleMappingCandidate,
     TurtleMappingResult,
+)
+from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
+    HkYahooTrustPolicy,
+    HkYahooTrustRule,
+    HkYahooTrustSample,
 )
 from financial_report_llm_extractor.structured_sources.models import SourceEvidence
 from financial_report_llm_extractor.structured_sources.reconciliation import (
@@ -517,6 +523,256 @@ def test_source_policy_allows_hk_yahoo_primary_when_statement_metadata_is_proven
     )
 
 
+def test_source_policy_marks_hk_yahoo_verified_field_clean_with_trust_policy() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            field_id: _entry(
+                field_id,
+                SourcePolicy(
+                    semantic_concept="reported statement line",
+                    market_policies={
+                        "HK": MarketSourcePolicy(
+                            primary_route="yahoo_direct",
+                            cross_check_routes=("akshare_direct",),
+                            on_conflict="select_primary_require_pdf",
+                        )
+                    },
+                    verification_requirement="pdf_required_on_conflict",
+                ),
+            )
+            for field_id in ("total_assets", "total_cur_assets", "total_liabilities")
+        },
+    )
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "total_assets": _field(
+                "total_assets",
+                Decimal("100"),
+                Decimal("110.71499745"),
+                yahoo_statement_metadata_proven=False,
+            ),
+            "total_cur_assets": _field(
+                "total_cur_assets",
+                Decimal("50"),
+                Decimal("55.357498725"),
+                yahoo_statement_metadata_proven=False,
+                yahoo_raw_field_name="Current Assets",
+            ),
+            "total_liabilities": _field(
+                "total_liabilities",
+                Decimal("20"),
+                Decimal("22.14299949"),
+                yahoo_statement_metadata_proven=False,
+                yahoo_raw_field_name="Total Liabilities Net Minority Interest",
+            ),
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=_trust_policy(),
+    )
+
+    item = report.items["total_assets"]
+    assert item.selection_status == "selected_primary"
+    assert item.selected_candidate is not None
+    assert item.selected_candidate.source == "yahoo"
+    assert item.verification_required is False
+    assert item.conflict_classifications == ()
+    assert item.warnings == ()
+    assert item.trust_policy_evidence is not None
+    assert item.trust_policy_evidence["policy_id"] == (
+        "hk_yahoo_raw_hkd_pdf_verified:total_assets"
+    )
+
+
+def test_source_policy_does_not_apply_policy_without_raw_field_match() -> None:
+    catalog = _catalog(
+        "total_assets",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_require_pdf",
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = _mapping(
+        "total_assets",
+        (
+            _candidate(
+                "akshare",
+                "总资产",
+                "TOTAL_ASSETS",
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                statement_metadata_proven=True,
+            ),
+            _candidate(
+                "yahoo",
+                "Total Liabilities Net Minority Interest",
+                None,
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                unit_multiplier=Decimal("1"),
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=_trust_policy(),
+    )
+
+    item = report.items["total_assets"]
+    assert item.verification_required is True
+    assert item.trust_policy_evidence is None
+    assert item.conflict_classifications == ("statement_metadata_unproven",)
+
+
+def test_source_policy_keeps_gross_profit_verification_required_without_definition_proof() -> None:
+    catalog = _catalog(
+        "gross_profit",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_require_pdf",
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = _mapping(
+        "gross_profit",
+        (
+            _candidate(
+                "akshare",
+                "毛利",
+                "GROSS_PROFIT",
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                statement_metadata_proven=True,
+            ),
+            _candidate(
+                "yahoo",
+                "Gross Profit",
+                None,
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                unit_multiplier=Decimal("1"),
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=_trust_policy(),
+    )
+
+    item = report.items["gross_profit"]
+    assert item.verification_required is True
+    assert item.trust_policy_evidence is None
+    assert item.conflict_classifications == ("statement_metadata_unproven",)
+
+
+def test_source_policy_report_serializes_trust_policy_evidence_separately() -> None:
+    catalog = _catalog(
+        "total_assets",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_require_pdf",
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = _mapping(
+        "total_assets",
+        (
+            _candidate(
+                "akshare",
+                "总资产",
+                "TOTAL_ASSETS",
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                statement_metadata_proven=True,
+            ),
+            _candidate(
+                "yahoo",
+                "Total Assets",
+                None,
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                unit_multiplier=Decimal("1"),
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=_trust_policy(),
+    )
+    item_payload = cast(dict[str, Any], report.to_dict()["items"])["total_assets"]
+    item_payload = cast(dict[str, Any], item_payload)
+
+    trust_policy_evidence = cast(dict[str, Any], item_payload["trust_policy_evidence"])
+    selected_candidate = cast(dict[str, Any], item_payload["selected_candidate"])
+    assert trust_policy_evidence["policy_id"] == (
+        "hk_yahoo_raw_hkd_pdf_verified:total_assets"
+    )
+    assert selected_candidate["source_evidence"]
+
+
 def test_source_policy_does_not_classify_fx_like_ratio_across_periods() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",
@@ -746,6 +1002,7 @@ def _field(
     *,
     akshare_statement_metadata_proven: bool = True,
     yahoo_statement_metadata_proven: bool = False,
+    yahoo_raw_field_name: str = "Total Assets",
     period: str = "2025-12-31",
 ) -> MappedTurtleField:
     return MappedTurtleField(
@@ -764,12 +1021,13 @@ def _field(
             ),
             _candidate(
                 "yahoo",
-                "Total Assets",
+                yahoo_raw_field_name,
                 None,
                 yahoo_value,
                 currency="HKD",
                 period=period,
                 statement_metadata_proven=yahoo_statement_metadata_proven,
+                unit_multiplier=Decimal("1"),
             ),
         ),
         errors=("multiple source candidates matched catalog aliases",),
@@ -786,6 +1044,7 @@ def _candidate(
     unit: str | None = "default",
     canonical_unit: str | None = "default",
     statement_metadata_proven: bool = False,
+    unit_multiplier: Decimal | None = None,
     period: str = "2025-12-31",
 ) -> TurtleMappingCandidate:
     resolved_unit = "raw" if unit == "default" and source == "yahoo" else unit
@@ -803,6 +1062,7 @@ def _candidate(
         unit=resolved_unit,
         canonical_unit=resolved_canonical_unit,  # type: ignore[arg-type]
         statement_metadata_proven=statement_metadata_proven,
+        unit_multiplier=unit_multiplier,
         period=period,
         scope="unknown",
         source_evidence=(
@@ -816,4 +1076,61 @@ def _candidate(
                 raw_field_code=raw_field_code,
             ),
         ),
+    )
+
+
+def _trust_policy() -> HkYahooTrustPolicy:
+    return HkYahooTrustPolicy(
+        version=1,
+        market="HK",
+        provider="yahoo",
+        rules=(
+            _trust_rule("total_assets", "Total Assets", "yahoo_pdf_verified"),
+            _trust_rule("total_cur_assets", "Current Assets", "yahoo_pdf_verified"),
+            _trust_rule(
+                "total_liabilities",
+                "Total Liabilities Net Minority Interest",
+                "yahoo_pdf_verified",
+            ),
+            _trust_rule("gross_profit", "Gross Profit", "yahoo_definition_unverified"),
+        ),
+    )
+
+
+def _trust_rule(
+    field_id: str,
+    raw_field_name: str,
+    classification: str,
+) -> HkYahooTrustRule:
+    return HkYahooTrustRule(
+        policy_id=f"hk_yahoo_raw_hkd_pdf_verified:{field_id}",
+        field_id=field_id,
+        classification=classification,  # type: ignore[arg-type]
+        trusted_currency="HKD",
+        trusted_unit="raw",
+        trusted_unit_multiplier=Decimal("1"),
+        allowed_yahoo_raw_fields=(raw_field_name,),
+        samples=(
+            (_trust_sample(field_id, raw_field_name),)
+            if classification == "yahoo_pdf_verified"
+            else ()
+        ),
+    )
+
+
+def _trust_sample(field_id: str, raw_field_name: str) -> HkYahooTrustSample:
+    return HkYahooTrustSample(
+        company_id="00001",
+        provider_ticker="0001.HK",
+        report_ref="annual.pdf",
+        pdf_page=1,
+        statement_name="Consolidated Statement",
+        statement_line=field_id,
+        reported_currency="HKD",
+        reported_unit="million",
+        pdf_value="1",
+        pdf_unit_multiplier=Decimal("1000000"),
+        expected_yahoo_raw_value="1000000",
+        yahoo_raw_field=raw_field_name,
+        match_basis="fixture arithmetic",
     )

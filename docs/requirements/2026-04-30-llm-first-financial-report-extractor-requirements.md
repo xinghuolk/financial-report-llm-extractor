@@ -451,13 +451,14 @@ PDF artifacts 只在 fallback/supplement 阶段生成。source artifacts 是第�
 - Yahoo/yfinance `0001.HK` income statement 已做一次真实 opt-in 请求，并保存为 `tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl`。
 - Yahoo captured replay 能通过同一全链路，当前覆盖 3/9 个 minimal source-mapping 字段：`revenue`、`net_profit`、`gross_profit`。
 - Provider field baseline 已扩展为 AKShare + Yahoo across `600519`、`00001`、`01113` 的 latest-five-annual captured inventory，并支持 period-scoped replay。
-- Phase L replay 当前显示：`600519` clean present 13/15；`00001` 和 `01113` clean present 4/15，HK remaining queue 被拆成 PDF verification、mapping expansion 和 source unavailable。
-- PDF spot-check 已显示 `00001` 和 `01113` 的部分 Yahoo HK raw values 与年报 `$ Million` / `HK$ million` 披露值乘以 1,000,000 一致；下一步应把这一证据沉淀为 HK Yahoo trust policy，而不是逐家公司完整人工分析。
+- Phase M replay 当前显示：`00001` 和 `01113` combined selected coverage 均为 `10/15`，clean present 均为 `9/15`。
+- HK Yahoo trust policy 已把 `revenue`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities` 归为 `yahoo_pdf_verified`，证明 Yahoo HK raw value 与 sampled annual-report `$ Million` / `HK$ million` 披露值乘以 1,000,000 一致。
+- Provider replay 现在会输出 `hk_yahoo_trust_policy_report.json`，并在 source policy/export 中保留 `trust_policy_evidence`，不把它伪装成最终 `pdf_evidence`。
 - 后续 mapping/reconciliation 调整应优先使用 captured replay，不应反复请求 AKShare/Yahoo；只有需要新增 statement family、刷新 provider 返回或确认 source availability 时才运行真实 provider。
 
 当前还不能宣称完整完成：
 
-- HK Yahoo trust policy 尚未实现；`revenue`、`net_profit`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities` 仍需通过 sampled PDF proof 后才能 clean。
+- HK 当前还不是 15/15：`net_profit` 有 Yahoo 值但仍是 `yahoo_definition_unverified`，需要 annual-report row semantics proof。
 - `gross_profit` 在 HK 样本中仍需 PDF verification，不能仅凭 Yahoo standardized field clean。
 - `defer_tax_liab` 需要先做 mapping expansion，再做 PDF spot-check。
 - `bond_payable`、`cip`、`invest_income` 在当前 AKShare/Yahoo captured data 中仍是 source unavailable，除非新增 provider/source fixture。

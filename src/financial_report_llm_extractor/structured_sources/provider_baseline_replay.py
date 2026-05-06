@@ -29,6 +29,10 @@ from financial_report_llm_extractor.structured_sources.export import (
 from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
     discover_provider_field_candidates,
 )
+from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
+    HkYahooTrustPolicy,
+    load_hk_yahoo_trust_policy,
+)
 from financial_report_llm_extractor.structured_sources.mapping import (
     map_source_inventory,
     write_turtle_mapping_artifacts,
@@ -52,12 +56,24 @@ from financial_report_llm_extractor.structured_sources.warning_classification im
 
 
 ReplaySliceName = Literal["akshare_only", "yahoo_only", "combined"]
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_HK_YAHOO_TRUST_POLICY_PATH = (
+    REPO_ROOT / "field_catalog" / "hk_yahoo_trust_policy.json"
+)
 METADATA_REVIEW_NOTES = {
     "currency_metadata_required",
     "metadata_currency_suspected",
     "currency_as_unit",
     "statement_metadata_unproven",
 }
+
+
+@dataclass(frozen=True)
+class _AutoHkYahooTrustPolicyPath:
+    pass
+
+
+AUTO_HK_YAHOO_TRUST_POLICY_PATH = _AutoHkYahooTrustPolicyPath()
 
 
 @dataclass(frozen=True)
@@ -144,6 +160,9 @@ def write_provider_baseline_period_replay(
     taxonomy_path: Path = Path("field_catalog/turtle_v015_field_taxonomy.json"),
     output_summary_path: Path | None = None,
     company_ids: tuple[str, ...] | None = None,
+    hk_yahoo_trust_policy_path: (
+        Path | None | _AutoHkYahooTrustPolicyPath
+    ) = AUTO_HK_YAHOO_TRUST_POLICY_PATH,
 ) -> ProviderBaselineReplayResult:
     output_dir.mkdir(parents=True, exist_ok=True)
     if not inventory_summary_path.exists():
@@ -152,6 +171,9 @@ def write_provider_baseline_period_replay(
     records = read_source_inventory(inventory_path)
     catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1"))
     taxonomy = load_field_taxonomy(taxonomy_path)
+    hk_yahoo_trust_policy = _load_replay_hk_yahoo_trust_policy(
+        hk_yahoo_trust_policy_path
+    )
     groups = company_source_groups()
     selected_company_ids = company_ids or tuple(sorted(groups))
     unknown_company_ids = sorted(set(selected_company_ids) - set(groups))
@@ -179,6 +201,7 @@ def write_provider_baseline_period_replay(
             records=akshare_records,
             company_id=company_id,
             market=company_groups["akshare"].market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         )
         yahoo_report = _write_slice(
             company_dir / "yahoo_only",
@@ -187,6 +210,7 @@ def write_provider_baseline_period_replay(
             records=yahoo_records,
             company_id=company_id,
             market=company_groups["yahoo"].market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         )
         combined_report = _write_slice(
             company_dir / "combined",
@@ -195,6 +219,7 @@ def write_provider_baseline_period_replay(
             records=akshare_records + yahoo_records,
             company_id=company_id,
             market=company_market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         )
 
         companies.append(
@@ -267,8 +292,12 @@ def _write_slice(
     records: tuple[SourceInventoryRecord, ...],
     company_id: str,
     market: str,
+    hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    slice_hk_yahoo_trust_policy = (
+        hk_yahoo_trust_policy if market.upper() == "HK" else None
+    )
     write_source_inventory(output_dir / "source_inventory.jsonl", records)
     mapping = map_source_inventory(catalog, records)
     reconciliation = reconcile_mapped_fields(mapping)
@@ -278,6 +307,7 @@ def _write_slice(
         reconciliation,
         market=market,
         company_id=company_id,
+        hk_yahoo_trust_policy=slice_hk_yahoo_trust_policy,
     )
     export = build_source_first_export(
         mapping,
@@ -297,6 +327,8 @@ def _write_slice(
     warning_classification = build_warning_classification(
         export,
         candidate_entries=candidate_report.fields,
+        market=market,
+        hk_yahoo_trust_policy=slice_hk_yahoo_trust_policy,
     )
 
     write_turtle_mapping_artifacts(mapping, output_dir)
@@ -307,25 +339,125 @@ def _write_slice(
         warning_classification,
         output_dir,
     )
+    hk_yahoo_trust_policy_report_path: Path | None = None
+    if slice_hk_yahoo_trust_policy is not None:
+        hk_yahoo_trust_policy_report_path = (
+            output_dir / "hk_yahoo_trust_policy_report.json"
+        )
+        _write_hk_yahoo_trust_policy_report(
+            hk_yahoo_trust_policy_report_path,
+            policy=slice_hk_yahoo_trust_policy,
+            export=export,
+            warning_classification=warning_classification,
+            company_id=company_id,
+            market=market,
+        )
+
+    review = {
+        **_review_lists(export),
+        **_hk_yahoo_trust_review_lists(
+            warning_classification,
+            policy=slice_hk_yahoo_trust_policy,
+        ),
+        "warning_classification": warning_classification.to_dict(),
+    }
+    artifact_paths = {
+        "source_inventory": str(output_dir / "source_inventory.jsonl"),
+        "turtle_mapping": str(output_dir / "turtle_mapping.json"),
+        "source_coverage_summary": str(output_dir / "source_coverage_summary.json"),
+        "reconciliation_report": str(output_dir / "reconciliation_report.json"),
+        "source_policy_report": str(output_dir / "source_policy_report.json"),
+        "extraction_result": str(output_dir / "extraction_result.json"),
+        "review_summary": str(output_dir / "review_summary.json"),
+        "warning_classification": str(warning_artifacts["json"]),
+        "warning_classification_markdown": str(warning_artifacts["markdown"]),
+    }
+    if hk_yahoo_trust_policy_report_path is not None:
+        artifact_paths["hk_yahoo_trust_policy_report"] = str(
+            hk_yahoo_trust_policy_report_path
+        )
 
     return {
         "coverage": _export_coverage(export),
-        "review": {
-            **_review_lists(export),
-            "warning_classification": warning_classification.to_dict(),
-        },
-        "artifact_paths": {
-            "source_inventory": str(output_dir / "source_inventory.jsonl"),
-            "turtle_mapping": str(output_dir / "turtle_mapping.json"),
-            "source_coverage_summary": str(output_dir / "source_coverage_summary.json"),
-            "reconciliation_report": str(output_dir / "reconciliation_report.json"),
-            "source_policy_report": str(output_dir / "source_policy_report.json"),
-            "extraction_result": str(output_dir / "extraction_result.json"),
-            "review_summary": str(output_dir / "review_summary.json"),
-            "warning_classification": str(warning_artifacts["json"]),
-            "warning_classification_markdown": str(warning_artifacts["markdown"]),
+        "review": review,
+        "artifact_paths": artifact_paths,
+    }
+
+
+def _load_replay_hk_yahoo_trust_policy(
+    path: Path | None | _AutoHkYahooTrustPolicyPath,
+) -> HkYahooTrustPolicy | None:
+    if path is None:
+        return None
+    resolved_path = (
+        DEFAULT_HK_YAHOO_TRUST_POLICY_PATH
+        if isinstance(path, _AutoHkYahooTrustPolicyPath)
+        else path
+    )
+    if not resolved_path.exists():
+        return None
+    return load_hk_yahoo_trust_policy(resolved_path)
+
+
+def _hk_yahoo_trust_review_lists(
+    warning_classification: Any,
+    *,
+    policy: HkYahooTrustPolicy | None = None,
+) -> dict[str, list[str]]:
+    fields_by_category = warning_classification.fields_by_category
+    definition_unverified = set(fields_by_category["yahoo_definition_unverified"])
+    if policy is not None:
+        definition_unverified.update(
+            rule.field_id
+            for rule in policy.rules
+            if rule.classification == "yahoo_definition_unverified"
+        )
+    return {
+        "yahoo_pdf_verified_fields": fields_by_category["yahoo_pdf_verified"],
+        "yahoo_definition_unverified_fields": sorted(definition_unverified),
+        "pdf_required_fields": fields_by_category["pdf_required"],
+    }
+
+
+def _write_hk_yahoo_trust_policy_report(
+    output_path: Path,
+    *,
+    policy: HkYahooTrustPolicy,
+    export: SourceFirstExportResult,
+    warning_classification: Any,
+    company_id: str,
+    market: str,
+) -> Path:
+    review_lists = _hk_yahoo_trust_review_lists(warning_classification, policy=policy)
+    payload = {
+        "report_id": "hk_yahoo_trust_policy_report",
+        "policy_version": policy.version,
+        "company_id": company_id,
+        "market": market,
+        **review_lists,
+        "items": {
+            field_id: {
+                "status": item.status,
+                "selected_source": item.selected_source,
+                "verification_required": item.verification_required,
+                "trust_policy_evidence": item.trust_policy_evidence,
+                "pdf_evidence_count": len(item.pdf_evidence),
+            }
+            for field_id, item in sorted(export.items.items())
+            if item.trust_policy_evidence is not None
+            or field_id
+            in (
+                set(review_lists["yahoo_pdf_verified_fields"])
+                | set(review_lists["yahoo_definition_unverified_fields"])
+                | set(review_lists["pdf_required_fields"])
+            )
         },
     }
+    output_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return output_path
 
 
 def _export_coverage(export: SourceFirstExportResult) -> dict[str, object]:
@@ -513,6 +645,12 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
                     f"{_format_field_list(review['metadata_blocker_fields'])}",
                     "  - fields_requiring_pdf_evidence: "
                     f"{_format_field_list(review['fields_requiring_pdf_evidence'])}",
+                    "  - yahoo_pdf_verified_fields: "
+                    f"{_format_field_list(review['yahoo_pdf_verified_fields'])}",
+                    "  - yahoo_definition_unverified_fields: "
+                    f"{_format_field_list(review['yahoo_definition_unverified_fields'])}",
+                    "  - pdf_required_fields: "
+                    f"{_format_field_list(review['pdf_required_fields'])}",
                 ]
             )
             classification = review["warning_classification"]
@@ -553,6 +691,11 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
                     f"    - extraction_result: {artifact_paths['extraction_result']}",
                 ]
             )
+            if "hk_yahoo_trust_policy_report" in artifact_paths:
+                lines.append(
+                    "    - hk_yahoo_trust_policy_report: "
+                    f"{artifact_paths['hk_yahoo_trust_policy_report']}"
+                )
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

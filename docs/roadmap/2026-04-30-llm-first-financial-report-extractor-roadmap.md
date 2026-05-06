@@ -663,6 +663,8 @@ Exit criteria:
 
 ### Phase M: HK Yahoo Trust Policy And PDF Spot-Check
 
+Status: implemented on 2026-05-06.
+
 Goal: turn the current HK PDF verification queue into deterministic source policy rules where sampled annual-report evidence proves Yahoo HK raw values and field semantics.
 
 Current evidence:
@@ -682,7 +684,8 @@ Deliverables:
   - `yahoo_definition_unverified`: Yahoo has a value, but annual-report row semantics are not directly proven.
   - `pdf_required`: no current API path can prove the field.
 - Promote HK Yahoo primary policy only for sampled fields whose definition and unit are proven:
-  - likely candidates: `revenue`, `net_profit`, `total_assets`, `total_cur_assets`, `total_cur_liab`, `total_liabilities`.
+  - implemented candidates: `revenue`, `total_assets`, `total_cur_assets`, `total_cur_liab`, `total_liabilities`.
+  - `net_profit` remains `yahoo_definition_unverified` until exact annual-report row semantics and value proof are added.
   - keep `gross_profit` in PDF verification until the annual-report row semantics are proven, because the sampled formal income statements do not expose a simple same-name gross-profit row.
 - Keep `defer_tax_liab` as mapping-expansion-first with PDF spot-check.
 - Keep `bond_payable`, `cip`, and `invest_income` as source-unavailable for the current AKShare/Yahoo captured data unless a new provider/source fixture is added.
@@ -693,6 +696,36 @@ Exit criteria:
 - `00001` and `01113` combined slices show improved clean-present coverage for the current 15-field denominator without relying on every-company manual PDF analysis.
 - Source policy explains that HK Yahoo `currency=HKD`, `unit=raw`, `unit_multiplier=1` is trusted only for fields covered by the sampled PDF trust policy.
 - The project can distinguish "Yahoo raw HKD value is PDF-verified by policy" from "this company has page/block PDF evidence in the final export".
+
+Implementation result:
+
+- Added `field_catalog/hk_yahoo_trust_policy.json` and loader/tests.
+- Provider baseline replay now writes `hk_yahoo_trust_policy_report.json` for HK slices and exposes:
+  - `yahoo_pdf_verified_fields`
+  - `yahoo_definition_unverified_fields`
+  - `pdf_required_fields`
+- `00001` combined coverage is now `10/15` selected and `9/15` clean present.
+- `01113` combined coverage is now `10/15` selected and `9/15` clean present.
+- Clean HK fields now include:
+  - `cash`
+  - `operating_cash_flow`
+  - `investing_cash_flow`
+  - `financing_cash_flow`
+  - `revenue`
+  - `total_assets`
+  - `total_cur_assets`
+  - `total_cur_liab`
+  - `total_liabilities`
+- Remaining HK 15-field gaps:
+  - `net_profit`: present but `yahoo_definition_unverified`, still requires annual-report row semantics proof.
+  - `gross_profit`: still requires PDF verification.
+  - `defer_tax_liab`: mapping expansion path.
+  - `bond_payable`, `cip`, `invest_income`: source unavailable in current AKShare/Yahoo captured data.
+- Verification:
+  - Phase M focused tests: `116 passed`.
+  - `uv run ruff check .`: passed.
+  - `uv run mypy src tests`: passed.
+  - Full `uv run pytest -v`: `411 passed, 1 skipped, 1 failed`; the remaining failure is an existing `akshare_cn_600519_balance_sheet` fixture hash mismatch, not introduced by Phase M.
 
 ### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 

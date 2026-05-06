@@ -1,6 +1,11 @@
 import json
+from decimal import Decimal
 from pathlib import Path
 
+from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
+    HkYahooTrustPolicy,
+    HkYahooTrustRule,
+)
 from financial_report_llm_extractor.structured_sources.export import (
     SourceFirstExportItem,
     SourceFirstExportResult,
@@ -61,6 +66,34 @@ def _candidate_entry() -> FieldCandidateReportEntry:
                 )
             )
         },
+    )
+
+
+def _hk_yahoo_policy() -> HkYahooTrustPolicy:
+    return HkYahooTrustPolicy(
+        version=1,
+        market="HK",
+        provider="yahoo",
+        rules=(
+            HkYahooTrustRule(
+                policy_id="hk_yahoo_raw_hkd_pdf_verified:revenue",
+                field_id="revenue",
+                classification="yahoo_pdf_verified",
+                trusted_currency="HKD",
+                trusted_unit="raw",
+                trusted_unit_multiplier=Decimal("1"),
+                allowed_yahoo_raw_fields=("Total Revenue",),
+            ),
+            HkYahooTrustRule(
+                policy_id="hk_yahoo_raw_hkd_definition_unverified:gross_profit",
+                field_id="gross_profit",
+                classification="yahoo_definition_unverified",
+                trusted_currency="HKD",
+                trusted_unit="raw",
+                trusted_unit_multiplier=Decimal("1"),
+                allowed_yahoo_raw_fields=("Gross Profit",),
+            ),
+        ),
     )
 
 
@@ -260,6 +293,88 @@ def test_warning_classification_uses_conflict_classifications_as_reasons() -> No
     item = result.items["total_assets"]
     assert item.category == "pdf_verification_required"
     assert "normalized_value_conflict" in item.reasons
+
+
+def test_warning_classification_moves_verified_hk_yahoo_fields_to_yahoo_pdf_verified() -> None:
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="test",
+        catalog_version="1",
+        items={
+            "revenue": _item(
+                "revenue",
+                status="present",
+                selected_source="yahoo",
+            )
+        },
+    )
+
+    result = build_warning_classification(
+        export,
+        candidate_entries={},
+        market="HK",
+        hk_yahoo_trust_policy=_hk_yahoo_policy(),
+    )
+
+    assert result.fields_by_category["yahoo_pdf_verified"] == ["revenue"]
+    assert result.items["revenue"].category == "yahoo_pdf_verified"
+
+
+def test_warning_classification_keeps_gross_profit_definition_unverified() -> None:
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="test",
+        catalog_version="1",
+        items={
+            "gross_profit": _item(
+                "gross_profit",
+                status="present",
+                selected_source="yahoo",
+                verification_required=True,
+                warnings=("single source selected; PDF verification required",),
+            )
+        },
+    )
+
+    result = build_warning_classification(
+        export,
+        candidate_entries={},
+        market="HK",
+        hk_yahoo_trust_policy=_hk_yahoo_policy(),
+    )
+
+    assert result.fields_by_category["yahoo_definition_unverified"] == ["gross_profit"]
+    assert result.items["gross_profit"].category == "yahoo_definition_unverified"
+
+
+def test_warning_classification_keeps_unavailable_fields_unavailable() -> None:
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="test",
+        catalog_version="1",
+        items={
+            "bond_payable": _item("bond_payable"),
+            "cip": _item("cip"),
+            "invest_income": _item("invest_income"),
+            "defer_tax_liab": _item("defer_tax_liab"),
+        },
+    )
+
+    result = build_warning_classification(
+        export,
+        candidate_entries={"defer_tax_liab": _candidate_entry()},
+        market="HK",
+        hk_yahoo_trust_policy=_hk_yahoo_policy(),
+    )
+
+    assert result.fields_by_category["source_unavailable"] == [
+        "bond_payable",
+        "cip",
+        "invest_income",
+    ]
+    assert result.fields_by_category["mapping_expansion_required"] == [
+        "defer_tax_liab"
+    ]
 
 
 def test_write_warning_classification_artifacts_writes_json_and_markdown(

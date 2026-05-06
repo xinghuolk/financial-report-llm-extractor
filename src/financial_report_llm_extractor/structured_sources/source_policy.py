@@ -6,12 +6,15 @@ import json
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Mapping
 
 from financial_report_llm_extractor.structured_sources.catalog import (
     MarketSourcePolicy,
     SourceMappingCatalog,
     SourceMappingEntry,
+)
+from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
+    HkYahooTrustPolicy,
 )
 from financial_report_llm_extractor.structured_sources.mapping import (
     MappedTurtleField,
@@ -54,6 +57,7 @@ class SourcePolicyItem:
     verification_required: bool = False
     warnings: tuple[str, ...] = field(default_factory=tuple)
     reconciliation_status: ReconciliationStatus | None = None
+    trust_policy_evidence: Mapping[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -68,6 +72,7 @@ class SourcePolicyItem:
             "verification_required": self.verification_required,
             "warnings": list(self.warnings),
             "reconciliation_status": self.reconciliation_status,
+            "trust_policy_evidence": self.trust_policy_evidence,
         }
 
 
@@ -99,6 +104,7 @@ def build_source_policy_report(
     *,
     market: str | None = None,
     company_id: str | None = None,
+    hk_yahoo_trust_policy: HkYahooTrustPolicy | None = None,
 ) -> SourcePolicyReport:
     ratio_fields = _fx_like_fields(mapping)
     items: dict[str, SourcePolicyItem] = {}
@@ -114,6 +120,7 @@ def build_source_policy_report(
             market=market,
             reconciliation_status=reconciliation_status,
             fx_like=field_id in ratio_fields,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         )
     return SourcePolicyReport(
         catalog_id=mapping.catalog_id,
@@ -141,6 +148,7 @@ def _resolve_field(
     market: str | None,
     reconciliation_status: ReconciliationStatus | None,
     fx_like: bool,
+    hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
 ) -> SourcePolicyItem:
     if field.status == "missing":
         return SourcePolicyItem(
@@ -156,7 +164,13 @@ def _resolve_field(
             reconciliation_status=reconciliation_status,
         )
     if field.status in {"present", "derived"} and field.candidates:
-        return _resolve_single_source(entry, field, market, reconciliation_status)
+        return _resolve_single_source(
+            entry,
+            field,
+            market,
+            reconciliation_status,
+            hk_yahoo_trust_policy,
+        )
 
     classifications = _classifications(entry, field, market=market, fx_like=fx_like)
     candidate = _primary_candidate(entry, field, market)
@@ -176,22 +190,51 @@ def _resolve_field(
         else ()
     )
     if candidate is not None and metadata_classifications:
-        return SourcePolicyItem(
-            field_id=field.field_id,
-            selection_status="unresolved_conflict",
-            conflict_classifications=_dedupe_classifications(
-                classifications + metadata_classifications
+        if not _can_apply_hk_yahoo_trust_policy(
+            field.field_id,
+            candidate,
+            market=market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+        ):
+            return SourcePolicyItem(
+                field_id=field.field_id,
+                selection_status="unresolved_conflict",
+                conflict_classifications=_dedupe_classifications(
+                    classifications + metadata_classifications
+                ),
+                verification_required=True,
+                warnings=(
+                    _metadata_warning(market, prefix="selected primary candidate"),
+                ),
+                reconciliation_status=reconciliation_status,
+            )
+        return _apply_hk_yahoo_trust_policy(
+            SourcePolicyItem(
+                field_id=field.field_id,
+                selection_status="unresolved_conflict",
+                selected_candidate=candidate,
+                conflict_classifications=_dedupe_classifications(
+                    classifications + metadata_classifications
+                ),
+                verification_required=True,
+                warnings=(
+                    _metadata_warning(market, prefix="selected primary candidate"),
+                ),
+                reconciliation_status=reconciliation_status,
             ),
-            verification_required=True,
-            warnings=(_metadata_warning(market, prefix="selected primary candidate"),),
-            reconciliation_status=reconciliation_status,
+            market=market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         )
     if reconciliation_status in {"equivalent", "close"}:
-        return SourcePolicyItem(
-            field_id=field.field_id,
-            selection_status="selected_primary",
-            selected_candidate=candidate or _deterministic_candidate(field.candidates),
-            reconciliation_status=reconciliation_status,
+        return _apply_hk_yahoo_trust_policy(
+            SourcePolicyItem(
+                field_id=field.field_id,
+                selection_status="selected_primary",
+                selected_candidate=candidate or _deterministic_candidate(field.candidates),
+                reconciliation_status=reconciliation_status,
+            ),
+            market=market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         )
 
     if (
@@ -199,17 +242,21 @@ def _resolve_field(
         and market_policy is not None
         and market_policy.on_conflict == "select_primary_require_pdf"
     ):
-        return SourcePolicyItem(
-            field_id=field.field_id,
-            selection_status="selected_primary",
-            selected_candidate=candidate,
-            conflict_classifications=classifications,
-            verification_required=True,
-            warnings=tuple(
-                f"source policy selected primary candidate despite {classification}"
-                for classification in classifications
+        return _apply_hk_yahoo_trust_policy(
+            SourcePolicyItem(
+                field_id=field.field_id,
+                selection_status="selected_primary",
+                selected_candidate=candidate,
+                conflict_classifications=classifications,
+                verification_required=True,
+                warnings=tuple(
+                    f"source policy selected primary candidate despite {classification}"
+                    for classification in classifications
+                ),
+                reconciliation_status=reconciliation_status,
             ),
-            reconciliation_status=reconciliation_status,
+            market=market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         )
     return SourcePolicyItem(
         field_id=field.field_id,
@@ -225,6 +272,7 @@ def _resolve_single_source(
     field: MappedTurtleField,
     market: str | None,
     reconciliation_status: ReconciliationStatus | None,
+    hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
 ) -> SourcePolicyItem:
     candidate = field.candidates[0]
     market_policy = _market_policy(entry, market)
@@ -233,29 +281,139 @@ def _resolve_single_source(
     )
     metadata_classifications = _metadata_classifications(entry, market, candidate)
     if metadata_classifications:
-        return SourcePolicyItem(
-            field_id=field.field_id,
-            selection_status="unresolved_conflict",
-            conflict_classifications=metadata_classifications,
-            verification_required=True,
-            warnings=(_metadata_warning(market, prefix="single source candidate"),),
-            reconciliation_status=reconciliation_status,
+        if not _can_apply_hk_yahoo_trust_policy(
+            field.field_id,
+            candidate,
+            market=market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+        ):
+            return SourcePolicyItem(
+                field_id=field.field_id,
+                selection_status="unresolved_conflict",
+                conflict_classifications=metadata_classifications,
+                verification_required=True,
+                warnings=(_metadata_warning(market, prefix="single source candidate"),),
+                reconciliation_status=reconciliation_status,
+            )
+        return _apply_hk_yahoo_trust_policy(
+            SourcePolicyItem(
+                field_id=field.field_id,
+                selection_status="unresolved_conflict",
+                selected_candidate=candidate,
+                conflict_classifications=metadata_classifications,
+                verification_required=True,
+                warnings=(_metadata_warning(market, prefix="single source candidate"),),
+                reconciliation_status=reconciliation_status,
+            ),
+            market=market,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         )
     classifications: tuple[ConflictClassification, ...] = (
         ("single_source_unverified",) if requires_pdf else ()
     )
-    return SourcePolicyItem(
-        field_id=field.field_id,
-        selection_status="selected_single_source",
-        selected_candidate=candidate,
-        conflict_classifications=classifications,
-        verification_required=requires_pdf,
-        warnings=(
-            ("single source candidate requires PDF verification",)
-            if requires_pdf
-            else ()
+    return _apply_hk_yahoo_trust_policy(
+        SourcePolicyItem(
+            field_id=field.field_id,
+            selection_status="selected_single_source",
+            selected_candidate=candidate,
+            conflict_classifications=classifications,
+            verification_required=requires_pdf,
+            warnings=(
+                ("single source candidate requires PDF verification",)
+                if requires_pdf
+                else ()
+            ),
+            reconciliation_status=reconciliation_status,
         ),
-        reconciliation_status=reconciliation_status,
+        market=market,
+        hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+    )
+
+
+_HK_YAHOO_TRUSTED_UNCERTAINTIES: tuple[ConflictClassification, ...] = (
+    "fx_like_ratio",
+    "metadata_currency_suspected",
+    "single_source_unverified",
+    "currency_as_unit",
+    "statement_metadata_unproven",
+)
+
+
+def _apply_hk_yahoo_trust_policy(
+    item: SourcePolicyItem,
+    *,
+    market: str | None,
+    hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+) -> SourcePolicyItem:
+    candidate = item.selected_candidate
+    if not _can_apply_hk_yahoo_trust_policy(
+        item.field_id,
+        candidate,
+        market=market,
+        hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+    ):
+        return item
+    assert hk_yahoo_trust_policy is not None
+    remaining_classifications = tuple(
+        classification
+        for classification in item.conflict_classifications
+        if classification not in _HK_YAHOO_TRUSTED_UNCERTAINTIES
+    )
+    remaining_warnings = tuple(
+        warning
+        for warning in item.warnings
+        if not _is_hk_yahoo_trusted_uncertainty_warning(warning)
+    )
+    return SourcePolicyItem(
+        field_id=item.field_id,
+        selection_status=(
+            "selected_primary"
+            if item.selection_status == "unresolved_conflict"
+            else item.selection_status
+        ),
+        selected_candidate=candidate,
+        conflict_classifications=remaining_classifications,
+        verification_required=bool(remaining_classifications or remaining_warnings),
+        warnings=remaining_warnings,
+        reconciliation_status=item.reconciliation_status,
+        trust_policy_evidence=hk_yahoo_trust_policy.build_policy_evidence(
+            item.field_id
+        ),
+    )
+
+
+def _can_apply_hk_yahoo_trust_policy(
+    field_id: str,
+    candidate: TurtleMappingCandidate | None,
+    *,
+    market: str | None,
+    hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+) -> bool:
+    if market != "HK" or hk_yahoo_trust_policy is None or candidate is None:
+        return False
+    if candidate.source != "yahoo":
+        return False
+    rule = hk_yahoo_trust_policy.rule_for_field(field_id)
+    return (
+        rule is not None
+        and rule.classification == "yahoo_pdf_verified"
+        and bool(candidate.raw_field_name)
+        and candidate.raw_field_name in rule.allowed_yahoo_raw_fields
+        and candidate.currency == rule.trusted_currency
+        and candidate.unit == rule.trusted_unit
+        and candidate.canonical_unit == rule.trusted_currency
+        and candidate.unit_multiplier == rule.trusted_unit_multiplier
+    )
+
+
+def _is_hk_yahoo_trusted_uncertainty_warning(warning: str) -> bool:
+    if warning == "single source candidate requires PDF verification":
+        return True
+    if "lacks proven HK metadata" in warning:
+        return True
+    return any(
+        f"despite {classification}" in warning
+        for classification in _HK_YAHOO_TRUSTED_UNCERTAINTIES
     )
 
 

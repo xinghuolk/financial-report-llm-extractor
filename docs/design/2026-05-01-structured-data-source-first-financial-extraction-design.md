@@ -329,9 +329,10 @@ Phase L 之后，`00001` 和 `01113` 的 quick-validation PDF artifacts 已经�
   - `Total assets` 可由年报 subtotals `335,392 + 174,106 = 509,498` HK$ million 证明，匹配 Yahoo `509,498,000,000`。
   - `Total liabilities` 可由年报 subtotals `39,072 + 61,745 = 100,817` HK$ million 证明，匹配 Yahoo `100,817,000,000`。
 
-因此，下一步应建立 deterministic HK Yahoo trust policy，而不是逐家公司完整人工分析年报。建议规则：
+Phase M 已建立 deterministic HK Yahoo trust policy，而不是逐家公司完整人工分析年报。当前规则：
 
-- 对 `revenue`、`net_profit`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities`，用 `00001` 和 `01113` 作为 sampled PDF proof，允许 HK Yahoo raw HKD 成为 market-specific primary source。
+- 对 `revenue`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities`，用 `00001` 和 `01113` sampled PDF proof 允许 HK Yahoo raw HKD 成为 market-specific primary source。
+- `net_profit` 暂不 clean；它有 Yahoo 值，但仍是 `yahoo_definition_unverified`，需要明确年报 row semantics 和值匹配证明。
 - 对 `gross_profit`，继续保留 PDF verification requirement，直到正式年报表内能证明同名或等价 gross-profit row；当前样本的正式 income statement 不稳定暴露简单同名毛利行。
 - 对 `defer_tax_liab`，先做 Yahoo mapping expansion，再做 PDF spot-check。
 - 对 `bond_payable`、`cip`、`invest_income`，当前 AKShare/Yahoo captured data 没有可用候选，仍应进入 PDF 或新增数据源路径。
@@ -374,12 +375,13 @@ MCP 合适的角色：
 - Provider field baseline 已扩展为 AKShare + Yahoo across `600519`、`00001`、`01113` 的最新五年捕获数据，并压缩保存为 fixture。
 - Period-scoped provider baseline replay 已完成 source policy conflict layer 接入：
   - `600519` combined selected coverage: 14/15，`revenue` 被 source policy 选为 primary 但保留 warning 和 PDF verification requirement。
-  - `00001` 和 `01113` combined selected coverage: 6/15，clean present 为 4/15；`revenue`、`net_profit` 为 Yahoo single-source warning，资产负债表 totals 和 `gross_profit` 进入 PDF verification queue。
-  - Phase L warning classification 已把 HK 剩余字段拆成 `pdf_verification_required`、`mapping_expansion_required` 和 `source_unavailable`。
+- `00001` 和 `01113` combined selected coverage 已从 Phase L 的 6/15 提升到 10/15，clean present 从 4/15 提升到 9/15。
+- Phase M warning classification 已把 HK 剩余字段拆成 `yahoo_pdf_verified`、`yahoo_definition_unverified`、`pdf_verification_required`、`mapping_expansion_required` 和 `source_unavailable`。
+- 当前 `yahoo_pdf_verified` 字段为 `revenue`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities`。
   - 每个 company/source slice 都写出 `source_policy_report.json`，同时区分 raw reconciliation conflict、policy unresolved conflict、selected with warnings 和 clean present fields。
 - 真实 provider 调用只用于创建或刷新 captured artifacts；日常 mapping、coverage、reconciliation 迭代应使用 captured replay，避免重复请求和接口波动。
 
-这说明 source-first 路线对核心三大表字段是可行的。当前剩余风险不再是 broad PDF retrieval，而是 source catalog 覆盖、provider 字段语义、货币单位 metadata proof、HK Yahoo trust policy，以及 selected PDF evidence supplement。
+这说明 source-first 路线对核心三大表字段是可行的。当前剩余风险不再是 broad PDF retrieval，而是 source catalog 覆盖、provider 字段语义、selected PDF evidence supplement，以及 full P0/P1 source mapping 扩展。
 
 ### 风险：结构化来源覆盖不足
 
@@ -426,14 +428,13 @@ MCP 合适的角色：
 
 ## 9. 推荐下一步
 
-下一步不应继续扩大 PDF alias/statement 规则，也不应直接扩展到完整 33 字段。应先做 HK Yahoo trust policy：
+下一步不应继续扩大 PDF alias/statement 规则。HK Yahoo trust policy 已稳定，下一阶段应进入完整 33 字段 source mapping 扩展：
 
-1. 从已有 `00001_2025_en` 和 `01113_2025_en` quick-validation artifacts 构建 PDF spot-check fixture。
-2. 对 `revenue`、`net_profit`、`total_assets`、`total_cur_assets`、`total_cur_liab`、`total_liabilities` 记录 PDF value、reported unit、Yahoo raw value 和 match result。
-3. 将 spot-check 结果接入 source policy，使 HK Yahoo verified fields 可以从 `pdf_verification_required` 转为 clean present。
-4. 保留 `gross_profit` 的 PDF verification requirement，避免把 Yahoo 标准化字段误当年报披露字段。
+1. 将当前 minimal 15-field source mapping 扩到完整 P0/P1 33 字段。
+2. 对新增字段逐个标注 direct source、derived source、PDF required、source unavailable 或 LLM review required。
+3. 保留 `gross_profit` 的 PDF verification requirement，避免把 Yahoo 标准化字段误当年报披露字段。
+4. 对 `net_profit` 补 annual-report row semantics proof 后再考虑提升为 `yahoo_pdf_verified`。
 5. 对 `defer_tax_liab` 先做 mapping expansion，再用 PDF spot-check 验证。
 6. 对 `bond_payable`、`cip`、`invest_income` 保持 source-unavailable 状态，除非新增 provider/source fixture。
-7. trust policy 稳定后，再进入完整 33 字段 source mapping 扩展。
 
 路线图已经正式调整为 source-first：先固化 AKShare/Yahoo source policy 和 HK Yahoo trust policy，再做字段扩展；PDF/LLM 保留为后续的 evidence supplement、consistency review 和 hard-case fallback。

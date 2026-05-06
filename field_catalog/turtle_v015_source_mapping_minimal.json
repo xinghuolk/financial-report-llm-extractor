@@ -138,8 +138,8 @@
         "semantic_variants": {},
         "market_policies": {
           "HK": {
-            "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": ["akshare_direct"],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },
@@ -173,8 +173,8 @@
         "semantic_variants": {},
         "market_policies": {
           "HK": {
-            "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": ["akshare_direct"],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },
@@ -350,8 +350,8 @@
         "semantic_variants": {},
         "market_policies": {
           "HK": {
-            "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": ["akshare_direct"],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },
@@ -385,8 +385,8 @@
         "semantic_variants": {},
         "market_policies": {
           "HK": {
-            "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": ["akshare_direct"],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },

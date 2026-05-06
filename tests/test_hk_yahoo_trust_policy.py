@@ -1,0 +1,69 @@
+import json
+from pathlib import Path
+
+import pytest
+
+from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
+    load_hk_yahoo_trust_policy,
+)
+
+
+POLICY_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "field_catalog"
+    / "hk_yahoo_trust_policy.json"
+)
+
+
+def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
+    policy = load_hk_yahoo_trust_policy(POLICY_PATH)
+
+    assert policy.version == 1
+    assert policy.market == "HK"
+    assert policy.provider == "yahoo"
+    verified_samples = [
+        sample
+        for rule in policy.rules
+        if rule.classification == "yahoo_pdf_verified"
+        for sample in rule.samples
+    ]
+
+    assert len(verified_samples) == 8
+    assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
+    assert policy.rule_for_field("revenue") is not None
+    assert policy.is_pdf_verified("revenue") is True
+
+    evidence = policy.build_policy_evidence("total_assets")
+
+    assert evidence["policy_id"] == "hk_yahoo_raw_hkd_pdf_verified:total_assets"
+    assert evidence["classification"] == "yahoo_pdf_verified"
+    assert evidence["sample_companies"] == ["01113"]
+    assert evidence["sample_count"] == 1
+
+
+def test_hk_yahoo_trust_policy_rejects_bad_multiplier_match(tmp_path: Path) -> None:
+    payload = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    payload["rules"][0]["samples"][0]["expected_yahoo_raw_value"] = "1"
+    policy_path = tmp_path / "bad_policy.json"
+    policy_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="sample arithmetic mismatch"):
+        load_hk_yahoo_trust_policy(policy_path)
+
+
+def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications() -> None:
+    policy = load_hk_yahoo_trust_policy(POLICY_PATH)
+    gross_profit_rule = policy.rule_for_field("gross_profit")
+    net_profit_rule = policy.rule_for_field("net_profit")
+
+    assert policy.is_pdf_verified("total_cur_assets") is True
+    assert policy.is_pdf_verified("gross_profit") is False
+    assert policy.is_pdf_verified("net_profit") is False
+    assert gross_profit_rule is not None
+    assert gross_profit_rule.classification == "yahoo_definition_unverified"
+    assert net_profit_rule is not None
+    assert net_profit_rule.classification == "yahoo_definition_unverified"
+    assert policy.build_policy_evidence("gross_profit")["sample_count"] == 0

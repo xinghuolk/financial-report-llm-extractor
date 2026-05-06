@@ -1,6 +1,7 @@
 from decimal import Decimal
 import json
 from pathlib import Path
+from typing import Any, cast
 
 from financial_report_llm_extractor.models import Currency, Evidence
 from financial_report_llm_extractor.structured_sources.export import (
@@ -185,6 +186,56 @@ def test_pdf_required_policy_selected_without_pdf_keeps_selection_metadata() -> 
     assert item.conflict_classifications == ("semantic_mismatch",)
     assert item.value == Decimal("168")
     assert result.summary["fields_requiring_pdf_evidence"] == ["revenue"]
+
+
+def test_source_export_trust_policy_item_has_no_pdf_evidence() -> None:
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "total_assets": MappedTurtleField(
+                field_id="total_assets",
+                status="ambiguous",
+                candidates=(
+                    _candidate("yahoo", Decimal("100"), canonical_unit="HKD"),
+                ),
+                errors=("single source candidate requires PDF verification",),
+            )
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+    policy_report = SourcePolicyReport(
+        catalog_id="test",
+        catalog_version="1",
+        company_id="00001",
+        market="HK",
+        items={
+            "total_assets": SourcePolicyItem(
+                field_id="total_assets",
+                selection_status="selected_primary",
+                selected_candidate=mapping.fields["total_assets"].candidates[0],
+                verification_required=False,
+                reconciliation_status="single_source",
+                trust_policy_evidence={
+                    "policy_id": "hk_yahoo_raw_hkd_pdf_verified:total_assets",
+                    "classification": "yahoo_pdf_verified",
+                },
+            )
+        },
+    )
+
+    result = build_source_first_export(
+        mapping,
+        reconciliation,
+        profile="source_only",
+        source_policy_report=policy_report,
+    )
+    item_payload = cast(dict[str, Any], result.to_dict()["items"])["total_assets"]
+    item_payload = cast(dict[str, Any], item_payload)
+    trust_policy_evidence = cast(dict[str, Any], item_payload["trust_policy_evidence"])
+
+    assert trust_policy_evidence["classification"] == "yahoo_pdf_verified"
+    assert item_payload["pdf_evidence"] == []
 
 
 def test_source_first_export_promotes_equivalent_ambiguous_candidates_with_candidate_metadata() -> None:

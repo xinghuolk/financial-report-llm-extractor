@@ -7,7 +7,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Mapping
 
 from financial_report_llm_extractor.models import Currency, Evidence
 from financial_report_llm_extractor.structured_sources.mapping import (
@@ -60,6 +60,7 @@ class SourceFirstExportItem:
     verification_required: bool = False
     conflict_classifications: tuple[str, ...] = field(default_factory=tuple)
     review_notes: tuple[str, ...] = field(default_factory=tuple)
+    trust_policy_evidence: Mapping[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -90,6 +91,7 @@ class SourceFirstExportItem:
             "verification_required": self.verification_required,
             "conflict_classifications": list(self.conflict_classifications),
             "review_notes": list(self.review_notes),
+            "trust_policy_evidence": self.trust_policy_evidence,
         }
 
 
@@ -232,6 +234,9 @@ def _build_item(
     review_notes = (
         tuple(policy_item.conflict_classifications) if policy_item is not None else ()
     )
+    trust_policy_evidence = (
+        policy_item.trust_policy_evidence if policy_item is not None else None
+    )
     if policy_item is not None:
         warnings = policy_item.warnings
     policy_unresolved = (
@@ -311,6 +316,7 @@ def _build_item(
         verification_required=verification_required,
         conflict_classifications=conflict_classifications,
         review_notes=review_notes,
+        trust_policy_evidence=trust_policy_evidence,
     )
 
 

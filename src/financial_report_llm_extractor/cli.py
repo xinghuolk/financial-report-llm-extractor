@@ -146,6 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
     )
     baseline_replay_parser.add_argument("--out", required=True, type=Path)
+    baseline_replay_parser.add_argument("--hk-yahoo-trust-policy", type=Path)
 
     return parser
 
@@ -380,13 +381,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "replay-provider-baseline":
-        replay_result = write_provider_baseline_period_replay(
-            inventory_path=args.inventory,
-            inventory_summary_path=args.inventory_summary,
-            catalog_path=args.catalog,
-            taxonomy_path=args.taxonomy,
-            output_dir=args.out,
-        )
+        replay_kwargs = {
+            "inventory_path": args.inventory,
+            "inventory_summary_path": args.inventory_summary,
+            "catalog_path": args.catalog,
+            "taxonomy_path": args.taxonomy,
+            "output_dir": args.out,
+        }
+        if args.hk_yahoo_trust_policy is not None:
+            replay_kwargs["hk_yahoo_trust_policy_path"] = args.hk_yahoo_trust_policy
+        replay_result = write_provider_baseline_period_replay(**replay_kwargs)
         print(f"companies={replay_result.company_count}")
         print(f"provider_baseline_replay_summary={replay_result.summary_path}")
         print(f"provider_baseline_replay_markdown={replay_result.markdown_path}")

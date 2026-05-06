@@ -213,16 +213,19 @@ def test_minimal_source_mapping_revenue_and_profit_market_policies(
 
 
 @pytest.mark.parametrize(
-    "field_id",
+    ("field_id", "expected_hk_primary_route"),
     [
-        "gross_profit",
-        "total_assets",
-        "total_cur_assets",
-        "total_cur_liab",
-        "total_liabilities",
+        ("gross_profit", "akshare_direct"),
+        ("total_assets", "yahoo_direct"),
+        ("total_cur_assets", "yahoo_direct"),
+        ("total_cur_liab", "yahoo_direct"),
+        ("total_liabilities", "yahoo_direct"),
     ],
 )
-def test_minimal_source_mapping_statement_line_market_policies(field_id: str) -> None:
+def test_minimal_source_mapping_statement_line_market_policies(
+    field_id: str,
+    expected_hk_primary_route: str,
+) -> None:
     catalog = load_source_mapping_catalog(
         Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
         priorities=("P0", "P1"),
@@ -231,8 +234,13 @@ def test_minimal_source_mapping_statement_line_market_policies(field_id: str) ->
     policy = catalog.entries[field_id].source_policy
     assert policy is not None
     hk_policy = policy.market_policies["HK"]
-    assert hk_policy.primary_route == "akshare_direct"
-    assert hk_policy.cross_check_routes == ("yahoo_direct",)
+    assert hk_policy.primary_route == expected_hk_primary_route
+    expected_cross_check_route = (
+        "akshare_direct"
+        if expected_hk_primary_route == "yahoo_direct"
+        else "yahoo_direct"
+    )
+    assert hk_policy.cross_check_routes == (expected_cross_check_route,)
     assert hk_policy.on_conflict == "select_primary_require_pdf"
     assert hk_policy.single_source_requires_pdf is False
 
