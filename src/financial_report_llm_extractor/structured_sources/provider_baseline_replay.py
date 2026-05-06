@@ -7,6 +7,10 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
+from financial_report_llm_extractor.field_metadata import (
+    FieldTaxonomyCatalog,
+    load_field_taxonomy,
+)
 from financial_report_llm_extractor.structured_sources.artifacts import (
     read_source_inventory,
     write_source_inventory,
@@ -21,6 +25,9 @@ from financial_report_llm_extractor.structured_sources.export import (
     SourceFirstExportResult,
     build_source_first_export,
     write_source_first_export_artifacts,
+)
+from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
+    discover_provider_field_candidates,
 )
 from financial_report_llm_extractor.structured_sources.mapping import (
     map_source_inventory,
@@ -37,6 +44,10 @@ from financial_report_llm_extractor.structured_sources.reconciliation import (
 from financial_report_llm_extractor.structured_sources.source_policy import (
     build_source_policy_report,
     write_source_policy_report,
+)
+from financial_report_llm_extractor.structured_sources.warning_classification import (
+    build_warning_classification,
+    write_warning_classification_artifacts,
 )
 
 
@@ -130,6 +141,7 @@ def write_provider_baseline_period_replay(
     inventory_summary_path: Path,
     catalog_path: Path,
     output_dir: Path,
+    taxonomy_path: Path = Path("field_catalog/turtle_v015_field_taxonomy.json"),
     output_summary_path: Path | None = None,
     company_ids: tuple[str, ...] | None = None,
 ) -> ProviderBaselineReplayResult:
@@ -139,6 +151,7 @@ def write_provider_baseline_period_replay(
 
     records = read_source_inventory(inventory_path)
     catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1"))
+    taxonomy = load_field_taxonomy(taxonomy_path)
     groups = company_source_groups()
     selected_company_ids = company_ids or tuple(sorted(groups))
     unknown_company_ids = sorted(set(selected_company_ids) - set(groups))
@@ -162,6 +175,7 @@ def write_provider_baseline_period_replay(
         akshare_report = _write_slice(
             company_dir / "akshare_only",
             catalog=catalog,
+            taxonomy=taxonomy,
             records=akshare_records,
             company_id=company_id,
             market=company_groups["akshare"].market,
@@ -169,6 +183,7 @@ def write_provider_baseline_period_replay(
         yahoo_report = _write_slice(
             company_dir / "yahoo_only",
             catalog=catalog,
+            taxonomy=taxonomy,
             records=yahoo_records,
             company_id=company_id,
             market=company_groups["yahoo"].market,
@@ -176,6 +191,7 @@ def write_provider_baseline_period_replay(
         combined_report = _write_slice(
             company_dir / "combined",
             catalog=catalog,
+            taxonomy=taxonomy,
             records=akshare_records + yahoo_records,
             company_id=company_id,
             market=company_market,
@@ -247,6 +263,7 @@ def _write_slice(
     output_dir: Path,
     *,
     catalog: Any,
+    taxonomy: FieldTaxonomyCatalog,
     records: tuple[SourceInventoryRecord, ...],
     company_id: str,
     market: str,
@@ -268,15 +285,35 @@ def _write_slice(
         profile="source_only",
         source_policy_report=policy_report,
     )
+    candidate_report = discover_provider_field_candidates(
+        taxonomy_entries=taxonomy.fields,
+        mapping_entries=catalog.entries,
+        records=records,
+        priorities=("P0", "P1"),
+        fixture=f"provider_baseline_period_replay:{company_id}:{market}",
+        taxonomy_catalog=taxonomy.catalog_id,
+        mapping_catalog=catalog.catalog_id,
+    )
+    warning_classification = build_warning_classification(
+        export,
+        candidate_entries=candidate_report.fields,
+    )
 
     write_turtle_mapping_artifacts(mapping, output_dir)
     write_reconciliation_report(reconciliation, output_dir / "reconciliation_report.json")
     write_source_policy_report(policy_report, output_dir / "source_policy_report.json")
     write_source_first_export_artifacts(export, output_dir)
+    warning_artifacts = write_warning_classification_artifacts(
+        warning_classification,
+        output_dir,
+    )
 
     return {
         "coverage": _export_coverage(export),
-        "review": _review_lists(export),
+        "review": {
+            **_review_lists(export),
+            "warning_classification": warning_classification.to_dict(),
+        },
         "artifact_paths": {
             "source_inventory": str(output_dir / "source_inventory.jsonl"),
             "turtle_mapping": str(output_dir / "turtle_mapping.json"),
@@ -285,6 +322,8 @@ def _write_slice(
             "source_policy_report": str(output_dir / "source_policy_report.json"),
             "extraction_result": str(output_dir / "extraction_result.json"),
             "review_summary": str(output_dir / "review_summary.json"),
+            "warning_classification": str(warning_artifacts["json"]),
+            "warning_classification_markdown": str(warning_artifacts["markdown"]),
         },
     }
 
@@ -474,6 +513,21 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
                     f"{_format_field_list(review['metadata_blocker_fields'])}",
                     "  - fields_requiring_pdf_evidence: "
                     f"{_format_field_list(review['fields_requiring_pdf_evidence'])}",
+                ]
+            )
+            classification = review["warning_classification"]
+            classification_fields = classification["fields_by_category"]
+            lines.extend(
+                [
+                    "  - warning_classification:",
+                    "    - source_policy_resolvable: "
+                    f"{_format_field_list(classification_fields['source_policy_resolvable'])}",
+                    "    - pdf_verification_required: "
+                    f"{_format_field_list(classification_fields['pdf_verification_required'])}",
+                    "    - mapping_expansion_required: "
+                    f"{_format_field_list(classification_fields['mapping_expansion_required'])}",
+                    "    - source_unavailable: "
+                    f"{_format_field_list(classification_fields['source_unavailable'])}",
                 ]
             )
             gap_categories = review["gap_categories"]

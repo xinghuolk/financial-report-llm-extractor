@@ -326,6 +326,15 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
         "total_cur_liab",
         "total_liabilities",
     }
+    expected_pdf_fields = {
+        "gross_profit",
+        "net_profit",
+        "revenue",
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    }
     for company_id in ("00001", "01113"):
         hk_combined = companies[company_id]["review"]["combined"]
         assert "present_metadata_warning_fields" in hk_combined
@@ -340,6 +349,19 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
             hk_combined["metadata_blocker_fields"]
         )
         assert "source_policy_report" in companies[company_id]["artifact_paths"][
+            "combined"
+        ]
+        warning_classification = hk_combined["warning_classification"]
+        assert set(
+            warning_classification["fields_by_category"]["pdf_verification_required"]
+        ) >= expected_pdf_fields
+        assert warning_classification["fields_by_category"][
+            "mapping_expansion_required"
+        ] == ["defer_tax_liab"]
+        assert set(
+            warning_classification["fields_by_category"]["source_unavailable"]
+        ) >= {"bond_payable", "cip", "invest_income"}
+        assert "warning_classification" in companies[company_id]["artifact_paths"][
             "combined"
         ]
 
