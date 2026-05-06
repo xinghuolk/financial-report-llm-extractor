@@ -334,8 +334,10 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
     normalized_value: Decimal | None = None
     unit_multiplier: Decimal | None = None
     canonical_unit: Currency | None = None
+    record_is_valid = False
     try:
         record.validate()
+        record_is_valid = True
         money = normalize_money(
             str(record.raw_value),
             unit_context=f"{record.currency} {record.unit}",
@@ -361,11 +363,17 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
         source_evidence=record.source_evidence,
         canonical_unit=canonical_unit,
         errors=tuple(errors),
-        statement_metadata_proven=_statement_metadata_proven(record),
+        statement_metadata_proven=(
+            _statement_metadata_proven(record) if record_is_valid else False
+        ),
         unit_multiplier=unit_multiplier,
-        currency_proof_source=_currency_proof_source(record),
-        unit_proof_source=_unit_proof_source(record),
-        reporting_metadata_proof_source=_reporting_metadata_proof_source(record),
+        currency_proof_source=(
+            _currency_proof_source(record) if record_is_valid else None
+        ),
+        unit_proof_source=_unit_proof_source(record) if record_is_valid else None,
+        reporting_metadata_proof_source=(
+            _reporting_metadata_proof_source(record) if record_is_valid else None
+        ),
     )
 
 

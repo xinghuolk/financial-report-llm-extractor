@@ -265,6 +265,49 @@ def test_map_source_inventory_keeps_hk_akshare_currency_unit_metadata_unproven()
     assert candidate.unit_proof_source == "invalid_currency_as_unit"
 
 
+def test_map_source_inventory_suppresses_metadata_proof_when_source_record_invalid() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"akshare": ("资产总计",)},
+            )
+        },
+    )
+    records = [
+        SourceInventoryRecord(
+            source="akshare",
+            market="HK",
+            ticker="00001",
+            statement_type="balance_sheet",
+            period="2025-12-31",
+            raw_field_name="资产总计",
+            raw_value="100",
+            parsed_numeric_value=Decimal("100"),
+            report_type="annual",
+            account_standard="HKFRS",
+            currency="HKD",
+            unit="raw",
+            scope="consolidated",
+            source_evidence=(),
+        )
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["total_assets"]
+    assert mapped.status == "blocked"
+    candidate = mapped.candidates[0]
+    assert candidate.errors == ("present source records require source_evidence",)
+    assert candidate.statement_metadata_proven is False
+    assert candidate.currency_proof_source is None
+    assert candidate.unit_proof_source is None
+    assert candidate.reporting_metadata_proof_source is None
+
+
 def test_map_source_inventory_marks_missing_field() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",
