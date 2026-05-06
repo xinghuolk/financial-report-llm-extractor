@@ -116,6 +116,7 @@ def test_map_source_inventory_marks_hk_akshare_statement_metadata_as_proven() ->
             raw_value="100",
             parsed_numeric_value=Decimal("100"),
             report_type="annual",
+            account_standard="HKFRS",
             currency="HKD",
             unit="million",
             scope="consolidated",
@@ -137,6 +138,131 @@ def test_map_source_inventory_marks_hk_akshare_statement_metadata_as_proven() ->
     candidate = result.fields["total_assets"].candidates[0]
     assert candidate.statement_metadata_proven is True
     assert candidate.to_dict()["statement_metadata_proven"] is True
+
+
+def test_map_source_inventory_proves_hk_akshare_annual_raw_metadata() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"akshare": ("资产总计",)},
+            )
+        },
+    )
+    records = [
+        SourceInventoryRecord(
+            source="akshare",
+            market="HK",
+            ticker="00001",
+            statement_type="balance_sheet",
+            period="2025-12-31",
+            raw_field_name="资产总计",
+            raw_value="100",
+            parsed_numeric_value=Decimal("100"),
+            report_type="annual",
+            account_standard="HKFRS",
+            currency="HKD",
+            unit="raw",
+            scope="consolidated",
+            source_evidence=(_source_evidence("akshare", "资产总计"),),
+        )
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    candidate = result.fields["total_assets"].candidates[0]
+    assert candidate.statement_metadata_proven is True
+    assert candidate.unit_multiplier == Decimal("1")
+    assert candidate.currency_proof_source == "akshare_statement_metadata"
+    assert candidate.unit_proof_source == "source_unit:raw"
+    assert candidate.reporting_metadata_proof_source == "akshare_hk_metadata_join"
+    payload = candidate.to_dict()
+    assert payload["unit_multiplier"] == "1"
+    assert payload["currency_proof_source"] == "akshare_statement_metadata"
+    assert payload["unit_proof_source"] == "source_unit:raw"
+    assert payload["reporting_metadata_proof_source"] == "akshare_hk_metadata_join"
+
+
+def test_map_source_inventory_proves_hk_yahoo_annual_raw_metadata() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"yahoo": ("Total Assets",)},
+            )
+        },
+    )
+    records = [
+        SourceInventoryRecord(
+            source="yahoo",
+            market="HK",
+            ticker="00001.HK",
+            statement_type="balance_sheet",
+            period="2025-12-31",
+            raw_field_name="Total Assets",
+            raw_value="100",
+            parsed_numeric_value=Decimal("100"),
+            report_type="annual",
+            currency="HKD",
+            unit="raw",
+            scope="consolidated",
+            source_evidence=(_source_evidence("yahoo", "Total Assets"),),
+        )
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    candidate = result.fields["total_assets"].candidates[0]
+    assert candidate.statement_metadata_proven is True
+    assert candidate.unit_multiplier == Decimal("1")
+    assert candidate.currency_proof_source == "yahoo_statement_metadata"
+    assert candidate.unit_proof_source == "source_unit:raw"
+    assert candidate.reporting_metadata_proof_source == "yahoo_annual_statement"
+
+
+def test_map_source_inventory_keeps_hk_akshare_currency_unit_metadata_unproven() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "total_assets": _entry(
+                "total_assets",
+                statement_type="balance_sheet",
+                source_aliases={"akshare": ("资产总计",)},
+            )
+        },
+    )
+    records = [
+        SourceInventoryRecord(
+            source="akshare",
+            market="HK",
+            ticker="00001",
+            statement_type="balance_sheet",
+            period="2025-12-31",
+            raw_field_name="资产总计",
+            raw_value="100",
+            parsed_numeric_value=Decimal("100"),
+            report_type="annual",
+            account_standard="HKFRS",
+            currency="HKD",
+            unit="HKD",
+            scope="consolidated",
+            source_evidence=(_source_evidence("akshare", "资产总计"),),
+        )
+    ]
+
+    result = map_source_inventory(catalog, records)
+
+    candidate = result.fields["total_assets"].candidates[0]
+    assert candidate.statement_metadata_proven is False
+    assert candidate.unit_multiplier == Decimal("1")
+    assert candidate.unit_proof_source == "invalid_currency_as_unit"
 
 
 def test_map_source_inventory_marks_missing_field() -> None:
@@ -744,4 +870,15 @@ def _record(
                 raw_field_code=raw_field_code,
             ),
         ),
+    )
+
+
+def _source_evidence(source: str, raw_field_name: str) -> SourceEvidence:
+    return SourceEvidence(
+        source=source,  # type: ignore[arg-type]
+        adapter=source,
+        function="fixture",
+        artifact_id=f"{source}_artifact",
+        raw_record_id=f"{source}:{raw_field_name}",
+        raw_field_name=raw_field_name,
     )

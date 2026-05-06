@@ -41,10 +41,14 @@ class TurtleMappingCandidate:
     errors: tuple[str, ...] = field(default_factory=tuple)
     canonical_unit: Currency | None = None
     statement_metadata_proven: bool = False
+    unit_multiplier: Decimal | None = None
+    currency_proof_source: str | None = None
+    unit_proof_source: str | None = None
+    reporting_metadata_proof_source: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
-        for key in ("value", "normalized_value"):
+        for key in ("value", "normalized_value", "unit_multiplier"):
             if payload[key] is not None:
                 payload[key] = str(payload[key])
         return payload
@@ -328,6 +332,7 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
     errors: list[str] = []
     value: Decimal | None = None
     normalized_value: Decimal | None = None
+    unit_multiplier: Decimal | None = None
     canonical_unit: Currency | None = None
     try:
         record.validate()
@@ -337,6 +342,7 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
         )
         value = money.value
         normalized_value = money.normalized_value
+        unit_multiplier = money.unit_multiplier
         canonical_unit = money.normalized_unit
     except (ValueError, MoneyNormalizationError) as exc:
         errors.append(str(exc))
@@ -356,17 +362,58 @@ def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandid
         canonical_unit=canonical_unit,
         errors=tuple(errors),
         statement_metadata_proven=_statement_metadata_proven(record),
+        unit_multiplier=unit_multiplier,
+        currency_proof_source=_currency_proof_source(record),
+        unit_proof_source=_unit_proof_source(record),
+        reporting_metadata_proof_source=_reporting_metadata_proof_source(record),
     )
 
 
 def _statement_metadata_proven(record: SourceInventoryRecord) -> bool:
-    return (
-        record.source == "akshare"
-        and record.market == "HK"
-        and bool(record.report_type)
-        and record.currency not in {"unknown", "ambiguous"}
-        and record.unit is not None
-    )
+    if record.market != "HK":
+        return False
+    if record.currency in {"unknown", "ambiguous"}:
+        return False
+    if record.unit is None or record.unit.upper() == record.currency:
+        return False
+    if record.report_type != "annual":
+        return False
+    if record.source == "akshare":
+        return bool(record.account_standard)
+    if record.source == "yahoo":
+        return True
+    return False
+
+
+def _currency_proof_source(record: SourceInventoryRecord) -> str | None:
+    if record.currency in {"unknown", "ambiguous"}:
+        return None
+    if record.source == "akshare" and record.market == "HK":
+        return "akshare_statement_metadata"
+    if record.source == "yahoo":
+        return "yahoo_statement_metadata"
+    return f"{record.source}_record_currency"
+
+
+def _unit_proof_source(record: SourceInventoryRecord) -> str | None:
+    if record.unit is None:
+        return None
+    if (
+        record.currency not in {"unknown", "ambiguous"}
+        and record.unit.upper() == record.currency
+    ):
+        return "invalid_currency_as_unit"
+    return f"source_unit:{record.unit}"
+
+
+def _reporting_metadata_proof_source(record: SourceInventoryRecord) -> str | None:
+    if not _statement_metadata_proven(record):
+        return None
+    if record.source == "akshare" and record.market == "HK":
+        return "akshare_hk_metadata_join"
+    if record.source == "yahoo" and record.report_type == "annual":
+        return "yahoo_annual_statement"
+    return None
 
 
 def _apply_alias_precedence(
