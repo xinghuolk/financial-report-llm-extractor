@@ -390,6 +390,73 @@ def test_source_policy_requires_hk_primary_statement_metadata_proof_for_yahoo() 
     )
 
 
+def test_source_policy_allows_hk_yahoo_primary_when_statement_metadata_is_proven() -> None:
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            field_id: _entry(
+                field_id,
+                SourcePolicy(
+                    semantic_concept="reported statement line",
+                    market_policies={
+                        "HK": MarketSourcePolicy(
+                            primary_route="yahoo_direct",
+                            cross_check_routes=("akshare_direct",),
+                            on_conflict="select_primary_require_pdf",
+                        )
+                    },
+                    verification_requirement="pdf_required_on_conflict",
+                ),
+            )
+            for field_id in ("total_assets", "total_cur_assets", "total_liabilities")
+        },
+    )
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "total_assets": _field(
+                "total_assets",
+                Decimal("100"),
+                Decimal("110.71499745"),
+                yahoo_statement_metadata_proven=True,
+            ),
+            "total_cur_assets": _field(
+                "total_cur_assets",
+                Decimal("50"),
+                Decimal("55.357498725"),
+                yahoo_statement_metadata_proven=True,
+            ),
+            "total_liabilities": _field(
+                "total_liabilities",
+                Decimal("20"),
+                Decimal("22.14299949"),
+                yahoo_statement_metadata_proven=True,
+            ),
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+    )
+
+    item = report.items["total_assets"]
+    assert item.selection_status == "selected_primary"
+    assert item.selected_candidate is not None
+    assert item.selected_candidate.source == "yahoo"
+    assert item.verification_required is True
+    assert item.conflict_classifications == (
+        "fx_like_ratio",
+        "metadata_currency_suspected",
+    )
+
+
 def test_source_policy_does_not_classify_fx_like_ratio_across_periods() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",
@@ -618,6 +685,7 @@ def _field(
     yahoo_value: Decimal,
     *,
     akshare_statement_metadata_proven: bool = True,
+    yahoo_statement_metadata_proven: bool = False,
     period: str = "2025-12-31",
 ) -> MappedTurtleField:
     return MappedTurtleField(
@@ -640,6 +708,7 @@ def _field(
                 yahoo_value,
                 currency="HKD",
                 period=period,
+                statement_metadata_proven=yahoo_statement_metadata_proven,
             ),
         ),
         errors=("multiple source candidates matched catalog aliases",),
