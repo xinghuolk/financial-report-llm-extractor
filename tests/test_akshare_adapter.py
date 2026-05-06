@@ -152,6 +152,40 @@ def test_akshare_hk_statement_inventory_does_not_use_currency_as_unit(
     assert records[0].unit == "raw"
 
 
+def test_akshare_hk_statement_inventory_normalizes_metadata_currency_whitespace(
+    tmp_path: Path,
+) -> None:
+    class WhitespaceCurrencyAkshareClient(FakeAkshareClient):
+        def stock_financial_hk_report_metadata(
+            self,
+            stock: str,
+        ) -> list[dict[str, object]]:
+            assert stock == "00001"
+            return [
+                {
+                    "REPORT_DATE": "2024-12-31",
+                    "CURRENCY": " hKd ",
+                    "ACCOUNT_STANDARD": "HKFRS",
+                    "REPORT_TYPE": "年报",
+                }
+            ]
+
+    store = SourceArtifactStore(tmp_path)
+    adapter = AkshareAdapter(
+        client=WhitespaceCurrencyAkshareClient(),
+        artifact_store=store,
+    )
+
+    records = adapter.fetch_hk_statement_inventory(
+        ticker="00001",
+        statement_type="balance_sheet",
+        unit="HKD",
+    )
+
+    assert records[0].currency == "HKD"
+    assert records[0].unit == "raw"
+
+
 def test_akshare_cn_statement_inventory_uses_market_symbol_and_cny(
     tmp_path: Path,
 ) -> None:
@@ -338,13 +372,14 @@ def test_akshare_hk_statement_inventory_returns_unsupported_record(
     records = adapter.fetch_hk_statement_inventory(
         ticker="00001",
         statement_type="equity_statement",
-        unit="HKD",
+        unit=" hkd ",
     )
 
     assert len(records) == 1
     record = records[0]
     assert record.source_status == "unsupported"
     assert record.market == "HK"
+    assert record.currency == "HKD"
     assert record.unit == "raw"
     assert record.raw_field_name == "equity_statement"
     assert record.source_evidence[0].function == "unsupported_statement_type"
@@ -373,6 +408,47 @@ def test_akshare_hk_statement_inventory_returns_missing_record_with_source_unit(
         ticker="00001",
         statement_type="balance_sheet",
         unit="HKD",
+    )
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source_status == "missing"
+    assert record.currency == "HKD"
+    assert record.unit == "raw"
+
+
+def test_akshare_hk_statement_inventory_missing_uses_caller_currency_without_metadata(
+    tmp_path: Path,
+) -> None:
+    class EmptyHkNoMetadataAkshareClient(FakeAkshareClient):
+        def stock_financial_hk_report_em(
+            self,
+            stock: str,
+            symbol: str,
+            indicator: str,
+        ) -> list[dict[str, object]]:
+            assert stock == "00001"
+            assert symbol == "资产负债表"
+            assert indicator == "年度"
+            return []
+
+        def stock_financial_hk_report_metadata(
+            self,
+            stock: str,
+        ) -> list[dict[str, object]]:
+            assert stock == "00001"
+            return []
+
+    store = SourceArtifactStore(tmp_path)
+    adapter = AkshareAdapter(
+        client=EmptyHkNoMetadataAkshareClient(),
+        artifact_store=store,
+    )
+
+    records = adapter.fetch_hk_statement_inventory(
+        ticker="00001",
+        statement_type="balance_sheet",
+        unit=" hkd ",
     )
 
     assert len(records) == 1

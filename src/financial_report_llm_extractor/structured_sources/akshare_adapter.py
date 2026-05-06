@@ -120,6 +120,7 @@ class AkshareAdapter:
         unit: str,
     ) -> tuple[SourceInventoryRecord, ...]:
         symbol = HK_STATEMENT_SYMBOLS.get(statement_type)
+        caller_currency = _normalize_currency(unit)
         if symbol is None:
             artifact = self.artifact_store.write_json(
                 source="akshare",
@@ -144,10 +145,10 @@ class AkshareAdapter:
                     source_status="unsupported",
                     function="unsupported_statement_type",
                     artifact_id=artifact.artifact_id,
-                    currency="unknown",
+                    currency=caller_currency,
                     unit=_normalize_source_unit(
                         market="HK",
-                        currency=_normalize_currency(unit),
+                        currency=caller_currency,
                         unit=unit,
                     ),
                 ),
@@ -177,6 +178,8 @@ class AkshareAdapter:
             currency = _normalize_currency(
                 metadata_rows[0].get("CURRENCY") if metadata_rows else None
             )
+            if currency == "unknown":
+                currency = caller_currency
             return (
                 _status_record(
                     market="HK",
@@ -326,7 +329,7 @@ class AkshareAdapter:
 
 
 def _normalize_currency(value: object) -> Currency:
-    text = str(value or "").upper()
+    text = str(value or "").strip().upper()
     if text in {"CNY", "RMB"}:
         return "CNY"
     if text in {"HKD", "HK$"}:
