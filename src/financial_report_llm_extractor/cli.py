@@ -140,6 +140,11 @@ def build_parser() -> argparse.ArgumentParser:
     baseline_replay_parser.add_argument("--inventory", required=True, type=Path)
     baseline_replay_parser.add_argument("--inventory-summary", required=True, type=Path)
     baseline_replay_parser.add_argument("--catalog", required=True, type=Path)
+    baseline_replay_parser.add_argument(
+        "--taxonomy",
+        default=Path("field_catalog/turtle_v015_field_taxonomy.json"),
+        type=Path,
+    )
     baseline_replay_parser.add_argument("--out", required=True, type=Path)
 
     return parser
@@ -379,6 +384,7 @@ def main(argv: list[str] | None = None) -> int:
             inventory_path=args.inventory,
             inventory_summary_path=args.inventory_summary,
             catalog_path=args.catalog,
+            taxonomy_path=args.taxonomy,
             output_dir=args.out,
         )
         print(f"companies={replay_result.company_count}")

@@ -379,21 +379,31 @@ def test_replay_provider_baseline_command_calls_replay_layer(
     inventory_path = tmp_path / "source_inventory.jsonl.gz"
     inventory_summary_path = tmp_path / "provider_field_inventory_summary.json"
     catalog_path = tmp_path / "catalog.json"
+    taxonomy_path = tmp_path / "taxonomy.json"
     output_dir = tmp_path / "replay"
-    calls: list[tuple[Path, Path, Path, Path]] = []
+    calls: list[tuple[Path, Path, Path, Path, Path]] = []
 
     def fake_write_provider_baseline_period_replay(
         *,
         inventory_path: Path,
         inventory_summary_path: Path,
         catalog_path: Path,
+        taxonomy_path: Path,
         output_dir: Path,
         output_summary_path: Path | None = None,
         company_ids: tuple[str, ...] | None = None,
     ) -> FakeProviderBaselineReplayResult:
         assert output_summary_path is None
         assert company_ids is None
-        calls.append((inventory_path, inventory_summary_path, catalog_path, output_dir))
+        calls.append(
+            (
+                inventory_path,
+                inventory_summary_path,
+                catalog_path,
+                taxonomy_path,
+                output_dir,
+            )
+        )
         return FakeProviderBaselineReplayResult(
             summary_path=output_dir / "provider_baseline_period_replay_summary.json",
             markdown_path=output_dir / "provider_baseline_period_replay_summary.md",
@@ -415,13 +425,17 @@ def test_replay_provider_baseline_command_calls_replay_layer(
             str(inventory_summary_path),
             "--catalog",
             str(catalog_path),
+            "--taxonomy",
+            str(taxonomy_path),
             "--out",
             str(output_dir),
         ]
     )
 
     assert exit_code == 0
-    assert calls == [(inventory_path, inventory_summary_path, catalog_path, output_dir)]
+    assert calls == [
+        (inventory_path, inventory_summary_path, catalog_path, taxonomy_path, output_dir)
+    ]
 
 
 def test_extract_command_calls_real_transport_layer(
