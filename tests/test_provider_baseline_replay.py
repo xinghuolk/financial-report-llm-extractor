@@ -1,23 +1,121 @@
 import json
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from financial_report_llm_extractor.structured_sources.artifacts import (
+from financial_report_llm_extractor.structured_sources.artifacts import (  # type: ignore[import-untyped]
     write_source_inventory,
 )
-from financial_report_llm_extractor.structured_sources.models import (
+from financial_report_llm_extractor.structured_sources.models import (  # type: ignore[import-untyped]
     SourceEvidence,
     SourceInventoryRecord,
 )
-from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (  # type: ignore[import-untyped]
     ProviderBaselineGroup,
+    ProviderBaselineReplayResult,
     _company_market,
     company_source_groups,
     select_latest_annual_records,
     write_provider_baseline_period_replay,
 )
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SOURCE_MAPPING_CATALOG_PATH = (
+    REPO_ROOT / "field_catalog" / "turtle_v015_source_mapping_minimal.json"
+)
+PROVIDER_BASELINE_FIXTURE_DIR = (
+    REPO_ROOT / "tests" / "fixtures" / "provider_captures" / "provider_field_baseline"
+)
+PROVIDER_BASELINE_INVENTORY_PATH = (
+    PROVIDER_BASELINE_FIXTURE_DIR / "source_inventory.jsonl.gz"
+)
+PROVIDER_BASELINE_INVENTORY_SUMMARY_PATH = (
+    PROVIDER_BASELINE_FIXTURE_DIR / "provider_field_inventory_summary.json"
+)
+PROVIDER_BASELINE_REPLAY_SCRIPT_PATH = (
+    REPO_ROOT / "scripts" / "run-provider-baseline-period-replay.sh"
+)
+
+HK_COMPANY_IDS = ("00001", "01113")
+EXPECTED_HK_METADATA_BLOCKER_FIELDS = frozenset(
+    {
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    }
+)
+EXPECTED_HK_PDF_VERIFICATION_FIELDS = frozenset(
+    {
+        "gross_profit",
+        "net_profit",
+        "revenue",
+        "total_assets",
+        "total_cur_assets",
+        "total_cur_liab",
+        "total_liabilities",
+    }
+)
+EXPECTED_HK_MAPPING_EXPANSION_FIELDS = ["defer_tax_liab"]
+EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
+    {"bond_payable", "cip", "invest_income"}
+)
+
+
+CheckedInReplay = tuple[ProviderBaselineReplayResult, dict[str, Any]]
+
+
+@pytest.fixture(scope="module")
+def checked_in_provider_baseline_replay(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> CheckedInReplay:
+    output_dir = tmp_path_factory.mktemp("provider_baseline_replay") / "baseline"
+    result = write_provider_baseline_period_replay(
+        inventory_path=PROVIDER_BASELINE_INVENTORY_PATH,
+        inventory_summary_path=PROVIDER_BASELINE_INVENTORY_SUMMARY_PATH,
+        catalog_path=SOURCE_MAPPING_CATALOG_PATH,
+        output_dir=output_dir,
+    )
+    payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
+    return result, payload
+
+
+def _companies_by_id(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {company["company_id"]: company for company in payload["companies"]}
+
+
+def _assert_hk_warning_classification(
+    company: dict[str, Any],
+    *,
+    assert_artifact_payload: bool = False,
+) -> None:
+    warning_classification = company["review"]["combined"]["warning_classification"]
+    assert (
+        warning_classification["counts_by_category"]["pdf_verification_required"] >= 7
+    )
+    assert set(
+        warning_classification["fields_by_category"]["pdf_verification_required"]
+    ) >= EXPECTED_HK_PDF_VERIFICATION_FIELDS
+    assert (
+        warning_classification["fields_by_category"]["mapping_expansion_required"]
+        == EXPECTED_HK_MAPPING_EXPANSION_FIELDS
+    )
+    assert set(
+        warning_classification["fields_by_category"]["source_unavailable"]
+    ) >= EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS
+
+    assert "warning_classification" in company["artifact_paths"]["combined"]
+    artifact_path = Path(company["artifact_paths"]["combined"]["warning_classification"])
+    assert artifact_path.exists()
+    if assert_artifact_payload:
+        artifact_payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+        assert (
+            artifact_payload["items"]["revenue"]["category"]
+            == "pdf_verification_required"
+        )
 
 
 def _record(
@@ -191,7 +289,7 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
     result = write_provider_baseline_period_replay(
         inventory_path=inventory_path,
         inventory_summary_path=inventory_summary_path,
-        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        catalog_path=SOURCE_MAPPING_CATALOG_PATH,
         output_dir=tmp_path / "replay",
         company_ids=("600519",),
     )
@@ -239,27 +337,16 @@ def test_write_provider_baseline_period_replay_rejects_unknown_company_id(
         write_provider_baseline_period_replay(
             inventory_path=inventory_path,
             inventory_summary_path=inventory_summary_path,
-            catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+            catalog_path=SOURCE_MAPPING_CATALOG_PATH,
             output_dir=tmp_path / "replay",
             company_ids=("99999",),
         )
 
 
 def test_provider_baseline_period_replay_uses_checked_in_fixture(
-    tmp_path: Path,
+    checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
-    result = write_provider_baseline_period_replay(
-        inventory_path=Path(
-            "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
-        ),
-        inventory_summary_path=Path(
-            "tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json"
-        ),
-        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
-        output_dir=tmp_path / "baseline",
-    )
-
-    payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
+    result, payload = checked_in_provider_baseline_replay
 
     assert result.company_count == 3
     assert payload["company_count"] == 3
@@ -285,10 +372,17 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
     assert companies["00001"]["review"]["combined"]["gap_categories"][
         "pdf_llm_supplement_candidates"
     ]
+    for company_id in HK_COMPANY_IDS:
+        _assert_hk_warning_classification(
+            companies[company_id],
+            assert_artifact_payload=True,
+        )
 
     for company_id in ("600519", "00001", "01113"):
-        report_path = (
-            tmp_path / "baseline" / company_id / "combined" / "reconciliation_report.json"
+        report_path = Path(
+            companies[company_id]["artifact_paths"]["combined"][
+                "reconciliation_report"
+            ]
         )
         report = json.loads(report_path.read_text(encoding="utf-8"))
         reasons = {item["reason"] for item in report["items"].values()}
@@ -296,22 +390,10 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
 
 
 def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
-    tmp_path: Path,
+    checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
-    result = write_provider_baseline_period_replay(
-        inventory_path=Path(
-            "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
-        ),
-        inventory_summary_path=Path(
-            "tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json"
-        ),
-        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
-        output_dir=tmp_path / "baseline",
-        company_ids=("600519", "00001", "01113"),
-    )
-
-    payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
-    companies = {company["company_id"]: company for company in payload["companies"]}
+    _, payload = checked_in_provider_baseline_replay
+    companies = _companies_by_id(payload)
 
     maotai_combined = companies["600519"]["coverage"]["combined"]
     assert maotai_combined["selected_count"] >= maotai_combined["covered_count"]
@@ -320,27 +402,12 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
         "selected_with_warnings_fields"
     ]
 
-    expected_hk_metadata_blockers = {
-        "total_assets",
-        "total_cur_assets",
-        "total_cur_liab",
-        "total_liabilities",
-    }
-    expected_pdf_fields = {
-        "gross_profit",
-        "net_profit",
-        "revenue",
-        "total_assets",
-        "total_cur_assets",
-        "total_cur_liab",
-        "total_liabilities",
-    }
-    for company_id in ("00001", "01113"):
+    for company_id in HK_COMPANY_IDS:
         hk_combined = companies[company_id]["review"]["combined"]
         assert "present_metadata_warning_fields" in hk_combined
         assert "metadata_blocker_fields" in hk_combined
         assert set(hk_combined["metadata_blocker_fields"]) >= (
-            expected_hk_metadata_blockers
+            EXPECTED_HK_METADATA_BLOCKER_FIELDS
         )
         assert set(hk_combined["selected_with_warnings_fields"]) >= set(
             hk_combined["present_metadata_warning_fields"]
@@ -351,23 +418,11 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
         assert "source_policy_report" in companies[company_id]["artifact_paths"][
             "combined"
         ]
-        warning_classification = hk_combined["warning_classification"]
-        assert set(
-            warning_classification["fields_by_category"]["pdf_verification_required"]
-        ) >= expected_pdf_fields
-        assert warning_classification["fields_by_category"][
-            "mapping_expansion_required"
-        ] == ["defer_tax_liab"]
-        assert set(
-            warning_classification["fields_by_category"]["source_unavailable"]
-        ) >= {"bond_payable", "cip", "invest_income"}
-        assert "warning_classification" in companies[company_id]["artifact_paths"][
-            "combined"
-        ]
+        _assert_hk_warning_classification(companies[company_id])
 
         hk_akshare = companies[company_id]["review"]["akshare_only"]
         assert set(hk_akshare["metadata_blocker_fields"]) >= (
-            expected_hk_metadata_blockers
+            EXPECTED_HK_METADATA_BLOCKER_FIELDS
         )
         assert not (
             set(companies[company_id]["coverage"]["akshare_only"]["clean_present_fields"])
@@ -385,22 +440,10 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
 
 
 def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
-    tmp_path: Path,
+    checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
-    result = write_provider_baseline_period_replay(
-        inventory_path=Path(
-            "tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz"
-        ),
-        inventory_summary_path=Path(
-            "tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json"
-        ),
-        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
-        output_dir=tmp_path,
-        company_ids=("600519",),
-    )
-
-    payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
-    company = payload["companies"][0]
+    _, payload = checked_in_provider_baseline_replay
+    company = _companies_by_id(payload)["600519"]
     combined_coverage = company["coverage"]["combined"]
     combined_review = company["review"]["combined"]
 
@@ -448,11 +491,12 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
 
 
 def test_provider_baseline_period_replay_script_is_local_fixture_entrypoint() -> None:
-    script = Path("scripts/run-provider-baseline-period-replay.sh").read_text(
-        encoding="utf-8"
-    )
+    script = PROVIDER_BASELINE_REPLAY_SCRIPT_PATH.read_text(encoding="utf-8")
 
     assert "replay-provider-baseline" in script
     assert "source_inventory.jsonl.gz" in script
     assert "provider_field_inventory_summary.json" in script
+    assert "TAXONOMY" in script
+    assert "field_catalog/turtle_v015_field_taxonomy.json" in script
+    assert "--taxonomy" in script
     assert "tmp/runs/provider_baseline_period_replay" in script
