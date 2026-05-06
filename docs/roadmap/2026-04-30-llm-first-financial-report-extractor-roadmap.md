@@ -727,6 +727,14 @@ Implementation result:
   - `uv run mypy src tests`: passed.
   - Full `uv run pytest -v`: `411 passed, 1 skipped, 1 failed`; the remaining failure is an existing `akshare_cn_600519_balance_sheet` fixture hash mismatch, not introduced by Phase M.
 
+Roadmap update after Phase M:
+
+- Run the HK 15-field closure before expanding to the full 33-field P0/P1 denominator.
+- The closure artifact must report `net_profit`, `gross_profit`, `defer_tax_liab`, `bond_payable`, `cip`, and `invest_income` in explicit review buckets rather than a flat warning bucket.
+- `net_profit` remains `yahoo_definition_unverified` until PDF row semantics proof shows the Yahoo value matches the annual-report definition.
+- `gross_profit` remains `pdf_required` until a formal annual-report row or derivation proof is added.
+- Start Phase N only after replay no longer confuses definition-unverified, mapping-blocked, and source-unavailable fields.
+
 ### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 
 Goal: expand source-first coverage only after HK proof and warning classification are stable.
