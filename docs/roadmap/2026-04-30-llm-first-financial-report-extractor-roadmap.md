@@ -638,6 +638,12 @@ Exit criteria:
 
 Goal: turn the current HK selected-with-warning coverage into an actionable work queue.
 
+Implementation status:
+
+- Warning classification artifacts are written for each provider replay slice.
+- HK `00001` and `01113` combined slices expose a PDF verification queue, mapping expansion queue, and source unavailable queue.
+- PDF verification queue is now bounded to `pdf_verification_required`.
+
 Deliverables:
 
 - Add a warning classification summary for each company/source slice and combined slice.
