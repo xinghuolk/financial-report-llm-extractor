@@ -334,9 +334,14 @@ MCP 合适的角色：
 
 - AKShare `600519` 三张表真实请求已保存为 captured inventory，回放覆盖 8/9 个 minimal source-mapping 字段。
 - Yahoo/yfinance `0001.HK` income statement 真实请求已保存为 captured inventory，回放覆盖 `revenue`、`net_profit`、`gross_profit`。
+- Provider field baseline 已扩展为 AKShare + Yahoo across `600519`、`00001`、`01113` 的最新五年捕获数据，并压缩保存为 fixture。
+- Period-scoped provider baseline replay 已完成 source policy conflict layer 接入：
+  - `600519` combined selected coverage: 14/15，`revenue` 被 source policy 选为 primary 但保留 warning 和 PDF verification requirement。
+  - `00001` 和 `01113` combined selected coverage: 11/15，HK balance-sheet totals 和 `gross_profit` 保留 FX-like / metadata-currency warning。
+  - 每个 company/source slice 都写出 `source_policy_report.json`，同时区分 raw reconciliation conflict、policy unresolved conflict、selected with warnings 和 clean present fields。
 - 真实 provider 调用只用于创建或刷新 captured artifacts；日常 mapping、coverage、reconciliation 迭代应使用 captured replay，避免重复请求和接口波动。
 
-这说明 source-first 路线对核心三大表字段是可行的，但还不能替代完整评估：`00001`、`01113`、Yahoo balance sheet/cash flow 和 cross-source reconciliation 仍需补齐。
+这说明 source-first 路线对核心三大表字段是可行的。当前剩余风险不再是 broad PDF retrieval，而是 source catalog 覆盖、provider 字段语义、货币单位 metadata proof，以及 selected PDF evidence supplement。
 
 ### 风险：结构化来源覆盖不足
 
@@ -350,8 +355,9 @@ MCP 合适的角色：
 
 规避：
 
-- Turtle mapping 需要显式 `mapping_confidence` 和 `mapping_rule_id`。
-- 高风险字段需要人工 review 或 PDF evidence support。
+- Turtle mapping 需要显式 source aliases、semantic variants 和 market-specific source policy。
+- 高风险字段经过 source policy classification 后才能被选为 primary。
+- policy-selected 字段必须保留 warning、cross-check evidence、raw reconciliation status 和 PDF verification requirement。
 - derived fields 必须保留输入 lineage。
 
 ### 风险：货币和单位丢失

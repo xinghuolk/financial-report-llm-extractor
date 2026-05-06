@@ -587,7 +587,19 @@ Current validation status:
   - `scripts/run-provider-baseline-period-replay.sh`
   - output: `tmp/runs/provider_baseline_period_replay/provider_baseline_period_replay_summary.json`
   - it selects the latest annual date part per company/source and normalizes replay periods before mapping.
-- Full source-first viability decision is not complete until the period-scoped replay has been reviewed and remaining gaps are categorized.
+- Source policy conflict resolution is implemented and reviewed:
+  - source policy catalog metadata supports semantic variants, market policies, primary routes, cross-check routes, and PDF verification requirements.
+  - `MappedTurtleField` preserves policy evidence candidates filtered out by same-source alias precedence.
+  - source policy classifies semantic mismatch, FX-like ratio, metadata-currency suspicion, single-source unverified coverage, and missing currency metadata proof.
+  - export preserves `selection_status`, `selected_source`, `verification_required`, `conflict_classifications`, warnings, and review notes.
+  - provider baseline replay writes `source_policy_report.json` for every company/source slice.
+- Latest no-network source-policy replay:
+  - command: `uv run financial-report-llm-extractor replay-provider-baseline --inventory tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz --inventory-summary tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json --catalog field_catalog/turtle_v015_source_mapping_minimal.json --out tmp/runs/source_policy_conflict_resolution`
+  - output: `tmp/runs/source_policy_conflict_resolution/provider_baseline_period_replay_summary.json`
+  - `600519` combined selected coverage: 14/15, clean present: 13/15, `revenue` selected with warning and PDF verification required.
+  - `00001` combined selected coverage: 11/15, clean present: 4/15, HK balance-sheet totals selected with warnings and PDF verification required.
+  - `01113` combined selected coverage: 11/15, clean present: 4/15, HK balance-sheet totals selected with warnings and PDF verification required.
+- Remaining gaps are now categorized into source availability, mapping ambiguity/blocker, raw reconciliation conflict, policy unresolved conflict, and PDF/LLM supplement candidates.
 
 ## 6. Validation Commands
 
@@ -597,6 +609,7 @@ Expected commands after implementation begins:
 uv run pytest tests/test_structured_sources.py -v
 uv run pytest tests/test_source_mapping.py -v
 uv run pytest tests/test_source_coverage.py -v
+uv run pytest tests/test_source_policy.py tests/test_source_review_export.py tests/test_provider_baseline_replay.py -v
 uv run pytest -v
 uv run ruff check .
 uv run mypy src tests
@@ -645,6 +658,7 @@ This branch is complete when:
 AKShare
 -> Yahoo/yfinance
 -> reconciliation
+-> source policy conflict classification and primary-candidate selection
 -> PDF evidence supplement
 -> LLM ambiguity review
 ```
