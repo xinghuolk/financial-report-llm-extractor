@@ -31,6 +31,8 @@ ConflictClassification = Literal[
     "missing_source_candidate",
     "single_source_unverified",
     "currency_metadata_required",
+    "currency_as_unit",
+    "statement_metadata_unproven",
 ]
 SelectionStatus = Literal[
     "selected_primary",
@@ -168,17 +170,20 @@ def _resolve_field(
             warnings=("market source policy primary candidate missing",),
             reconciliation_status=reconciliation_status,
         )
-    if candidate is not None and (
-        _requires_currency_metadata(candidate)
-        or _requires_hk_primary_statement_metadata(market, candidate, classifications)
-    ):
+    metadata_classifications = (
+        _metadata_classifications(entry, market, candidate)
+        if candidate is not None
+        else ()
+    )
+    if candidate is not None and metadata_classifications:
         return SourcePolicyItem(
             field_id=field.field_id,
             selection_status="unresolved_conflict",
-            conflict_classifications=classifications
-            + ("currency_metadata_required",),
+            conflict_classifications=_dedupe_classifications(
+                classifications + metadata_classifications
+            ),
             verification_required=True,
-            warnings=("selected primary candidate lacks proven currency metadata",),
+            warnings=(_metadata_warning(market, prefix="selected primary candidate"),),
             reconciliation_status=reconciliation_status,
         )
     if reconciliation_status in {"equivalent", "close"}:
@@ -226,6 +231,16 @@ def _resolve_single_source(
     requires_pdf = bool(
         market_policy is not None and market_policy.single_source_requires_pdf
     )
+    metadata_classifications = _metadata_classifications(entry, market, candidate)
+    if metadata_classifications:
+        return SourcePolicyItem(
+            field_id=field.field_id,
+            selection_status="unresolved_conflict",
+            conflict_classifications=metadata_classifications,
+            verification_required=True,
+            warnings=(_metadata_warning(market, prefix="single source candidate"),),
+            reconciliation_status=reconciliation_status,
+        )
     classifications: tuple[ConflictClassification, ...] = (
         ("single_source_unverified",) if requires_pdf else ()
     )
@@ -340,16 +355,50 @@ def _requires_currency_metadata(candidate: TurtleMappingCandidate) -> bool:
     )
 
 
-def _requires_hk_primary_statement_metadata(
+def _metadata_classifications(
+    entry: SourceMappingEntry,
     market: str | None,
     candidate: TurtleMappingCandidate,
-    classifications: tuple[ConflictClassification, ...],
+) -> tuple[ConflictClassification, ...]:
+    classifications: list[ConflictClassification] = []
+    if _requires_currency_metadata(candidate):
+        classifications.append("currency_metadata_required")
+    if market == "HK" and _candidate_uses_currency_as_unit(candidate):
+        classifications.append("currency_as_unit")
+    if _requires_hk_statement_metadata(entry, market, candidate):
+        classifications.append("statement_metadata_unproven")
+    return _dedupe_classifications(tuple(classifications))
+
+
+def _metadata_warning(market: str | None, *, prefix: str) -> str:
+    metadata_scope = "HK metadata" if market == "HK" else "source metadata"
+    return f"{prefix} lacks proven {metadata_scope}"
+
+
+def _candidate_uses_currency_as_unit(candidate: TurtleMappingCandidate) -> bool:
+    return (
+        candidate.currency not in {"unknown", "ambiguous"}
+        and candidate.unit is not None
+        and candidate.unit.upper() == candidate.currency
+    )
+
+
+def _requires_hk_statement_metadata(
+    entry: SourceMappingEntry,
+    market: str | None,
+    candidate: TurtleMappingCandidate,
 ) -> bool:
     return (
         market == "HK"
-        and "metadata_currency_suspected" in classifications
+        and entry.value_type == "money"
         and not candidate.statement_metadata_proven
     )
+
+
+def _dedupe_classifications(
+    classifications: tuple[ConflictClassification, ...],
+) -> tuple[ConflictClassification, ...]:
+    return tuple(dict.fromkeys(classifications))
 
 
 def _market_policy(

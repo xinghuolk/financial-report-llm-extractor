@@ -1,6 +1,8 @@
 # Phase K HK Source Metadata Proof Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
+
+**Status:** implemented and review-fixed.
 
 **Goal:** Make Hong Kong AKShare and Yahoo source candidates prove currency, unit, and reporting metadata before they can count as clean present.
 
@@ -13,15 +15,18 @@
 ## File Structure
 
 - Modify `src/financial_report_llm_extractor/structured_sources/akshare_adapter.py`: stop treating HK currency labels as clean unit labels; normalize HK source unit labels before records are created.
-- Modify `src/financial_report_llm_extractor/structured_sources/yahoo_adapter.py`: preserve annual metadata from yfinance payload and keep `unit="raw"` as the normal Yahoo statement unit.
+- No source changes were needed in `src/financial_report_llm_extractor/structured_sources/yahoo_adapter.py`; existing adapter behavior already preserved annual metadata and `unit="raw"`.
 - Modify `src/financial_report_llm_extractor/structured_sources/mapping.py`: add minimal candidate proof fields, then tighten `statement_metadata_proven` so HK proof works for AKShare and Yahoo but rejects `unit == currency`.
 - Modify `src/financial_report_llm_extractor/structured_sources/source_policy.py`: keep unresolved or warning status when HK primary candidates lack unit/currency/report proof.
 - Modify `src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py`: expose metadata warning counts or field lists in the replay summary if policy already classifies them.
+- Modify `src/financial_report_llm_extractor/structured_sources/capture_targets.py`: keep HK AKShare capture target unit semantics aligned to `raw`.
 - Test `tests/test_akshare_adapter.py`: HK fixtures use `unit="raw"` and assert currency remains `HKD`.
 - Test `tests/test_yahoo_adapter.py`: Yahoo annual metadata and raw-unit proof are preserved.
 - Test `tests/test_source_mapping.py`: HK metadata proof fields are serialized, proof passes for valid AKShare/Yahoo candidates, and proof fails when `unit == currency`.
 - Test `tests/test_source_policy.py`: policy blocks or warns on HK metadata proof failures.
 - Test `tests/test_provider_baseline_replay.py`: provider baseline replay still distinguishes clean present and selected-with-warning for HK.
+- Test `tests/test_capture_targets.py`: HK AKShare capture targets use `unit="raw"`.
+- Test `tests/test_real_source_validation.py`: raw artifact replay output does not reintroduce HK `unit == currency`.
 
 ## Task 1: Normalize HK AKShare Unit Semantics
 
@@ -29,7 +34,7 @@
 - Modify: `tests/test_akshare_adapter.py`
 - Modify: `src/financial_report_llm_extractor/structured_sources/akshare_adapter.py`
 
-- [ ] **Step 1: Write failing adapter tests for HK raw unit**
+- [x] **Step 1: Write failing adapter tests for HK raw unit**
 
 Update `test_akshare_hk_statement_inventory_joins_metadata_and_writes_artifact` to call the adapter with `unit="raw"` and assert the unit is no longer `HKD`.
 
@@ -66,7 +71,7 @@ def test_akshare_hk_statement_inventory_does_not_use_currency_as_unit(
     assert records[0].unit == "raw"
 ```
 
-- [ ] **Step 2: Run the adapter tests and verify failure**
+- [x] **Step 2: Run the adapter tests and verify failure**
 
 Run:
 
@@ -76,7 +81,7 @@ uv run pytest tests/test_akshare_adapter.py -v
 
 Expected before implementation: at least one assertion fails because HK adapter currently preserves `unit="HKD"`.
 
-- [ ] **Step 3: Implement minimal HK unit normalization**
+- [x] **Step 3: Implement minimal HK unit normalization**
 
 In `src/financial_report_llm_extractor/structured_sources/akshare_adapter.py`, add this helper near `_normalize_currency`:
 
@@ -113,7 +118,7 @@ record = SourceInventoryRecord(
 
 Also use the helper in HK missing and unsupported status records.
 
-- [ ] **Step 4: Run focused adapter tests**
+- [x] **Step 4: Run focused adapter tests**
 
 Run:
 
@@ -123,7 +128,7 @@ uv run pytest tests/test_akshare_adapter.py -v
 
 Expected: all AKShare adapter tests pass.
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```bash
 git add src/financial_report_llm_extractor/structured_sources/akshare_adapter.py tests/test_akshare_adapter.py
@@ -136,7 +141,7 @@ git commit -m "fix: normalize hk akshare unit metadata"
 - Modify: `tests/test_source_mapping.py`
 - Modify: `src/financial_report_llm_extractor/structured_sources/mapping.py`
 
-- [ ] **Step 1: Add tests for HK proof fields**
+- [x] **Step 1: Add tests for HK proof fields**
 
 Add tests near the existing `statement_metadata_proven` coverage:
 
@@ -280,7 +285,7 @@ def _source_evidence(source: str, raw_field_name: str) -> SourceEvidence:
     )
 ```
 
-- [ ] **Step 2: Run mapping tests and verify failure**
+- [x] **Step 2: Run mapping tests and verify failure**
 
 Run:
 
@@ -290,7 +295,7 @@ uv run pytest tests/test_source_mapping.py -v
 
 Expected before implementation: tests fail because `TurtleMappingCandidate` does not yet expose `unit_multiplier`, `currency_proof_source`, `unit_proof_source`, or `reporting_metadata_proof_source`.
 
-- [ ] **Step 3: Add fields to `TurtleMappingCandidate`**
+- [x] **Step 3: Add fields to `TurtleMappingCandidate`**
 
 In `src/financial_report_llm_extractor/structured_sources/mapping.py`, extend the dataclass:
 
@@ -328,7 +333,7 @@ def to_dict(self) -> dict[str, object]:
     return payload
 ```
 
-- [ ] **Step 4: Implement source-aware metadata proof**
+- [x] **Step 4: Implement source-aware metadata proof**
 
 In `src/financial_report_llm_extractor/structured_sources/mapping.py`, replace `_statement_metadata_proven()` with:
 
@@ -423,7 +428,7 @@ return TurtleMappingCandidate(
 )
 ```
 
-- [ ] **Step 5: Run mapping tests**
+- [x] **Step 5: Run mapping tests**
 
 Run:
 
@@ -433,7 +438,7 @@ uv run pytest tests/test_source_mapping.py -v
 
 Expected: mapping tests pass.
 
-- [ ] **Step 6: Commit Task 2**
+- [x] **Step 6: Commit Task 2**
 
 ```bash
 git add src/financial_report_llm_extractor/structured_sources/mapping.py tests/test_source_mapping.py
@@ -446,7 +451,7 @@ git commit -m "fix: expose hk source metadata proof"
 - Modify: `tests/test_source_policy.py`
 - Modify: `src/financial_report_llm_extractor/structured_sources/source_policy.py`
 
-- [ ] **Step 1: Add a policy test for proven Yahoo primary metadata**
+- [x] **Step 1: Add a policy test for proven Yahoo primary metadata**
 
 Add a test near `test_source_policy_requires_hk_primary_statement_metadata_proof_for_yahoo`:
 
@@ -557,7 +562,7 @@ def _field(
     )
 ```
 
-- [ ] **Step 2: Run source policy tests and verify failure**
+- [x] **Step 2: Run source policy tests and verify failure**
 
 Run:
 
@@ -567,7 +572,7 @@ uv run pytest tests/test_source_policy.py -v
 
 Expected before implementation: the new test may fail if source policy still treats Yahoo primary proof as missing.
 
-- [ ] **Step 3: Keep source policy logic focused on primary candidate proof**
+- [x] **Step 3: Keep source policy logic focused on primary candidate proof**
 
 Inspect `_requires_hk_primary_statement_metadata()` in `source_policy.py`. It should remain source-neutral:
 
@@ -586,7 +591,7 @@ def _requires_hk_primary_statement_metadata(
 
 If the test fails because `_primary_candidate()` is selecting the wrong source, fix the source policy test helper or catalog policy first. Do not add provider-specific branches unless the selected candidate itself lacks proof.
 
-- [ ] **Step 4: Run focused policy tests**
+- [x] **Step 4: Run focused policy tests**
 
 Run:
 
@@ -596,7 +601,7 @@ uv run pytest tests/test_source_policy.py -v
 
 Expected: all source policy tests pass.
 
-- [ ] **Step 5: Commit Task 3**
+- [x] **Step 5: Commit Task 3**
 
 ```bash
 git add src/financial_report_llm_extractor/structured_sources/source_policy.py tests/test_source_policy.py
@@ -609,7 +614,7 @@ git commit -m "fix: classify hk metadata proof warnings"
 - Modify: `tests/test_provider_baseline_replay.py`
 - Modify: `src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py`
 
-- [ ] **Step 1: Add replay summary assertions for present warnings and blockers**
+- [x] **Step 1: Add replay summary assertions for present warnings and blockers**
 
 Extend `test_provider_baseline_replay_reports_policy_selected_and_clean_counts`:
 
@@ -625,7 +630,7 @@ assert set(hk_combined["fields_requiring_pdf_evidence"]) >= set(
 )
 ```
 
-- [ ] **Step 2: Run replay tests and verify failure**
+- [x] **Step 2: Run replay tests and verify failure**
 
 Run:
 
@@ -635,7 +640,7 @@ uv run pytest tests/test_provider_baseline_replay.py -v
 
 Expected before implementation: `present_metadata_warning_fields` and `metadata_blocker_fields` are missing from review output.
 
-- [ ] **Step 3: Add present warning and blocker lists to `_review_lists()`**
+- [x] **Step 3: Add present warning and blocker lists to `_review_lists()`**
 
 In `provider_baseline_replay.py`, add these lists to `field_lists`:
 
@@ -678,7 +683,7 @@ f"{_format_field_list(review['present_metadata_warning_fields'])}",
 f"{_format_field_list(review['metadata_blocker_fields'])}",
 ```
 
-- [ ] **Step 4: Run replay tests**
+- [x] **Step 4: Run replay tests**
 
 Run:
 
@@ -688,7 +693,7 @@ uv run pytest tests/test_provider_baseline_replay.py -v
 
 Expected: replay tests pass and summary includes `present_metadata_warning_fields` and `metadata_blocker_fields`.
 
-- [ ] **Step 5: Commit Task 4**
+- [x] **Step 5: Commit Task 4**
 
 ```bash
 git add src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py tests/test_provider_baseline_replay.py
@@ -700,7 +705,7 @@ git commit -m "feat: expose hk metadata warning fields"
 **Files:**
 - No source edits unless verification finds a regression.
 
-- [ ] **Step 1: Run the focused Phase K test set**
+- [x] **Step 1: Run the focused Phase K test set**
 
 Run:
 
@@ -710,7 +715,7 @@ uv run pytest tests/test_akshare_adapter.py tests/test_yahoo_adapter.py tests/te
 
 Expected: all selected tests pass.
 
-- [ ] **Step 2: Run full test suite if time allows**
+- [x] **Step 2: Run full test suite if time allows**
 
 Run:
 
@@ -720,7 +725,7 @@ uv run pytest -v
 
 Expected: full suite passes.
 
-- [ ] **Step 3: Run static checks**
+- [x] **Step 3: Run static checks**
 
 Run:
 
@@ -731,7 +736,7 @@ uv run mypy src tests
 
 Expected: both commands pass.
 
-- [ ] **Step 4: Inspect final diff**
+- [x] **Step 4: Inspect final diff**
 
 Run:
 
@@ -742,7 +747,7 @@ git diff --check
 
 Expected: only intended source/test files are modified; `git diff --check` reports no whitespace errors.
 
-- [ ] **Step 5: Final commit**
+- [x] **Step 5: Final commit**
 
 If Tasks 1 to 4 were not committed individually, make one final commit:
 
@@ -756,3 +761,12 @@ git commit -m "fix: prove hk source metadata before clean coverage"
 - Spec coverage: The tasks cover HK currency/unit separation, AKShare metadata proof, Yahoo metadata proof, source policy classification, and replay visibility.
 - Placeholder scan: The plan contains no unresolved placeholder markers or open implementation slots.
 - Type consistency: The plan reuses existing `SourceInventoryRecord` and `SourcePolicyItem`, extends `TurtleMappingCandidate` with minimal proof fields, and keeps provider replay summary additions explicit.
+
+## Review Fixes Applied
+
+- Source policy now gates HK money metadata proof in all selected paths, including single-source, equivalent/close, and conflict-selection paths.
+- `currency_as_unit` and `statement_metadata_unproven` are explicit conflict classifications instead of being collapsed into generic currency metadata warnings.
+- Source policy tests no longer construct HK AKShare candidates with `unit="HKD"` while marking statement metadata as proven.
+- Provider replay tests cover `00001` and `01113`, including `akshare_only` metadata blockers and clean-present exclusion.
+- Raw artifact replay keeps historical fixture comparison compatibility but asserts new replay output has no HK present records where `unit == currency`.
+- `source_policy_report.json` selected candidates are asserted to expose `unit_multiplier`, `currency_proof_source`, and `unit_proof_source`.

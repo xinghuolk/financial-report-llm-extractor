@@ -307,7 +307,7 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
         ),
         catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
         output_dir=tmp_path / "baseline",
-        company_ids=("600519", "00001"),
+        company_ids=("600519", "00001", "01113"),
     )
 
     payload = json.loads(result.summary_path.read_text(encoding="utf-8"))
@@ -320,22 +320,46 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
         "selected_with_warnings_fields"
     ]
 
-    hk_combined = companies["00001"]["review"]["combined"]
-    assert "present_metadata_warning_fields" in hk_combined
-    assert "metadata_blocker_fields" in hk_combined
-    assert set(hk_combined["metadata_blocker_fields"]) >= {
+    expected_hk_metadata_blockers = {
         "total_assets",
         "total_cur_assets",
         "total_cur_liab",
         "total_liabilities",
     }
-    assert set(hk_combined["selected_with_warnings_fields"]) >= set(
-        hk_combined["present_metadata_warning_fields"]
-    )
-    assert set(hk_combined["fields_requiring_pdf_evidence"]) >= set(
-        hk_combined["metadata_blocker_fields"]
-    )
-    assert "source_policy_report" in companies["00001"]["artifact_paths"]["combined"]
+    for company_id in ("00001", "01113"):
+        hk_combined = companies[company_id]["review"]["combined"]
+        assert "present_metadata_warning_fields" in hk_combined
+        assert "metadata_blocker_fields" in hk_combined
+        assert set(hk_combined["metadata_blocker_fields"]) >= (
+            expected_hk_metadata_blockers
+        )
+        assert set(hk_combined["selected_with_warnings_fields"]) >= set(
+            hk_combined["present_metadata_warning_fields"]
+        )
+        assert set(hk_combined["fields_requiring_pdf_evidence"]) >= set(
+            hk_combined["metadata_blocker_fields"]
+        )
+        assert "source_policy_report" in companies[company_id]["artifact_paths"][
+            "combined"
+        ]
+
+        hk_akshare = companies[company_id]["review"]["akshare_only"]
+        assert set(hk_akshare["metadata_blocker_fields"]) >= (
+            expected_hk_metadata_blockers
+        )
+        assert not (
+            set(companies[company_id]["coverage"]["akshare_only"]["clean_present_fields"])
+            & set(hk_akshare["metadata_blocker_fields"])
+        )
+
+        policy_report_path = Path(
+            companies[company_id]["artifact_paths"]["combined"]["source_policy_report"]
+        )
+        policy_report = json.loads(policy_report_path.read_text(encoding="utf-8"))
+        selected_candidate = policy_report["items"]["revenue"]["selected_candidate"]
+        assert selected_candidate["unit_multiplier"] == "1"
+        assert selected_candidate["currency_proof_source"] == "yahoo_statement_metadata"
+        assert selected_candidate["unit_proof_source"] == "source_unit:raw"
 
 
 def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(

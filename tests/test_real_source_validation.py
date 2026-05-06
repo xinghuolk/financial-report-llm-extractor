@@ -329,6 +329,14 @@ def test_provider_baseline_raw_artifacts_replay_through_adapters_and_period_repl
     replay_keys = {_inventory_comparison_key(record) for record in result.records}
     assert replay_keys
     assert replay_keys <= baseline_keys
+    assert not [
+        record
+        for record in result.records
+        if record.market == "HK"
+        and record.source_status == "present"
+        and record.currency not in {"unknown", "ambiguous"}
+        and record.unit == record.currency
+    ]
 
     replay = write_provider_baseline_period_replay(
         inventory_path=tmp_path / "raw_replay" / "source_inventory.jsonl",

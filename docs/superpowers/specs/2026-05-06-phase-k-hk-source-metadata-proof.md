@@ -1,7 +1,7 @@
 # Phase K: HK Source Metadata Proof Spec
 
 > Date: 2026-05-06
-> Status: draft for implementation planning
+> Status: implemented and review-fixed
 > Roadmap phase: Phase K, HK Currency, Unit, And Reporting Metadata Proof
 
 ## 背景
@@ -113,11 +113,14 @@ Phase K 要让这些分类更准确，避免把 metadata-only 问题和真实 se
 主要修改文件：
 
 - `src/financial_report_llm_extractor/structured_sources/akshare_adapter.py`
-- `src/financial_report_llm_extractor/structured_sources/yahoo_adapter.py`
 - `src/financial_report_llm_extractor/structured_sources/mapping.py`
 - `src/financial_report_llm_extractor/structured_sources/source_policy.py`
 - `src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py`
-- `src/financial_report_llm_extractor/structured_sources/artifacts.py`
+- `src/financial_report_llm_extractor/structured_sources/capture_targets.py`
+
+已 review 但无需源码修改：
+
+- `src/financial_report_llm_extractor/structured_sources/yahoo_adapter.py`
 
 主要测试文件：
 
@@ -126,7 +129,8 @@ Phase K 要让这些分类更准确，避免把 metadata-only 问题和真实 se
 - `tests/test_source_mapping.py`
 - `tests/test_source_policy.py`
 - `tests/test_provider_baseline_replay.py`
-- `tests/test_source_artifacts.py`
+- `tests/test_capture_targets.py`
+- `tests/test_real_source_validation.py`
 
 如果实现需要新增 helper，优先新增：
 
@@ -160,6 +164,16 @@ Phase K 需要额外保证：
   - HK primary candidate `unit == currency` 时不能 clean present。
   - HK FX-like ratio 且 metadata proof 不足时保持 PDF verification required。
 - Provider baseline replay 对 `00001`、`01113` 的 summary 仍能生成，并保留 clean present 与 selected-with-warning 的区分。
+
+## Review 修复结果
+
+Phase K review 后补充了以下约束：
+
+- HK money candidate 只要 `statement_metadata_proven == false`，无论是 single-source、equivalent、close、还是 non-FX conflict，都不能进入 clean present。
+- HK `unit == currency` 会被分类为 `currency_as_unit`，并触发 `statement_metadata_unproven` metadata blocker。
+- Provider baseline replay 同时断言 `00001` 和 `01113` 的 `akshare_only` 与 `combined` metadata blockers，且 clean present 不得包含 blocker fields。
+- Raw artifact replay 允许历史 fixture 对比兼容旧 `unit == currency`，但新 adapter replay 输出不得再产生 HK present record 的 `unit == currency`。
+- `source_policy_report.json` 的 selected candidate 必须保留 reviewable proof fields，例如 `unit_multiplier`、`currency_proof_source`、`unit_proof_source`。
 
 ## 后续衔接
 

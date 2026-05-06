@@ -396,9 +396,11 @@ def _statement_metadata_proven(record: SourceInventoryRecord) -> bool:
 def _currency_proof_source(record: SourceInventoryRecord) -> str | None:
     if record.currency in {"unknown", "ambiguous"}:
         return None
-    if record.source == "akshare" and record.market == "HK":
+    if record.source == "akshare" and record.market == "HK" and (
+        record.report_type is not None or record.account_standard is not None
+    ):
         return "akshare_statement_metadata"
-    if record.source == "yahoo":
+    if record.source == "yahoo" and record.report_type == "annual":
         return "yahoo_statement_metadata"
     return f"{record.source}_record_currency"
 

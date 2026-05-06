@@ -322,7 +322,7 @@ def test_source_policy_requires_hk_akshare_statement_metadata_proof() -> None:
     assert item.conflict_classifications == (
         "fx_like_ratio",
         "metadata_currency_suspected",
-        "currency_metadata_required",
+        "statement_metadata_unproven",
     )
 
 
@@ -386,8 +386,68 @@ def test_source_policy_requires_hk_primary_statement_metadata_proof_for_yahoo() 
     assert item.conflict_classifications == (
         "fx_like_ratio",
         "metadata_currency_suspected",
-        "currency_metadata_required",
+        "statement_metadata_unproven",
     )
+
+
+def test_source_policy_blocks_hk_single_source_currency_as_unit() -> None:
+    catalog = _catalog(
+        "total_assets",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="akshare_direct",
+                    cross_check_routes=("yahoo_direct",),
+                    on_conflict="select_primary_require_pdf",
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "total_assets": MappedTurtleField(
+                field_id="total_assets",
+                status="present",
+                value=Decimal("100"),
+                normalized_value=Decimal("100"),
+                currency="HKD",
+                unit="HKD",
+                canonical_unit="HKD",
+                period="2025-12-31",
+                candidates=(
+                    _candidate(
+                        source="akshare",
+                        raw_field_name="总资产",
+                        raw_field_code="TOTAL_ASSETS",
+                        normalized_value=Decimal("100"),
+                        currency="HKD",
+                        unit="HKD",
+                        statement_metadata_proven=False,
+                    ),
+                ),
+            )
+        },
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+    )
+
+    item = report.items["total_assets"]
+    assert item.selection_status == "unresolved_conflict"
+    assert item.selected_candidate is None
+    assert item.verification_required is True
+    assert "currency_as_unit" in item.conflict_classifications
+    assert "statement_metadata_unproven" in item.conflict_classifications
 
 
 def test_source_policy_allows_hk_yahoo_primary_when_statement_metadata_is_proven() -> None:
@@ -698,6 +758,7 @@ def _field(
                 "TOTAL_ASSETS",
                 akshare_value,
                 currency="HKD",
+                unit="raw",
                 statement_metadata_proven=akshare_statement_metadata_proven,
                 period=period,
             ),

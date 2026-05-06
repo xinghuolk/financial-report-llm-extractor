@@ -41,6 +41,12 @@ from financial_report_llm_extractor.structured_sources.source_policy import (
 
 
 ReplaySliceName = Literal["akshare_only", "yahoo_only", "combined"]
+METADATA_REVIEW_NOTES = {
+    "currency_metadata_required",
+    "metadata_currency_suspected",
+    "currency_as_unit",
+    "statement_metadata_unproven",
+}
 
 
 @dataclass(frozen=True)
@@ -359,29 +365,16 @@ def _review_lists(
             for field_id, item in export.items.items()
             if item.status == "present"
             and (
-                any(
-                    note
-                    in {
-                        "currency_metadata_required",
-                        "metadata_currency_suspected",
-                    }
-                    for note in item.review_notes
-                )
+                any(note in METADATA_REVIEW_NOTES for note in item.review_notes)
                 or any("currency metadata" in warning for warning in item.warnings)
+                or any("HK metadata" in warning for warning in item.warnings)
             )
         ),
         "metadata_blocker_fields": sorted(
             field_id
             for field_id, item in export.items.items()
             if item.status != "present"
-            and any(
-                note
-                in {
-                    "currency_metadata_required",
-                    "metadata_currency_suspected",
-                }
-                for note in item.review_notes
-            )
+            and any(note in METADATA_REVIEW_NOTES for note in item.review_notes)
         ),
         "fields_requiring_pdf_evidence": sorted(
             field_id
