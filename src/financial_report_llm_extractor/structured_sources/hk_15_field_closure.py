@@ -189,6 +189,22 @@ def _closure_item(
             warnings=item.warnings if item is not None else (),
         )
 
+    if item is not None and _is_clean_present(item):
+        clean_reasons: tuple[str, ...] = (
+            "present_without_warnings_or_verification_required",
+        )
+        return Hk15FieldClosureItem(
+            field_id=field_id,
+            category="clean_present",
+            status=item.status,
+            reason=_first_reason(clean_reasons),
+            reasons=clean_reasons,
+            selected_source=item.selected_source,
+            candidate_sources=_candidate_sources(candidate_entry, warning_item),
+            verification_required=item.verification_required,
+            warnings=item.warnings,
+        )
+
     if warning_item is not None:
         warning_category = _closure_category_from_warning(warning_item.category)
         return Hk15FieldClosureItem(
@@ -203,9 +219,8 @@ def _closure_item(
             warnings=warning_item.warnings,
         )
 
-    if _is_clean_present(item):
-        category: ClosureCategory = "clean_present"
-    elif item is not None and item.status == "missing":
+    category: ClosureCategory
+    if item is not None and item.status == "missing":
         category = (
             "mapping_expansion_required"
             if _has_provider_candidates(candidate_entry)
@@ -220,7 +235,7 @@ def _closure_item(
     else:
         category = "selected_with_warnings"
 
-    reasons = _fallback_reasons(item, candidate_entry)
+    reasons: tuple[str, ...] = _fallback_reasons(item, candidate_entry)
     return Hk15FieldClosureItem(
         field_id=field_id,
         category=category,

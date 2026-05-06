@@ -167,3 +167,35 @@ def test_hk_15_field_closure_does_not_apply_yahoo_policy_to_missing_field() -> N
     )
 
     assert report.items["net_profit"].category == "source_unavailable"
+
+
+def test_hk_15_field_closure_does_not_apply_yahoo_policy_to_akshare_field() -> None:
+    items = {field_id: _item(field_id, status="present") for field_id in HK_15_FIELD_IDS}
+    items["net_profit"] = _item(
+        "net_profit",
+        status="present",
+        selected_source="akshare",
+    )
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="catalog",
+        catalog_version="1",
+        items=items,
+    )
+    warning = build_warning_classification(
+        export,
+        candidate_entries={},
+        market="HK",
+        hk_yahoo_trust_policy=_policy(),
+    )
+
+    report = build_hk_15_field_closure_report(
+        export=export,
+        warning_classification=warning,
+        candidate_entries={},
+        policy=_policy(),
+        company_id="00001",
+        market="HK",
+    )
+
+    assert report.items["net_profit"].category == "clean_present"

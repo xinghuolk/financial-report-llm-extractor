@@ -29,6 +29,10 @@ from financial_report_llm_extractor.structured_sources.export import (
 from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
     discover_provider_field_candidates,
 )
+from financial_report_llm_extractor.structured_sources.hk_15_field_closure import (
+    build_hk_15_field_closure_report,
+    write_hk_15_field_closure_artifacts,
+)
 from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
     HkYahooTrustPolicy,
     load_hk_yahoo_trust_policy,
@@ -330,6 +334,20 @@ def _write_slice(
         market=market,
         hk_yahoo_trust_policy=slice_hk_yahoo_trust_policy,
     )
+    hk_15_field_closure_artifacts: dict[str, Path] = {}
+    if market.upper() == "HK":
+        closure_report = build_hk_15_field_closure_report(
+            export=export,
+            warning_classification=warning_classification,
+            candidate_entries=candidate_report.fields,
+            policy=slice_hk_yahoo_trust_policy,
+            company_id=company_id,
+            market=market,
+        )
+        hk_15_field_closure_artifacts = write_hk_15_field_closure_artifacts(
+            closure_report,
+            output_dir,
+        )
 
     write_turtle_mapping_artifacts(mapping, output_dir)
     write_reconciliation_report(reconciliation, output_dir / "reconciliation_report.json")
@@ -375,6 +393,13 @@ def _write_slice(
     if hk_yahoo_trust_policy_report_path is not None:
         artifact_paths["hk_yahoo_trust_policy_report"] = str(
             hk_yahoo_trust_policy_report_path
+        )
+    if hk_15_field_closure_artifacts:
+        artifact_paths["hk_15_field_closure_report"] = str(
+            hk_15_field_closure_artifacts["json"]
+        )
+        artifact_paths["hk_15_field_closure_markdown"] = str(
+            hk_15_field_closure_artifacts["markdown"]
         )
 
     return {

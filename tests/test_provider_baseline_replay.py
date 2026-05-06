@@ -133,6 +133,33 @@ def _assert_hk_warning_classification(
             == "yahoo_pdf_verified"
         )
 
+    assert "hk_15_field_closure_report" in company["artifact_paths"]["combined"]
+    closure_path = Path(
+        company["artifact_paths"]["combined"]["hk_15_field_closure_report"]
+    )
+    assert closure_path.exists()
+    if assert_artifact_payload:
+        closure_payload = json.loads(closure_path.read_text(encoding="utf-8"))
+        assert closure_payload["total_fields"] == 15
+        assert set(closure_payload["fields_by_category"]["clean_present"]) == {
+            "cash",
+            "financing_cash_flow",
+            "investing_cash_flow",
+            "operating_cash_flow",
+            "revenue",
+            "total_assets",
+            "total_cur_assets",
+            "total_cur_liab",
+            "total_liabilities",
+        }
+        assert set(
+            closure_payload["fields_by_category"]["yahoo_definition_unverified"]
+        ) == {"net_profit"}
+        assert set(closure_payload["fields_by_category"]["pdf_required"]) == {
+            "gross_profit"
+        }
+        assert closure_payload["items"]["net_profit"]["reason"]
+
 
 def _record(
     *,
