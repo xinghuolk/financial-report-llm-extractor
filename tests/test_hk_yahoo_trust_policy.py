@@ -67,3 +67,70 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
     assert net_profit_rule is not None
     assert net_profit_rule.classification == "yahoo_definition_unverified"
     assert policy.build_policy_evidence("gross_profit")["sample_count"] == 0
+
+    gross_evidence = policy.build_policy_evidence("gross_profit")
+    net_evidence = policy.build_policy_evidence("net_profit")
+
+    assert gross_evidence["definition_status_reason"] == (
+        "formal annual-report gross-profit row semantics are not yet proven"
+    )
+    assert gross_evidence["required_proof"] == (
+        "formal PDF row or deterministic derivation matching Yahoo Gross Profit"
+    )
+    assert net_evidence["definition_status_reason"] == (
+        "Yahoo net-income semantics are not yet tied to the exact Turtle net_profit row"
+    )
+    assert net_evidence["required_proof"] == (
+        "PDF row semantics and value match for profit attributable to owners/shareholders"
+    )
+
+
+def test_hk_yahoo_trust_policy_requires_reason_for_definition_unverified_rule(
+    tmp_path: Path,
+) -> None:
+    payload = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    for rule in payload["rules"]:
+        if rule["field_id"] == "net_profit":
+            rule.pop("definition_status_reason", None)
+    policy_path = tmp_path / "bad_policy.json"
+    policy_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="definition_status_reason is required"):
+        load_hk_yahoo_trust_policy(policy_path)
+
+
+def test_hk_yahoo_trust_policy_requires_proof_for_definition_unverified_rule(
+    tmp_path: Path,
+) -> None:
+    payload = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    for rule in payload["rules"]:
+        if rule["field_id"] == "net_profit":
+            rule.pop("required_proof", None)
+    policy_path = tmp_path / "bad_policy.json"
+    policy_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="required_proof is required"):
+        load_hk_yahoo_trust_policy(policy_path)
+
+
+def test_hk_yahoo_trust_policy_rejects_non_string_definition_status_reason(
+    tmp_path: Path,
+) -> None:
+    payload = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    for rule in payload["rules"]:
+        if rule["field_id"] == "net_profit":
+            rule["definition_status_reason"] = 1
+    policy_path = tmp_path / "bad_policy.json"
+    policy_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="definition_status_reason must be a string"):
+        load_hk_yahoo_trust_policy(policy_path)

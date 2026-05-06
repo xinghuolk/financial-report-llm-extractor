@@ -94,6 +94,8 @@ class HkYahooTrustRule:
     trusted_unit: str
     trusted_unit_multiplier: Decimal
     allowed_yahoo_raw_fields: tuple[str, ...]
+    definition_status_reason: str | None = None
+    required_proof: str | None = None
     samples: tuple[HkYahooTrustSample, ...] = field(default_factory=tuple)
 
     def validate(
@@ -121,6 +123,11 @@ class HkYahooTrustRule:
             raise ValueError("allowed_yahoo_raw_fields is required")
         if self.classification == "yahoo_pdf_verified" and not self.samples:
             raise ValueError("verified rules must include at least one sample")
+        if self.classification == "yahoo_definition_unverified":
+            if not self.definition_status_reason:
+                raise ValueError("definition_status_reason is required")
+            if not self.required_proof:
+                raise ValueError("required_proof is required")
         for sample in self.samples:
             sample.validate(
                 allowed_yahoo_raw_fields=self.allowed_yahoo_raw_fields,
@@ -141,6 +148,8 @@ class HkYahooTrustRule:
             "trusted_unit": self.trusted_unit,
             "trusted_unit_multiplier": str(self.trusted_unit_multiplier),
             "allowed_yahoo_raw_fields": list(self.allowed_yahoo_raw_fields),
+            "definition_status_reason": self.definition_status_reason,
+            "required_proof": self.required_proof,
             "sample_count": len(self.samples),
             "sample_companies": sorted({sample.company_id for sample in self.samples}),
             "samples": [sample.to_policy_evidence() for sample in self.samples],
@@ -219,6 +228,8 @@ def _parse_rule(payload: object) -> HkYahooTrustRule:
         allowed_yahoo_raw_fields=tuple(
             str(field) for field in _required_list(rule, "allowed_yahoo_raw_fields")
         ),
+        definition_status_reason=_optional_str(rule, "definition_status_reason"),
+        required_proof=_optional_str(rule, "required_proof"),
         samples=tuple(
             _parse_sample(sample) for sample in _optional_list(rule, "samples")
         ),
@@ -268,4 +279,13 @@ def _optional_list(payload: dict[str, object], key: str) -> list[object]:
     value = payload.get(key, [])
     if not isinstance(value, list):
         raise ValueError(f"{key} must be a list")
+    return value
+
+
+def _optional_str(payload: dict[str, object], key: str) -> str | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"{key} must be a string")
     return value
