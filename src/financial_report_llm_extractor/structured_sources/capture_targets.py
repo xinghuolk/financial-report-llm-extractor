@@ -72,7 +72,7 @@ DEFAULT_PROVIDER_FIELD_CAPTURE_TARGETS: tuple[ProviderCaptureTarget, ...] = (
         provider_ticker="00001",
         market="HK",
         currency="HKD",
-        unit="HKD",
+        unit="raw",
     ),
     *_targets_for_company(
         provider="akshare",
@@ -80,7 +80,7 @@ DEFAULT_PROVIDER_FIELD_CAPTURE_TARGETS: tuple[ProviderCaptureTarget, ...] = (
         provider_ticker="01113",
         market="HK",
         currency="HKD",
-        unit="HKD",
+        unit="raw",
     ),
     *_targets_for_company(
         provider="yahoo",

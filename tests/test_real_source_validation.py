@@ -370,8 +370,16 @@ def _inventory_comparison_key(record: object) -> tuple[object, ...]:
         getattr(record, "raw_value"),
         getattr(record, "parsed_numeric_value"),
         getattr(record, "currency"),
-        getattr(record, "unit"),
+        _normalized_inventory_unit_for_comparison(record),
     )
+
+
+def _normalized_inventory_unit_for_comparison(record: object) -> object:
+    currency = getattr(record, "currency")
+    unit = getattr(record, "unit")
+    if getattr(record, "market") == "HK" and unit == currency:
+        return "raw"
+    return unit
 
 
 def test_provider_field_baseline_preserves_all_returned_period_fields(
@@ -671,6 +679,14 @@ def test_provider_field_capture_sample_set_builds_full_target_matrix() -> None:
         currency="CNY",
         unit="yuan",
         exchange="SH",
+    ) in samples
+    assert RealSourceValidationSample(
+        provider="akshare",
+        market="HK",
+        ticker="00001",
+        statement_type="income_statement",
+        currency="HKD",
+        unit="raw",
     ) in samples
     assert RealSourceValidationSample(
         provider="yahoo",

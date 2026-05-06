@@ -38,7 +38,7 @@ def test_provider_field_capture_targets_cover_expected_matrix() -> None:
         "HK",
         "income_statement",
         "HKD",
-        "HKD",
+        "raw",
         None,
     ) in actual
     assert (
@@ -48,7 +48,7 @@ def test_provider_field_capture_targets_cover_expected_matrix() -> None:
         "HK",
         "cash_flow",
         "HKD",
-        "HKD",
+        "raw",
         None,
     ) in actual
     assert (
