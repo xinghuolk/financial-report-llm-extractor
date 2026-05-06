@@ -113,7 +113,7 @@ def test_akshare_hk_statement_inventory_joins_metadata_and_writes_artifact(
     records = adapter.fetch_hk_statement_inventory(
         ticker="00001",
         statement_type="balance_sheet",
-        unit="HKD",
+        unit="raw",
     )
 
     assert len(records) == 1
@@ -129,11 +129,27 @@ def test_akshare_hk_statement_inventory_joins_metadata_and_writes_artifact(
     assert record.raw_value == "100"
     assert record.parsed_numeric_value == Decimal("100")
     assert record.currency == "HKD"
-    assert record.unit == "HKD"
+    assert record.unit == "raw"
     assert record.account_standard == "HKFRS"
     assert record.report_type == "annual"
     assert record.source_evidence[0].function == "stock_financial_hk_report_em"
     assert (tmp_path / "akshare" / "akshare_hk_00001_balance_sheet.json").exists()
+
+
+def test_akshare_hk_statement_inventory_does_not_use_currency_as_unit(
+    tmp_path: Path,
+) -> None:
+    store = SourceArtifactStore(tmp_path)
+    adapter = AkshareAdapter(client=FakeAkshareClient(), artifact_store=store)
+
+    records = adapter.fetch_hk_statement_inventory(
+        ticker="00001",
+        statement_type="balance_sheet",
+        unit="HKD",
+    )
+
+    assert records[0].currency == "HKD"
+    assert records[0].unit == "raw"
 
 
 def test_akshare_cn_statement_inventory_uses_market_symbol_and_cny(
@@ -329,9 +345,41 @@ def test_akshare_hk_statement_inventory_returns_unsupported_record(
     record = records[0]
     assert record.source_status == "unsupported"
     assert record.market == "HK"
+    assert record.unit == "raw"
     assert record.raw_field_name == "equity_statement"
     assert record.source_evidence[0].function == "unsupported_statement_type"
     assert (tmp_path / "akshare" / "akshare_hk_00001_equity_statement.json").exists()
+
+
+def test_akshare_hk_statement_inventory_returns_missing_record_with_source_unit(
+    tmp_path: Path,
+) -> None:
+    class EmptyHkAkshareClient(FakeAkshareClient):
+        def stock_financial_hk_report_em(
+            self,
+            stock: str,
+            symbol: str,
+            indicator: str,
+        ) -> list[dict[str, object]]:
+            assert stock == "00001"
+            assert symbol == "资产负债表"
+            assert indicator == "年度"
+            return []
+
+    store = SourceArtifactStore(tmp_path)
+    adapter = AkshareAdapter(client=EmptyHkAkshareClient(), artifact_store=store)
+
+    records = adapter.fetch_hk_statement_inventory(
+        ticker="00001",
+        statement_type="balance_sheet",
+        unit="HKD",
+    )
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source_status == "missing"
+    assert record.currency == "HKD"
+    assert record.unit == "raw"
 
 
 def test_akshare_cn_statement_inventory_returns_missing_record_for_empty_rows(

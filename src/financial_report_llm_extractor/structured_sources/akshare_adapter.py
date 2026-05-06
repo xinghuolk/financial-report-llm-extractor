@@ -145,7 +145,11 @@ class AkshareAdapter:
                     function="unsupported_statement_type",
                     artifact_id=artifact.artifact_id,
                     currency="unknown",
-                    unit=unit,
+                    unit=_normalize_source_unit(
+                        market="HK",
+                        currency=_normalize_currency(unit),
+                        unit=unit,
+                    ),
                 ),
             )
         rows = list(
@@ -170,6 +174,9 @@ class AkshareAdapter:
             payload={"rows": rows, "metadata": metadata_rows},
         )
         if not rows:
+            currency = _normalize_currency(
+                metadata_rows[0].get("CURRENCY") if metadata_rows else None
+            )
             return (
                 _status_record(
                     market="HK",
@@ -178,8 +185,8 @@ class AkshareAdapter:
                     source_status="missing",
                     function="stock_financial_hk_report_em",
                     artifact_id=artifact.artifact_id,
-                    currency="unknown",
-                    unit=unit,
+                    currency=currency,
+                    unit=_normalize_source_unit(market="HK", currency=currency, unit=unit),
                 ),
             )
 
@@ -189,6 +196,7 @@ class AkshareAdapter:
             metadata = metadata_by_date.get(period or "", {})
             raw_field_name = str(row.get("STD_ITEM_NAME", ""))
             raw_field_code = _optional_str(row.get("STD_ITEM_CODE"))
+            currency = _normalize_currency(metadata.get("CURRENCY"))
             evidence = SourceEvidence(
                 source="akshare",
                 adapter="akshare",
@@ -211,8 +219,8 @@ class AkshareAdapter:
                 raw_field_code=raw_field_code,
                 raw_value=_raw_value(row.get("AMOUNT")),
                 parsed_numeric_value=_parse_decimal(row.get("AMOUNT")),
-                currency=_normalize_currency(metadata.get("CURRENCY")),
-                unit=unit,
+                currency=currency,
+                unit=_normalize_source_unit(market="HK", currency=currency, unit=unit),
                 source_evidence=(evidence,),
             )
             record.validate()
@@ -326,6 +334,13 @@ def _normalize_currency(value: object) -> Currency:
     if text in {"USD", "US$"}:
         return "USD"
     return "unknown"
+
+
+def _normalize_source_unit(*, market: str, currency: Currency, unit: str) -> str:
+    normalized_unit = unit.strip()
+    if market == "HK" and normalized_unit.upper() == currency:
+        return "raw"
+    return normalized_unit
 
 
 def _normalize_report_type(value: str | None) -> str | None:
