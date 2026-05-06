@@ -200,6 +200,17 @@ def test_write_source_mapping_expansion_review_uses_real_candidate_report(
         (item["field_id"], item["source"]): item["reason"]
         for item in payload["deferred"]
     }
+    all_decisions = {
+        (item["field_id"], item["source"]): item
+        for section in ("promoted", "deferred", "blocked")
+        for item in payload[section]
+    }
+    defer_tax_decisions = [
+        item
+        for section in ("promoted", "deferred", "blocked")
+        for item in payload[section]
+        if item["field_id"] == "defer_tax_liab"
+    ]
     markdown = result.markdown_path.read_text(encoding="utf-8")
 
     assert deferred_pairs_by_reason[("bond_payable", "akshare")] == (
@@ -211,6 +222,12 @@ def test_write_source_mapping_expansion_review_uses_real_candidate_report(
     assert payload["summary"]["promoted_count"] == 0
     assert payload["summary"]["deferred_count"] > 0
     assert payload["summary"]["no_candidate_count"] >= 0
+    assert defer_tax_decisions
+    assert ("defer_tax_liab", "akshare") in all_decisions or (
+        "defer_tax_liab",
+        "yahoo",
+    ) in all_decisions
+    assert not any(item["action"] == "promote" for item in defer_tax_decisions)
     assert "# Source Mapping Expansion Review" in markdown
     assert "## Promoted" in markdown
     assert "## Deferred" in markdown
