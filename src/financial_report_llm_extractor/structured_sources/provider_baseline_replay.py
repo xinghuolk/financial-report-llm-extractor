@@ -354,6 +354,35 @@ def _review_lists(
             for field_id, item in export.items.items()
             if item.status == "present" and (item.warnings or item.verification_required)
         ),
+        "present_metadata_warning_fields": sorted(
+            field_id
+            for field_id, item in export.items.items()
+            if item.status == "present"
+            and (
+                any(
+                    note
+                    in {
+                        "currency_metadata_required",
+                        "metadata_currency_suspected",
+                    }
+                    for note in item.review_notes
+                )
+                or any("currency metadata" in warning for warning in item.warnings)
+            )
+        ),
+        "metadata_blocker_fields": sorted(
+            field_id
+            for field_id, item in export.items.items()
+            if item.status != "present"
+            and any(
+                note
+                in {
+                    "currency_metadata_required",
+                    "metadata_currency_suspected",
+                }
+                for note in item.review_notes
+            )
+        ),
         "fields_requiring_pdf_evidence": sorted(
             field_id
             for field_id, item in export.items.items()
@@ -446,6 +475,10 @@ def _summary_markdown(payload: dict[str, Any]) -> str:
                     f"  - conflict_fields: {_format_field_list(review['conflict_fields'])}",
                     "  - selected_with_warnings_fields: "
                     f"{_format_field_list(review['selected_with_warnings_fields'])}",
+                    "  - present_metadata_warning_fields: "
+                    f"{_format_field_list(review['present_metadata_warning_fields'])}",
+                    "  - metadata_blocker_fields: "
+                    f"{_format_field_list(review['metadata_blocker_fields'])}",
                     "  - fields_requiring_pdf_evidence: "
                     f"{_format_field_list(review['fields_requiring_pdf_evidence'])}",
                 ]

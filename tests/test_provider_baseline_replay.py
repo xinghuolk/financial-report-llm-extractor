@@ -321,12 +321,20 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     ]
 
     hk_combined = companies["00001"]["review"]["combined"]
-    assert set(hk_combined["selected_with_warnings_fields"]) >= {
+    assert "present_metadata_warning_fields" in hk_combined
+    assert "metadata_blocker_fields" in hk_combined
+    assert set(hk_combined["metadata_blocker_fields"]) >= {
         "total_assets",
         "total_cur_assets",
         "total_cur_liab",
         "total_liabilities",
     }
+    assert set(hk_combined["selected_with_warnings_fields"]) >= set(
+        hk_combined["present_metadata_warning_fields"]
+    )
+    assert set(hk_combined["fields_requiring_pdf_evidence"]) >= set(
+        hk_combined["metadata_blocker_fields"]
+    )
     assert "source_policy_report" in companies["00001"]["artifact_paths"]["combined"]
 
 
