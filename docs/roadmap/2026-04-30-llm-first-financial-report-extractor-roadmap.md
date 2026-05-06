@@ -583,7 +583,7 @@ Current validation status:
   - output: `tmp/runs/provider_field_candidate_discovery/provider_field_candidate_report.json`
 - Source mapping catalog expansion has promoted 6 strong deterministic mappings, increasing the minimal source mapping denominator from 9 to 15.
 - Whole-baseline replay without period scoping is invalid for coverage because the 5-year baseline creates `candidate periods differ` conflicts for every mapped field.
-- Provider baseline period-scoped replay is now the next validation artifact:
+- Provider baseline period-scoped replay is implemented as the replay prerequisite for source policy work:
   - `scripts/run-provider-baseline-period-replay.sh`
   - output: `tmp/runs/provider_baseline_period_replay/provider_baseline_period_replay_summary.json`
   - it selects the latest annual date part per company/source and normalizes replay periods before mapping.
@@ -600,6 +600,89 @@ Current validation status:
   - `00001` combined selected coverage: 11/15, clean present: 4/15, HK balance-sheet totals selected with warnings and PDF verification required.
   - `01113` combined selected coverage: 11/15, clean present: 4/15, HK balance-sheet totals selected with warnings and PDF verification required.
 - Remaining gaps are now categorized into source availability, mapping ambiguity/blocker, raw reconciliation conflict, policy unresolved conflict, and PDF/LLM supplement candidates.
+
+### Phase K: HK Currency, Unit, And Reporting Metadata Proof
+
+Goal: make Hong Kong source candidates trustworthy before expanding field coverage.
+
+Rationale:
+
+- Current HK provider baseline is not primarily a raw field availability problem. `00001` and `01113` each reach 11/15 combined selected coverage, but only 4/15 clean present fields.
+- The next blocker is proof quality: currency, unit multiplier, report type, account standard, statement metadata, and provider-specific scale semantics.
+- Expanding to 33 P0/P1 fields before this proof layer is stable would copy the same warnings into more fields and make coverage numbers misleading.
+
+Deliverables:
+
+- Audit AKShare HK and Yahoo HK inventory metadata separately for `currency`, `unit`, `canonical_unit`, `report_type`, `account_standard`, `statement_metadata_proven`, and source artifact provenance.
+- Fix any HK adapter or replay logic that treats currency as unit. `HKD` is currency evidence, not a unit multiplier by itself.
+- Define explicit unit semantics for AKShare HK statement rows and Yahoo/yfinance rows:
+  - raw provider value
+  - reported currency
+  - source unit label
+  - deterministic `unit_multiplier`
+  - normalized Turtle money value
+- Tighten source policy so HK metadata warnings distinguish:
+  - missing source metadata
+  - unproven statement metadata
+  - suspicious FX-like cross-source ratio
+  - real semantic conflict
+- Add fixture-backed tests for HK metadata proof on `00001` and `01113`.
+
+Exit criteria:
+
+- HK candidates cannot be clean present unless currency and unit multiplier are proven.
+- HK metadata proof is visible in `source_policy_report.json` and review export artifacts.
+- Replaying the existing provider baseline shows fewer metadata-only warnings, or the remaining warnings clearly explain why PDF verification is still required.
+
+### Phase L: Classify HK 11/15 Warning Fields
+
+Goal: turn the current HK selected-with-warning coverage into an actionable work queue.
+
+Deliverables:
+
+- Add a warning classification summary for each company/source slice and combined slice.
+- For the current 15-field denominator, classify every non-clean selected HK field into one of:
+  - `source_policy_resolvable`: source policy, alias precedence, metadata proof, or provider priority can resolve it deterministically.
+  - `pdf_verification_required`: annual-report evidence is needed because providers disagree, values imply FX-like ratio, or source semantics differ.
+  - `mapping_expansion_required`: provider raw fields exist but catalog aliases/policies are insufficient.
+  - `source_unavailable`: neither AKShare nor Yahoo captured a usable field candidate.
+- Preserve per-field reasons and candidate source evidence so the queue is reviewable.
+- Update provider baseline replay summary with counts by classification and by field.
+
+Exit criteria:
+
+- `00001` and `01113` warning fields are no longer a flat warning bucket.
+- The roadmap can state exactly which HK fields should be fixed in source policy and which must proceed to PDF evidence supplement.
+- PDF fallback receives a bounded field list instead of broad P0/P1 retrieval.
+
+### Phase M: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
+
+Goal: expand source-first coverage only after HK proof and warning classification are stable.
+
+Deliverables:
+
+- Promote the remaining P0/P1 fields from `field_catalog/turtle_v015_priority_fields.json` into the source mapping catalog, preserving taxonomy and coverage matrix links.
+- For each of the 33 P0/P1 fields, define source mode:
+  - direct source mapping
+  - derived from source candidates
+  - source optional
+  - PDF required
+  - LLM review required
+  - unsupported in first source-first slice
+- Add AKShare and Yahoo raw field candidates where provider baseline evidence exists.
+- Mark fields that are likely HK-hard cases, including R&D expense, construction in progress, bonds payable, share capital, operating cost, and owner-attributable equity, with explicit fallback policy.
+- Update coverage summaries to report:
+  - full 33-field P0/P1 denominator
+  - current 15-field compatibility denominator
+  - clean present coverage
+  - selected-with-warning coverage
+  - PDF verification queue
+
+Exit criteria:
+
+- The project can replay `600519`, `00001`, and `01113` against all 33 P0/P1 fields without changing provider fixtures.
+- Coverage reports no longer confuse "not mapped yet" with "source unavailable".
+- Full-denominator coverage becomes comparable with the earlier PDF-first 33-field coverage budget.
 
 ## 6. Validation Commands
 

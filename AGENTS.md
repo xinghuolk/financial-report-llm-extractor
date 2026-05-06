@@ -147,6 +147,13 @@ Phase 8 foundation 已完成：
 - 使用显式 `validate()` 方法表达业务不变量。
 - 保持函数小而可测试。
 
+本地命令环境：
+- 当前仓库在 Windows + PowerShell 环境下工作时，Codex 内部标准命令应优先使用 PowerShell，并显式进入 UTF-8 模式，避免中文文档、JSON artifact、测试输出乱码。
+- Windows PowerShell 建议在读取/写入文本前设置：`[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()`，并对 `Get-Content` / `Set-Content` 显式使用 `-Encoding UTF8`。
+- 需要生成无 BOM UTF-8 测试 fixture 或 JSONL 时，优先使用 .NET `System.Text.UTF8Encoding($false)` 写入。
+- 以上 PowerShell UTF-8 约定仅适用于 Windows/PowerShell 场景；如果代理运行在 Linux、macOS、WSL 或其他 UTF-8 shell 中，不要照搬 PowerShell 专用初始化。
+- Codex 沙箱内不要默认使用 Git Bash；本机 Git Bash/MSYS2 可能因 Windows 沙箱限制无法创建 signal pipe。除非用户明确要求并验证可用，否则以 PowerShell UTF-8 模式作为默认命令环境。
+
 ## Verification
 
 常用验证命令：
