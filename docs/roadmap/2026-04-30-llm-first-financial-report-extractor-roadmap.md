@@ -727,17 +727,67 @@ Implementation result:
   - `uv run mypy src tests`: passed.
   - Full `uv run pytest -v`: `411 passed, 1 skipped, 1 failed`; the remaining failure is an existing `akshare_cn_600519_balance_sheet` fixture hash mismatch, not introduced by Phase M.
 
-Roadmap update after Phase M:
+### Phase M2: HK 15-Field Terminal Bucket Closure
 
-- Run the HK 15-field closure before expanding to the full 33-field P0/P1 denominator.
-- The closure artifact must report `net_profit`, `gross_profit`, `defer_tax_liab`, `bond_payable`, `cip`, and `invest_income` in explicit review buckets rather than a flat warning bucket.
-- `net_profit` remains `yahoo_definition_unverified` until PDF row semantics proof shows the Yahoo value matches the annual-report definition.
-- `gross_profit` remains `pdf_required` until a formal annual-report row or derivation proof is added.
-- Start Phase N only after replay no longer confuses definition-unverified, mapping-blocked, and source-unavailable fields.
+Status: implemented on 2026-05-07. See:
+
+- `docs/superpowers/specs/2026-05-07-phase-m2-hk-15-field-terminal-buckets.md`
+- `docs/superpowers/plans/2026-05-07-phase-m2-hk-15-field-terminal-buckets.md`
+
+Goal: make every HK field in the current 15-field denominator either clean present or assigned to a stable, reviewable terminal bucket before expanding to the full 33-field P0/P1 denominator.
+
+Why this precedes Phase N:
+
+- Phase M improved `00001` and `01113` to `10/15` selected and `9/15` clean present.
+- The remaining six fields should not be treated as one generic warning queue.
+- The right target is not forced `15/15` clean present; it is explicit terminal status for every field.
+
+Target terminal buckets:
+
+- `clean_present`
+- `yahoo_pdf_verified`
+- `yahoo_definition_unverified`
+- `pdf_required`
+- `mapping_expansion_required`
+- `source_unavailable`
+
+Field priorities:
+
+1. `net_profit`
+   - Highest priority.
+   - Yahoo value exists.
+   - Needs annual-report row semantics proof before it can move from `yahoo_definition_unverified` to `yahoo_pdf_verified`.
+   - If proven, HK clean present can move from `9/15` to `10/15`.
+2. `gross_profit`
+   - Needs PDF row or derivation proof.
+   - It may remain non-clean if sampled HK formal reports do not expose stable same-name row semantics.
+   - Current Phase M2 terminal bucket is `pdf_required`.
+3. `defer_tax_liab`
+   - Remains mapping-expansion-first.
+   - Existing Yahoo candidate is not strong enough to promote directly.
+4. `bond_payable`, `cip`, `invest_income`
+   - Remain `source_unavailable` in current captured AKShare/Yahoo data.
+   - Do not force clean values without a new provider fixture or PDF fallback.
+
+Deliverables:
+
+- Added `hk_15_field_closure_report.json` to HK provider replay slices.
+- Added `hk_15_field_closure_report.md` for human review.
+- Added closure artifacts to replay `artifact_paths` as `hk_15_field_closure_report` and `hk_15_field_closure_markdown`.
+- Ensured `00001` and `01113` combined replay reports all 15 fields in either clean present or exactly one terminal bucket.
+- Phase N 33-field expansion can start from this stable closure baseline; do not use Phase N to hide unresolved 15-field proof issues.
+
+Exit criteria:
+
+- `00001` and `01113` combined replay has no unclassified HK 15-field item.
+- `net_profit`, `gross_profit`, `defer_tax_liab`, `bond_payable`, `cip`, and `invest_income` have explicit terminal explanations.
+- Replay distinguishes definition-unverified, PDF-required, mapping-expansion, and source-unavailable cases.
+- Focused verification: `tests/test_hk_15_field_closure.py`, `tests/test_provider_baseline_replay.py`, `tests/test_hk_yahoo_trust_policy.py`, and `tests/test_warning_classification.py` pass with `36 passed`.
+- Phase N can start with a stable 15-field baseline.
 
 ### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 
-Goal: expand source-first coverage only after HK proof and warning classification are stable.
+Goal: expand source-first coverage only after HK 15-field terminal buckets are stable.
 
 Deliverables:
 
