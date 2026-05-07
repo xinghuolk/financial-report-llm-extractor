@@ -242,9 +242,16 @@
           "status": "expected",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Partial coverage: 600519 (Maotai) returns None for SHORT_LOAN (no short-term debt). Yahoo Current Debt included as cross-check route."
     },
     "lt_borr": {
       "domain": "balance_sheet",
@@ -258,9 +265,16 @@
           "status": "expected",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Partial coverage: 600519 (Maotai) returns None for LONG_LOAN (no long-term debt). Yahoo Long Term Debt included as cross-check route."
     },
     "bond_payable": {
       "domain": "balance_sheet",
@@ -290,9 +304,16 @@
           "status": "expected",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "HK AKShare 应收帐款 may be a subset of PDF combined trade receivables line. Yahoo may not return this for HK. Conflicts/warnings are expected and acceptable."
     },
     "acct_payable": {
       "domain": "balance_sheet",
@@ -306,9 +327,16 @@
           "status": "expected",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Yahoo Accounts Payable included as cross-check route. HK conflicts/warnings are expected and acceptable."
     },
     "inventories": {
       "domain": "balance_sheet",
@@ -337,17 +365,24 @@
       "domain": "balance_sheet",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
           "mode": "direct",
           "status": "expected",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "AKShare FIX_ASSET route verified; Yahoo Net PPE included as cross-check route. 00001 Yahoo Net PPE may include right-of-use assets — conflicts expected and acceptable."
     },
     "cip": {
       "domain": "balance_sheet",
@@ -518,10 +553,17 @@
           "mode": "direct",
           "status": "expected",
           "statement_type": "balance_sheet",
-          "evidence_requirement": "pdf_required"
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "00001 Yahoo only returns Change In Other Current Assets — Other Current Assets unavailable; 00001 will show source_unavailable for this field."
     },
     "total_cur_liab": {
       "domain": "balance_sheet",

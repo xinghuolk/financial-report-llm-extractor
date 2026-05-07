@@ -77,7 +77,10 @@ EXPECTED_HK_PDF_VERIFICATION_FIELDS = frozenset(
         "total_liabilities",
     }
 )
-EXPECTED_HK_MAPPING_EXPANSION_FIELDS: list[str] = []
+EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY: dict[str, list[str]] = {
+    "00001": ["other_cur_assets"],
+    "01113": [],
+}
 EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
     {"bond_payable", "cip", "invest_income"}
 )
@@ -137,6 +140,7 @@ def _assert_hk_warning_classification(
     *,
     assert_artifact_payload: bool = False,
 ) -> None:
+    company_id = company["company_id"]
     warning_classification = company["review"]["combined"]["warning_classification"]
     assert (
         warning_classification["counts_by_category"]["yahoo_pdf_verified"] >= 5
@@ -147,9 +151,12 @@ def _assert_hk_warning_classification(
     assert set(
         warning_classification["fields_by_category"]["yahoo_definition_unverified"]
     ) <= EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS
+    expected_mapping_expansion = EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY.get(
+        company_id, []
+    )
     assert (
         warning_classification["fields_by_category"]["mapping_expansion_required"]
-        == EXPECTED_HK_MAPPING_EXPANSION_FIELDS
+        == expected_mapping_expansion
     )
     assert set(
         warning_classification["fields_by_category"]["source_unavailable"]
@@ -468,7 +475,7 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         "600519",
     }
     assert all(
-        company["coverage"]["combined"]["total_fields"] == 19
+        company["coverage"]["combined"]["total_fields"] == 25
         for company in payload["companies"]
     )
     companies = {company["company_id"]: company for company in payload["companies"]}
@@ -585,7 +592,10 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
         assert EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS <= set(
             warning_fields["source_unavailable"]
         )
-        assert EXPECTED_HK_MAPPING_EXPANSION_FIELDS == warning_fields[
+        expected_mapping_expansion = EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY.get(
+            company_id, []
+        )
+        assert expected_mapping_expansion == warning_fields[
             "mapping_expansion_required"
         ]
 
@@ -633,13 +643,14 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
     assert "hk_yahoo_trust_policy_report: " in markdown
 
 
-def test_checked_in_hk_replay_reports_exact_19_field_closure_buckets(
+def test_checked_in_hk_replay_reports_exact_25_field_closure_buckets(
     checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
     _, payload = checked_in_provider_baseline_replay
     companies = _companies_by_id(payload)
-    # N1.B added defer_tax_assets to catalog (19 total).
-    # 00001 has inventories as conflict (fx_like_ratio); both HK companies get defer_tax_assets clean.
+    # N1.C added 6 more fields to catalog (25 total).
+    # 00001: fix_assets/accounts_receiv/acct_payable are conflicts; st_borr/lt_borr clean; other_cur_assets mapping_expansion.
+    # 01113: fix_assets/accounts_receiv/acct_payable are conflicts; st_borr/lt_borr/other_cur_assets clean.
     expected_clean_by_company = {
         "00001": {
             "cash",
@@ -647,11 +658,13 @@ def test_checked_in_hk_replay_reports_exact_19_field_closure_buckets(
             "defer_tax_liab",
             "financing_cash_flow",
             "investing_cash_flow",
+            "lt_borr",
             "minority_int",
             "money_cap",
             "net_profit",
             "operating_cash_flow",
             "revenue",
+            "st_borr",
             "total_assets",
             "total_cur_assets",
             "total_cur_liab",
@@ -664,18 +677,21 @@ def test_checked_in_hk_replay_reports_exact_19_field_closure_buckets(
             "financing_cash_flow",
             "inventories",
             "investing_cash_flow",
+            "lt_borr",
             "minority_int",
             "money_cap",
             "net_profit",
             "operating_cash_flow",
+            "other_cur_assets",
             "revenue",
+            "st_borr",
             "total_assets",
             "total_cur_assets",
             "total_cur_liab",
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 14, "01113": 15}
+    expected_clean_count_by_company = {"00001": 16, "01113": 18}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]
@@ -684,11 +700,14 @@ def test_checked_in_hk_replay_reports_exact_19_field_closure_buckets(
 
         assert set(combined["clean_present_fields"]) == expected_clean_by_company[company_id]
         assert combined["clean_present_count"] == expected_clean_count_by_company[company_id]
-        assert combined["total_fields"] == 19
+        assert combined["total_fields"] == 25
         assert set(review["yahoo_definition_unverified_fields"]) == {
             "gross_profit",
         }
-        assert warning_fields["mapping_expansion_required"] == []
+        expected_mapping_expansion = EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY.get(
+            company_id, []
+        )
+        assert warning_fields["mapping_expansion_required"] == expected_mapping_expansion
         assert set(warning_fields["source_unavailable"]) >= {
             "bond_payable",
             "cip",

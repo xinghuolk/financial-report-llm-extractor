@@ -20,7 +20,12 @@
         "cip",
         "invest_income",
         "inventories",
-        "money_cap"
+        "money_cap",
+        "fix_assets",
+        "st_borr",
+        "lt_borr",
+        "accounts_receiv",
+        "acct_payable"
       ]
     },
     {
@@ -32,7 +37,8 @@
         "total_cur_liab",
         "defer_tax_liab",
         "defer_tax_assets",
-        "minority_int"
+        "minority_int",
+        "other_cur_assets"
       ]
     }
   ],
@@ -511,6 +517,102 @@
         "yahoo": ["Minority Interest"]
       },
       "pdf_aliases": ["non-controlling interests", "minority interest", "少数股东权益"]
+    },
+    "fix_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["FIX_ASSET", "固定资产"],
+        "yahoo": ["Net PPE"]
+      },
+      "pdf_aliases": ["fixed assets", "property plant and equipment", "固定资产"]
+    },
+    "st_borr": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["SHORT_LOAN", "短期借款"],
+        "yahoo": ["Current Debt"]
+      },
+      "pdf_aliases": ["short-term borrowings", "bank and other debts current", "短期借款"]
+    },
+    "lt_borr": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["LONG_LOAN", "长期借款"],
+        "yahoo": ["Long Term Debt"]
+      },
+      "pdf_aliases": ["long-term borrowings", "bank and other debts non-current", "长期借款"]
+    },
+    "accounts_receiv": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["ACCOUNTS_RECE", "应收帐款", "应收账款"],
+        "yahoo": ["Accounts Receivable"]
+      },
+      "pdf_aliases": ["accounts receivable", "trade receivables", "debtors", "应收账款"]
+    },
+    "acct_payable": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["ACCOUNTS_PAYABLE", "应付帐款", "应付账款"],
+        "yahoo": ["Accounts Payable"]
+      },
+      "pdf_aliases": ["accounts payable", "trade payables", "creditors", "应付账款"]
+    },
+    "other_cur_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["OTHER_CUR_ASSET", "其他流动资产"],
+        "yahoo": ["Other Current Assets"]
+      },
+      "pdf_aliases": ["other current assets", "其他流动资产"]
     }
   }
 }
