@@ -14,6 +14,9 @@ from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingEntry,
     load_source_mapping_catalog,
 )
+from financial_report_llm_extractor.structured_sources.provider_semantics import (
+    load_provider_semantics_catalog,
+)
 
 
 def test_load_source_mapping_catalog_expands_priority_fields(tmp_path: Path) -> None:
@@ -184,6 +187,60 @@ def test_minimal_source_mapping_net_profit_prefers_parent_profit() -> None:
     )
 
 
+def test_minimal_source_mapping_net_profit_related_yahoo_rows_are_not_trusted() -> None:
+    semantics = load_provider_semantics_catalog(
+        Path("field_catalog/provider_raw_semantics_hk.json")
+    )
+
+    primary_rule = semantics.require_rule(
+        provider="yahoo",
+        market="HK",
+        turtle_field_id="net_profit",
+        raw_field_name="Net Income Common Stockholders",
+    )
+
+    assert primary_rule.allowed_as_primary is True
+    assert "Net Income" in primary_rule.related_only_fields
+    assert (
+        "Net Income From Continuing Operation Net Minority Interest"
+        in primary_rule.related_only_fields
+    )
+
+
+def test_minimal_source_mapping_gross_profit_is_not_hk_verified_direct() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+    coverage = load_coverage_matrix(
+        Path("field_catalog/turtle_v015_coverage_matrix.json")
+    )
+    semantics = load_provider_semantics_catalog(
+        Path("field_catalog/provider_raw_semantics_hk.json")
+    )
+
+    entry = catalog.entries["gross_profit"]
+    yahoo_rule = semantics.require_rule(
+        provider="yahoo",
+        market="HK",
+        turtle_field_id="gross_profit",
+        raw_field_name="Gross Profit",
+    )
+    akshare_rule = semantics.require_rule(
+        provider="akshare",
+        market="HK",
+        turtle_field_id="gross_profit",
+        raw_field_name="毛利",
+    )
+
+    assert entry.verification_status == "expected"
+    assert coverage.fields["gross_profit"].verification == "expected"
+    assert yahoo_rule.allowed_as_primary is False
+    assert akshare_rule.allowed_as_primary is False
+    assert yahoo_rule.classification == "provider_semantics_unverified"
+    assert akshare_rule.classification == "provider_semantics_unverified"
+
+
 def test_minimal_source_mapping_revenue_declares_operating_revenue_policy() -> None:
     catalog = load_source_mapping_catalog(
         Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
@@ -227,7 +284,7 @@ def test_minimal_source_mapping_revenue_and_profit_market_policies(
 @pytest.mark.parametrize(
     ("field_id", "expected_hk_primary_route"),
     [
-        ("gross_profit", "akshare_direct"),
+        ("gross_profit", "yahoo_direct"),
         ("total_assets", "yahoo_direct"),
         ("total_cur_assets", "yahoo_direct"),
         ("total_cur_liab", "yahoo_direct"),
@@ -254,7 +311,7 @@ def test_minimal_source_mapping_statement_line_market_policies(
     )
     assert hk_policy.cross_check_routes == (expected_cross_check_route,)
     assert hk_policy.on_conflict == "select_primary_require_pdf"
-    assert hk_policy.single_source_requires_pdf is False
+    assert hk_policy.single_source_requires_pdf is (field_id == "gross_profit")
 
     cn_policy = policy.market_policies["CN"]
     assert cn_policy.primary_route == "akshare_direct"

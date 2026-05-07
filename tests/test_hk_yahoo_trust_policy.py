@@ -5,6 +5,7 @@ import pytest
 
 from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
     load_hk_yahoo_trust_policy,
+    validate_hk_yahoo_trust_policy_samples,
 )
 
 
@@ -82,6 +83,29 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
     )
     assert net_evidence["sample_companies"] == ["00001", "01113"]
     assert net_evidence["sample_count"] == 2
+
+
+def test_hk_yahoo_trust_policy_validates_sample_page_text() -> None:
+    policy = load_hk_yahoo_trust_policy(POLICY_PATH)
+
+    def resolver(sample):
+        return (
+            f"{sample.statement_line}\n"
+            f"Reported in {sample.reported_currency} {sample.reported_unit}\n"
+            f"{sample.pdf_value}\n"
+        )
+
+    validate_hk_yahoo_trust_policy_samples(policy, resolver)
+
+
+def test_hk_yahoo_trust_policy_rejects_sample_page_text_without_statement_line() -> None:
+    policy = load_hk_yahoo_trust_policy(POLICY_PATH)
+
+    def resolver(sample):
+        return f"{sample.reported_currency} {sample.reported_unit} {sample.pdf_value}"
+
+    with pytest.raises(ValueError, match="sample statement_line not found on pdf_page"):
+        validate_hk_yahoo_trust_policy_samples(policy, resolver)
 
 
 def test_hk_yahoo_trust_policy_requires_reason_for_definition_unverified_rule(

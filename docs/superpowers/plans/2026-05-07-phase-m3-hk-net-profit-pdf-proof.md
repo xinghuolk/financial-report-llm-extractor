@@ -1,10 +1,10 @@
-# Phase M3 HK net_profit PDF Proof Implementation Plan
+# Phase M3 HK net_profit Raw Field Semantics Sample Proof Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Promote HK `net_profit` from definition-unverified to PDF-verified using annual-report proof for the shareholder-attributable row.
+**Goal:** Prove that Yahoo HK `Net Income Common Stockholders` is the correct provider raw semantic for Turtle `net_profit`.
 
-**Architecture:** Reuse the existing HK Yahoo trust policy path. Keep the proof in `field_catalog/hk_yahoo_trust_policy.json`, keep source selection in `field_catalog/turtle_v015_source_mapping_minimal.json`, and validate behavior through policy, closure, and provider replay tests.
+**Architecture:** Reuse the existing HK Yahoo trust policy path. Keep sampled policy proof in `field_catalog/hk_yahoo_trust_policy.json`, keep source selection in `field_catalog/turtle_v015_source_mapping_minimal.json`, and validate behavior through policy, closure, and provider replay tests. The PDF samples prove provider raw field semantics; they are not final per-export PDF evidence.
 
 **Tech Stack:** Python 3.11 standard library, JSON catalogs, existing pytest suite, captured provider/PDF fixtures.
 
@@ -92,4 +92,5 @@ Result:
 - Do not add `Net Income` back to HK `net_profit` trusted raw fields.
 - The `01113` sample proves why `Net Income` is too broad: it maps to `11,133,000,000`, while the shareholder-attributable annual-report row is `10,847,000,000`.
 - Do not promote `gross_profit` in this phase.
-- After this phase, HK baseline target is `10/15 clean_present`, not `15/15 clean_present`.
+- After this phase, HK baseline may show `10/15 clean_present`, but Phase M4 must make the proof class explicit as sampled provider semantics proof.
+- Do not use this plan as a pattern for per-company PDF value matching.

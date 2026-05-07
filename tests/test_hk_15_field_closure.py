@@ -129,6 +129,9 @@ def test_hk_15_field_closure_report_classifies_remaining_gap_types() -> None:
     assert report.total_fields == 15
     assert report.items["revenue"].category == "clean_present"
     assert report.items["net_profit"].category == "yahoo_pdf_verified"
+    assert report.provider_semantics_verified_fields == ["net_profit"]
+    assert report.sampled_pdf_policy_proof_fields == ["net_profit"]
+    assert report.final_pdf_evidence_fields == []
     assert report.items["defer_tax_liab"].category == "mapping_expansion_required"
     assert report.items["defer_tax_liab"].candidate_sources == ("yahoo",)
     assert report.items["bond_payable"].category == "source_unavailable"
@@ -192,3 +195,37 @@ def test_hk_15_field_closure_does_not_apply_yahoo_policy_to_akshare_field() -> N
     )
 
     assert report.items["net_profit"].category == "clean_present"
+
+
+def test_hk_15_field_closure_does_not_hide_review_notes_as_clean() -> None:
+    items = {field_id: _item(field_id, status="present") for field_id in HK_15_FIELD_IDS}
+    items["revenue"] = SourceFirstExportItem(
+        field_id="revenue",
+        status="present",
+        selected_source="yahoo",
+        review_notes=("statement_metadata_unproven",),
+    )
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="catalog",
+        catalog_version="1",
+        items=items,
+    )
+    warning = build_warning_classification(
+        export,
+        candidate_entries={},
+        market="HK",
+        hk_yahoo_trust_policy=_policy(),
+    )
+
+    report = build_hk_15_field_closure_report(
+        export=export,
+        warning_classification=warning,
+        candidate_entries={},
+        policy=_policy(),
+        company_id="00001",
+        market="HK",
+    )
+
+    assert report.items["revenue"].category != "clean_present"
+    assert report.items["revenue"].category == "selected_with_warnings"

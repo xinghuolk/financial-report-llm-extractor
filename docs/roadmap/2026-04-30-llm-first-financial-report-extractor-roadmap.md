@@ -1,7 +1,7 @@
 # Source-First Financial Report Extractor Roadmap
 
 > Status: revised roadmap
-> Date: 2026-05-01
+> Date: 2026-05-07
 > Scope: Pivot the project from PDF-first LLM extraction to AKShare/Yahoo-first structured financial data extraction, with PDF/LLM retained as the final evidence supplement and ambiguity review layer.
 
 ## 1. Decision Summary
@@ -38,6 +38,10 @@ Required direction:
 - AKShare and Yahoo/yfinance calls must be deterministic adapter calls, not LLM tool calls.
 - Raw source artifacts are mandatory and must be replayable in tests.
 - Turtle field semantics must be defined before source adapter work is considered useful.
+- Provider raw field semantics proof is the trust boundary for source policy. A provider raw field must be proven at provider/market/field level before it can be promoted to clean Turtle output.
+- PDF samples may support provider policy proof, but they are not final per-export `pdf_evidence`.
+- `source_evidence`, `trust_policy_evidence`, and `pdf_evidence` must remain separate in artifacts and reports.
+- Do not solve provider semantics by chasing per-company PDF value matches.
 - Field mapping must preserve raw field, raw value, period, scope, currency, unit, source, and evidence.
 - Money normalization remains deterministic code.
 - Cross-source conflicts must be explicit, not silently resolved.
@@ -84,6 +88,7 @@ The newly added design supplement is:
 
 - `docs/design/2026-05-01-structured-data-source-first-financial-extraction-design.md`
 - `docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md`
+- `docs/design/2026-05-07-source-first-architecture-drift-analysis.zh.md`
 
 ## 4. Functional Areas
 
@@ -680,7 +685,7 @@ Deliverables:
 
 - Add an HK Yahoo trust-policy fixture that records annual-report evidence for `00001` and `01113`, including page, statement line, reported unit, PDF value, expected Yahoo raw value, and matched Yahoo raw field.
 - Classify the current HK `pdf_verification_required` queue into:
-  - `yahoo_pdf_verified`: Yahoo HK raw value is proven equivalent to annual-report HK$ million disclosure multiplied by 1,000,000.
+  - `yahoo_pdf_verified`: legacy name for sampled HK Yahoo provider policy proof; it proves a provider raw field/unit rule, not final per-export PDF evidence.
   - `yahoo_definition_unverified`: Yahoo has a value, but annual-report row semantics are not directly proven.
   - `pdf_required`: no current API path can prove the field.
 - Promote HK Yahoo primary policy only for sampled fields whose definition and unit are proven:
@@ -775,7 +780,7 @@ Deliverables:
 - Added `hk_15_field_closure_report.md` for human review.
 - Added closure artifacts to replay `artifact_paths` as `hk_15_field_closure_report` and `hk_15_field_closure_markdown`.
 - Ensured `00001` and `01113` combined replay reports all 15 fields in either clean present or exactly one terminal bucket.
-- Phase N 33-field expansion can start from this stable closure baseline; do not use Phase N to hide unresolved 15-field proof issues.
+- Phase M4 provider-semantics correction must run before Phase N 33-field expansion; do not use Phase N to hide unresolved 15-field proof issues.
 
 Exit criteria:
 
@@ -783,16 +788,23 @@ Exit criteria:
 - `net_profit`, `gross_profit`, `defer_tax_liab`, `bond_payable`, `cip`, and `invest_income` have explicit terminal explanations.
 - Replay distinguishes definition-unverified, PDF-required, mapping-expansion, and source-unavailable cases.
 - Focused verification: `tests/test_hk_15_field_closure.py`, `tests/test_provider_baseline_replay.py`, `tests/test_hk_yahoo_trust_policy.py`, and `tests/test_warning_classification.py` pass with `36 passed`.
-- Phase N can start with a stable 15-field baseline.
+- Phase N can start only after the stable 15-field baseline and Phase M4 provider-semantics correction are both complete.
 
-### Phase M3: HK net_profit PDF Proof
+### Phase M3: HK net_profit Raw Field Semantics Sample Proof
 
-Status: implemented on 2026-05-07. See:
+Status: implemented on 2026-05-07, then reclassified by Phase M4 review as provider-semantics sample proof rather than final PDF evidence. See:
 
 - `docs/superpowers/specs/2026-05-07-phase-m3-hk-net-profit-pdf-proof.md`
 - `docs/superpowers/plans/2026-05-07-phase-m3-hk-net-profit-pdf-proof.md`
 
-Goal: promote HK `net_profit` from `yahoo_definition_unverified` to `yahoo_pdf_verified` using annual-report row proof, without expanding the denominator beyond the current 15 fields.
+Goal: prove that the HK Yahoo raw field `Net Income Common Stockholders` is the correct provider raw semantic for Turtle `net_profit`, without expanding the denominator beyond the current 15 fields.
+
+Important interpretation:
+
+- The M3 PDF samples are sampled provider policy proof.
+- They are not final per-export `pdf_evidence`.
+- They must not be used as a pattern for per-company PDF value matching.
+- The safer product wording is `provider_semantics_sample_verified`, not final PDF verified evidence.
 
 Implementation result:
 
@@ -800,16 +812,60 @@ Implementation result:
 - `Net Income` and `Net Income From Continuing Operation Net Minority Interest` remain related context, not trusted HK primary fields.
 - `00001` proof: page `134`, row `Profit attributable to ordinary shareholders`, `11,841` HKD million equals Yahoo raw `11,841,000,000`.
 - `01113` proof: page `70`, row `Profit attributable to shareholders`, `10,847` HKD million equals Yahoo raw `10,847,000,000`.
-- HK combined replay target moves from `9/15` clean present to `10/15` clean present.
+- HK combined replay currently moves from `9/15` clean present to `10/15` clean present, but Phase M4 must review whether this should remain a clean-present baseline or be reported as sampled provider-semantics proof.
 - `gross_profit` remains non-clean and still requires PDF row or derivation proof.
 
 Verification:
 
 - Phase M3 focused tests: `69 passed`.
 
+### Phase M4: Provider Raw Semantics Correction Before 33-Field Expansion
+
+Status: in progress on 2026-05-07. See:
+
+- `docs/design/2026-05-07-source-first-architecture-drift-analysis.zh.md`
+- `docs/superpowers/specs/2026-05-07-phase-m4-provider-semantics-correction.md`
+- `docs/superpowers/plans/2026-05-07-phase-m4-provider-semantics-correction.md`
+
+Goal: correct the proof-boundary drift before expanding to the full 33-field P0/P1 denominator.
+
+Why this blocks Phase N:
+
+- `yahoo_pdf_verified` currently conflates provider policy proof with final PDF evidence.
+- M3 `net_profit` has useful raw-field selection, but its tests and reports can be misread as per-company PDF proof.
+- `gross_profit` has provider candidates, but neither Yahoo `Gross Profit` nor AKShare `毛利` has HK provider raw semantics proof.
+- Expanding to 33 fields before fixing this vocabulary would multiply the same ambiguity across more fields.
+
+Deliverables:
+
+- Add a provider raw semantics artifact or equivalent loader contract:
+  - `field_catalog/provider_raw_semantics_hk.json`
+  - `src/financial_report_llm_extractor/structured_sources/provider_semantics.py`
+- Distinguish trusted provider raw fields from related-only and negative context fields.
+- Reframe `net_profit` as sampled provider-semantics proof for Yahoo `Net Income Common Stockholders`.
+- Keep `gross_profit` non-clean until provider raw semantics are proven.
+- Update replay/closure reports to distinguish:
+  - `source_evidence`
+  - `trust_policy_evidence`
+  - `provider_semantics_verified_fields`
+  - `sampled_pdf_policy_proof`
+  - `provider_semantics_unverified_fields`
+  - final per-export `pdf_evidence`
+- Add catalog consistency tests so top-level `primary_route` / `verification_status` cannot contradict market policy or provider semantics status.
+- Add trust-policy sample tests that validate PDF sample page text or explicitly document why page text is unavailable.
+
+Exit criteria:
+
+- Future agents can no longer infer that PDF samples mean final per-company PDF evidence.
+- `gross_profit` remains in a stable non-clean terminal bucket with a clear reason.
+- `net_profit` preserves the Yahoo raw-field decision while reporting its proof class accurately.
+- Phase N expansion has a clean provider-semantics gate to reuse.
+
 ### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 
-Goal: expand source-first coverage only after HK 15-field terminal buckets are stable.
+Goal: expand source-first coverage only after HK 15-field terminal buckets and Phase M4 provider-semantics correction are stable.
+
+Phase N is blocked until Phase M4 is complete. Do not use Phase N to hide unresolved provider semantics issues from the 15-field denominator.
 
 Deliverables:
 

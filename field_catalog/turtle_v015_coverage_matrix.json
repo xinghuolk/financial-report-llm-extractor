@@ -387,24 +387,24 @@
       "domain": "income_statement",
       "priority": "P1",
       "primary_route": "yahoo_direct",
-      "verification": "verified",
+      "verification": "expected",
       "routes": [
         {
           "source": "yahoo",
           "mode": "direct",
-          "status": "verified",
+          "status": "expected",
           "statement_type": "income_statement",
-          "evidence_requirement": "source_only_allowed"
+          "evidence_requirement": "pdf_required"
         },
         {
           "source": "akshare",
           "mode": "direct",
           "status": "expected",
           "statement_type": "income_statement",
-          "evidence_requirement": "source_only_allowed"
+          "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "Verified by captured Yahoo 0001.HK fixture for the yahoo_direct route; akshare_direct is advertised as an expected market-specific source_policy route."
+      "notes": "Captured Yahoo and AKShare HK gross-profit candidates exist, but provider raw field semantics are not proven; keep non-clean until provider semantics proof or selected PDF/derived review is added."
     },
     "selling_general_administrative": {
       "domain": "income_statement",

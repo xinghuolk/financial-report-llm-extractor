@@ -21,6 +21,9 @@ from financial_report_llm_extractor.structured_sources.mapping import (
     TurtleMappingCandidate,
     TurtleMappingResult,
 )
+from financial_report_llm_extractor.structured_sources.provider_semantics import (
+    ProviderSemanticsCatalog,
+)
 from financial_report_llm_extractor.structured_sources.reconciliation import (
     ReconciliationReport,
     ReconciliationStatus,
@@ -105,6 +108,7 @@ def build_source_policy_report(
     market: str | None = None,
     company_id: str | None = None,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None = None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None = None,
 ) -> SourcePolicyReport:
     ratio_fields = _fx_like_fields(mapping)
     items: dict[str, SourcePolicyItem] = {}
@@ -121,6 +125,7 @@ def build_source_policy_report(
             reconciliation_status=reconciliation_status,
             fx_like=field_id in ratio_fields,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         )
     return SourcePolicyReport(
         catalog_id=mapping.catalog_id,
@@ -149,6 +154,7 @@ def _resolve_field(
     reconciliation_status: ReconciliationStatus | None,
     fx_like: bool,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> SourcePolicyItem:
     if field.status == "missing":
         return SourcePolicyItem(
@@ -170,6 +176,7 @@ def _resolve_field(
             market,
             reconciliation_status,
             hk_yahoo_trust_policy,
+            provider_semantics_catalog,
         )
 
     classifications = _classifications(entry, field, market=market, fx_like=fx_like)
@@ -195,6 +202,7 @@ def _resolve_field(
             candidate,
             market=market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         ):
             return SourcePolicyItem(
                 field_id=field.field_id,
@@ -224,6 +232,7 @@ def _resolve_field(
             ),
             market=market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         )
     if reconciliation_status in {"equivalent", "close"}:
         return _apply_hk_yahoo_trust_policy(
@@ -235,6 +244,7 @@ def _resolve_field(
             ),
             market=market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         )
 
     if (
@@ -257,6 +267,7 @@ def _resolve_field(
             ),
             market=market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         )
     return SourcePolicyItem(
         field_id=field.field_id,
@@ -273,6 +284,7 @@ def _resolve_single_source(
     market: str | None,
     reconciliation_status: ReconciliationStatus | None,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> SourcePolicyItem:
     candidate = field.candidates[0]
     market_policy = _market_policy(entry, market)
@@ -286,6 +298,7 @@ def _resolve_single_source(
             candidate,
             market=market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         ):
             return SourcePolicyItem(
                 field_id=field.field_id,
@@ -307,6 +320,7 @@ def _resolve_single_source(
             ),
             market=market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         )
     classifications: tuple[ConflictClassification, ...] = (
         ("single_source_unverified",) if requires_pdf else ()
@@ -327,6 +341,7 @@ def _resolve_single_source(
         ),
         market=market,
         hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+        provider_semantics_catalog=provider_semantics_catalog,
     )
 
 
@@ -344,6 +359,7 @@ def _apply_hk_yahoo_trust_policy(
     *,
     market: str | None,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> SourcePolicyItem:
     candidate = item.selected_candidate
     if not _can_apply_hk_yahoo_trust_policy(
@@ -351,6 +367,7 @@ def _apply_hk_yahoo_trust_policy(
         candidate,
         market=market,
         hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+        provider_semantics_catalog=provider_semantics_catalog,
     ):
         return item
     assert hk_yahoo_trust_policy is not None
@@ -364,6 +381,23 @@ def _apply_hk_yahoo_trust_policy(
         for warning in item.warnings
         if not _is_hk_yahoo_trusted_uncertainty_warning(warning)
     )
+    trust_policy_evidence = hk_yahoo_trust_policy.build_policy_evidence(item.field_id)
+    if provider_semantics_catalog is not None and candidate is not None:
+        semantics_rule = provider_semantics_catalog.rule_for(
+            provider="yahoo",
+            market="HK",
+            turtle_field_id=item.field_id,
+            raw_field_name=candidate.raw_field_name,
+        )
+        if semantics_rule is not None:
+            trust_policy_evidence = {
+                **trust_policy_evidence,
+                "proof_class": "sampled_pdf_policy_proof",
+                "is_final_pdf_evidence": False,
+                "provider_semantics_classification": semantics_rule.classification,
+                "provider_semantics_proof_origin": semantics_rule.proof_origin,
+                "provider_semantics_raw_field": semantics_rule.raw_field_name,
+            }
     return SourcePolicyItem(
         field_id=item.field_id,
         selection_status=(
@@ -376,9 +410,7 @@ def _apply_hk_yahoo_trust_policy(
         verification_required=bool(remaining_classifications or remaining_warnings),
         warnings=remaining_warnings,
         reconciliation_status=item.reconciliation_status,
-        trust_policy_evidence=hk_yahoo_trust_policy.build_policy_evidence(
-            item.field_id
-        ),
+        trust_policy_evidence=trust_policy_evidence,
     )
 
 
@@ -388,21 +420,36 @@ def _can_apply_hk_yahoo_trust_policy(
     *,
     market: str | None,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> bool:
     if market != "HK" or hk_yahoo_trust_policy is None or candidate is None:
         return False
     if candidate.source != "yahoo":
         return False
     rule = hk_yahoo_trust_policy.rule_for_field(field_id)
+    if (
+        rule is None
+        or rule.classification != "yahoo_pdf_verified"
+        or not candidate.raw_field_name
+        or candidate.raw_field_name not in rule.allowed_yahoo_raw_fields
+        or candidate.currency != rule.trusted_currency
+        or candidate.unit != rule.trusted_unit
+        or candidate.canonical_unit != rule.trusted_currency
+        or candidate.unit_multiplier != rule.trusted_unit_multiplier
+    ):
+        return False
+    if provider_semantics_catalog is None:
+        return True
+    semantics_rule = provider_semantics_catalog.rule_for(
+        provider="yahoo",
+        market="HK",
+        turtle_field_id=field_id,
+        raw_field_name=candidate.raw_field_name,
+    )
     return (
-        rule is not None
-        and rule.classification == "yahoo_pdf_verified"
-        and bool(candidate.raw_field_name)
-        and candidate.raw_field_name in rule.allowed_yahoo_raw_fields
-        and candidate.currency == rule.trusted_currency
-        and candidate.unit == rule.trusted_unit
-        and candidate.canonical_unit == rule.trusted_currency
-        and candidate.unit_multiplier == rule.trusted_unit_multiplier
+        semantics_rule is not None
+        and semantics_rule.allowed_as_primary
+        and semantics_rule.classification == "provider_semantics_sample_verified"
     )
 
 

@@ -45,6 +45,10 @@ from financial_report_llm_extractor.structured_sources.models import (
     SourceInventoryRecord,
     SourceName,
 )
+from financial_report_llm_extractor.structured_sources.provider_semantics import (
+    ProviderSemanticsCatalog,
+    load_provider_semantics_catalog,
+)
 from financial_report_llm_extractor.structured_sources.reconciliation import (
     reconcile_mapped_fields,
     write_reconciliation_report,
@@ -63,6 +67,9 @@ ReplaySliceName = Literal["akshare_only", "yahoo_only", "combined"]
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_HK_YAHOO_TRUST_POLICY_PATH = (
     REPO_ROOT / "field_catalog" / "hk_yahoo_trust_policy.json"
+)
+DEFAULT_PROVIDER_RAW_SEMANTICS_PATH = (
+    REPO_ROOT / "field_catalog" / "provider_raw_semantics_hk.json"
 )
 METADATA_REVIEW_NOTES = {
     "currency_metadata_required",
@@ -178,6 +185,7 @@ def write_provider_baseline_period_replay(
     hk_yahoo_trust_policy = _load_replay_hk_yahoo_trust_policy(
         hk_yahoo_trust_policy_path
     )
+    provider_semantics_catalog = _load_replay_provider_semantics_catalog()
     groups = company_source_groups()
     selected_company_ids = company_ids or tuple(sorted(groups))
     unknown_company_ids = sorted(set(selected_company_ids) - set(groups))
@@ -206,6 +214,7 @@ def write_provider_baseline_period_replay(
             company_id=company_id,
             market=company_groups["akshare"].market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         )
         yahoo_report = _write_slice(
             company_dir / "yahoo_only",
@@ -215,6 +224,7 @@ def write_provider_baseline_period_replay(
             company_id=company_id,
             market=company_groups["yahoo"].market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         )
         combined_report = _write_slice(
             company_dir / "combined",
@@ -224,6 +234,7 @@ def write_provider_baseline_period_replay(
             company_id=company_id,
             market=company_market,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
         )
 
         companies.append(
@@ -297,6 +308,7 @@ def _write_slice(
     company_id: str,
     market: str,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     slice_hk_yahoo_trust_policy = (
@@ -312,6 +324,7 @@ def _write_slice(
         market=market,
         company_id=company_id,
         hk_yahoo_trust_policy=slice_hk_yahoo_trust_policy,
+        provider_semantics_catalog=provider_semantics_catalog,
     )
     export = build_source_first_export(
         mapping,
@@ -424,12 +437,19 @@ def _load_replay_hk_yahoo_trust_policy(
     return load_hk_yahoo_trust_policy(resolved_path)
 
 
+def _load_replay_provider_semantics_catalog() -> ProviderSemanticsCatalog | None:
+    if not DEFAULT_PROVIDER_RAW_SEMANTICS_PATH.exists():
+        return None
+    return load_provider_semantics_catalog(DEFAULT_PROVIDER_RAW_SEMANTICS_PATH)
+
+
 def _hk_yahoo_trust_review_lists(
     warning_classification: Any,
     *,
     policy: HkYahooTrustPolicy | None = None,
 ) -> dict[str, list[str]]:
     fields_by_category = warning_classification.fields_by_category
+    sampled_policy_proof = list(fields_by_category["yahoo_pdf_verified"])
     definition_unverified = set(fields_by_category["yahoo_definition_unverified"])
     if policy is not None:
         definition_unverified.update(
@@ -438,7 +458,11 @@ def _hk_yahoo_trust_review_lists(
             if rule.classification == "yahoo_definition_unverified"
         )
     return {
-        "yahoo_pdf_verified_fields": fields_by_category["yahoo_pdf_verified"],
+        "yahoo_pdf_verified_fields": sampled_policy_proof,
+        "provider_semantics_verified_fields": sampled_policy_proof,
+        "sampled_pdf_policy_proof_fields": sampled_policy_proof,
+        "final_pdf_evidence_fields": [],
+        "provider_semantics_unverified_fields": sorted(definition_unverified),
         "yahoo_definition_unverified_fields": sorted(definition_unverified),
         "pdf_required_fields": fields_by_category["pdf_required"],
     }
@@ -454,12 +478,24 @@ def _write_hk_yahoo_trust_policy_report(
     market: str,
 ) -> Path:
     review_lists = _hk_yahoo_trust_review_lists(warning_classification, policy=policy)
+    final_pdf_evidence_fields = sorted(
+        field_id
+        for field_id, item in export.items.items()
+        if item.pdf_evidence
+    )
     payload = {
         "report_id": "hk_yahoo_trust_policy_report",
         "policy_version": policy.version,
         "company_id": company_id,
         "market": market,
+        "deprecated_field_names": {
+            "yahoo_pdf_verified_fields": (
+                "Legacy name for sampled provider policy proof; not final "
+                "per-export PDF evidence."
+            )
+        },
         **review_lists,
+        "final_pdf_evidence_fields": final_pdf_evidence_fields,
         "items": {
             field_id: {
                 "status": item.status,

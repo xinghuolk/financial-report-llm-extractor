@@ -66,6 +66,10 @@ class HkYahooTrustSample:
             page_text = page_text_resolver(self)
             if page_text is None or self.statement_line not in page_text:
                 raise ValueError("sample statement_line not found on pdf_page")
+            if self.reported_unit not in page_text:
+                raise ValueError("sample reported_unit not found on pdf_page")
+            if self.pdf_value not in page_text:
+                raise ValueError("sample pdf_value not found on pdf_page")
 
     def to_policy_evidence(self) -> dict[str, object]:
         return {
@@ -212,6 +216,13 @@ def load_hk_yahoo_trust_policy(path: Path) -> HkYahooTrustPolicy:
     )
     policy.validate()
     return policy
+
+
+def validate_hk_yahoo_trust_policy_samples(
+    policy: HkYahooTrustPolicy,
+    page_text_resolver: Callable[[HkYahooTrustSample], str | None],
+) -> None:
+    policy.validate(page_text_resolver=page_text_resolver)
 
 
 def _parse_rule(payload: object) -> HkYahooTrustRule:

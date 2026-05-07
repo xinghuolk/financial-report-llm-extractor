@@ -1,4 +1,5 @@
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, cast
 
 from financial_report_llm_extractor.structured_sources.catalog import (
@@ -19,6 +20,10 @@ from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy imp
     HkYahooTrustSample,
 )
 from financial_report_llm_extractor.structured_sources.models import SourceEvidence
+from financial_report_llm_extractor.structured_sources.provider_semantics import (
+    ProviderSemanticsCatalog,
+    load_provider_semantics_catalog,
+)
 from financial_report_llm_extractor.structured_sources.reconciliation import (
     reconcile_mapped_fields,
 )
@@ -703,9 +708,113 @@ def test_source_policy_keeps_gross_profit_verification_required_without_definiti
         market="HK",
         company_id="00001",
         hk_yahoo_trust_policy=_trust_policy(),
+        provider_semantics_catalog=_provider_semantics(),
     )
 
     item = report.items["gross_profit"]
+    assert item.verification_required is True
+    assert item.trust_policy_evidence is None
+    assert item.conflict_classifications == ("statement_metadata_unproven",)
+
+
+def test_source_policy_trusts_hk_net_profit_provider_semantics_primary() -> None:
+    catalog = _catalog(
+        "net_profit",
+        SourcePolicy(
+            semantic_concept="profit attributable to ordinary/common shareholders",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_require_pdf",
+                    single_source_requires_pdf=True,
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = _mapping(
+        "net_profit",
+        (
+            _candidate(
+                "yahoo",
+                "Net Income Common Stockholders",
+                None,
+                Decimal("11841000000"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                unit_multiplier=Decimal("1"),
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=_trust_policy(),
+        provider_semantics_catalog=_provider_semantics(),
+    )
+
+    item = report.items["net_profit"]
+    assert item.selection_status == "selected_primary"
+    assert item.verification_required is False
+    assert item.conflict_classifications == ()
+    assert item.trust_policy_evidence is not None
+    assert item.trust_policy_evidence["field_id"] == "net_profit"
+
+
+def test_source_policy_rejects_hk_net_profit_related_yahoo_raw_field() -> None:
+    catalog = _catalog(
+        "net_profit",
+        SourcePolicy(
+            semantic_concept="profit attributable to ordinary/common shareholders",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_require_pdf",
+                    single_source_requires_pdf=True,
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = _mapping(
+        "net_profit",
+        (
+            _candidate(
+                "yahoo",
+                "Net Income",
+                None,
+                Decimal("11841000000"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                unit_multiplier=Decimal("1"),
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=_trust_policy_with_net_income_related_field(),
+        provider_semantics_catalog=_provider_semantics(),
+    )
+
+    item = report.items["net_profit"]
+    assert item.selection_status == "unresolved_conflict"
     assert item.verification_required is True
     assert item.trust_policy_evidence is None
     assert item.conflict_classifications == ("statement_metadata_unproven",)
@@ -1092,8 +1201,30 @@ def _trust_policy() -> HkYahooTrustPolicy:
                 "Total Liabilities Net Minority Interest",
                 "yahoo_pdf_verified",
             ),
+            _trust_rule(
+                "net_profit",
+                "Net Income Common Stockholders",
+                "yahoo_pdf_verified",
+            ),
             _trust_rule("gross_profit", "Gross Profit", "yahoo_definition_unverified"),
         ),
+    )
+
+
+def _trust_policy_with_net_income_related_field() -> HkYahooTrustPolicy:
+    return HkYahooTrustPolicy(
+        version=1,
+        market="HK",
+        provider="yahoo",
+        rules=(
+            _trust_rule("net_profit", "Net Income", "yahoo_pdf_verified"),
+        ),
+    )
+
+
+def _provider_semantics() -> ProviderSemanticsCatalog:
+    return load_provider_semantics_catalog(
+        Path("field_catalog/provider_raw_semantics_hk.json")
     )
 
 

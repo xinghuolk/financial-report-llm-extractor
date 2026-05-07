@@ -91,6 +91,10 @@ class Hk15FieldClosureReport:
     total_fields: int
     counts_by_category: dict[ClosureCategory, int]
     fields_by_category: dict[ClosureCategory, list[str]]
+    provider_semantics_verified_fields: list[str]
+    sampled_pdf_policy_proof_fields: list[str]
+    final_pdf_evidence_fields: list[str]
+    provider_semantics_unverified_fields: list[str]
     items: dict[str, Hk15FieldClosureItem]
 
     def to_dict(self) -> dict[str, object]:
@@ -100,6 +104,14 @@ class Hk15FieldClosureReport:
             "total_fields": self.total_fields,
             "counts_by_category": self.counts_by_category,
             "fields_by_category": self.fields_by_category,
+            "provider_semantics_verified_fields": (
+                self.provider_semantics_verified_fields
+            ),
+            "sampled_pdf_policy_proof_fields": self.sampled_pdf_policy_proof_fields,
+            "final_pdf_evidence_fields": self.final_pdf_evidence_fields,
+            "provider_semantics_unverified_fields": (
+                self.provider_semantics_unverified_fields
+            ),
             "items": {
                 field_id: self.items[field_id].to_dict()
                 for field_id in HK_15_FIELD_IDS
@@ -145,6 +157,23 @@ def build_hk_15_field_closure_report(
         total_fields=len(HK_15_FIELD_IDS),
         counts_by_category=counts_by_category,
         fields_by_category=fields_by_category,
+        provider_semantics_verified_fields=_provider_semantics_verified_fields(
+            export,
+            warning_classification,
+        ),
+        sampled_pdf_policy_proof_fields=_provider_semantics_verified_fields(
+            export,
+            warning_classification,
+        ),
+        final_pdf_evidence_fields=sorted(
+            field_id
+            for field_id, item in export.items.items()
+            if field_id in HK_15_FIELD_IDS and item.pdf_evidence
+        ),
+        provider_semantics_unverified_fields=_provider_semantics_unverified_fields(
+            warning_classification,
+            policy,
+        ),
         items=items,
     )
 
@@ -199,6 +228,30 @@ def _closure_item(
             status=item.status,
             reason=_first_reason(clean_reasons),
             reasons=clean_reasons,
+            selected_source=item.selected_source,
+            candidate_sources=_candidate_sources(candidate_entry, warning_item),
+            verification_required=item.verification_required,
+            warnings=item.warnings,
+        )
+
+    if item is not None and item.status == "present" and (
+        item.review_notes or item.conflict_classifications
+    ):
+        reasons = tuple(
+            dict.fromkeys(
+                tuple(f"review_note:{note}" for note in item.review_notes)
+                + tuple(
+                    f"conflict_classification:{classification}"
+                    for classification in item.conflict_classifications
+                )
+            )
+        )
+        return Hk15FieldClosureItem(
+            field_id=field_id,
+            category="selected_with_warnings",
+            status=item.status,
+            reason=_first_reason(reasons),
+            reasons=reasons,
             selected_source=item.selected_source,
             candidate_sources=_candidate_sources(candidate_entry, warning_item),
             verification_required=item.verification_required,
@@ -263,6 +316,38 @@ def _closure_category_from_warning(category: WarningCategory) -> ClosureCategory
     return "selected_with_warnings"
 
 
+def _provider_semantics_verified_fields(
+    export: SourceFirstExportResult,
+    warning_classification: WarningClassificationResult,
+) -> list[str]:
+    fields = set(warning_classification.fields_by_category["yahoo_pdf_verified"])
+    fields.update(
+        field_id
+        for field_id, item in export.items.items()
+        if field_id in HK_15_FIELD_IDS
+        and item.trust_policy_evidence is not None
+        and item.trust_policy_evidence.get("proof_class")
+        == "sampled_pdf_policy_proof"
+    )
+    return sorted(fields)
+
+
+def _provider_semantics_unverified_fields(
+    warning_classification: WarningClassificationResult,
+    policy: HkYahooTrustPolicy | None,
+) -> list[str]:
+    fields = set(
+        warning_classification.fields_by_category["yahoo_definition_unverified"]
+    )
+    if policy is not None:
+        fields.update(
+            rule.field_id
+            for rule in policy.rules
+            if rule.classification == "yahoo_definition_unverified"
+        )
+    return sorted(fields)
+
+
 def _definition_unverified_reason(
     field_id: str,
     item: SourceFirstExportItem | None,
@@ -284,6 +369,8 @@ def _is_clean_present(item: SourceFirstExportItem | None) -> bool:
         and item.status == "present"
         and not item.verification_required
         and not item.warnings
+        and not item.review_notes
+        and not item.conflict_classifications
     )
 
 
@@ -341,4 +428,29 @@ def _markdown(report: Hk15FieldClosureReport) -> str:
         fields = report.fields_by_category[category]
         field_text = ", ".join(fields) if fields else "none"
         lines.append(f"- {category}: {report.counts_by_category[category]} ({field_text})")
+    lines.extend(
+        [
+            "",
+            "## Proof Classes",
+            "",
+            "- sampled_pdf_policy_proof_fields: "
+            + (
+                ", ".join(report.sampled_pdf_policy_proof_fields)
+                if report.sampled_pdf_policy_proof_fields
+                else "none"
+            ),
+            "- final_pdf_evidence_fields: "
+            + (
+                ", ".join(report.final_pdf_evidence_fields)
+                if report.final_pdf_evidence_fields
+                else "none"
+            ),
+            "- provider_semantics_unverified_fields: "
+            + (
+                ", ".join(report.provider_semantics_unverified_fields)
+                if report.provider_semantics_unverified_fields
+                else "none"
+            ),
+        ]
+    )
     return "\n".join(lines) + "\n"

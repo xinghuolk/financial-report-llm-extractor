@@ -154,11 +154,41 @@ def _assert_hk_warning_classification(
         }
         assert set(
             closure_payload["fields_by_category"]["yahoo_definition_unverified"]
-        ) == set()
-        assert set(closure_payload["fields_by_category"]["pdf_required"]) == {
+        ) == {
             "gross_profit"
         }
+        assert set(closure_payload["fields_by_category"]["pdf_required"]) == set()
         assert closure_payload["items"]["net_profit"]["category"] == "clean_present"
+        assert "net_profit" in closure_payload["sampled_pdf_policy_proof_fields"]
+        assert closure_payload["final_pdf_evidence_fields"] == []
+        assert (
+            "gross_profit"
+            in closure_payload["provider_semantics_unverified_fields"]
+        )
+
+        trust_policy_path = Path(
+            company["artifact_paths"]["combined"]["hk_yahoo_trust_policy_report"]
+        )
+        trust_policy_payload = json.loads(
+            trust_policy_path.read_text(encoding="utf-8")
+        )
+        assert (
+            "net_profit"
+            in trust_policy_payload["sampled_pdf_policy_proof_fields"]
+        )
+        assert trust_policy_payload["final_pdf_evidence_fields"] == []
+        assert (
+            trust_policy_payload["items"]["net_profit"]["trust_policy_evidence"][
+                "proof_class"
+            ]
+            == "sampled_pdf_policy_proof"
+        )
+        assert (
+            trust_policy_payload["items"]["net_profit"]["trust_policy_evidence"][
+                "is_final_pdf_evidence"
+            ]
+            is False
+        )
 
 
 def _record(
