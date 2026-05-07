@@ -85,6 +85,15 @@ def _hk_yahoo_policy() -> HkYahooTrustPolicy:
                 allowed_yahoo_raw_fields=("Total Revenue",),
             ),
             HkYahooTrustRule(
+                policy_id="hk_yahoo_raw_hkd_pdf_verified:defer_tax_liab",
+                field_id="defer_tax_liab",
+                classification="yahoo_pdf_verified",
+                trusted_currency="HKD",
+                trusted_unit="raw",
+                trusted_unit_multiplier=Decimal("1"),
+                allowed_yahoo_raw_fields=("Non Current Deferred Taxes Liabilities",),
+            ),
+            HkYahooTrustRule(
                 policy_id="hk_yahoo_raw_hkd_definition_unverified:gross_profit",
                 field_id="gross_profit",
                 classification="yahoo_definition_unverified",

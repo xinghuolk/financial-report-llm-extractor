@@ -89,6 +89,15 @@ def _policy() -> HkYahooTrustPolicy:
                 trusted_unit_multiplier=Decimal("1"),
                 allowed_yahoo_raw_fields=("Net Income Common Stockholders",),
             ),
+            HkYahooTrustRule(
+                policy_id="hk_yahoo_raw_hkd_pdf_verified:defer_tax_liab",
+                field_id="defer_tax_liab",
+                classification="yahoo_pdf_verified",
+                trusted_currency="HKD",
+                trusted_unit="raw",
+                trusted_unit_multiplier=Decimal("1"),
+                allowed_yahoo_raw_fields=("Non Current Deferred Taxes Liabilities",),
+            ),
         ),
     )
 
