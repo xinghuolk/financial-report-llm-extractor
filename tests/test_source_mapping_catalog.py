@@ -170,6 +170,18 @@ def test_minimal_source_mapping_net_profit_prefers_parent_profit() -> None:
         entry.source_policy.semantic_concept
         == "profit attributable to parent-company shareholders"
     )
+    assert entry.source_aliases["yahoo"] == (
+        "Net Income Common Stockholders",
+        "Net Income",
+        "Net Income From Continuing Operation Net Minority Interest",
+    )
+    assert entry.source_policy.semantic_variants["yahoo"].primary == (
+        "Net Income Common Stockholders",
+    )
+    assert entry.source_policy.semantic_variants["yahoo"].related == (
+        "Net Income",
+        "Net Income From Continuing Operation Net Minority Interest",
+    )
 
 
 def test_minimal_source_mapping_revenue_declares_operating_revenue_policy() -> None:

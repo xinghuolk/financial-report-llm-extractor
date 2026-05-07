@@ -81,17 +81,13 @@ def _policy() -> HkYahooTrustPolicy:
                 allowed_yahoo_raw_fields=("Total Revenue",),
             ),
             HkYahooTrustRule(
-                policy_id="hk_yahoo_raw_hkd_definition_unverified:net_profit",
+                policy_id="hk_yahoo_raw_hkd_pdf_verified:net_profit",
                 field_id="net_profit",
-                classification="yahoo_definition_unverified",
+                classification="yahoo_pdf_verified",
                 trusted_currency="HKD",
                 trusted_unit="raw",
                 trusted_unit_multiplier=Decimal("1"),
-                allowed_yahoo_raw_fields=("Net Income",),
-                definition_status_reason=(
-                    "Yahoo net-income semantics are not yet tied to Turtle net_profit"
-                ),
-                required_proof="PDF row semantics and value match",
+                allowed_yahoo_raw_fields=("Net Income Common Stockholders",),
             ),
         ),
     )
@@ -132,10 +128,7 @@ def test_hk_15_field_closure_report_classifies_remaining_gap_types() -> None:
     assert report.company_id == "00001"
     assert report.total_fields == 15
     assert report.items["revenue"].category == "clean_present"
-    assert report.items["net_profit"].category == "yahoo_definition_unverified"
-    assert report.items["net_profit"].reason == (
-        "Yahoo net-income semantics are not yet tied to Turtle net_profit"
-    )
+    assert report.items["net_profit"].category == "yahoo_pdf_verified"
     assert report.items["defer_tax_liab"].category == "mapping_expansion_required"
     assert report.items["defer_tax_liab"].candidate_sources == ("yahoo",)
     assert report.items["bond_payable"].category == "source_unavailable"

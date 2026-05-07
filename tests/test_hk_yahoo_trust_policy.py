@@ -28,7 +28,7 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
         for sample in rule.samples
     ]
 
-    assert len(verified_samples) == 8
+    assert len(verified_samples) == 10
     assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
     assert policy.rule_for_field("revenue") is not None
     assert policy.is_pdf_verified("revenue") is True
@@ -61,11 +61,14 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
 
     assert policy.is_pdf_verified("total_cur_assets") is True
     assert policy.is_pdf_verified("gross_profit") is False
-    assert policy.is_pdf_verified("net_profit") is False
+    assert policy.is_pdf_verified("net_profit") is True
     assert gross_profit_rule is not None
     assert gross_profit_rule.classification == "yahoo_definition_unverified"
     assert net_profit_rule is not None
-    assert net_profit_rule.classification == "yahoo_definition_unverified"
+    assert net_profit_rule.classification == "yahoo_pdf_verified"
+    assert net_profit_rule.allowed_yahoo_raw_fields == (
+        "Net Income Common Stockholders",
+    )
     assert policy.build_policy_evidence("gross_profit")["sample_count"] == 0
 
     gross_evidence = policy.build_policy_evidence("gross_profit")
@@ -77,12 +80,8 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
     assert gross_evidence["required_proof"] == (
         "formal PDF row or deterministic derivation matching Yahoo Gross Profit"
     )
-    assert net_evidence["definition_status_reason"] == (
-        "Yahoo net-income semantics are not yet tied to the exact Turtle net_profit row"
-    )
-    assert net_evidence["required_proof"] == (
-        "PDF row semantics and value match for profit attributable to owners/shareholders"
-    )
+    assert net_evidence["sample_companies"] == ["00001", "01113"]
+    assert net_evidence["sample_count"] == 2
 
 
 def test_hk_yahoo_trust_policy_requires_reason_for_definition_unverified_rule(
@@ -90,7 +89,7 @@ def test_hk_yahoo_trust_policy_requires_reason_for_definition_unverified_rule(
 ) -> None:
     payload = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
     for rule in payload["rules"]:
-        if rule["field_id"] == "net_profit":
+        if rule["field_id"] == "gross_profit":
             rule.pop("definition_status_reason", None)
     policy_path = tmp_path / "bad_policy.json"
     policy_path.write_text(
@@ -107,7 +106,7 @@ def test_hk_yahoo_trust_policy_requires_proof_for_definition_unverified_rule(
 ) -> None:
     payload = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
     for rule in payload["rules"]:
-        if rule["field_id"] == "net_profit":
+        if rule["field_id"] == "gross_profit":
             rule.pop("required_proof", None)
     policy_path = tmp_path / "bad_policy.json"
     policy_path.write_text(
@@ -124,7 +123,7 @@ def test_hk_yahoo_trust_policy_rejects_non_string_definition_status_reason(
 ) -> None:
     payload = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
     for rule in payload["rules"]:
-        if rule["field_id"] == "net_profit":
+        if rule["field_id"] == "gross_profit":
             rule["definition_status_reason"] = 1
     policy_path = tmp_path / "bad_policy.json"
     policy_path.write_text(

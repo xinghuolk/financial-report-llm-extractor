@@ -51,6 +51,7 @@ EXPECTED_HK_METADATA_BLOCKER_FIELDS = frozenset(
 )
 EXPECTED_HK_YAHOO_VERIFIED_FIELDS = frozenset(
     {
+        "net_profit",
         "revenue",
         "total_assets",
         "total_cur_assets",
@@ -58,9 +59,7 @@ EXPECTED_HK_YAHOO_VERIFIED_FIELDS = frozenset(
         "total_liabilities",
     }
 )
-EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS = frozenset(
-    {"gross_profit", "net_profit"}
-)
+EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS = frozenset({"gross_profit"})
 EXPECTED_HK_PDF_VERIFICATION_FIELDS = frozenset(
     {
         "gross_profit",
@@ -146,6 +145,7 @@ def _assert_hk_warning_classification(
             "financing_cash_flow",
             "investing_cash_flow",
             "operating_cash_flow",
+            "net_profit",
             "revenue",
             "total_assets",
             "total_cur_assets",
@@ -154,11 +154,11 @@ def _assert_hk_warning_classification(
         }
         assert set(
             closure_payload["fields_by_category"]["yahoo_definition_unverified"]
-        ) == {"net_profit"}
+        ) == set()
         assert set(closure_payload["fields_by_category"]["pdf_required"]) == {
             "gross_profit"
         }
-        assert closure_payload["items"]["net_profit"]["reason"]
+        assert closure_payload["items"]["net_profit"]["category"] == "clean_present"
 
 
 def _record(
@@ -574,6 +574,7 @@ def test_checked_in_hk_replay_reports_exact_15_field_closure_buckets(
         "financing_cash_flow",
         "investing_cash_flow",
         "operating_cash_flow",
+        "net_profit",
         "revenue",
         "total_assets",
         "total_cur_assets",
@@ -587,11 +588,10 @@ def test_checked_in_hk_replay_reports_exact_15_field_closure_buckets(
         warning_fields = review["warning_classification"]["fields_by_category"]
 
         assert set(combined["clean_present_fields"]) == expected_clean
-        assert combined["clean_present_count"] == 9
+        assert combined["clean_present_count"] == 10
         assert combined["total_fields"] == 15
         assert set(review["yahoo_definition_unverified_fields"]) == {
             "gross_profit",
-            "net_profit",
         }
         assert warning_fields["mapping_expansion_required"] == [
             "defer_tax_liab"

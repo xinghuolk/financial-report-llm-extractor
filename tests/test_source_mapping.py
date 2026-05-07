@@ -454,6 +454,50 @@ def test_map_source_inventory_preserves_related_policy_evidence_candidates() -> 
     ] == ["TOTAL_OPERATE_INCOME"]
 
 
+def test_minimal_hk_net_profit_keeps_related_yahoo_rows_as_policy_evidence() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+    records = (
+        _record(
+            "Net Income Common Stockholders",
+            "10847000000",
+            Decimal("10847000000"),
+            source="yahoo",
+            raw_field_code=None,
+        ),
+        _record(
+            "Net Income",
+            "11133000000",
+            Decimal("11133000000"),
+            source="yahoo",
+            raw_field_code=None,
+        ),
+        _record(
+            "Net Income From Continuing Operation Net Minority Interest",
+            "11133000000",
+            Decimal("11133000000"),
+            source="yahoo",
+            raw_field_code=None,
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+
+    mapped = result.fields["net_profit"]
+    assert mapped.status == "present"
+    assert [candidate.raw_field_name for candidate in mapped.candidates] == [
+        "Net Income Common Stockholders"
+    ]
+    assert [
+        candidate.raw_field_name for candidate in mapped.policy_evidence_candidates
+    ] == [
+        "Net Income",
+        "Net Income From Continuing Operation Net Minority Interest",
+    ]
+
+
 def test_map_source_inventory_derives_money_field_from_compatible_inputs() -> None:
     catalog = SourceMappingCatalog(
         catalog_id="test",

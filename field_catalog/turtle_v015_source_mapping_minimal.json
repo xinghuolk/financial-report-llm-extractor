@@ -88,7 +88,11 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["PARENT_NETPROFIT", "归属于母公司股东的净利润", "Profit attributable to shareholders", "NETPROFIT", "净利润"],
-        "yahoo": ["Net Income", "Net Income Common Stockholders"]
+        "yahoo": [
+          "Net Income Common Stockholders",
+          "Net Income",
+          "Net Income From Continuing Operation Net Minority Interest"
+        ]
       },
       "source_policy": {
         "semantic_concept": "profit attributable to parent-company shareholders",
@@ -98,7 +102,11 @@
             "related": ["NETPROFIT", "净利润"]
           },
           "yahoo": {
-            "primary": ["Net Income", "Net Income Common Stockholders"]
+            "primary": ["Net Income Common Stockholders"],
+            "related": [
+              "Net Income",
+              "Net Income From Continuing Operation Net Minority Interest"
+            ]
           }
         },
         "market_policies": {

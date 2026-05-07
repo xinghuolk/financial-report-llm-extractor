@@ -204,20 +204,47 @@
       "samples": []
     },
     {
-      "policy_id": "hk_yahoo_raw_hkd_definition_unverified:net_profit",
+      "policy_id": "hk_yahoo_raw_hkd_pdf_verified:net_profit",
       "field_id": "net_profit",
-      "classification": "yahoo_definition_unverified",
+      "classification": "yahoo_pdf_verified",
       "trusted_currency": "HKD",
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
       "allowed_yahoo_raw_fields": [
-        "Net Income",
-        "Net Income Common Stockholders",
-        "Net Income From Continuing Operation Net Minority Interest"
+        "Net Income Common Stockholders"
       ],
-      "definition_status_reason": "Yahoo net-income semantics are not yet tied to the exact Turtle net_profit row",
-      "required_proof": "PDF row semantics and value match for profit attributable to owners/shareholders",
-      "samples": []
+      "samples": [
+        {
+          "company_id": "00001",
+          "provider_ticker": "0001.HK",
+          "report_ref": "downloads/hk_stocks/00001/annual/2025_annual_en.pdf",
+          "pdf_page": 134,
+          "statement_name": "Consolidated Income Statement",
+          "statement_line": "Profit attributable to ordinary shareholders",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "11841",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "11841000000",
+          "yahoo_raw_field": "Net Income Common Stockholders",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; row is profit attributable to ordinary shareholders"
+        },
+        {
+          "company_id": "01113",
+          "provider_ticker": "1113.HK",
+          "report_ref": "downloads/hk_stocks/01113/annual/2025_annual_en.pdf",
+          "pdf_page": 70,
+          "statement_name": "Consolidated Income Statement",
+          "statement_line": "Profit attributable to shareholders",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "10847",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "10847000000",
+          "yahoo_raw_field": "Net Income Common Stockholders",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; excludes non-controlling interests and perpetual capital securities where disclosed"
+        }
+      ]
     }
   ]
 }

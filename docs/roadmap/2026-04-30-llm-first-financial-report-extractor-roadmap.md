@@ -785,6 +785,28 @@ Exit criteria:
 - Focused verification: `tests/test_hk_15_field_closure.py`, `tests/test_provider_baseline_replay.py`, `tests/test_hk_yahoo_trust_policy.py`, and `tests/test_warning_classification.py` pass with `36 passed`.
 - Phase N can start with a stable 15-field baseline.
 
+### Phase M3: HK net_profit PDF Proof
+
+Status: implemented on 2026-05-07. See:
+
+- `docs/superpowers/specs/2026-05-07-phase-m3-hk-net-profit-pdf-proof.md`
+- `docs/superpowers/plans/2026-05-07-phase-m3-hk-net-profit-pdf-proof.md`
+
+Goal: promote HK `net_profit` from `yahoo_definition_unverified` to `yahoo_pdf_verified` using annual-report row proof, without expanding the denominator beyond the current 15 fields.
+
+Implementation result:
+
+- `net_profit` now trusts only Yahoo raw field `Net Income Common Stockholders`.
+- `Net Income` and `Net Income From Continuing Operation Net Minority Interest` remain related context, not trusted HK primary fields.
+- `00001` proof: page `134`, row `Profit attributable to ordinary shareholders`, `11,841` HKD million equals Yahoo raw `11,841,000,000`.
+- `01113` proof: page `70`, row `Profit attributable to shareholders`, `10,847` HKD million equals Yahoo raw `10,847,000,000`.
+- HK combined replay target moves from `9/15` clean present to `10/15` clean present.
+- `gross_profit` remains non-clean and still requires PDF row or derivation proof.
+
+Verification:
+
+- Phase M3 focused tests: `69 passed`.
+
 ### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 
 Goal: expand source-first coverage only after HK 15-field terminal buckets are stable.
