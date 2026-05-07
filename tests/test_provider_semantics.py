@@ -83,3 +83,23 @@ def test_related_fields_cannot_also_be_primary(tmp_path: Path) -> None:
         match="related_only_fields must not include raw_field_name",
     ):
         load_provider_semantics_catalog(path)
+
+
+def test_defer_tax_liab_yahoo_hk_is_verified_primary() -> None:
+    catalog = load_provider_semantics_catalog(CATALOG)
+
+    rule = catalog.require_rule(
+        provider="yahoo",
+        market="HK",
+        turtle_field_id="defer_tax_liab",
+        raw_field_name="Non Current Deferred Taxes Liabilities",
+    )
+
+    assert rule.allowed_as_primary is True
+    assert rule.classification == "provider_semantics_sample_verified"
+    assert rule.proof_origin == "sampled_pdf_policy_proof"
+    assert rule.trusted_currency == "HKD"
+    assert rule.trusted_unit == "raw"
+    assert rule.trusted_unit_multiplier == 1
+    assert "Current Deferred Taxes Liabilities" in rule.negative_examples
+    assert len(rule.samples) == 2

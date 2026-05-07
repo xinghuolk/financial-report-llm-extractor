@@ -196,6 +196,51 @@
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
       "turtle_field_id": "gross_profit"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [
+        "Current Deferred Taxes Liabilities"
+      ],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Non Current Deferred Taxes Liabilities",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "00001",
+          "expected_provider_raw_value": "17275000000",
+          "pdf_page": 136,
+          "pdf_value": "17275",
+          "provider_ticker": "0001.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Deferred tax liabilities",
+          "statement_name": "Consolidated Statement of Financial Position"
+        },
+        {
+          "company_id": "01113",
+          "expected_provider_raw_value": "14889000000",
+          "pdf_page": 71,
+          "pdf_value": "14889",
+          "provider_ticker": "1113.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Deferred tax liabilities",
+          "statement_name": "Consolidated Statement of Financial Position"
+        }
+      ],
+      "semantic_claim": "non-current deferred tax liabilities as reported on balance sheet",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "defer_tax_liab"
     }
   ]
 }
