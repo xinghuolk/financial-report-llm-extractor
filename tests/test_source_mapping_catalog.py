@@ -799,6 +799,20 @@ def test_source_policy_routes_are_advertised_by_coverage_matrix() -> None:
                 )
 
 
+def test_minimal_source_mapping_defer_tax_liab_has_yahoo_alias_and_hk_policy() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1"),
+    )
+
+    entry = catalog.entries["defer_tax_liab"]
+
+    assert "Non Current Deferred Taxes Liabilities" in entry.source_aliases["yahoo"]
+    assert entry.verification_status == "verified"
+    assert entry.source_policy is not None
+    assert entry.source_policy.market_policies["HK"].primary_route == "yahoo_direct"
+
+
 def test_minimal_source_mapping_entries_match_taxonomy_and_coverage() -> None:
     taxonomy = load_field_taxonomy(
         Path("field_catalog/turtle_v015_field_taxonomy.json")

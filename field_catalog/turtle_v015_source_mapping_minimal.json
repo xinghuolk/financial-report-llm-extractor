@@ -414,13 +414,33 @@
       "statement_type": "balance_sheet",
       "domain": "balance_sheet",
       "source_mode": "direct",
-      "primary_route": "akshare_direct",
-      "verification_status": "expected",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["DEFER_TAX_LIAB"]
+        "akshare": [
+          "DEFER_TAX_LIAB"
+        ],
+        "yahoo": [
+          "Non Current Deferred Taxes Liabilities"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
       },
       "pdf_aliases": ["deferred tax liabilities"]
     }

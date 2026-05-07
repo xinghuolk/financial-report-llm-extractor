@@ -551,9 +551,16 @@
     "defer_tax_liab": {
       "domain": "balance_sheet",
       "priority": "P1",
-      "primary_route": "akshare_direct",
-      "verification": "expected",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
       "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
         {
           "source": "akshare",
           "mode": "direct",
@@ -562,7 +569,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Yahoo direct is primary for HK market; akshare cross-check route added."
     },
     "minority_int": {
       "domain": "balance_sheet",
