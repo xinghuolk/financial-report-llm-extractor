@@ -533,6 +533,8 @@ def _export_coverage(export: SourceFirstExportResult) -> dict[str, object]:
         if item.status == "present"
         and not item.warnings
         and not item.verification_required
+        and not item.review_notes
+        and not item.conflict_classifications
     )
     total = len(export.items)
     return {

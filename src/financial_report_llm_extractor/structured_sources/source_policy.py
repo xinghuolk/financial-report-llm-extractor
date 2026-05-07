@@ -439,7 +439,7 @@ def _can_apply_hk_yahoo_trust_policy(
     ):
         return False
     if provider_semantics_catalog is None:
-        return True
+        return False
     semantics_rule = provider_semantics_catalog.rule_for(
         provider="yahoo",
         market="HK",

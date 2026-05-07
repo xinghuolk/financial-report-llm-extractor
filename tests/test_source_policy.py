@@ -585,6 +585,7 @@ def test_source_policy_marks_hk_yahoo_verified_field_clean_with_trust_policy() -
         market="HK",
         company_id="00001",
         hk_yahoo_trust_policy=_trust_policy(),
+        provider_semantics_catalog=_provider_semantics(),
     )
 
     item = report.items["total_assets"]
@@ -598,6 +599,65 @@ def test_source_policy_marks_hk_yahoo_verified_field_clean_with_trust_policy() -
     assert item.trust_policy_evidence["policy_id"] == (
         "hk_yahoo_raw_hkd_pdf_verified:total_assets"
     )
+
+
+def test_source_policy_requires_provider_semantics_catalog_for_hk_yahoo_trust() -> None:
+    catalog = _catalog(
+        "total_assets",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_require_pdf",
+                )
+            },
+            verification_requirement="pdf_required_on_conflict",
+        ),
+    )
+    mapping = _mapping(
+        "total_assets",
+        (
+            _candidate(
+                "akshare",
+                "总资产",
+                "TOTAL_ASSETS",
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                statement_metadata_proven=True,
+            ),
+            _candidate(
+                "yahoo",
+                "Total Assets",
+                None,
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                unit_multiplier=Decimal("1"),
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=_trust_policy(),
+        provider_semantics_catalog=None,
+    )
+
+    item = report.items["total_assets"]
+    assert item.verification_required is True
+    assert item.trust_policy_evidence is None
+    assert item.conflict_classifications == ("statement_metadata_unproven",)
 
 
 def test_source_policy_does_not_apply_policy_without_raw_field_match() -> None:
@@ -650,6 +710,7 @@ def test_source_policy_does_not_apply_policy_without_raw_field_match() -> None:
         market="HK",
         company_id="00001",
         hk_yahoo_trust_policy=_trust_policy(),
+        provider_semantics_catalog=_provider_semantics(),
     )
 
     item = report.items["total_assets"]
@@ -870,6 +931,7 @@ def test_source_policy_report_serializes_trust_policy_evidence_separately() -> N
         market="HK",
         company_id="00001",
         hk_yahoo_trust_policy=_trust_policy(),
+        provider_semantics_catalog=_provider_semantics(),
     )
     item_payload = cast(dict[str, Any], report.to_dict()["items"])["total_assets"]
     item_payload = cast(dict[str, Any], item_payload)

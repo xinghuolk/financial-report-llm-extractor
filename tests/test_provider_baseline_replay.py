@@ -16,9 +16,14 @@ from financial_report_llm_extractor.structured_sources.provider_baseline_replay 
     ProviderBaselineGroup,
     ProviderBaselineReplayResult,
     _company_market,
+    _export_coverage,
     company_source_groups,
     select_latest_annual_records,
     write_provider_baseline_period_replay,
+)
+from financial_report_llm_extractor.structured_sources.export import (  # type: ignore[import-untyped]
+    SourceFirstExportItem,
+    SourceFirstExportResult,
 )
 
 
@@ -78,6 +83,33 @@ EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
 
 
 CheckedInReplay = tuple[ProviderBaselineReplayResult, dict[str, Any]]
+
+
+def test_export_coverage_clean_present_excludes_review_notes_and_conflicts() -> None:
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="catalog",
+        catalog_version="1",
+        items={
+            "clean": SourceFirstExportItem(field_id="clean", status="present"),
+            "review_note": SourceFirstExportItem(
+                field_id="review_note",
+                status="present",
+                review_notes=("statement_metadata_unproven",),
+            ),
+            "conflict": SourceFirstExportItem(
+                field_id="conflict",
+                status="present",
+                conflict_classifications=("statement_metadata_unproven",),
+            ),
+        },
+    )
+
+    coverage = _export_coverage(export)
+
+    assert coverage["selected_fields"] == ["clean", "conflict", "review_note"]
+    assert coverage["clean_present_fields"] == ["clean"]
+    assert coverage["clean_present_count"] == 1
 
 
 @pytest.fixture(scope="module")
