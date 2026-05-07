@@ -56,6 +56,7 @@ EXPECTED_HK_METADATA_BLOCKER_FIELDS = frozenset(
 )
 EXPECTED_HK_YAHOO_VERIFIED_FIELDS = frozenset(
     {
+        "defer_tax_liab",
         "net_profit",
         "revenue",
         "total_assets",
@@ -76,7 +77,7 @@ EXPECTED_HK_PDF_VERIFICATION_FIELDS = frozenset(
         "total_liabilities",
     }
 )
-EXPECTED_HK_MAPPING_EXPANSION_FIELDS = ["defer_tax_liab"]
+EXPECTED_HK_MAPPING_EXPANSION_FIELDS: list[str] = []
 EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
     {"bond_payable", "cip", "invest_income"}
 )
@@ -174,6 +175,7 @@ def _assert_hk_warning_classification(
         assert closure_payload["total_fields"] == 15
         assert set(closure_payload["fields_by_category"]["clean_present"]) == {
             "cash",
+            "defer_tax_liab",
             "financing_cash_flow",
             "investing_cash_flow",
             "operating_cash_flow",
@@ -633,6 +635,7 @@ def test_checked_in_hk_replay_reports_exact_15_field_closure_buckets(
     companies = _companies_by_id(payload)
     expected_clean = {
         "cash",
+        "defer_tax_liab",
         "financing_cash_flow",
         "investing_cash_flow",
         "operating_cash_flow",
@@ -650,14 +653,12 @@ def test_checked_in_hk_replay_reports_exact_15_field_closure_buckets(
         warning_fields = review["warning_classification"]["fields_by_category"]
 
         assert set(combined["clean_present_fields"]) == expected_clean
-        assert combined["clean_present_count"] == 10
+        assert combined["clean_present_count"] == 11
         assert combined["total_fields"] == 15
         assert set(review["yahoo_definition_unverified_fields"]) == {
             "gross_profit",
         }
-        assert warning_fields["mapping_expansion_required"] == [
-            "defer_tax_liab"
-        ]
+        assert warning_fields["mapping_expansion_required"] == []
         assert set(warning_fields["source_unavailable"]) == {
             "bond_payable",
             "cip",

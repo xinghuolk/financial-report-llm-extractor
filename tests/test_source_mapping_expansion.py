@@ -219,7 +219,7 @@ def test_write_source_mapping_expansion_review_uses_real_candidate_report(
     assert payload["summary"]["no_candidate_count"] >= 0
     expected_defer_tax_reasons = {
         ("defer_tax_liab", "akshare"): "candidate already mapped",
-        ("defer_tax_liab", "yahoo"): "candidate is not strong",
+        ("defer_tax_liab", "yahoo"): "candidate already mapped",
     }
     assert set(defer_tax_decisions_by_key) == set(expected_defer_tax_reasons)
     for key, reason in expected_defer_tax_reasons.items():
