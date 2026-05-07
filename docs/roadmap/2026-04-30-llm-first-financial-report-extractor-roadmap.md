@@ -918,34 +918,104 @@ Implementation result:
 
 ### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 
-Goal: expand source-first coverage only after HK 15-field terminal buckets and Phase M4 provider-semantics correction are stable.
+Goal: expand source-first coverage in three risk-graded layers (N1/N2/N3) only after HK 15-field terminal buckets and Phase M4 provider-semantics correction are stable.
 
 Phase N is blocked until Phase M4 is complete. Do not use Phase N to hide unresolved provider semantics issues from the 15-field denominator.
 
+Rationale for decomposition:
+
+The 18 unmapped P0/P1 fields differ widely in difficulty. A one-shot expansion would produce many "yahoo_definition_unverified" or "mapping_expansion_required" buckets at once, making coverage numbers misleading. Layered expansion lets each layer reach explicit clean/non-clean conclusions before proceeding. See `docs/2026-05-08-roadmap-evaluation.zh.md` for the full analysis.
+
+#### Phase N0: Catalog Consistency Gate (Prerequisite)
+
+Goal: harden cross-catalog consistency before expanding the field denominator.
+
 Deliverables:
 
-- Promote the remaining P0/P1 fields from `field_catalog/turtle_v015_priority_fields.json` into the source mapping catalog, preserving taxonomy and coverage matrix links.
-- For each of the 33 P0/P1 fields, define source mode:
-  - direct source mapping
-  - derived from source candidates
-  - source optional
-  - PDF required
-  - LLM review required
-  - unsupported in first source-first slice
-- Add AKShare and Yahoo raw field candidates where provider baseline evidence exists.
-- Mark fields that are likely HK-hard cases, including R&D expense, construction in progress, bonds payable, share capital, operating cost, and owner-attributable equity, with explicit fallback policy.
-- Update coverage summaries to report:
-  - full 33-field P0/P1 denominator
-  - current 15-field compatibility denominator
-  - clean present coverage
-  - selected-with-warning coverage
-  - PDF verification queue
+- Add `tests/test_catalog_consistency.py` covering:
+  - `coverage_matrix.primary_route` ↔ `source_mapping.primary_route`
+  - `coverage_matrix.verification` ↔ `source_mapping.verification_status`
+  - `provider_semantics.turtle_field_id` membership in `source_mapping` keys
+  - `trust_policy.field_id` membership in `source_mapping` keys
+  - `trust_policy.allowed_yahoo_raw_fields` ↔ `provider_semantics.raw_field_name`
+- Tests must run as part of `uv run pytest -v`.
 
 Exit criteria:
 
-- The project can replay `600519`, `00001`, and `01113` against all 33 P0/P1 fields without changing provider fixtures.
-- Coverage reports no longer confuse "not mapped yet" with "source unavailable".
-- Full-denominator coverage becomes comparable with the earlier PDF-first 33-field coverage budget.
+- Cross-catalog inconsistencies raise stable `ValueError` or test failures, not silent drift.
+- Maintaining 5 field_catalog JSON files during Phase N1/N2/N3 has automated guardrails.
+
+#### Phase N1: Low-Risk Direct Field Expansion (~10 fields)
+
+Goal: add P0/P1 fields whose provider raw field name and Turtle semantics are direct enough to skip full provider-semantics-proof + trust-policy ceremony.
+
+Target fields (all have provider baseline evidence and direct semantic mapping):
+
+- `st_borr`, `lt_borr`, `accounts_receiv`, `acct_payable`, `inventories`, `fix_assets`, `money_cap`, `defer_tax_assets`, `minority_int`, `other_cur_assets`
+
+Deliverables:
+
+- Add source mapping entries for each field with AKShare and Yahoo aliases.
+- For HK fields covered by Yahoo, reuse the M5 pattern: provider semantics rule + trust policy rule + source mapping update.
+- For CN-only fields (AKShare direct), no trust policy needed; provider semantics still required.
+- Update `provider_baseline_replay` so denominator reports both 15-field (compat) and 25-field views.
+
+Exit criteria:
+
+- 600519/00001/01113 replay covers 25 fields without changing provider fixtures.
+- N1 fields are clean-present or explicit terminal bucket; no field stuck in unclassified state.
+- Catalog consistency tests still pass.
+
+#### Phase N2: Medium-Risk Format-Sensitive Fields (~4 fields)
+
+Goal: add fields where HK statement format may diverge from CN/Yahoo semantics, requiring per-field investigation.
+
+Target fields:
+
+- `operating_cost`, `operating_profit`, `equity_attributable_to_owners`, `selling_general_administrative`
+
+Deliverables:
+
+- For each field, perform PDF investigation on 00001/01113 to confirm whether HK statement format supports direct row matching.
+- Apply M3-M5 pattern: if directly verifiable, add provider semantics + trust policy; if not, assign explicit terminal bucket (e.g., `hk_statement_format_incompatible`, similar to `gross_profit`).
+- Document findings in spec/plan for each field decision.
+
+Exit criteria:
+
+- N2 fields are clean-present (where format compatible) or explicit non-clean terminal (where not).
+- HK-vs-CN coverage gap is explicit per field, not aggregated as "warnings".
+
+#### Phase N3: High-Risk Market-Specific Fields (~4 fields)
+
+Goal: handle fields that may be CN-A-share-specific or HK-notes-only, with high probability of source_unavailable for HK.
+
+Target fields:
+
+- `rd_exp`, `fv_value_chg_gain`, `non_oper_income`, `non_oper_exp`
+
+Deliverables:
+
+- Provider semantics investigation per field per market.
+- Refined `source_unavailable` taxonomy:
+  - `source_unavailable_hk_only` (CN has data, HK does not)
+  - `source_unavailable_all_markets` (no provider has data)
+  - `pdf_only_by_design` (taxonomy says PDF-only from the start)
+- Trigger Phase H planning if multiple HK fields require PDF supplement.
+
+Exit criteria:
+
+- N3 fields explicitly assigned to one of: clean_present, source_unavailable variant, or pdf_required.
+- 33-field denominator coverage is fully classified.
+- Phase H scope can be defined based on actual `pdf_required` field list, not speculation.
+
+### Phase H/I: Triggered After N2/N3
+
+Phase H and Phase I remain designed but not implemented. Their actual trigger:
+
+- **Phase H** activates when N2 or N3 produces a non-trivial `pdf_required` field list.
+- **Phase I** activates when N2/N3 surfaces conflict/ambiguity patterns that cannot be resolved deterministically.
+
+Do not pre-build either phase. Their specs (`docs/superpowers/specs/2026-05-01-phase-h-*` and `2026-05-01-phase-i-*`) are kept active for that future trigger.
 
 ## 6. Validation Commands
 
