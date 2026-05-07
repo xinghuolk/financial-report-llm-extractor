@@ -84,6 +84,8 @@ EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY: dict[str, list[str]] = {
 EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
     {"bond_payable", "cip", "invest_income"}
 )
+# 01113 also has selling_general_administrative as source_unavailable; 00001 does not
+EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE = frozenset({"selling_general_administrative"})
 
 
 CheckedInReplay = tuple[ProviderBaselineReplayResult, dict[str, Any]]
@@ -475,7 +477,7 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         "600519",
     }
     assert all(
-        company["coverage"]["combined"]["total_fields"] == 25
+        company["coverage"]["combined"]["total_fields"] == 29
         for company in payload["companies"]
     )
     companies = {company["company_id"]: company for company in payload["companies"]}
@@ -643,19 +645,21 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
     assert "hk_yahoo_trust_policy_report: " in markdown
 
 
-def test_checked_in_hk_replay_reports_exact_25_field_closure_buckets(
+def test_checked_in_hk_replay_reports_exact_29_field_closure_buckets(
     checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
     _, payload = checked_in_provider_baseline_replay
     companies = _companies_by_id(payload)
-    # N1.C added 6 more fields to catalog (25 total).
-    # 00001: fix_assets/accounts_receiv/acct_payable are conflicts; st_borr/lt_borr clean; other_cur_assets mapping_expansion.
-    # 01113: fix_assets/accounts_receiv/acct_payable are conflicts; st_borr/lt_borr/other_cur_assets clean.
+    # N2 added 4 more fields to catalog (29 total).
+    # 00001: equity_to_owners/operating_cost/operating_profit/sga all clean_present.
+    # 01113: equity_to_owners/operating_cost/operating_profit clean; sga source_unavailable.
+    # fix_assets/accounts_receiv/acct_payable remain conflicts for HK; inventories conflict for 00001.
     expected_clean_by_company = {
         "00001": {
             "cash",
             "defer_tax_assets",
             "defer_tax_liab",
+            "equity_attributable_to_owners",
             "financing_cash_flow",
             "investing_cash_flow",
             "lt_borr",
@@ -663,7 +667,10 @@ def test_checked_in_hk_replay_reports_exact_25_field_closure_buckets(
             "money_cap",
             "net_profit",
             "operating_cash_flow",
+            "operating_cost",
+            "operating_profit",
             "revenue",
+            "selling_general_administrative",
             "st_borr",
             "total_assets",
             "total_cur_assets",
@@ -674,6 +681,7 @@ def test_checked_in_hk_replay_reports_exact_25_field_closure_buckets(
             "cash",
             "defer_tax_assets",
             "defer_tax_liab",
+            "equity_attributable_to_owners",
             "financing_cash_flow",
             "inventories",
             "investing_cash_flow",
@@ -682,6 +690,8 @@ def test_checked_in_hk_replay_reports_exact_25_field_closure_buckets(
             "money_cap",
             "net_profit",
             "operating_cash_flow",
+            "operating_cost",
+            "operating_profit",
             "other_cur_assets",
             "revenue",
             "st_borr",
@@ -691,7 +701,7 @@ def test_checked_in_hk_replay_reports_exact_25_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 16, "01113": 18}
+    expected_clean_count_by_company = {"00001": 20, "01113": 21}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]
@@ -700,7 +710,7 @@ def test_checked_in_hk_replay_reports_exact_25_field_closure_buckets(
 
         assert set(combined["clean_present_fields"]) == expected_clean_by_company[company_id]
         assert combined["clean_present_count"] == expected_clean_count_by_company[company_id]
-        assert combined["total_fields"] == 25
+        assert combined["total_fields"] == 29
         assert set(review["yahoo_definition_unverified_fields"]) == {
             "gross_profit",
         }

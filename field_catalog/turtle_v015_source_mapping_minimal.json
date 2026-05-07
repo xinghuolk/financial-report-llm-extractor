@@ -25,7 +25,10 @@
         "st_borr",
         "lt_borr",
         "accounts_receiv",
-        "acct_payable"
+        "acct_payable",
+        "equity_attributable_to_owners",
+        "operating_cost",
+        "operating_profit"
       ]
     },
     {
@@ -38,7 +41,8 @@
         "defer_tax_liab",
         "defer_tax_assets",
         "minority_int",
-        "other_cur_assets"
+        "other_cur_assets",
+        "selling_general_administrative"
       ]
     }
   ],
@@ -613,6 +617,70 @@
         "yahoo": ["Other Current Assets"]
       },
       "pdf_aliases": ["other current assets", "其他流动资产"]
+    },
+    "equity_attributable_to_owners": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["EQUITY_PARENT_COMPANY", "归属于母公司股东权益"],
+        "yahoo": ["Stockholders Equity", "Common Stock Equity"]
+      },
+      "pdf_aliases": ["total ordinary shareholders' funds", "stockholders equity", "归属于母公司股东权益"]
+    },
+    "operating_cost": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["OPERATE_COST", "TOTAL_OPERATE_COST", "营业成本", "营业总成本"],
+        "yahoo": ["Cost Of Revenue", "Reconciled Cost Of Revenue"]
+      },
+      "pdf_aliases": ["operating costs", "cost of revenue", "营业成本"]
+    },
+    "operating_profit": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["OPERATE_PROFIT", "营业利润"],
+        "yahoo": ["Operating Income"]
+      },
+      "pdf_aliases": ["operating profit", "operating income", "营业利润"]
+    },
+    "selling_general_administrative": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["SELLING_EXPENSE", "MANAGE_EXPENSE", "销售费用", "管理费用"],
+        "yahoo": ["Selling General And Administration"]
+      },
+      "pdf_aliases": ["selling general and administrative", "management expenses", "销售费用", "管理费用"]
     }
   }
 }

@@ -38,9 +38,16 @@
           "status": "expected",
           "statement_type": "income_statement",
           "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "AKShare OPERATE_COST is preferred alias (cost of goods only); TOTAL_OPERATE_COST is related. HK format may diverge from Yahoo Cost Of Revenue aggregation — format-incompatibility warnings are expected and acceptable."
     },
     "operating_profit": {
       "domain": "income_statement",
@@ -54,9 +61,16 @@
           "status": "expected",
           "statement_type": "income_statement",
           "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "HK format may diverge from Yahoo Operating Income aggregation — format-incompatibility warnings are expected and acceptable."
     },
     "net_profit": {
       "domain": "income_statement",
@@ -131,17 +145,24 @@
       "domain": "balance_sheet",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
           "mode": "direct",
           "status": "expected",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Verified by 00001 PDF page 137 'Total ordinary shareholders' funds' = 562,772 matching Yahoo Stockholders Equity 562,772,000,000 HKD."
     },
     "operating_cash_flow": {
       "domain": "cash_flow",
@@ -458,9 +479,16 @@
     "selling_general_administrative": {
       "domain": "income_statement",
       "priority": "P1",
-      "primary_route": "yahoo_direct",
+      "primary_route": "akshare_direct",
       "verification": "expected",
       "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        },
         {
           "source": "yahoo",
           "mode": "direct",
@@ -469,7 +497,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+      "notes": "AKShare has separate SELLING_EXPENSE and MANAGE_EXPENSE; Yahoo aggregates as Selling General And Administration. HK PDFs break out components separately — cross-source conflicts are expected and acceptable."
     },
     "fv_value_chg_gain": {
       "domain": "income_statement",
