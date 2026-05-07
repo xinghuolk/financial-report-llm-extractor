@@ -76,10 +76,14 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
     net_evidence = policy.build_policy_evidence("net_profit")
 
     assert gross_evidence["definition_status_reason"] == (
-        "formal annual-report gross-profit row semantics are not yet proven"
+        "HK formal income statements do not contain a gross profit row; "
+        "sampled 00001 (page 134) and 01113 (page 70) both use non-standard "
+        "cost structures that prevent direct or derivation-based verification "
+        "of Yahoo Gross Profit"
     )
     assert gross_evidence["required_proof"] == (
-        "formal PDF row or deterministic derivation matching Yahoo Gross Profit"
+        "HK issuer with standard gross profit row, or verified "
+        "revenue-minus-COGS derivation formula"
     )
     assert net_evidence["sample_companies"] == ["00001", "01113"]
     assert net_evidence["sample_count"] == 2

@@ -242,8 +242,8 @@
       "allowed_yahoo_raw_fields": [
         "Gross Profit"
       ],
-      "definition_status_reason": "formal annual-report gross-profit row semantics are not yet proven",
-      "required_proof": "formal PDF row or deterministic derivation matching Yahoo Gross Profit",
+      "definition_status_reason": "HK formal income statements do not contain a gross profit row; sampled 00001 (page 134) and 01113 (page 70) both use non-standard cost structures that prevent direct or derivation-based verification of Yahoo Gross Profit",
+      "required_proof": "HK issuer with standard gross profit row, or verified revenue-minus-COGS derivation formula",
       "samples": []
     },
     {
