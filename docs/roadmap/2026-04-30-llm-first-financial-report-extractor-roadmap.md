@@ -889,6 +889,33 @@ Implementation result:
 - Focused verification: `108 passed`.
 - `uv run ruff check .`: passed.
 
+### Phase M5: defer_tax_liab Yahoo Semantics Proof And gross_profit Terminal Closure
+
+Status: implemented on 2026-05-07. See:
+
+- `docs/superpowers/specs/2026-05-07-phase-m5-defer-tax-liab-gross-profit-closure.md`
+- `docs/superpowers/plans/2026-05-07-phase-m5-defer-tax-liab-gross-profit-closure.md`
+
+Goal: resolve the two remaining actionable HK 15-field gaps before Phase N expansion.
+
+Implementation result:
+
+- `defer_tax_liab` promoted to clean present via Yahoo `Non Current Deferred Taxes Liabilities` provider semantics proof.
+  - 00001: page 136, Deferred tax liabilities = 17,275 HK$ million, Yahoo raw = 17,275,000,000 HKD.
+  - 01113: page 71, Deferred tax liabilities = 14,889 $ Million, Yahoo raw = 14,889,000,000 HKD.
+  - `Current Deferred Taxes Liabilities` excluded as negative context.
+- `gross_profit` terminal reason updated from "not yet proven" to "HK formal income statements do not contain a gross profit row".
+  - 00001 page 134: Revenue → 6 cost line items → EBIT-like subtotal, no gross profit row.
+  - 01113 page 70: Group revenue → bundled operating costs → profit before tax, no gross profit row.
+  - Derivation unreliable due to non-standard cost structures.
+  - Terminal bucket remains `yahoo_definition_unverified` with explicit incompatibility reason.
+- HK 15-field clean present: 10/15 → 11/15.
+- Remaining HK non-clean fields:
+  - `gross_profit`: `yahoo_definition_unverified` (HK statement format incompatible).
+  - `bond_payable`, `cip`, `invest_income`: `source_unavailable`.
+- Focused verification: `438 passed`.
+- `uv run ruff check .`: passed.
+
 ### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 
 Goal: expand source-first coverage only after HK 15-field terminal buckets and Phase M4 provider-semantics correction are stable.
