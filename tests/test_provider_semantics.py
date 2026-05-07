@@ -103,3 +103,33 @@ def test_defer_tax_liab_yahoo_hk_is_verified_primary() -> None:
     assert rule.trusted_unit_multiplier == 1
     assert "Current Deferred Taxes Liabilities" in rule.negative_examples
     assert len(rule.samples) == 2
+
+
+def test_gross_profit_yahoo_hk_has_statement_format_incompatible_reason() -> None:
+    catalog = load_provider_semantics_catalog(CATALOG)
+
+    rule = catalog.require_rule(
+        provider="yahoo",
+        market="HK",
+        turtle_field_id="gross_profit",
+        raw_field_name="Gross Profit",
+    )
+
+    assert rule.allowed_as_primary is False
+    assert rule.classification == "provider_semantics_unverified"
+    assert rule.proof_origin == "hk_statement_format_incompatible"
+
+
+def test_gross_profit_akshare_hk_has_statement_format_incompatible_reason() -> None:
+    catalog = load_provider_semantics_catalog(CATALOG)
+
+    rule = catalog.require_rule(
+        provider="akshare",
+        market="HK",
+        turtle_field_id="gross_profit",
+        raw_field_name="毛利",
+    )
+
+    assert rule.allowed_as_primary is False
+    assert rule.classification == "provider_semantics_unverified"
+    assert rule.proof_origin == "hk_statement_format_incompatible"

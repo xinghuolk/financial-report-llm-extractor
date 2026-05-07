@@ -162,13 +162,13 @@
       "classification": "provider_semantics_unverified",
       "market": "HK",
       "negative_examples": [],
-      "proof_origin": "provider_semantics_missing",
+      "proof_origin": "hk_statement_format_incompatible",
       "provider": "yahoo",
       "raw_field_code": null,
       "raw_field_name": "Gross Profit",
       "related_only_fields": [],
       "required_proof": [
-        "Prove Yahoo Gross Profit semantics for HK annual reports, or keep as PDF-required/derived review."
+        "HK formal income statements examined (00001 page 134, 01113 page 70) do not contain a gross profit row. Revenue-minus-COGS derivation is unreliable due to multi-line cost breakdown (00001) or bundled operating costs (01113). Proof requires either a different HK issuer with standard gross profit row, or a verified derivation formula."
       ],
       "samples": [],
       "semantic_claim": "gross profit as defined by Turtle field semantics",
@@ -182,13 +182,13 @@
       "classification": "provider_semantics_unverified",
       "market": "HK",
       "negative_examples": [],
-      "proof_origin": "provider_semantics_missing",
+      "proof_origin": "hk_statement_format_incompatible",
       "provider": "akshare",
       "raw_field_code": "GROSS_PROFIT",
       "raw_field_name": "毛利",
       "related_only_fields": [],
       "required_proof": [
-        "Prove AKShare HK gross profit raw field semantics before primary promotion."
+        "HK formal income statements examined (00001 page 134, 01113 page 70) do not contain a gross profit row. AKShare HK gross profit raw field semantics cannot be verified against formal annual-report statement lines. Proof requires either a different HK issuer with standard gross profit row, or a verified derivation formula."
       ],
       "samples": [],
       "semantic_claim": "gross profit as defined by Turtle field semantics",
