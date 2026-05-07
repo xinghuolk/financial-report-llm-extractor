@@ -16,6 +16,31 @@
 
 目前代码层面已经分开了 `source_evidence`、`pdf_evidence`、`trust_policy_evidence`，这是正确基础；风险主要来自命名、测试断言和 catalog 合同表达不够清晰。
 
+## 当前状态更新
+
+Phase M4 已按本分析完成纠偏实现。当前离线 provider baseline replay 状态如下：
+
+- `600519` combined selected：`14/15`，clean present：`13/15`。
+- `00001` combined selected：`11/15`，clean present：`10/15`。
+- `01113` combined selected：`11/15`，clean present：`10/15`。
+
+HK clean 字段来自 source evidence + provider raw semantics policy proof，不是最终逐公司 PDF evidence。当前 HK `final_pdf_evidence_fields` 为空；`sampled_pdf_policy_proof_fields` 为：
+
+- `net_profit`
+- `revenue`
+- `total_assets`
+- `total_cur_assets`
+- `total_cur_liab`
+- `total_liabilities`
+
+HK 仍未 clean 的 5 个字段已经稳定分桶：
+
+- `gross_profit`：`yahoo_definition_unverified` / provider semantics unverified。
+- `defer_tax_liab`：`mapping_expansion_required`。
+- `bond_payable`、`cip`、`invest_income`：`source_unavailable`。
+
+因此路线已纠回 source-first/provider-semantics-first。后续可以进入 Phase N 的准备工作，但必须沿用 provider raw semantics gate，不能把 33-field expansion 变成 broad PDF retrieval 或逐公司 PDF 值匹配。
+
 ## 审查范围
 
 本次用三个 subagent 并行审查：
@@ -190,6 +215,8 @@
 
 ## 下一步建议
 
+以下 1-7 项已经由 Phase M4 落地，后续文档保留为设计背景：
+
 1. 先更新总 design/roadmap 的术语表，明确三类 evidence/proof 的边界：
    `source_evidence`、`trust_policy_evidence`、`pdf_evidence`。
 
@@ -213,13 +240,11 @@
 
 ## 对后续 Phase 的判断
 
-当前不能直接进入大范围 33-field expansion。更稳的下一阶段应是 “provider semantics contract cleanup phase”：
+Phase M4 provider semantics contract cleanup 已完成。下一阶段可以准备 full P0/P1 33-field expansion，但应把 Phase M4 的边界作为硬前置：
 
-- 清理术语。
-- 清理 `gross_profit` 状态。
-- 抽出 provider raw field semantics artifact。
-- 补 trust sample validation。
-- 让 `net_profit` 成为一个正确示范：sampled provider semantics proof，而不是逐公司 PDF proof。
+- 先扩 source mapping denominator，不直接提升 clean。
+- 对每个新增 provider raw field 标注 trusted、related-only、negative 或 unverified。
+- `gross_profit` 继续保持 non-clean，直到 Yahoo/AKShare raw semantics proof 成立。
+- PDF/LLM fallback 只能消费 bounded queue，不能恢复 broad P0/P1 PDF retrieval。
 
-完成这个阶段后，再扩展完整 P0/P1 33 字段会更安全。否则每增加一个字段，都会重复遇到“Yahoo/AKShare 有字段名，但语义是否等价、单位是否可信、是否需要 PDF”的混乱。
-
+这样再扩展完整 P0/P1 33 字段会更安全。否则每增加一个字段，都会重复遇到“Yahoo/AKShare 有字段名，但语义是否等价、单位是否可信、是否需要 PDF”的混乱。

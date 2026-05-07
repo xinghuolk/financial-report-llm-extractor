@@ -606,6 +606,20 @@ Current validation status:
   - `01113` combined selected coverage: 11/15, clean present: 4/15, HK balance-sheet totals selected with warnings and PDF verification required.
 - Remaining gaps are now categorized into source availability, mapping ambiguity/blocker, raw reconciliation conflict, policy unresolved conflict, and PDF/LLM supplement candidates.
 
+Current Phase M4 replay status, verified on 2026-05-07:
+
+- command: `financial-report-llm-extractor replay-provider-baseline --inventory tests/fixtures/provider_captures/provider_field_baseline/source_inventory.jsonl.gz --inventory-summary tests/fixtures/provider_captures/provider_field_baseline/provider_field_inventory_summary.json --catalog field_catalog/turtle_v015_source_mapping_minimal.json --out tmp/runs/review_current_coverage`
+- `600519` combined selected coverage: 14/15, clean present: 13/15.
+- `00001` combined selected coverage: 11/15, clean present: 10/15.
+- `01113` combined selected coverage: 11/15, clean present: 10/15.
+- HK `sampled_pdf_policy_proof_fields`: `net_profit`, `revenue`, `total_assets`, `total_cur_assets`, `total_cur_liab`, `total_liabilities`.
+- HK `final_pdf_evidence_fields`: none in the current source-only replay.
+- HK remaining non-clean fields:
+  - `gross_profit`: `yahoo_definition_unverified` / provider semantics unverified.
+  - `defer_tax_liab`: `mapping_expansion_required`.
+  - `bond_payable`, `cip`, `invest_income`: `source_unavailable`.
+- The route is now corrected back to source-first/provider-semantics-first: clean HK policy fields are clean because of source evidence plus provider raw semantics policy proof, not because every company has final PDF evidence.
+
 ### Phase K: HK Currency, Unit, And Reporting Metadata Proof
 
 Goal: make Hong Kong source candidates trustworthy before expanding field coverage.
@@ -821,7 +835,7 @@ Verification:
 
 ### Phase M4: Provider Raw Semantics Correction Before 33-Field Expansion
 
-Status: in progress on 2026-05-07. See:
+Status: implemented on 2026-05-07. See:
 
 - `docs/design/2026-05-07-source-first-architecture-drift-analysis.zh.md`
 - `docs/superpowers/specs/2026-05-07-phase-m4-provider-semantics-correction.md`
@@ -860,6 +874,20 @@ Exit criteria:
 - `gross_profit` remains in a stable non-clean terminal bucket with a clear reason.
 - `net_profit` preserves the Yahoo raw-field decision while reporting its proof class accurately.
 - Phase N expansion has a clean provider-semantics gate to reuse.
+
+Implementation result:
+
+- Provider raw semantics catalog and loader are implemented.
+- Source policy refuses HK Yahoo trust-policy promotion unless provider semantics catalog authorizes the raw field.
+- Provider replay and HK closure reports separate:
+  - `provider_semantics_verified_fields`
+  - `sampled_pdf_policy_proof_fields`
+  - `provider_semantics_unverified_fields`
+  - `final_pdf_evidence_fields`
+- Clean-present coverage excludes review notes and conflict classifications.
+- `gross_profit` is downgraded from verified direct to expected/non-clean for HK.
+- Focused verification: `108 passed`.
+- `uv run ruff check .`: passed.
 
 ### Phase N: Expand Minimal Source Mapping From 15 To Full P0/P1 33 Fields
 
