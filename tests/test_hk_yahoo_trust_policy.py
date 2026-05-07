@@ -29,7 +29,7 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
         for sample in rule.samples
     ]
 
-    assert len(verified_samples) == 10
+    assert len(verified_samples) == 12
     assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
     assert policy.rule_for_field("revenue") is not None
     assert policy.is_pdf_verified("revenue") is True
@@ -157,3 +157,20 @@ def test_hk_yahoo_trust_policy_rejects_non_string_definition_status_reason(
 
     with pytest.raises(ValueError, match="definition_status_reason must be a string"):
         load_hk_yahoo_trust_policy(policy_path)
+
+
+def test_hk_yahoo_trust_policy_defer_tax_liab_is_pdf_verified() -> None:
+    policy = load_hk_yahoo_trust_policy(POLICY_PATH)
+
+    assert policy.is_pdf_verified("defer_tax_liab") is True
+
+    rule = policy.rule_for_field("defer_tax_liab")
+    assert rule is not None
+    assert rule.classification == "yahoo_pdf_verified"
+    assert rule.allowed_yahoo_raw_fields == (
+        "Non Current Deferred Taxes Liabilities",
+    )
+
+    evidence = policy.build_policy_evidence("defer_tax_liab")
+    assert evidence["sample_companies"] == ["00001", "01113"]
+    assert evidence["sample_count"] == 2
