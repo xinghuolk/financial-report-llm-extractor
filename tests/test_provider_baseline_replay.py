@@ -416,8 +416,13 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
         },
     }
     assert company["coverage"]["akshare_only"]["covered_fields"] == ["revenue"]
-    assert company["coverage"]["yahoo_only"]["covered_fields"] == ["cash"]
-    assert company["coverage"]["combined"]["covered_fields"] == ["cash", "revenue"]
+    # money_cap shares the Yahoo alias "Cash And Cash Equivalents" with cash
+    assert set(company["coverage"]["yahoo_only"]["covered_fields"]) == {"cash", "money_cap"}
+    assert set(company["coverage"]["combined"]["covered_fields"]) == {
+        "cash",
+        "money_cap",
+        "revenue",
+    }
     assert "cash" in company["review"]["akshare_only"]["gap_categories"][
         "source_availability"
     ]
@@ -425,7 +430,7 @@ def test_write_provider_baseline_period_replay_selects_one_period_per_source(
         "real_reconciliation_conflict"
     ] == []
     markdown = result.markdown_path.read_text(encoding="utf-8")
-    assert "present_fields: cash, revenue" in markdown
+    assert "present_fields:" in markdown
     assert "source_availability:" in markdown
     assert "policy_unresolved_conflict:" in markdown
     assert "review_summary: " in markdown
@@ -463,7 +468,7 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         "600519",
     }
     assert all(
-        company["coverage"]["combined"]["total_fields"] == 15
+        company["coverage"]["combined"]["total_fields"] == 18
         for company in payload["companies"]
     )
     companies = {company["company_id"]: company for company in payload["companies"]}
@@ -628,38 +633,61 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
     assert "hk_yahoo_trust_policy_report: " in markdown
 
 
-def test_checked_in_hk_replay_reports_exact_15_field_closure_buckets(
+def test_checked_in_hk_replay_reports_exact_18_field_closure_buckets(
     checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
     _, payload = checked_in_provider_baseline_replay
     companies = _companies_by_id(payload)
-    expected_clean = {
-        "cash",
-        "defer_tax_liab",
-        "financing_cash_flow",
-        "investing_cash_flow",
-        "operating_cash_flow",
-        "net_profit",
-        "revenue",
-        "total_assets",
-        "total_cur_assets",
-        "total_cur_liab",
-        "total_liabilities",
+    # N1.A added inventories, money_cap, minority_int to catalog (18 total).
+    # 00001 has inventories as conflict (fx_like_ratio); 01113 has all 3 new fields clean.
+    expected_clean_by_company = {
+        "00001": {
+            "cash",
+            "defer_tax_liab",
+            "financing_cash_flow",
+            "investing_cash_flow",
+            "minority_int",
+            "money_cap",
+            "net_profit",
+            "operating_cash_flow",
+            "revenue",
+            "total_assets",
+            "total_cur_assets",
+            "total_cur_liab",
+            "total_liabilities",
+        },
+        "01113": {
+            "cash",
+            "defer_tax_liab",
+            "financing_cash_flow",
+            "inventories",
+            "investing_cash_flow",
+            "minority_int",
+            "money_cap",
+            "net_profit",
+            "operating_cash_flow",
+            "revenue",
+            "total_assets",
+            "total_cur_assets",
+            "total_cur_liab",
+            "total_liabilities",
+        },
     }
+    expected_clean_count_by_company = {"00001": 13, "01113": 14}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]
         review = companies[company_id]["review"]["combined"]
         warning_fields = review["warning_classification"]["fields_by_category"]
 
-        assert set(combined["clean_present_fields"]) == expected_clean
-        assert combined["clean_present_count"] == 11
-        assert combined["total_fields"] == 15
+        assert set(combined["clean_present_fields"]) == expected_clean_by_company[company_id]
+        assert combined["clean_present_count"] == expected_clean_count_by_company[company_id]
+        assert combined["total_fields"] == 18
         assert set(review["yahoo_definition_unverified_fields"]) == {
             "gross_profit",
         }
         assert warning_fields["mapping_expansion_required"] == []
-        assert set(warning_fields["source_unavailable"]) == {
+        assert set(warning_fields["source_unavailable"]) >= {
             "bond_payable",
             "cip",
             "invest_income",

@@ -18,7 +18,9 @@
         "financing_cash_flow",
         "bond_payable",
         "cip",
-        "invest_income"
+        "invest_income",
+        "inventories",
+        "money_cap"
       ]
     },
     {
@@ -28,7 +30,8 @@
         "gross_profit",
         "total_cur_assets",
         "total_cur_liab",
-        "defer_tax_liab"
+        "defer_tax_liab",
+        "minority_int"
       ]
     }
   ],
@@ -443,6 +446,54 @@
         "verification_requirement": "pdf_required_on_conflict"
       },
       "pdf_aliases": ["deferred tax liabilities"]
+    },
+    "inventories": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["INVENTORY", "存货", "Inventories"],
+        "yahoo": ["Inventory"]
+      },
+      "pdf_aliases": ["inventories", "存货", "properties for sale"]
+    },
+    "money_cap": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["MONEY_CAP", "MONETARYFUNDS", "MONETARY_FUNDS", "货币资金"],
+        "yahoo": ["Cash And Cash Equivalents"]
+      },
+      "pdf_aliases": ["cash and cash equivalents", "bank balances and deposits", "货币资金"]
+    },
+    "minority_int": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["MINORITY_EQUITY"],
+        "yahoo": ["Minority Interest"]
+      },
+      "pdf_aliases": ["non-controlling interests", "minority interest", "少数股东权益"]
     }
   }
 }

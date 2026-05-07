@@ -590,8 +590,11 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
     assert result.summary["validation_mode"] == "captured_source_inventory"
     assert result.summary["status"] == "completed"
     assert result.summary["record_count"] == 10
+    # money_cap shares AKShare aliases (MONETARYFUNDS, 货币资金) with cash;
+    # both are covered by the 货币资金/MONETARYFUNDS record in this fixture.
     assert result.summary["mapping_coverage"]["covered_fields"] == [
         "cash",
+        "money_cap",
         "net_profit",
         "operating_cash_flow",
         "revenue",
@@ -600,8 +603,8 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "total_cur_liab",
         "total_liabilities",
     ]
-    assert result.summary["mapping_coverage"]["covered_count"] == 8
-    assert result.summary["mapping_coverage"]["total_fields"] == 15
+    assert result.summary["mapping_coverage"]["covered_count"] == 9
+    assert result.summary["mapping_coverage"]["total_fields"] == 18
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )
@@ -611,8 +614,10 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "defer_tax_liab",
         "financing_cash_flow",
         "gross_profit",
+        "inventories",
         "invest_income",
         "investing_cash_flow",
+        "minority_int",
     ]
 
 
@@ -636,7 +641,7 @@ def test_captured_source_validation_yahoo_fixture_covers_income_fields(
         "revenue",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 3
-    assert result.summary["mapping_coverage"]["total_fields"] == 15
+    assert result.summary["mapping_coverage"]["total_fields"] == 18
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )

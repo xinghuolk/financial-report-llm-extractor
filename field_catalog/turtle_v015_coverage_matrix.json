@@ -211,17 +211,24 @@
       "domain": "balance_sheet",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Verified by 600519 AKShare and 00001/01113 Yahoo captured baseline."
     },
     "st_borr": {
       "domain": "balance_sheet",
@@ -307,17 +314,24 @@
       "domain": "balance_sheet",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Verified by 600519 AKShare and 00001/01113 Yahoo captured baseline."
     },
     "fix_assets": {
       "domain": "balance_sheet",
@@ -575,17 +589,24 @@
       "domain": "balance_sheet",
       "priority": "P1",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Verified by 600519 AKShare and 00001/01113 Yahoo captured baseline."
     },
     "stock_based_compensation": {
       "domain": "cash_flow",
