@@ -604,13 +604,14 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "total_liabilities",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 9
-    assert result.summary["mapping_coverage"]["total_fields"] == 18
+    assert result.summary["mapping_coverage"]["total_fields"] == 19
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )
     assert review_summary["missing_fields"] == [
         "bond_payable",
         "cip",
+        "defer_tax_assets",
         "defer_tax_liab",
         "financing_cash_flow",
         "gross_profit",
@@ -641,7 +642,7 @@ def test_captured_source_validation_yahoo_fixture_covers_income_fields(
         "revenue",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 3
-    assert result.summary["mapping_coverage"]["total_fields"] == 18
+    assert result.summary["mapping_coverage"]["total_fields"] == 19
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )

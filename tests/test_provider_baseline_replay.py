@@ -468,7 +468,7 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         "600519",
     }
     assert all(
-        company["coverage"]["combined"]["total_fields"] == 18
+        company["coverage"]["combined"]["total_fields"] == 19
         for company in payload["companies"]
     )
     companies = {company["company_id"]: company for company in payload["companies"]}
@@ -633,16 +633,17 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
     assert "hk_yahoo_trust_policy_report: " in markdown
 
 
-def test_checked_in_hk_replay_reports_exact_18_field_closure_buckets(
+def test_checked_in_hk_replay_reports_exact_19_field_closure_buckets(
     checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
     _, payload = checked_in_provider_baseline_replay
     companies = _companies_by_id(payload)
-    # N1.A added inventories, money_cap, minority_int to catalog (18 total).
-    # 00001 has inventories as conflict (fx_like_ratio); 01113 has all 3 new fields clean.
+    # N1.B added defer_tax_assets to catalog (19 total).
+    # 00001 has inventories as conflict (fx_like_ratio); both HK companies get defer_tax_assets clean.
     expected_clean_by_company = {
         "00001": {
             "cash",
+            "defer_tax_assets",
             "defer_tax_liab",
             "financing_cash_flow",
             "investing_cash_flow",
@@ -658,6 +659,7 @@ def test_checked_in_hk_replay_reports_exact_18_field_closure_buckets(
         },
         "01113": {
             "cash",
+            "defer_tax_assets",
             "defer_tax_liab",
             "financing_cash_flow",
             "inventories",
@@ -673,7 +675,7 @@ def test_checked_in_hk_replay_reports_exact_18_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 13, "01113": 14}
+    expected_clean_count_by_company = {"00001": 14, "01113": 15}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]
@@ -682,7 +684,7 @@ def test_checked_in_hk_replay_reports_exact_18_field_closure_buckets(
 
         assert set(combined["clean_present_fields"]) == expected_clean_by_company[company_id]
         assert combined["clean_present_count"] == expected_clean_count_by_company[company_id]
-        assert combined["total_fields"] == 18
+        assert combined["total_fields"] == 19
         assert set(review["yahoo_definition_unverified_fields"]) == {
             "gross_profit",
         }

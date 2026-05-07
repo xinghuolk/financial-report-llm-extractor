@@ -550,17 +550,24 @@
       "domain": "balance_sheet",
       "priority": "P1",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Verified by 600519 AKShare (DEFER_TAX_ASSET) and 00001/01113 Yahoo (Non Current Deferred Taxes Assets) captured baseline. 600519 AKShare and Yahoo agree at 6,602,469,151.22 CNY. 00001 Yahoo 7,102,000,000 HKD matches PDF page 136. 01113 Yahoo 3,132,000,000 HKD from tax note disclosure."
     },
     "defer_tax_liab": {
       "domain": "balance_sheet",
