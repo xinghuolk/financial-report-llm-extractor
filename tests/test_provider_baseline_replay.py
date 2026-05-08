@@ -98,8 +98,11 @@ EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY: dict[str, list[str]] = {
     # to mapping_expansion_required (correct: provider candidates exist).
     # receiv_tax_refund: CN-only AKShare field; HK companies have no provider data
     # but the alias matches partial inventory entries so lands in mapping_expansion.
-    "00001": ["invest_income", "non_oper_exp", "non_oper_income", "other_cur_assets", "receiv_tax_refund"],
-    "01113": ["invest_income", "non_oper_exp", "non_oper_income", "receiv_tax_refund"],
+    # stock_based_compensation: N4.B added with no provider raw, but
+    # taxonomy.description tokens match partial inventory entries so it
+    # lands in mapping_expansion_required for HK.
+    "00001": ["invest_income", "non_oper_exp", "non_oper_income", "other_cur_assets", "receiv_tax_refund", "stock_based_compensation"],
+    "01113": ["invest_income", "non_oper_exp", "non_oper_income", "receiv_tax_refund", "stock_based_compensation"],
 }
 EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
     {
@@ -692,7 +695,7 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
     assert "hk_yahoo_trust_policy_report: " in markdown
 
 
-def test_checked_in_hk_replay_reports_exact_41_field_closure_buckets(
+def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
     checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
     _, payload = checked_in_provider_baseline_replay

@@ -652,6 +652,7 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "repurchase_of_stock",
         "selling_general_administrative",
         "st_borr",
+        "stock_based_compensation",
     ]
 
 
