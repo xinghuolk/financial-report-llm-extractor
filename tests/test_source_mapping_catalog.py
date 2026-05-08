@@ -813,6 +813,50 @@ def test_minimal_source_mapping_defer_tax_liab_has_yahoo_alias_and_hk_policy() -
     assert entry.source_policy.market_policies["HK"].primary_route == "yahoo_direct"
 
 
+def test_source_mapping_entry_supports_null_means_zero(tmp_path: Path) -> None:
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(
+        json.dumps({
+            "catalog_id": "test",
+            "version": "1",
+            "priorities": [{"priority": "P0", "fields": ["fld"]}],
+            "source_mappings": {
+                "fld": {
+                    "value_type": "money",
+                    "statement_type": "balance_sheet",
+                    "source_aliases": {"akshare": ["FLD"]},
+                    "null_means_zero": True,
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
+    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0",))
+    entry = catalog.entries["fld"]
+    assert entry.null_means_zero is True
+
+
+def test_source_mapping_entry_null_means_zero_defaults_to_false(tmp_path: Path) -> None:
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(
+        json.dumps({
+            "catalog_id": "test",
+            "version": "1",
+            "priorities": [{"priority": "P0", "fields": ["fld"]}],
+            "source_mappings": {
+                "fld": {
+                    "value_type": "money",
+                    "statement_type": "balance_sheet",
+                    "source_aliases": {"akshare": ["FLD"]},
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
+    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0",))
+    assert catalog.entries["fld"].null_means_zero is False
+
+
 def test_minimal_source_mapping_entries_match_taxonomy_and_coverage() -> None:
     taxonomy = load_field_taxonomy(
         Path("field_catalog/turtle_v015_field_taxonomy.json")

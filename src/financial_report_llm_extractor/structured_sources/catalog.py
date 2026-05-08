@@ -123,6 +123,7 @@ class SourceMappingEntry:
     derivation: str | None = None
     fallback_policy: str = "pdf_allowed"
     source_policy: SourcePolicy | None = None
+    null_means_zero: bool = False
 
     def validate(self) -> None:
         if not self.field_id:
@@ -236,6 +237,7 @@ def load_source_mapping_catalog(
             derivation=mapping.get("derivation"),
             fallback_policy=mapping.get("fallback_policy", "pdf_allowed"),
             source_policy=_parse_source_policy(mapping.get("source_policy")),
+            null_means_zero=bool(mapping.get("null_means_zero", False)),
         )
         entry.validate()
         entries[field_id] = entry
