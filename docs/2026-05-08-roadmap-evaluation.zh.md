@@ -1,7 +1,33 @@
 # 路线图与计划评估
 
 > 日期：2026-05-08
-> 评估基线：Phase M5 完成后（HK 11/15 clean present, 438 tests）
+> 评估基线（v1）：Phase M5 完成后（HK 11/15 clean present, 438 tests）
+> 更新基线（v2）：Phase N 完成后（33-field denominator, 445 tests）
+
+## 0. 评估更新（v2，Phase N 完成后）
+
+Phase N 已按 N0/N1/N2/N3 拆分执行完成。当前 33-field replay 状态：
+
+| 公司 | 市场 | clean | non-clean |
+|------|------|-------|-----------|
+| 600519 | CN | 27/33 | 6 |
+| 00001 | HK | 20/33 | 13 |
+| 01113 | HK | 21/33 | 12 |
+
+非 clean 字段已分为 4 个桶，对应不同的修复路径（详见 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` "Phase H/I: Concrete Trigger Set Identified Post-N"）：
+
+1. **Source policy 修正（不需 fallback）**: 3 个字段（600519 bond_payable/st_borr/lt_borr，Maotai 实际无借款，None → 0）
+2. **Phase H 确定性 PDF 抽取（不需 LLM）**: 7 个 (公司,字段) 对
+3. **Phase I LLM-辅助 notes 抽取（HK only）**: ~10 个 (公司,字段) 对
+4. **锁定终态（不再追求 clean）**: 5 个字段（gross_profit, cip, non_oper_income/exp, 部分 other_cur_assets）
+
+下一步推荐顺序：Bucket 1 → Bucket 4（终态分类） → Phase H → Phase I。
+
+预期最终覆盖：CN 30/33, HK 28-30/33。
+
+---
+
+## 1. 原评估（v1，Phase M5 完成后）
 
 ## 1. 当前状态快照
 

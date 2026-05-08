@@ -1036,14 +1036,77 @@ Key architectural validation:
 - Phase H/I triggers are now concrete: HK conflict fields (fix_assets, accounts_receiv, acct_payable) need PDF supplement; HK source_unavailable fields (bond_payable, cip, invest_income, rd_exp, fv_value_chg_gain) need either PDF extraction or accepted as out-of-scope.
 - All 444 tests pass; ruff clean.
 
-### Phase H/I: Triggered After N2/N3
+### Phase H/I: Concrete Trigger Set Identified Post-N
 
-Phase H and Phase I remain designed but not implemented. Their actual trigger:
+Status: triggers concrete after Phase N replay analysis (2026-05-08).
 
-- **Phase H** activates when N2 or N3 produces a non-trivial `pdf_required` field list.
-- **Phase I** activates when N2/N3 surfaces conflict/ambiguity patterns that cannot be resolved deterministically.
+The full 33-field replay surfaced specific non-clean fields per company. They cluster into four buckets, each with a different fix path:
 
-Do not pre-build either phase. Their specs (`docs/superpowers/specs/2026-05-01-phase-h-*` and `2026-05-01-phase-i-*`) are kept active for that future trigger.
+#### Bucket 1: Source Policy Repair (no fallback needed)
+
+3 fields × 1 company. Maotai (600519) genuinely has no borrowings/bond debt; AKShare returns `None` which the current source_policy treats as unresolved instead of zero.
+
+- 600519: `bond_payable`, `st_borr`, `lt_borr`
+
+Fix: extend `source_policy.py` to recognize provider-returned `None` for known-zero balance sheet items as a deterministic zero, not a blocker. No PDF/LLM needed.
+
+Estimated effort: small; new policy rule + tests.
+
+#### Bucket 2: Phase H Deterministic PDF Verification
+
+7 (company, field) pairs. Source value exists but cross-source conflict or single-source warning needs PDF check. Standard Phase H — selected-field PDF retrieval, no LLM.
+
+- 600519: `revenue`, `operating_profit`, `selling_general_administrative` (cross-source conflicts)
+- 00001: `inventories`, `fix_assets` (Yahoo Net PPE includes ROU; PDF Fixed assets row separates them)
+- 01113: `fix_assets`
+- 01113: `selling_general_administrative` (currently source_unavailable but PDF likely has it)
+
+Fix: implement Phase H per existing spec (`docs/superpowers/specs/2026-05-01-phase-h-selected-pdf-evidence-supplement.md`). Reuse existing chunk/retrieval/evidence pipeline.
+
+#### Bucket 3: Phase I LLM-Assisted Notes Extraction (HK only)
+
+~10 (company, field) pairs. PDF main statements either combine lines or omit them entirely; the value is in notes/MD&A and requires LLM-level disambiguation.
+
+- 00001 + 01113: `accounts_receiv` (PDF combines "Trade receivables and other current assets")
+- 00001 + 01113: `acct_payable` (PDF combines "Trade payables and other current liabilities")
+- 00001 + 01113: `rd_exp` (HK main statement has no R&D row; usually in MD&A)
+- 00001 + 01113: `fv_value_chg_gain` (scattered across OCI and notes)
+- 00001 + 01113: `bond_payable` (broken out by type in borrowings note)
+- 00001 + 01113: `invest_income` (HK = Share of profits of joint ventures + Other income; needs aggregation judgment)
+
+Fix: implement Phase I per existing spec (`docs/superpowers/specs/2026-05-01-phase-i-llm-assisted-ambiguity-review.md`). Use bounded LLM prompts with PDF chunk evidence. Evidence-grounded outputs only.
+
+#### Bucket 4: Locked Terminal States (no fix attempted)
+
+5 fields (mostly HK). Field is either format-incompatible or not applicable to the company/market.
+
+- HK 00001 + 01113: `gross_profit` (`yahoo_definition_unverified` — HK income statement format incompatible, confirmed in M5)
+- HK 00001 + 01113: `cip` (HK companies often have no construction-in-progress line)
+- HK 00001 + 01113: `non_oper_income`, `non_oper_exp` (CN A-share concepts; HK reports no equivalent)
+- HK 00001: `other_cur_assets` (Yahoo doesn't return; PDF doesn't have a discrete row)
+
+Fix: extend the `source_unavailable` taxonomy from Phase N3 plan to distinguish these terminal states explicitly, e.g. `hk_format_incompatible`, `not_applicable_for_market`, `pdf_only_terminal`. Update warning_classification to surface them. No further extraction work.
+
+#### Phase Ordering
+
+Recommended order (smallest-cost first, biggest-coverage-gain first):
+
+1. **Bucket 1 source policy fix**: brings 600519 to 30/33 quickly.
+2. **Bucket 4 terminal state taxonomy**: clarifies the 5 fields that cannot be improved, reducing apparent gap.
+3. **Phase H (Bucket 2)**: deterministic PDF retrieval for 7 conflict fields. Uses existing infrastructure.
+4. **Phase I (Bucket 3)**: LLM-assisted extraction for 10 HK notes-level fields. Highest cost, biggest HK coverage gain.
+
+Expected coverage after each step:
+
+| Step | 600519 | 00001 | 01113 |
+|------|--------|-------|-------|
+| Current | 27/33 | 20/33 | 21/33 |
+| After Bucket 1 | 30/33 | 20/33 | 21/33 |
+| After Phase H | 30/33 | 22/33 | 23/33 |
+| After Phase I | 30/33 | 28-30/33 | 28-30/33 |
+| Locked terminal | 30/33 | ~30/33 | ~30/33 |
+
+The 3 unreachable fields per company become explicit terminal states rather than failures.
 
 ## 6. Validation Commands
 
