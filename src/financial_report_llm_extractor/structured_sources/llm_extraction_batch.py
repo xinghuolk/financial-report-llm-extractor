@@ -66,6 +66,7 @@ def _process_one_company(
     client: JsonClient,
     priorities: tuple[str, ...],
     fields: tuple[str, ...] | None,
+    confidence_threshold: float | None,
 ) -> BatchResultEntry:
     company_dir = out_root / company.company_id
     company_dir.mkdir(parents=True, exist_ok=True)
@@ -101,6 +102,7 @@ def _process_one_company(
             out_dir=company_dir,
             priorities=priorities,
             fields=fields,
+            confidence_threshold=confidence_threshold,
         )
         write_llm_evidence_supplement(result)
         return BatchResultEntry(
@@ -132,6 +134,7 @@ def run_batch(
     priorities: tuple[str, ...] = ("P0", "P1"),
     fields: tuple[str, ...] | None = None,
     workers: int = 3,
+    confidence_threshold: float | None = None,
 ) -> BatchSummary:
     """Run extract-llm for multiple companies concurrently.
 
@@ -156,6 +159,7 @@ def run_batch(
                 client=client,
                 priorities=priorities,
                 fields=fields,
+                confidence_threshold=confidence_threshold,
             ): c
             for c in companies
         }

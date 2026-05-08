@@ -167,12 +167,19 @@ def extract_for_chunks(
     priorities: tuple[str, ...] = ("P0", "P1"),
     fields: tuple[str, ...] | None = None,
     max_chars_per_chunk: int = 2000,
+    confidence_threshold: float | None = None,
 ) -> LlmExtractionRunResult:
     """Run LLM extraction for all targets derived from catalog.
 
     fields parameter optionally restricts to a subset of field_ids. If a
     target's selected chunks are empty, the field is recorded as not_found
     without calling the LLM.
+
+    confidence_threshold (Phase I-A.2 follow-up #4): if set, fields whose
+    LLM-reported confidence is below the threshold are demoted from
+    `present` to `extraction_failed` with a `low_confidence` error. Default
+    None means no gating. The threshold should be calibrated against
+    human-verified accuracy data (see VALIDATION.md follow-ups).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -226,6 +233,32 @@ def extract_for_chunks(
                 status="extraction_failed",
                 errors=(f"runner caught exception: {exc}",),
                 raw_response={},
+            )
+
+        # Confidence gating (Phase I-A.2 follow-up #4)
+        if (
+            confidence_threshold is not None
+            and result.status == "present"
+            and result.confidence is not None
+            and result.confidence < confidence_threshold
+        ):
+            result = FieldExtractionResult(
+                field_id=result.field_id,
+                status="extraction_failed",
+                value=result.value,
+                parsed_numeric_value=result.parsed_numeric_value,
+                currency=result.currency,
+                unit=result.unit,
+                period=result.period,
+                page=result.page,
+                statement_line=result.statement_line,
+                confidence=result.confidence,
+                reasoning=result.reasoning,
+                raw_response=result.raw_response,
+                errors=result.errors + (
+                    f"low_confidence: {result.confidence} < threshold "
+                    f"{confidence_threshold}",
+                ),
             )
 
         items[target.field_id] = result

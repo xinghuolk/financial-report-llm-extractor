@@ -477,3 +477,96 @@ def test_extract_for_chunks_against_00001_fixture_with_canned_response(
     written = write_llm_evidence_supplement(result)
     payload = json.loads(written.read_text(encoding="utf-8"))
     assert payload["items"]["revenue"]["value"] == "280036"
+
+
+# ---------------------------------------------------------------------------
+# Phase I-A.2 follow-up #4: confidence threshold gating
+# ---------------------------------------------------------------------------
+
+def test_extract_for_chunks_demotes_low_confidence_present_to_extraction_failed(
+    tmp_path: Path,
+) -> None:
+    catalog = _catalog([
+        _entry("revenue", pdf_aliases=("revenue", "营业收入", "operating revenue"))
+    ])
+    taxonomy = _taxonomy([_tax_entry("revenue", description="operating revenue")])
+    chunks = [_chunk("c1", 4, "revenue 100")]
+    client = _CannedJsonClient({
+        "revenue": {
+            "field_id": "revenue", "found": True, "value": "100",
+            "currency": "HKD", "unit": "million", "page": 4,
+            "statement_line": "revenue 100",
+            "confidence": 0.5,  # below threshold
+            "reasoning": "uncertain",
+        },
+    })
+
+    result = extract_for_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        client=client, company_id="TEST",
+        pdf_path=Path("test.pdf"), out_dir=tmp_path,
+        confidence_threshold=0.8,
+    )
+
+    assert "revenue" in result.fields_failed
+    assert "revenue" not in result.fields_present
+    item = result.items["revenue"]
+    assert item.status == "extraction_failed"
+    assert any("low_confidence" in err for err in item.errors)
+    # Original LLM response data preserved for audit
+    assert item.value == "100"
+    assert item.confidence == 0.5
+
+
+def test_extract_for_chunks_keeps_high_confidence_present(tmp_path: Path) -> None:
+    catalog = _catalog([
+        _entry("revenue", pdf_aliases=("revenue", "营业收入", "operating revenue"))
+    ])
+    taxonomy = _taxonomy([_tax_entry("revenue")])
+    chunks = [_chunk("c1", 4, "revenue 100")]
+    client = _CannedJsonClient({
+        "revenue": {
+            "field_id": "revenue", "found": True, "value": "100",
+            "currency": "HKD", "unit": "million", "page": 4,
+            "statement_line": "revenue 100",
+            "confidence": 0.95,
+            "reasoning": "ok",
+        },
+    })
+
+    result = extract_for_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        client=client, company_id="TEST",
+        pdf_path=Path("test.pdf"), out_dir=tmp_path,
+        confidence_threshold=0.8,
+    )
+
+    assert "revenue" in result.fields_present
+    assert result.items["revenue"].status == "present"
+
+
+def test_extract_for_chunks_no_threshold_means_no_gating(tmp_path: Path) -> None:
+    catalog = _catalog([
+        _entry("revenue", pdf_aliases=("revenue", "营业收入", "operating revenue"))
+    ])
+    taxonomy = _taxonomy([_tax_entry("revenue")])
+    chunks = [_chunk("c1", 4, "revenue 100")]
+    client = _CannedJsonClient({
+        "revenue": {
+            "field_id": "revenue", "found": True, "value": "100",
+            "currency": "HKD", "unit": "million", "page": 4,
+            "statement_line": "revenue 100",
+            "confidence": 0.1,  # very low
+            "reasoning": "uncertain",
+        },
+    })
+
+    # No threshold provided
+    result = extract_for_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        client=client, company_id="TEST",
+        pdf_path=Path("test.pdf"), out_dir=tmp_path,
+    )
+
+    # Should still be present despite low confidence
+    assert "revenue" in result.fields_present

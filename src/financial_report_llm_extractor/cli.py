@@ -117,6 +117,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--priorities", default="P0,P1",
         help="comma-separated priorities (default: P0,P1)",
     )
+    extract_llm_parser.add_argument(
+        "--confidence-threshold", type=float, default=None,
+        help=(
+            "Demote `present` results below this LLM-reported confidence to "
+            "extraction_failed with a low_confidence error. Default: no gating."
+        ),
+    )
 
     extract_llm_batch_parser = subparsers.add_parser(
         "extract-llm-batch",
@@ -153,6 +160,13 @@ def build_parser() -> argparse.ArgumentParser:
     extract_llm_batch_parser.add_argument(
         "--workers", type=int, default=3,
         help="concurrent worker threads (default: 3)",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--confidence-threshold", type=float, default=None,
+        help=(
+            "Demote `present` results below this LLM-reported confidence to "
+            "extraction_failed. Default: no gating."
+        ),
     )
 
     extract_parser = subparsers.add_parser("extract")
@@ -373,6 +387,7 @@ def main(argv: list[str] | None = None) -> int:
             client=client, company_id=args.company_id,
             pdf_path=args.pdf, out_dir=out_dir,
             priorities=priorities, fields=fields_filter,
+            confidence_threshold=args.confidence_threshold,
         )
         write_llm_evidence_supplement(result)
 
@@ -419,6 +434,7 @@ def main(argv: list[str] | None = None) -> int:
             priorities=priorities,
             fields=fields_filter,
             workers=args.workers,
+            confidence_threshold=args.confidence_threshold,
         )
         print(f"total_companies={summary.total_companies}")
         print(f"succeeded={summary.succeeded}")
