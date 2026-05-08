@@ -1108,6 +1108,25 @@ Expected coverage after each step:
 
 The 3 unreachable fields per company become explicit terminal states rather than failures.
 
+### Phase H0 Implementation Result
+
+Status: implemented on 2026-05-08. See:
+- `docs/superpowers/specs/2026-05-08-phase-h0-null-as-zero-policy.md`
+- `docs/superpowers/plans/2026-05-08-phase-h0-null-as-zero-policy.md`
+
+Goal: Resolve Bucket 1 by adding null_means_zero source mapping policy.
+
+Implementation result:
+
+- Added `null_means_zero: bool` field to `SourceMappingEntry`.
+- `_candidate_from_record` produces a zero-valued candidate when policy applies and provider returns null with status=present.
+- Candidate emits review note `null_interpreted_as_zero` for audit trail (flows to `MappedTurtleField.review_notes` in JSON artifacts; does not reach `SourceFirstExportItem.review_notes`, preserving clean_present status).
+- Applied to `bond_payable`, `st_borr`, `lt_borr` in source_mapping catalog.
+- 600519 clean present: 27/33 → 30/33.
+- 00001/01113 unchanged (no null records for these fields in HK data).
+
+Bucket 1 closed. Next: Bucket 4 (locked terminal taxonomy) → Phase H deterministic PDF verification.
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:
