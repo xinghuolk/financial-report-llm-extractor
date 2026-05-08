@@ -835,3 +835,23 @@ def test_discover_rows_llm_command_calls_row_discovery_layer(
             parsed_dir,
         )
     ]
+
+
+def test_extract_llm_help_lists_required_args() -> None:
+    """Verify the extract-llm subcommand is registered."""
+    import argparse
+    from financial_report_llm_extractor.cli import build_parser
+    parser = build_parser()
+    sub = next(
+        a for a in parser._actions
+        if a.__class__.__name__ == "_SubParsersAction"
+    )
+    choices: dict[str, argparse.ArgumentParser] = dict(sub.choices or {})
+    assert "extract-llm" in choices
+    extract_llm = choices["extract-llm"]
+    args_required = {
+        action.dest for action in extract_llm._actions
+        if action.required
+    }
+    assert {"pdf", "company_id", "catalog", "taxonomy",
+            "llm_config", "out"} <= args_required

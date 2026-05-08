@@ -87,6 +87,37 @@ def build_parser() -> argparse.ArgumentParser:
     extract_fake_parser.add_argument("--retrieval-probe", required=True, type=Path)
     extract_fake_parser.add_argument("--out", type=Path)
 
+    extract_llm_parser = subparsers.add_parser(
+        "extract-llm",
+        help="LLM-assisted field extraction from a PDF",
+    )
+    extract_llm_parser.add_argument("--pdf", required=True, type=Path)
+    extract_llm_parser.add_argument("--company-id", required=True)
+    extract_llm_parser.add_argument(
+        "--catalog", required=True, type=Path,
+        help="source mapping catalog JSON",
+    )
+    extract_llm_parser.add_argument(
+        "--taxonomy", required=True, type=Path,
+        help="field taxonomy catalog JSON",
+    )
+    extract_llm_parser.add_argument(
+        "--llm-config", required=True, type=Path,
+        help="LLM transport config JSON",
+    )
+    extract_llm_parser.add_argument(
+        "--out", required=True, type=Path,
+        help="output directory for chunks + evidence supplement",
+    )
+    extract_llm_parser.add_argument(
+        "--fields", default=None,
+        help="comma-separated subset of field IDs (default: all)",
+    )
+    extract_llm_parser.add_argument(
+        "--priorities", default="P0,P1",
+        help="comma-separated priorities (default: P0,P1)",
+    )
+
     extract_parser = subparsers.add_parser("extract")
     extract_parser.add_argument("--retrieval-probe", required=True, type=Path)
     extract_parser.add_argument("--config", required=True, type=Path)
@@ -257,6 +288,71 @@ def main(argv: list[str] | None = None) -> int:
         print(f"items={real_result.item_count}")
         print(f"raw_responses={real_result.raw_response_count}")
         print(f"extraction_result_path={real_result.output_path}")
+        return 0
+
+    if args.command == "extract-llm":
+        from financial_report_llm_extractor.field_metadata import load_field_taxonomy
+        from financial_report_llm_extractor.llm_transport import (
+            LlmTransportConfig,
+            create_llm_client,
+        )
+        from financial_report_llm_extractor.structured_sources.catalog import (
+            load_source_mapping_catalog,
+        )
+        from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+            extract_for_chunks,
+            load_chunks_jsonl,
+            write_llm_evidence_supplement,
+        )
+
+        out_dir = args.out
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ingest_dir = out_dir / "ingest"
+
+        priorities = tuple(p.strip() for p in args.priorities.split(",") if p.strip())
+        fields_filter = (
+            tuple(f.strip() for f in args.fields.split(",") if f.strip())
+            if args.fields else None
+        )
+
+        chunks_path = ingest_dir / "chunks.jsonl"
+        if not chunks_path.exists():
+            import subprocess
+            ingest_dir.mkdir(parents=True, exist_ok=True)
+            subprocess.run(
+                ["uv", "run", "financial-report-llm-extractor", "ingest",
+                 "--pdf", str(args.pdf), "--out", str(ingest_dir)],
+                check=True,
+            )
+            subprocess.run(
+                ["uv", "run", "financial-report-llm-extractor", "chunk",
+                 "--pages", str(ingest_dir / "pages.jsonl"),
+                 "--metadata", str(ingest_dir / "run_metadata.json"),
+                 "--out", str(chunks_path)],
+                check=True,
+            )
+
+        chunks = load_chunks_jsonl(chunks_path)
+        catalog = load_source_mapping_catalog(args.catalog, priorities=priorities)
+        taxonomy = load_field_taxonomy(args.taxonomy)
+        config = LlmTransportConfig.from_json(args.llm_config)
+        client = create_llm_client(config)
+
+        result = extract_for_chunks(
+            chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+            client=client, company_id=args.company_id,
+            pdf_path=args.pdf, out_dir=out_dir,
+            priorities=priorities, fields=fields_filter,
+        )
+        write_llm_evidence_supplement(result)
+
+        print(f"company_id={result.company_id}")
+        print(f"chunk_count={result.chunk_count}")
+        print(f"attempted={list(result.fields_attempted)}")
+        print(f"present={list(result.fields_present)}")
+        print(f"not_found={list(result.fields_not_found)}")
+        print(f"failed={list(result.fields_failed)}")
+        print(f"artifact={result.artifact_path}")
         return 0
 
     if args.command == "evaluate":
