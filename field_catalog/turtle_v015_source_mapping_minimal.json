@@ -28,7 +28,8 @@
         "acct_payable",
         "equity_attributable_to_owners",
         "operating_cost",
-        "operating_profit"
+        "operating_profit",
+        "rd_exp"
       ]
     },
     {
@@ -42,7 +43,10 @@
         "defer_tax_assets",
         "minority_int",
         "other_cur_assets",
-        "selling_general_administrative"
+        "selling_general_administrative",
+        "fv_value_chg_gain",
+        "non_oper_income",
+        "non_oper_exp"
       ]
     }
   ],
@@ -681,6 +685,67 @@
         "yahoo": ["Selling General And Administration"]
       },
       "pdf_aliases": ["selling general and administrative", "management expenses", "销售费用", "管理费用"]
+    },
+    "rd_exp": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["RESEARCH_EXPENSE", "研发费用"],
+        "yahoo": ["Research And Development"]
+      },
+      "pdf_aliases": ["research and development", "research expense", "研发费用"]
+    },
+    "fv_value_chg_gain": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["FAIRVALUE_CHANGE_INCOME", "公允价值变动收益"]
+      },
+      "pdf_aliases": ["fair value change", "公允价值变动收益"]
+    },
+    "non_oper_income": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["NONBUSINESS_INCOME", "营业外收入"]
+      },
+      "pdf_aliases": ["non-operating income", "营业外收入"]
+    },
+    "non_oper_exp": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["NONBUSINESS_EXPENSE", "营业外支出"]
+      },
+      "pdf_aliases": ["non-operating expense", "营业外支出"]
     }
   }
 }

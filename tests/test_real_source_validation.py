@@ -604,7 +604,7 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "total_liabilities",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 9
-    assert result.summary["mapping_coverage"]["total_fields"] == 29
+    assert result.summary["mapping_coverage"]["total_fields"] == 33
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )
@@ -618,15 +618,19 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "equity_attributable_to_owners",
         "financing_cash_flow",
         "fix_assets",
+        "fv_value_chg_gain",
         "gross_profit",
         "inventories",
         "invest_income",
         "investing_cash_flow",
         "lt_borr",
         "minority_int",
+        "non_oper_exp",
+        "non_oper_income",
         "operating_cost",
         "operating_profit",
         "other_cur_assets",
+        "rd_exp",
         "selling_general_administrative",
         "st_borr",
     ]
@@ -652,7 +656,7 @@ def test_captured_source_validation_yahoo_fixture_covers_income_fields(
         "revenue",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 3
-    assert result.summary["mapping_coverage"]["total_fields"] == 29
+    assert result.summary["mapping_coverage"]["total_fields"] == 33
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )

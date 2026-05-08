@@ -78,11 +78,17 @@ EXPECTED_HK_PDF_VERIFICATION_FIELDS = frozenset(
     }
 )
 EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY: dict[str, list[str]] = {
-    "00001": ["other_cur_assets"],
-    "01113": [],
+    "00001": ["non_oper_exp", "non_oper_income", "other_cur_assets"],
+    "01113": ["non_oper_exp", "non_oper_income"],
 }
 EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
-    {"bond_payable", "cip", "invest_income"}
+    {
+        "bond_payable",
+        "cip",
+        "fv_value_chg_gain",
+        "invest_income",
+        "rd_exp",
+    }
 )
 # 01113 also has selling_general_administrative as source_unavailable; 00001 does not
 EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE = frozenset({"selling_general_administrative"})
@@ -477,7 +483,7 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         "600519",
     }
     assert all(
-        company["coverage"]["combined"]["total_fields"] == 29
+        company["coverage"]["combined"]["total_fields"] == 33
         for company in payload["companies"]
     )
     companies = {company["company_id"]: company for company in payload["companies"]}
@@ -645,12 +651,14 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
     assert "hk_yahoo_trust_policy_report: " in markdown
 
 
-def test_checked_in_hk_replay_reports_exact_29_field_closure_buckets(
+def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
     checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
     _, payload = checked_in_provider_baseline_replay
     companies = _companies_by_id(payload)
-    # N2 added 4 more fields to catalog (29 total).
+    # N3 added 4 more fields to catalog (33 total).
+    # rd_exp/fv_value_chg_gain are CN-only akshare fields: source_unavailable for HK.
+    # non_oper_income/non_oper_exp land in mapping_expansion_required for HK (partial provider data found).
     # 00001: equity_to_owners/operating_cost/operating_profit/sga all clean_present.
     # 01113: equity_to_owners/operating_cost/operating_profit clean; sga source_unavailable.
     # fix_assets/accounts_receiv/acct_payable remain conflicts for HK; inventories conflict for 00001.
@@ -710,7 +718,7 @@ def test_checked_in_hk_replay_reports_exact_29_field_closure_buckets(
 
         assert set(combined["clean_present_fields"]) == expected_clean_by_company[company_id]
         assert combined["clean_present_count"] == expected_clean_count_by_company[company_id]
-        assert combined["total_fields"] == 29
+        assert combined["total_fields"] == 33
         assert set(review["yahoo_definition_unverified_fields"]) == {
             "gross_profit",
         }
@@ -718,11 +726,7 @@ def test_checked_in_hk_replay_reports_exact_29_field_closure_buckets(
             company_id, []
         )
         assert warning_fields["mapping_expansion_required"] == expected_mapping_expansion
-        assert set(warning_fields["source_unavailable"]) >= {
-            "bond_payable",
-            "cip",
-            "invest_income",
-        }
+        assert set(warning_fields["source_unavailable"]) >= EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS
 
 
 def test_provider_baseline_replay_can_disable_hk_yahoo_trust_policy(
