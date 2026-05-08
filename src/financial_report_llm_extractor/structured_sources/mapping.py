@@ -45,12 +45,14 @@ class TurtleMappingCandidate:
     currency_proof_source: str | None = None
     unit_proof_source: str | None = None
     reporting_metadata_proof_source: str | None = None
+    review_notes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
         for key in ("value", "normalized_value", "unit_multiplier"):
             if payload[key] is not None:
                 payload[key] = str(payload[key])
+        payload["review_notes"] = list(self.review_notes)
         return payload
 
 
@@ -190,7 +192,7 @@ def _map_direct_field(
     records: list[SourceInventoryRecord] | tuple[SourceInventoryRecord, ...],
 ) -> MappedTurtleField:
     matched_candidates = tuple(
-        _candidate_from_record(record)
+        _candidate_from_record(record, entry)
         for record in records
         if _record_matches_entry(record, entry)
     )
@@ -328,7 +330,46 @@ def _record_matches_entry(
     )
 
 
-def _candidate_from_record(record: SourceInventoryRecord) -> TurtleMappingCandidate:
+def _candidate_from_record(
+    record: SourceInventoryRecord,
+    entry: SourceMappingEntry,
+) -> TurtleMappingCandidate:
+    if (
+        entry.null_means_zero
+        and record.source_status == "present"
+        and record.parsed_numeric_value is None
+        and (
+            record.raw_value is None
+            or str(record.raw_value).strip().lower() in ("", "none", "null")
+        )
+    ):
+        try:
+            record.validate()
+            return TurtleMappingCandidate(
+                source=record.source,
+                raw_field_name=record.raw_field_name,
+                raw_field_code=record.raw_field_code,
+                raw_value=record.raw_value,
+                value=Decimal("0"),
+                normalized_value=Decimal("0"),
+                currency=record.currency,
+                unit=record.unit,
+                period=record.period,
+                scope=record.scope,
+                source_evidence=record.source_evidence,
+                canonical_unit=record.currency if record.currency != "unknown" else None,
+                errors=(),
+                statement_metadata_proven=_statement_metadata_proven(record),
+                unit_multiplier=Decimal("1"),
+                currency_proof_source=_currency_proof_source(record),
+                unit_proof_source=_unit_proof_source(record),
+                reporting_metadata_proof_source=_reporting_metadata_proof_source(record),
+                review_notes=("null_interpreted_as_zero",),
+            )
+        except ValueError:
+            # Record is structurally invalid; fall through to normal error path
+            pass
+
     errors: list[str] = []
     value: Decimal | None = None
     normalized_value: Decimal | None = None

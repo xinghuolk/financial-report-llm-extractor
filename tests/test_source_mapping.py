@@ -905,6 +905,117 @@ def test_write_turtle_mapping_artifacts_writes_json_and_markdown(
     assert "- missing: net_profit" in markdown
 
 
+def test_null_record_with_null_means_zero_produces_present_zero_field() -> None:
+    """null_means_zero=True causes null AKShare value to map to clean zero."""
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "st_borr": SourceMappingEntry(
+                field_id="st_borr",
+                priority="P0",
+                value_type="money",
+                statement_type="balance_sheet",
+                currency_requirement="required",
+                unit_requirement="required",
+                source_aliases={"akshare": ("SHORT_LOAN",)},
+                null_means_zero=True,
+            )
+        },
+    )
+    null_record = SourceInventoryRecord(
+        source="akshare",
+        ticker="600519",
+        market="CN",
+        statement_type="balance_sheet",
+        period="2025-12-31",
+        scope="consolidated",
+        raw_field_name="SHORT_LOAN",
+        raw_field_code="SHORT_LOAN",
+        raw_value=None,
+        parsed_numeric_value=None,
+        currency="CNY",
+        unit="yuan",
+        source_evidence=(
+            SourceEvidence(
+                source="akshare",
+                adapter="akshare",
+                function="stock_balance_sheet_by_report_em",
+                artifact_id="akshare_cn_600519_balance_sheet",
+                raw_record_id="600519:CN:balance_sheet:2025-12-31:SHORT_LOAN",
+                raw_field_name="SHORT_LOAN",
+                raw_field_code="SHORT_LOAN",
+            ),
+        ),
+    )
+
+    result = map_source_inventory(catalog, [null_record])
+
+    mapped = result.fields["st_borr"]
+    assert mapped.status == "present"
+    assert mapped.value == Decimal("0")
+    assert mapped.normalized_value == Decimal("0")
+    assert mapped.currency == "CNY"
+    assert mapped.unit == "yuan"
+    assert len(mapped.candidates) == 1
+    candidate = mapped.candidates[0]
+    assert candidate.errors == ()
+    assert candidate.value == Decimal("0")
+    assert candidate.normalized_value == Decimal("0")
+
+
+def test_null_record_without_null_means_zero_is_blocked() -> None:
+    """null_means_zero=False (default) causes null AKShare value to block."""
+    catalog = SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "st_borr": SourceMappingEntry(
+                field_id="st_borr",
+                priority="P0",
+                value_type="money",
+                statement_type="balance_sheet",
+                currency_requirement="required",
+                unit_requirement="required",
+                source_aliases={"akshare": ("SHORT_LOAN",)},
+                null_means_zero=False,
+            )
+        },
+    )
+    null_record = SourceInventoryRecord(
+        source="akshare",
+        ticker="600519",
+        market="CN",
+        statement_type="balance_sheet",
+        period="2025-12-31",
+        scope="consolidated",
+        raw_field_name="SHORT_LOAN",
+        raw_field_code="SHORT_LOAN",
+        raw_value=None,
+        parsed_numeric_value=None,
+        currency="CNY",
+        unit="yuan",
+        source_evidence=(
+            SourceEvidence(
+                source="akshare",
+                adapter="akshare",
+                function="stock_balance_sheet_by_report_em",
+                artifact_id="akshare_cn_600519_balance_sheet",
+                raw_record_id="600519:CN:balance_sheet:2025-12-31:SHORT_LOAN",
+                raw_field_name="SHORT_LOAN",
+                raw_field_code="SHORT_LOAN",
+            ),
+        ),
+    )
+
+    result = map_source_inventory(catalog, [null_record])
+
+    mapped = result.fields["st_borr"]
+    assert mapped.status == "blocked"
+    assert len(mapped.candidates) == 1
+    assert mapped.candidates[0].errors != ()
+
+
 def _entry(
     field_id: str,
     *,
