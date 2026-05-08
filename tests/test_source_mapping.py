@@ -390,8 +390,9 @@ def test_map_source_inventory_uses_catalog_alias_order_for_same_source_candidate
 
     revenue = result.fields["revenue"]
     assert revenue.status == "present"
-    assert revenue.value == Decimal("168838102514.79")
-    assert revenue.source_evidence[0].raw_field_code == "OPERATE_INCOME"
+    # Phase H1: TOTAL_OPERATE_INCOME is now the primary alias (matches Yahoo Total Revenue).
+    assert revenue.value == Decimal("172054171890.91")
+    assert revenue.source_evidence[0].raw_field_code == "TOTAL_OPERATE_INCOME"
     net_profit = result.fields["net_profit"]
     assert net_profit.status == "present"
     assert net_profit.value == Decimal("82320067101.68")

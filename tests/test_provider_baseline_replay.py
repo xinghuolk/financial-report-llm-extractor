@@ -507,9 +507,8 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
     assert companies["600519"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["00001"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["01113"]["coverage"]["yahoo_only"]["covered_count"] >= 11
-    assert companies["600519"]["review"]["combined"][
-        "selected_with_warnings_fields"
-    ]
+    # Phase H1: CN revenue/operating_profit/SGA all become clean_present (33/33).
+    assert "revenue" in companies["600519"]["coverage"]["combined"]["clean_present_fields"]
     assert companies["00001"]["review"]["combined"]["gap_categories"][
         "pdf_llm_supplement_candidates"
     ]
@@ -540,8 +539,12 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     assert maotai_combined["selected_count"] >= maotai_combined["covered_count"]
     assert maotai_combined["clean_present_count"] <= maotai_combined["selected_count"]
     # Phase H0: null_means_zero promotes bond_payable/st_borr/lt_borr to clean_present.
-    assert maotai_combined["clean_present_count"] == 30
+    # Phase H1: CN revenue/operating_profit/SGA all become clean_present (33/33).
+    assert maotai_combined["clean_present_count"] == 33
     assert {"bond_payable", "st_borr", "lt_borr"} <= set(
+        maotai_combined["clean_present_fields"]
+    )
+    assert {"revenue", "operating_profit", "selling_general_administrative"} <= set(
         maotai_combined["clean_present_fields"]
     )
     # source_policy_resolvable no longer contains these 3 fields.
@@ -549,7 +552,8 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     assert "bond_payable" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "st_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "lt_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
-    assert "revenue" in companies["600519"]["review"]["combined"][
+    # revenue, operating_profit, SGA are clean_present — not in warnings.
+    assert "revenue" not in companies["600519"]["review"]["combined"][
         "selected_with_warnings_fields"
     ]
 
@@ -809,11 +813,14 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
         "total_cur_liab",
         "total_liabilities",
     }
-    assert "revenue" in combined_review["selected_with_warnings_fields"]
+    # Phase H1: revenue is now clean_present (TOTAL_OPERATE_INCOME matches Yahoo Total Revenue).
+    assert "revenue" not in combined_review["selected_with_warnings_fields"]
+    assert "revenue" in company["coverage"]["combined"]["clean_present_fields"]
     assert "net_profit" in combined_review["present_fields"]
     assert "revenue" not in combined_review["conflict_fields"]
     assert "net_profit" not in combined_review["conflict_fields"]
-    assert "revenue" in combined_review["gap_categories"][
+    # revenue is no longer a real_reconciliation_conflict (values are equivalent).
+    assert "revenue" not in combined_review["gap_categories"][
         "real_reconciliation_conflict"
     ]
     assert "revenue" not in combined_review["gap_categories"][
@@ -826,18 +833,16 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
     )
     report = json.loads(report_path.read_text(encoding="utf-8"))
 
-    # Raw reconciliation and policy-selected export/review intentionally report
-    # different layers: revenue is still a provider disagreement before policy
-    # selection, while net_profit is equivalent after PARENT_NETPROFIT alias priority.
+    # Phase H1: revenue now reconciles as equivalent (TOTAL_OPERATE_INCOME = Yahoo Total Revenue).
     assert report["items"]["cash"]["status"] == "equivalent"
     assert (
         report["items"]["cash"]["reason"]
         == "candidate normalized values are equal"
     )
-    assert report["items"]["revenue"]["status"] == "conflict"
+    assert report["items"]["revenue"]["status"] == "equivalent"
     assert (
         report["items"]["revenue"]["reason"]
-        == "candidate normalized values differ"
+        == "candidate normalized values are equal"
     )
     assert report["items"]["net_profit"]["status"] != "conflict"
 

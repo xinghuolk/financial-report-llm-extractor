@@ -249,12 +249,13 @@ def test_minimal_source_mapping_revenue_declares_operating_revenue_policy() -> N
 
     entry = catalog.entries["revenue"]
 
-    assert entry.source_aliases["akshare"][:2] == ("OPERATE_INCOME", "营业收入")
+    # Phase H1: TOTAL_OPERATE_INCOME is now primary (matches Yahoo Total Revenue exactly).
+    assert entry.source_aliases["akshare"][:2] == ("TOTAL_OPERATE_INCOME", "营业总收入")
     assert entry.source_policy is not None
-    assert entry.source_policy.semantic_variants["akshare"].related == (
+    assert entry.source_policy.semantic_variants["akshare"].primary[:1] == (
         "TOTAL_OPERATE_INCOME",
-        "营业总收入",
     )
+    assert "OPERATE_INCOME" in entry.source_policy.semantic_variants["akshare"].related
 
 
 @pytest.mark.parametrize("field_id", ["revenue", "net_profit"])
@@ -270,8 +271,14 @@ def test_minimal_source_mapping_revenue_and_profit_market_policies(
     assert policy is not None
     cn_policy = policy.market_policies["CN"]
     assert cn_policy.primary_route == "akshare_direct"
-    assert cn_policy.cross_check_routes == ("yahoo_direct",)
-    assert cn_policy.on_conflict == "select_primary_require_pdf"
+    # Phase H1: revenue CN no longer cross-checks Yahoo (TOTAL_OPERATE_INCOME matches).
+    # net_profit still cross-checks Yahoo for CN.
+    if field_id == "revenue":
+        assert cn_policy.cross_check_routes == ()
+        assert cn_policy.on_conflict == "preserve_conflict"
+    else:
+        assert cn_policy.cross_check_routes == ("yahoo_direct",)
+        assert cn_policy.on_conflict == "select_primary_require_pdf"
     assert cn_policy.single_source_requires_pdf is False
 
     hk_policy = policy.market_policies["HK"]
