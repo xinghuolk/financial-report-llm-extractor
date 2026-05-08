@@ -235,26 +235,19 @@ def extract_for_chunks(
                 raw_response={},
             )
 
-        # Confidence gating (Phase I-A.2 follow-up #4)
+        # Confidence gating (Phase I-A.2 follow-up #4).
+        # Use dataclasses.replace so future FieldExtractionResult fields are
+        # automatically preserved without manual copy-paste.
         if (
             confidence_threshold is not None
             and result.status == "present"
             and result.confidence is not None
             and result.confidence < confidence_threshold
         ):
-            result = FieldExtractionResult(
-                field_id=result.field_id,
+            import dataclasses
+            result = dataclasses.replace(
+                result,
                 status="extraction_failed",
-                value=result.value,
-                parsed_numeric_value=result.parsed_numeric_value,
-                currency=result.currency,
-                unit=result.unit,
-                period=result.period,
-                page=result.page,
-                statement_line=result.statement_line,
-                confidence=result.confidence,
-                reasoning=result.reasoning,
-                raw_response=result.raw_response,
                 errors=result.errors + (
                     f"low_confidence: {result.confidence} < threshold "
                     f"{confidence_threshold}",

@@ -570,3 +570,71 @@ def test_extract_for_chunks_no_threshold_means_no_gating(tmp_path: Path) -> None
 
     # Should still be present despite low confidence
     assert "revenue" in result.fields_present
+
+
+# ---------------------------------------------------------------------------
+# Phase I-A.2 review fix: end-to-end transport unwrap coverage
+# ---------------------------------------------------------------------------
+
+class _OpenAiWrappedJsonClient:
+    """Returns OpenAI-format wrapped responses to exercise unwrap_llm_content."""
+
+    def __init__(self, inner_payloads: dict[str, dict[str, object]]) -> None:
+        self._inner = inner_payloads
+
+    def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object]:
+        del system_prompt
+        field_obj = user_payload.get("field", {})
+        fid = (
+            str(field_obj.get("field_id"))
+            if isinstance(field_obj, dict) else ""
+        )
+        inner = self._inner.get(fid, {"field_id": fid, "found": False})
+        # Wrap as OpenAI chat.completion response
+        return {
+            "id": "test-id",
+            "object": "chat.completion",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": json.dumps(inner),
+                },
+                "finish_reason": "stop",
+            }],
+            "usage": {"total_tokens": 100},
+        }
+
+
+def test_extract_for_chunks_unwraps_openai_wrapped_response(tmp_path: Path) -> None:
+    """Verify the runner handles wrapped LLM responses end-to-end (not just
+    pre-unwrapped FakeJsonClient dicts).
+    """
+    catalog = _catalog([
+        _entry("revenue", pdf_aliases=("revenue", "营业收入", "operating revenue"))
+    ])
+    taxonomy = _taxonomy([_tax_entry("revenue")])
+    chunks = [_chunk("c1", 4, "revenue 100")]
+    client = _OpenAiWrappedJsonClient({
+        "revenue": {
+            "field_id": "revenue", "found": True, "value": "100",
+            "currency": "HKD", "unit": "million", "page": 4,
+            "statement_line": "revenue 100", "confidence": 0.95,
+        },
+    })
+
+    result = extract_for_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        client=client, company_id="TEST",
+        pdf_path=Path("test.pdf"), out_dir=tmp_path,
+    )
+
+    assert "revenue" in result.fields_present
+    item = result.items["revenue"]
+    assert item.value == "100"
+    assert item.currency == "HKD"

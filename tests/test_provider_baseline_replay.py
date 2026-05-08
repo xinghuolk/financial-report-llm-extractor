@@ -1017,3 +1017,84 @@ def test_replay_slice_only_merges_llm_supplement_for_combined_slice(
     assert "llm_supplemented" not in yahoo_notes, (
         f"yahoo_only slice unexpectedly got llm supplement: {yahoo_notes}"
     )
+
+
+def test_normalize_llm_currency_maps_rmb_and_hk_dollar() -> None:
+    """Phase I-A.2 review fix: LLM may report currency as RMB / HK$ / etc.
+
+    Verify _normalize_llm_currency maps these to the project's Currency
+    Literal correctly, instead of silently coercing to "unknown".
+    """
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        _normalize_llm_currency,
+    )
+
+    # Direct matches
+    assert _normalize_llm_currency("CNY") == "CNY"
+    assert _normalize_llm_currency("HKD") == "HKD"
+    assert _normalize_llm_currency("USD") == "USD"
+
+    # Common LLM aliases
+    assert _normalize_llm_currency("RMB") == "CNY"
+    assert _normalize_llm_currency("rmb") == "CNY"  # case insensitive
+    assert _normalize_llm_currency("Renminbi") == "CNY"
+    assert _normalize_llm_currency("人民币") == "CNY"
+    assert _normalize_llm_currency("人民幣") == "CNY"
+    assert _normalize_llm_currency("HK$") == "HKD"
+    assert _normalize_llm_currency("港币") == "HKD"
+    assert _normalize_llm_currency("US$") == "USD"
+    assert _normalize_llm_currency("美元") == "USD"
+
+    # Empty / None
+    assert _normalize_llm_currency(None) == "unknown"
+    assert _normalize_llm_currency("") == "unknown"
+    assert _normalize_llm_currency("   ") == "unknown"
+
+    # Ambiguous "$" — could be HK$ or US$, must not silently coerce
+    assert _normalize_llm_currency("$") == "ambiguous"
+
+    # Unknown currency
+    assert _normalize_llm_currency("EUR") == "unknown"
+    assert _normalize_llm_currency("garbage") == "unknown"
+
+
+def test_merge_llm_evidence_supplement_normalizes_rmb_currency(tmp_path: Path) -> None:
+    """Phase I-A.2 review fix: regression test for currency normalization
+    in the merge path. RMB-tagged LLM values must surface as CNY, not unknown.
+    """
+    from decimal import Decimal
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        _merge_llm_evidence_supplement,
+    )
+
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="catalog",
+        catalog_version="1",
+        items={
+            "rd_exp": SourceFirstExportItem(field_id="rd_exp", status="missing"),
+        },
+    )
+    supplement_path = tmp_path / "llm_evidence_supplement.json"
+    supplement_path.write_text(json.dumps({
+        "schema_version": "llm-evidence-supplement-v1",
+        "company_id": "01810",
+        "pdf_path": "x.pdf",
+        "extracted_at": "2026-05-08T00:00:00",
+        "summary": {},
+        "items": {
+            "rd_exp": {
+                "status": "present",
+                "value": "24050",
+                "currency": "RMB",  # not literal CNY
+                "unit": "million",
+            },
+        },
+    }), encoding="utf-8")
+
+    merged = _merge_llm_evidence_supplement(export, supplement_path)
+
+    assert merged.items["rd_exp"].status == "present"
+    assert merged.items["rd_exp"].value == Decimal("24050")
+    # CRITICAL: RMB must map to CNY, not silently degrade to "unknown"
+    assert merged.items["rd_exp"].currency == "CNY"

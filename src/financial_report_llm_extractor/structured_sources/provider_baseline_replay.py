@@ -67,6 +67,7 @@ from financial_report_llm_extractor.structured_sources.warning_classification im
 
 
 ReplaySliceName = Literal["akshare_only", "yahoo_only", "combined"]
+COMBINED_SLICE_NAME = "combined"  # used by _merge_llm_evidence_supplement gate
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_HK_YAHOO_TRUST_POLICY_PATH = (
     REPO_ROOT / "field_catalog" / "hk_yahoo_trust_policy.json"
@@ -339,7 +340,7 @@ def _write_slice(
     # Restrict to combined slice only — LLM supplement is a cross-source
     # artifact and would pollute per-source coverage views (akshare_only /
     # yahoo_only).
-    if output_dir.name == "combined":
+    if output_dir.name == COMBINED_SLICE_NAME:
         supplement_candidate = output_dir.parent / "llm_evidence_supplement.json"
         export = _merge_llm_evidence_supplement(export, supplement_candidate)
     candidate_report = discover_provider_field_candidates(
@@ -531,6 +532,47 @@ def _write_hk_yahoo_trust_policy_report(
     return output_path
 
 
+# Phase I-A.2 review fix: LLM may report currency as "RMB", "HK$", "$" etc.
+# Normalize to the project's Currency Literal (CNY/HKD/USD) or "unknown" /
+# "ambiguous". The "$" symbol is intentionally ambiguous (HK$? US$?) and
+# returns "ambiguous" rather than coerce silently.
+_LLM_CURRENCY_NORMALIZATION: dict[str, Currency] = {
+    "CNY": "CNY",
+    "RMB": "CNY",
+    "RENMINBI": "CNY",
+    "人民币": "CNY",
+    "人民幣": "CNY",
+    "HKD": "HKD",
+    "HK$": "HKD",
+    "HKD$": "HKD",
+    "港币": "HKD",
+    "港幣": "HKD",
+    "USD": "USD",
+    "US$": "USD",
+    "USD$": "USD",
+    "美元": "USD",
+}
+
+
+def _normalize_llm_currency(raw: object) -> Currency:
+    """Map an LLM-reported currency string to the project's Currency Literal.
+
+    Returns "unknown" for None/empty/missing, "ambiguous" for the literal "$"
+    (which could mean HK$ or US$), and "unknown" for anything else.
+    """
+    if raw is None:
+        return "unknown"
+    text = str(raw).strip()
+    if not text:
+        return "unknown"
+    if text == "$":
+        return "ambiguous"
+    normalized = _LLM_CURRENCY_NORMALIZATION.get(text.upper())
+    if normalized is not None:
+        return normalized
+    return "unknown"
+
+
 def _merge_llm_evidence_supplement(
     export: SourceFirstExportResult,
     supplement_path: Path,
@@ -576,10 +618,7 @@ def _merge_llm_evidence_supplement(
         except (InvalidOperation, ValueError):
             value = None
 
-        currency_raw = llm_item.get("currency")
-        currency: Currency = "unknown"
-        if currency_raw in ("CNY", "HKD", "USD"):
-            currency = currency_raw  # type: ignore[assignment]
+        currency = _normalize_llm_currency(llm_item.get("currency"))
 
         # selected_source="llm" is intentionally distinct from SourceName
         # ("akshare" | "yahoo" | "fixture"). Downstream consumers should

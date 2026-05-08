@@ -227,3 +227,49 @@ def test_run_batch_writes_per_company_artifact(tmp_path: Path) -> None:
         payload = json.loads(art.read_text(encoding="utf-8"))
         assert payload["company_id"] == cid
         assert payload["items"]["revenue"]["value"] == "200"
+
+
+class _RaisingJsonClient:
+    """Always raises on complete_json, to test extraction_failed handling."""
+
+    def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object]:
+        del system_prompt, user_payload
+        raise RuntimeError("simulated LLM transport failure")
+
+
+def test_run_batch_records_extraction_failed_when_llm_raises(tmp_path: Path) -> None:
+    """Phase I-A.2 review fix: cover the extraction_failed code path.
+    Existing tests cover ingest_failed but not the inner LLM-call failure."""
+    out_dir = tmp_path / "batch_out"
+    chunks_fixture = (
+        _REPO_ROOT / "tests" / "fixtures" / "pdf_chunks" / "00001_2025_chunks.jsonl"
+    )
+
+    company_dir = out_dir / "TEST" / "ingest"
+    company_dir.mkdir(parents=True)
+    (company_dir / "chunks.jsonl").write_text(
+        chunks_fixture.read_text(encoding="utf-8"), encoding="utf-8",
+    )
+
+    companies = (CompanyInput(company_id="TEST", pdf_path=Path("downloads/x.pdf")),)
+    client = _RaisingJsonClient()
+
+    summary = run_batch(
+        companies=companies, out_dir=out_dir,
+        catalog=_catalog(), taxonomy=_taxonomy(),
+        client=client, workers=1,
+    )
+
+    assert summary.total_companies == 1
+    # The runner catches exceptions per field and marks the field as
+    # extraction_failed; it does NOT mark the whole company as failed.
+    # So company status is "ok" but fields are in fields_failed.
+    entry = summary.companies[0]
+    assert entry.status == "ok"
+    assert "revenue" in entry.fields_failed
+    assert "revenue" not in entry.fields_present
