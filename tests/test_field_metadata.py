@@ -1468,7 +1468,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "change_in_receivables": (
@@ -1481,7 +1481,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "change_in_payables": (
@@ -1494,7 +1494,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "change_in_inventory": (
@@ -1507,7 +1507,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "receiv_tax_refund": (
@@ -1520,7 +1520,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "repurchase_of_stock": (
@@ -1533,7 +1533,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "dividends_paid": (
@@ -1546,7 +1546,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "capital_expenditures": (
@@ -1559,7 +1559,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "depreciation_amortization": (
@@ -1572,7 +1572,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "dps": (
@@ -1658,12 +1658,12 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "notes_and_mda",
             "notes",
             "money",
-            "pdf_only",
+            "source_optional",
             "point_in_time",
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "related_party_receivables_payables": (
@@ -1754,7 +1754,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "mda_business_review": (

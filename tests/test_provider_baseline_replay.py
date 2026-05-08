@@ -722,6 +722,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
         "00001": {
             "capital_expenditures",
             "cash",
+            "change_in_inventory",
             "change_in_payables",
             "change_in_receivables",
             "defer_tax_assets",
@@ -778,7 +779,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 26, "01113": 28}
+    expected_clean_count_by_company = {"00001": 27, "01113": 28}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]

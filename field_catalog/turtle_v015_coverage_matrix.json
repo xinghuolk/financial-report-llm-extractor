@@ -696,7 +696,7 @@
           "mode": "direct",
           "status": "expected",
           "statement_type": "cash_flow",
-          "evidence_requirement": "pdf_required"
+          "evidence_requirement": "source_only_allowed"
         }
       ],
       "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
@@ -977,15 +977,15 @@
     "bad_debt_provision": {
       "domain": "notes_and_mda",
       "priority": "P3",
-      "primary_route": "pdf_evidence",
+      "primary_route": "yahoo_direct",
       "verification": "expected",
       "routes": [
         {
-          "source": "pdf",
-          "mode": "evidence",
+          "source": "yahoo",
+          "mode": "direct",
           "status": "expected",
           "statement_type": "notes",
-          "evidence_requirement": "pdf_required"
+          "evidence_requirement": "source_only_allowed"
         }
       ],
       "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
@@ -1089,15 +1089,22 @@
     "interest_paid_cash": {
       "domain": "cash_flow",
       "priority": "P3",
-      "primary_route": "akshare_direct",
+      "primary_route": "yahoo_direct",
       "verification": "expected",
       "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
         {
           "source": "akshare",
           "mode": "direct",
           "status": "expected",
           "statement_type": "cash_flow",
-          "evidence_requirement": "pdf_required"
+          "evidence_requirement": "source_only_allowed"
         }
       ],
       "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."

@@ -36,7 +36,7 @@ def test_source_mapping_aligns_with_coverage_matrix() -> None:
     """Every source_mapping entry must exist in coverage_matrix with matching
     primary_route and verification_status."""
     source_mapping = load_source_mapping_catalog(
-        SOURCE_MAPPING, priorities=("P0", "P1")
+        SOURCE_MAPPING, priorities=("P0", "P1", "P2", "P3")
     )
     coverage = load_coverage_matrix(COVERAGE_MATRIX)
 
@@ -60,7 +60,7 @@ def test_source_mapping_aligns_with_taxonomy() -> None:
     """Every source_mapping entry must exist in taxonomy with matching
     statement_type and value_type (only when taxonomy has non-empty values)."""
     source_mapping = load_source_mapping_catalog(
-        SOURCE_MAPPING, priorities=("P0", "P1")
+        SOURCE_MAPPING, priorities=("P0", "P1", "P2", "P3")
     )
     taxonomy = load_field_taxonomy(TAXONOMY)
 
@@ -87,7 +87,7 @@ def test_provider_semantics_aligns_with_source_mapping() -> None:
     source_mapping. When allowed_as_primary==True, the raw_field_name must
     appear in the entry's source_aliases for that provider."""
     source_mapping = load_source_mapping_catalog(
-        SOURCE_MAPPING, priorities=("P0", "P1")
+        SOURCE_MAPPING, priorities=("P0", "P1", "P2", "P3")
     )
     semantics = load_provider_semantics_catalog(PROVIDER_SEMANTICS)
 
@@ -114,7 +114,7 @@ def test_trust_policy_aligns_with_source_mapping() -> None:
     """Every trust_policy rule's field_id must exist in source_mapping.
     All allowed_yahoo_raw_fields must appear in source_mapping's yahoo aliases."""
     source_mapping = load_source_mapping_catalog(
-        SOURCE_MAPPING, priorities=("P0", "P1")
+        SOURCE_MAPPING, priorities=("P0", "P1", "P2", "P3")
     )
     trust_policy = load_hk_yahoo_trust_policy(TRUST_POLICY)
 
@@ -174,7 +174,7 @@ def test_source_mapping_priority_aligns_with_priority_list() -> None:
     """For each P0/P1 field that appears in source_mapping, the entry's
     priority must match the priority bucket from the priority list."""
     source_mapping = load_source_mapping_catalog(
-        SOURCE_MAPPING, priorities=("P0", "P1")
+        SOURCE_MAPPING, priorities=("P0", "P1", "P2", "P3")
     )
     raw_priorities = json.loads(PRIORITY_FIELDS.read_text(encoding="utf-8"))
     priority_buckets = raw_priorities.get("priorities", [])
@@ -201,7 +201,7 @@ def test_taxonomy_evidence_requirement_matches_coverage_routes() -> None:
 
     Taxonomy is the policy authority; coverage_matrix routes must not conflict."""
     source_mapping = load_source_mapping_catalog(
-        SOURCE_MAPPING, priorities=("P0", "P1")
+        SOURCE_MAPPING, priorities=("P0", "P1", "P2", "P3")
     )
     taxonomy = load_field_taxonomy(TAXONOMY)
     coverage = load_coverage_matrix(COVERAGE_MATRIX)
@@ -227,4 +227,49 @@ def test_taxonomy_evidence_requirement_matches_coverage_routes() -> None:
             f"field '{field_id}': taxonomy.evidence_requirement={tax_req!r} "
             f"but no coverage_matrix route matches; route evidence_requirements={route_reqs!r}. "
             f"Taxonomy is the policy authority — update coverage_matrix routes to align."
+        )
+
+
+def test_akshare_aliases_appear_in_provider_baseline_inventory() -> None:
+    """N4 review fix: akshare aliases in source_mapping must appear in the
+    captured provider field baseline. Catches fabricated/typo aliases.
+
+    For each akshare alias of a P0/P1/P2/P3 source_mapping field, verify it
+    appears at least once as a raw_field_code or raw_field_name in the
+    provider_field_inventory_summary.json.
+    """
+    summary_path = (
+        Path(__file__).resolve().parents[1]
+        / "tests" / "fixtures" / "provider_captures"
+        / "provider_field_baseline" / "provider_field_inventory_summary.json"
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    # Collect all observed akshare raw field names + codes from baseline
+    observed: set[str] = set()
+    for target in summary.get("targets", []):
+        if target.get("source") != "akshare":
+            continue
+        for code in target.get("raw_field_codes", []) or []:
+            observed.add(str(code))
+        for name in target.get("raw_field_names", []) or []:
+            observed.add(str(name))
+
+    catalog = load_source_mapping_catalog(
+        SOURCE_MAPPING, priorities=("P0", "P1", "P2", "P3")
+    )
+    missing: list[tuple[str, str]] = []
+    for field_id, entry in catalog.entries.items():
+        for alias in entry.source_aliases.get("akshare", ()):
+            # Chinese-character-only aliases are display labels — skip
+            # (AKShare returns code keys, not labels)
+            if all(ord(c) > 127 for c in alias):
+                continue
+            if alias not in observed:
+                missing.append((field_id, alias))
+
+    if missing:
+        msg = "\n".join(f"  {fid}: {alias!r}" for fid, alias in missing)
+        raise AssertionError(
+            f"akshare aliases in source_mapping not found in provider baseline:\n{msg}"
         )

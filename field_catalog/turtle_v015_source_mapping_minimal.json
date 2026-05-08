@@ -87,10 +87,8 @@
         "akshare": [
           "OPERATE_INCOME",
           "营业收入",
-          "Revenue",
           "TOTAL_OPERATE_INCOME",
-          "营业总收入",
-          "Total revenue"
+          "营业总收入"
         ],
         "yahoo": [
           "Total Revenue",
@@ -154,7 +152,6 @@
         "akshare": [
           "PARENT_NETPROFIT",
           "归属于母公司股东的净利润",
-          "Profit attributable to shareholders",
           "NETPROFIT",
           "净利润"
         ],
@@ -227,7 +224,6 @@
         "akshare": [
           "资产总计",
           "总资产",
-          "Total assets",
           "TOTAL_ASSETS"
         ],
         "yahoo": [
@@ -276,7 +272,6 @@
         "akshare": [
           "负债合计",
           "总负债",
-          "Total liabilities",
           "TOTAL_LIABILITIES"
         ],
         "yahoo": [
@@ -325,9 +320,7 @@
       "source_aliases": {
         "akshare": [
           "货币资金",
-          "Cash and cash equivalents",
-          "MONETARYFUNDS",
-          "MONETARY_FUNDS"
+          "MONETARYFUNDS"
         ],
         "yahoo": [
           "Cash And Cash Equivalents",
@@ -353,9 +346,7 @@
         "akshare": [
           "经营活动产生的现金流量净额",
           "经营活动现金流量净额",
-          "Net cash generated from operating activities",
-          "NETCASH_OPERATE",
-          "NET_CASH_FLOWS_OPERATE"
+          "NETCASH_OPERATE"
         ],
         "yahoo": [
           "Operating Cash Flow",
@@ -481,10 +472,7 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": [
-          "毛利",
-          "Gross profit",
-          "GROSSPROFIT",
-          "GROSS_PROFIT"
+          "毛利"
         ],
         "yahoo": [
           "Gross Profit"
@@ -531,7 +519,6 @@
       "source_aliases": {
         "akshare": [
           "流动资产合计",
-          "Total current assets",
           "TOTAL_CURRENT_ASSETS"
         ],
         "yahoo": [
@@ -580,7 +567,6 @@
       "source_aliases": {
         "akshare": [
           "流动负债合计",
-          "Total current liabilities",
           "TOTAL_CURRENT_LIAB"
         ],
         "yahoo": [
@@ -666,8 +652,7 @@
       "source_aliases": {
         "akshare": [
           "INVENTORY",
-          "存货",
-          "Inventories"
+          "存货"
         ],
         "yahoo": [
           "Inventory"
@@ -718,9 +703,7 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": [
-          "MONEY_CAP",
           "MONETARYFUNDS",
-          "MONETARY_FUNDS",
           "货币资金"
         ],
         "yahoo": [
@@ -791,7 +774,6 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": [
-          "FIX_ASSET",
           "固定资产"
         ],
         "yahoo": [
@@ -922,7 +904,6 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": [
-          "OTHER_CUR_ASSET",
           "其他流动资产"
         ],
         "yahoo": [
@@ -946,7 +927,6 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": [
-          "EQUITY_PARENT_COMPANY",
           "归属于母公司股东权益"
         ],
         "yahoo": [
@@ -1059,7 +1039,6 @@
       "source_aliases": {
         "akshare": [
           "MANAGE_EXPENSE",
-          "SELLING_EXPENSE",
           "SALE_EXPENSE",
           "管理费用",
           "销售费用"
@@ -1216,8 +1195,7 @@
           "Change In Account Receivable"
         ],
         "akshare": [
-          "RECEIVE_RECE_DECREASE",
-          "应收账款减少"
+          "OPERATE_RECE_REDUCE"
         ]
       },
       "pdf_aliases": [
@@ -1243,8 +1221,7 @@
           "Change In Payables And Accrued Expense"
         ],
         "akshare": [
-          "PAYABLE_INCREASE",
-          "应付账款增加"
+          "OPERATE_PAYABLE_ADD"
         ]
       },
       "pdf_aliases": [
@@ -1268,8 +1245,7 @@
           "Change In Inventory"
         ],
         "akshare": [
-          "INVENTORY_REDUCE",
-          "存货(增加)减少"
+          "INVENTORY_REDUCE"
         ]
       },
       "pdf_aliases": [
@@ -1290,8 +1266,7 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": [
-          "RECEIVE_TAX_REFUND",
-          "收到的税费返还"
+          "RECEIVE_TAX_REFUND"
         ]
       },
       "pdf_aliases": [
@@ -1313,10 +1288,6 @@
       "source_aliases": {
         "yahoo": [
           "Repurchase Of Capital Stock"
-        ],
-        "akshare": [
-          "BUYBACK_OF_STOCK",
-          "回购股票"
         ]
       },
       "pdf_aliases": [
@@ -1338,9 +1309,7 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": [
-          "ASSIGN_CASH_DIVIDEND",
-          "ASSIGN_DIVIDEND_PORFIT",
-          "分配股利"
+          "ASSIGN_DIVIDEND_PORFIT"
         ],
         "yahoo": [
           "Cash Dividends Paid",
@@ -1364,12 +1333,11 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
+        "akshare": [
+          "CONSTRUCT_LONG_ASSET"
+        ],
         "yahoo": [
           "Capital Expenditure"
-        ],
-        "akshare": [
-          "CONSTRUCT_LONG_ASSET",
-          "购建固定资产、无形资产和其他长期资产支付的现金"
         ]
       },
       "pdf_aliases": [
@@ -1389,14 +1357,14 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
+        "akshare": [
+          "FA_IR_DEPR",
+          "IR_DEPR"
+        ],
         "yahoo": [
           "Depreciation And Amortization",
           "Depreciation Amortization Depletion",
           "Reconciled Depreciation"
-        ],
-        "akshare": [
-          "FA_IR_DEPR",
-          "DA"
         ]
       },
       "pdf_aliases": [
@@ -1442,14 +1410,13 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
+        "akshare": [
+          "PAY_INTEREST_COMMISSION"
+        ],
         "yahoo": [
           "Interest Paid Cfo",
           "Interest Paid Cff",
           "Interest Paid Direct"
-        ],
-        "akshare": [
-          "FINALEXP_INTEREST",
-          "支付的利息"
         ]
       },
       "pdf_aliases": [

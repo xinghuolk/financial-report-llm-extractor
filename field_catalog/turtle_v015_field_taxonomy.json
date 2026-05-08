@@ -475,7 +475,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Stock based compensation recognized in cash flow."
     },
@@ -489,7 +489,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Cash flow change in receivables."
     },
@@ -503,7 +503,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Cash flow change in payables."
     },
@@ -517,7 +517,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Cash flow change in inventory."
     },
@@ -531,7 +531,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Tax refunds received in cash flow."
     },
@@ -545,7 +545,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Cash used for repurchase of stock."
     },
@@ -559,7 +559,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Dividends paid during the reporting period."
     },
@@ -573,7 +573,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Capital expenditures during the reporting period."
     },
@@ -587,7 +587,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Depreciation and amortization adjustment in cash flow."
     },
@@ -680,12 +680,12 @@
       "domain": "notes_and_mda",
       "statement_type": "notes",
       "value_type": "money",
-      "source_mode": "pdf_only",
+      "source_mode": "source_optional",
       "period_type": "point_in_time",
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Bad debt provision disclosed in notes."
     },
@@ -783,7 +783,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Cash paid for interest during the period."
     },
