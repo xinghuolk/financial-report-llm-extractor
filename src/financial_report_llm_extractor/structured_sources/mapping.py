@@ -74,6 +74,7 @@ class MappedTurtleField:
     policy_evidence_candidates: tuple[TurtleMappingCandidate, ...] = field(
         default_factory=tuple
     )
+    review_notes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -95,6 +96,7 @@ class MappedTurtleField:
             "source_evidence": [evidence.to_dict() for evidence in self.source_evidence],
             "derived_from": list(self.derived_from),
             "errors": list(self.errors),
+            "review_notes": list(self.review_notes),
         }
 
 
@@ -238,6 +240,7 @@ def _map_direct_field(
         candidates=candidates,
         source_evidence=candidate.source_evidence,
         policy_evidence_candidates=policy_evidence_candidates,
+        review_notes=candidate.review_notes,
     )
 
 
