@@ -403,7 +403,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "AKShare FIX_ASSET route verified; Yahoo Net PPE included as cross-check route. 00001 Yahoo Net PPE may include right-of-use assets — conflicts expected and acceptable."
+      "notes": "Phase H1: HK fix_assets locked as terminal non-clean. Yahoo Net PPE includes Right-of-use assets for some HK issuers (00001) but matches Fixed assets for others (01113) — per-issuer divergence prevents primary promotion. AKShare HK 固定资产 also does not match PDF Fixed assets line for sampled issuers. Both providers marked provider_semantics_unverified in provider_raw_semantics_hk.json."
     },
     "cip": {
       "domain": "balance_sheet",

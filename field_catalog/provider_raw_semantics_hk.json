@@ -241,6 +241,46 @@
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
       "turtle_field_id": "defer_tax_liab"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Net PPE",
+      "related_only_fields": [],
+      "required_proof": [
+        "HK Yahoo Net PPE includes Right-of-use assets for some issuers (00001 Fixed assets 100,080 + ROU 59,160 = Yahoo 159,240) and matches Fixed assets directly for others (01113 Fixed assets 72,868 = Yahoo 72,868). Per-issuer divergence prevents primary promotion."
+      ],
+      "samples": [],
+      "semantic_claim": "fixed assets per Turtle field semantics (excludes right-of-use)",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "fix_assets"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "固定资产",
+      "related_only_fields": [],
+      "required_proof": [
+        "AKShare HK 固定资产 returns values that do not match PDF Fixed assets line for sampled issuers (00001: AKShare 90,394 vs PDF 100,080; 01113: AKShare 65,816 vs PDF 72,868). Provider semantics unverified."
+      ],
+      "samples": [],
+      "semantic_claim": "fixed assets per Turtle field semantics",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "fix_assets"
     }
   ]
 }
