@@ -287,6 +287,7 @@
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
+      "null_means_zero": true,
       "source_aliases": {
         "akshare": ["BOND_PAYABLE"]
       },
@@ -552,6 +553,7 @@
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
+      "null_means_zero": true,
       "source_aliases": {
         "akshare": ["SHORT_LOAN", "短期借款"],
         "yahoo": ["Current Debt"]
@@ -568,6 +570,7 @@
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
+      "null_means_zero": true,
       "source_aliases": {
         "akshare": ["LONG_LOAN", "长期借款"],
         "yahoo": ["Long Term Debt"]
