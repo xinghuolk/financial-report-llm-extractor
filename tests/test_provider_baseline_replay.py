@@ -864,3 +864,86 @@ def test_provider_baseline_period_replay_script_is_local_fixture_entrypoint() ->
     assert "field_catalog/turtle_v015_field_taxonomy.json" in script
     assert "--taxonomy" in script
     assert "tmp/runs/provider_baseline_period_replay" in script
+
+
+def test_merge_llm_evidence_supplement_promotes_missing_to_present(
+    tmp_path: Path,
+) -> None:
+    from decimal import Decimal
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        _merge_llm_evidence_supplement,
+    )
+
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="catalog",
+        catalog_version="1",
+        items={
+            "rd_exp": SourceFirstExportItem(field_id="rd_exp", status="missing"),
+            "revenue": SourceFirstExportItem(
+                field_id="revenue", status="present", value=Decimal("100"),
+            ),
+        },
+    )
+    supplement_path = tmp_path / "llm_evidence_supplement.json"
+    supplement_path.write_text(json.dumps({
+        "schema_version": "llm-evidence-supplement-v1",
+        "company_id": "00001",
+        "pdf_path": "x.pdf",
+        "extracted_at": "2026-05-08T00:00:00",
+        "summary": {},
+        "items": {
+            "rd_exp": {
+                "status": "present", "value": "615434",
+                "currency": "CNY", "unit": "thousand",
+            },
+            "revenue": {
+                "status": "present", "value": "999",  # should be IGNORED
+                "currency": "CNY", "unit": "thousand",
+            },
+        },
+    }), encoding="utf-8")
+
+    merged = _merge_llm_evidence_supplement(export, supplement_path)
+
+    assert merged.items["rd_exp"].status == "present"
+    assert merged.items["rd_exp"].value == Decimal("615434")
+    assert "llm_supplemented" in merged.items["rd_exp"].review_notes
+    assert merged.items["rd_exp"].selected_source == "llm"
+    assert merged.items["rd_exp"].verification_required
+    # revenue must NOT be overridden
+    assert merged.items["revenue"].value == Decimal("100")
+
+
+def test_merge_llm_evidence_supplement_no_op_when_file_missing() -> None:
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        _merge_llm_evidence_supplement,
+    )
+
+    export = SourceFirstExportResult(
+        profile="source_only", catalog_id="c", catalog_version="1", items={},
+    )
+    merged = _merge_llm_evidence_supplement(export, Path("/nonexistent/path.json"))
+    assert merged.items == export.items
+
+
+def test_merge_llm_evidence_supplement_no_op_when_schema_mismatch(
+    tmp_path: Path,
+) -> None:
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        _merge_llm_evidence_supplement,
+    )
+
+    bad_path = tmp_path / "wrong_schema.json"
+    bad_path.write_text(json.dumps({
+        "schema_version": "different-v999",
+        "items": {"x": {"status": "present", "value": "1"}},
+    }), encoding="utf-8")
+
+    export = SourceFirstExportResult(
+        profile="source_only", catalog_id="c", catalog_version="1",
+        items={"x": SourceFirstExportItem(field_id="x", status="missing")},
+    )
+
+    merged = _merge_llm_evidence_supplement(export, bad_path)
+    assert merged.items["x"].status == "missing"

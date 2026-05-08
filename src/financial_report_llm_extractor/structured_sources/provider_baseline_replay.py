@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, replace
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Literal
 
+from financial_report_llm_extractor.models import Currency
 from financial_report_llm_extractor.field_metadata import (
     FieldTaxonomyCatalog,
     load_field_taxonomy,
@@ -22,6 +24,7 @@ from financial_report_llm_extractor.structured_sources.catalog import (
     load_source_mapping_catalog,
 )
 from financial_report_llm_extractor.structured_sources.export import (
+    SourceFirstExportItem,
     SourceFirstExportResult,
     build_source_first_export,
     write_source_first_export_artifacts,
@@ -332,6 +335,9 @@ def _write_slice(
         profile="source_only",
         source_policy_report=policy_report,
     )
+    # Optional LLM evidence merge (Phase I-A integration)
+    supplement_candidate = output_dir.parent / "llm_evidence_supplement.json"
+    export = _merge_llm_evidence_supplement(export, supplement_candidate)
     candidate_report = discover_provider_field_candidates(
         taxonomy_entries=taxonomy.fields,
         mapping_entries=catalog.entries,
@@ -519,6 +525,76 @@ def _write_hk_yahoo_trust_policy_report(
         encoding="utf-8",
     )
     return output_path
+
+
+def _merge_llm_evidence_supplement(
+    export: SourceFirstExportResult,
+    supplement_path: Path,
+) -> SourceFirstExportResult:
+    """Merge llm_evidence_supplement.json into export.
+
+    For each item where:
+    - export status is NOT 'present' (i.e. missing, ambiguous, blocked, etc.)
+    - LLM supplement status is 'present'
+    Apply the LLM value with `llm_supplemented` review note.
+    Never overrides clean source values.
+    """
+    if not supplement_path.exists():
+        return export
+    payload = json.loads(supplement_path.read_text(encoding="utf-8"))
+    if payload.get("schema_version") != "llm-evidence-supplement-v1":
+        return export
+
+    llm_items = payload.get("items", {})
+    if not isinstance(llm_items, dict):
+        return export
+
+    new_items: dict[str, SourceFirstExportItem] = dict(export.items)
+
+    for field_id, llm_item in llm_items.items():
+        if not isinstance(llm_item, dict):
+            continue
+        if llm_item.get("status") != "present":
+            continue
+
+        existing = new_items.get(field_id)
+        if existing is not None and existing.status == "present":
+            # Don't override clean source values
+            continue
+
+        # Build a present item from LLM evidence
+        raw_value = llm_item.get("value")
+        try:
+            value: Decimal | None = (
+                Decimal(str(raw_value).replace(",", ""))
+                if raw_value is not None else None
+            )
+        except (InvalidOperation, ValueError):
+            value = None
+
+        currency_raw = llm_item.get("currency")
+        currency: Currency = "unknown"
+        if currency_raw in ("CNY", "HKD", "USD"):
+            currency = currency_raw  # type: ignore[assignment]
+
+        new_items[field_id] = SourceFirstExportItem(
+            field_id=field_id,
+            status="present",
+            value=value,
+            currency=currency,
+            unit=str(llm_item.get("unit")) if llm_item.get("unit") else None,
+            period=str(llm_item.get("period")) if llm_item.get("period") else None,
+            review_notes=("llm_supplemented",),
+            verification_required=True,
+            selected_source="llm",
+        )
+
+    return SourceFirstExportResult(
+        profile=export.profile,
+        catalog_id=export.catalog_id,
+        catalog_version=export.catalog_version,
+        items=new_items,
+    )
 
 
 def _export_coverage(export: SourceFirstExportResult) -> dict[str, object]:
