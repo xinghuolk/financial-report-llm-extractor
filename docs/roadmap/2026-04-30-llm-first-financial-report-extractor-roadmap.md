@@ -1161,6 +1161,26 @@ The "33/33 clean for 600519" was reached by silent definition changes, not by so
 
 All 450 tests pass.
 
+### Phase I-D Implementation Result
+
+Status: implemented on 2026-05-08. See:
+- `docs/superpowers/specs/2026-05-08-phase-i-d-smoke-test-llm-field-extraction.md`
+- `docs/superpowers/plans/2026-05-08-phase-i-d-smoke-test-llm-field-extraction.md`
+
+Goal: Verify LLM extraction framework end-to-end before notes-level extraction (Phase I-A).
+
+Implementation result:
+
+- New module `src/financial_report_llm_extractor/llm_field_extraction.py` with `FieldExtractionRequest`/`FieldExtractionResult` dataclasses, deterministic JSON-schema prompt builder, `JsonClient` Protocol, `run_field_extraction` runner with raw response archival.
+- Prompt builder defensively handles both chunk schemas (`page` single int OR `page_start`/`page_end` pair).
+- Chunk fixture committed at `tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl` (12 chunks from page 134 of 00001 annual report; 5.5KB; revenue value 280,036 confirmed present).
+- 9 unit/integration tests against FakeJsonClient pass.
+- 1 opt-in real-LLM smoke test (`REAL_LLM_SMOKE=1` + `LLM_CONFIG_PATH=...`) extracts 00001 revenue and asserts within ±5% of 280,036,000,000 HKD.
+- Smoke runner script at `scripts/run-llm-field-extraction-smoke.sh`.
+- 459 tests passing, 1 skipped (real LLM smoke).
+
+Phase I-A (HK notes-level extraction) builds on this module. Field-specific prompt overrides come when notes-pattern failures surface.
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:
