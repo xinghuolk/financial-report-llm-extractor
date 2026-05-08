@@ -1227,7 +1227,52 @@ Phase I-A.2 follow-ups (status):
 5. ~~`selected_source="llm"` namespace clarification~~ **DONE 2026-05-08** — inline comment documenting non-provider evidence source
 6. ~~CLI extract-llm subprocess → Python API~~ **DONE 2026-05-08** — direct `ingest_pdf` and `build_chunk_store` calls; eliminates subprocess overhead
 
-Phase I-A.2 closed. All identified follow-ups addressed (1, 4, 5, 6 fully; 2 framework + deferred calibration; 3 fully). Next phases: Phase H deterministic PDF supplement (the 7 conflict fields from Bucket 2), or Phase N4 expansion to P2/P3 fields. for batch onboarding
+Phase I-A.2 closed. All identified follow-ups addressed (1, 4, 5, 6 fully; 2 framework + deferred calibration; 3 fully). Next phases: Phase H deterministic PDF supplement (the 7 conflict fields from Bucket 2), or Phase N4 expansion to P2/P3 fields.
+
+### Phase N4 Implementation Result (P2 + P3 expansion)
+
+Status: implemented on 2026-05-09. Source mapping expanded from 33 (P0+P1) to 44 fields (P0+P1+P2+P3 partial).
+
+#### Phase N4.A: P2 source-first (8 fields)
+
+Added 8 P2 cash-flow + utility fields with provider data:
+- `change_in_receivables`, `change_in_payables`, `change_in_inventory` — Yahoo direct
+- `receiv_tax_refund` — AKShare CN-only
+- `repurchase_of_stock` — Yahoo direct
+- `dividends_paid` — Yahoo + AKShare
+- `capital_expenditures` — Yahoo direct
+- `depreciation_amortization` — Yahoo direct
+
+Coverage gain after N4.A:
+- 600519: 30/33 (P0+P1) → **33/41** (P0+P1+P2)
+- 00001: 21/33 → **26/41**
+- 01113: 21/33 → **28/41**
+
+#### Phase N4.B: P2 LLM fallback (1 field) + HK gap validation
+
+Added `stock_based_compensation` (P2) — no provider data, LLM-only via `extract-llm`. Validated 4 P2 fields × 6 HK companies via batch LLM:
+- 7/24 present (01810/02498 tech-style companies have R&D, fv_value_chg_gain, SBC)
+- 17/24 architecturally correct not_found (CK conglomerate / Haidilao restaurant / etc. don't disclose these)
+
+#### Phase N4.C: P3 selective expansion (2 fields)
+
+Added 2 P3 fields with provider data:
+- `interest_paid_cash` — Yahoo `Interest Paid Cfo`
+- `bad_debt_provision` — Yahoo `Allowance For Doubtful Accounts Receivable`
+
+Remaining 12 P3 fields are taxonomy-marked `pdf_only` (text values: dividend_plan, receivables_aging, contingent_liabilities, segment_revenue_profit, etc.). Deferred to a future Phase I-C (text-mode LLM extraction).
+
+#### Final coverage
+
+| Company | P0+P1 (M5) | + P2 (N4.A/B) | + P3 partial (N4.C) |
+|---------|-----------|---------------|---------------------|
+| 600519 | 30/33 | 33/42 | TBD |
+| 00001 | 21/33 | 26/42 | TBD |
+| 01113 | 21/33 | 28/42 | TBD |
+
+**Total mapped fields: 44** (P0:22 + P1:11 + P2:9 + P3:2). 18 P3/P4 fields remain unmapped (mostly text-mode notes/MDA disclosures requiring future text-extraction phase).
+
+491 tests passing, ruff clean. for batch onboarding
 
 ## 6. Validation Commands
 

@@ -63,6 +63,13 @@
         "depreciation_amortization",
         "stock_based_compensation"
       ]
+    },
+    {
+      "priority": "P3",
+      "fields": [
+        "interest_paid_cash",
+        "bad_debt_provision"
+      ]
     }
   ],
   "source_mappings": {
@@ -1422,6 +1429,55 @@
         "equity-settled share-based",
         "股权激励",
         "股份支付"
+      ]
+    },
+    "interest_paid_cash": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Interest Paid Cfo",
+          "Interest Paid Cff",
+          "Interest Paid Direct"
+        ],
+        "akshare": [
+          "FINALEXP_INTEREST",
+          "支付的利息"
+        ]
+      },
+      "pdf_aliases": [
+        "interest paid",
+        "支付的利息"
+      ]
+    },
+    "bad_debt_provision": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Allowance For Doubtful Accounts Receivable"
+        ]
+      },
+      "pdf_aliases": [
+        "allowance for doubtful accounts",
+        "loss allowance",
+        "expected credit loss",
+        "bad debt provision",
+        "坏账准备"
       ]
     }
   }

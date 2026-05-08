@@ -47,14 +47,23 @@ HK_YAHOO_TRUST_POLICY_PATH = REPO_ROOT / "field_catalog" / "hk_yahoo_trust_polic
 
 
 def _expected_total_fields() -> int:
-    """Derive total field count from the source mapping catalog.
+    """Derive total P0/P1/P2 field count from the source mapping catalog.
 
-    Why: hardcoding 33 means catalog growth requires manual updates in multiple
-    test files. Compute from the catalog so per-company expected_clean sets
-    stay as behavioral expectations while denominator tracks the catalog.
+    Why: hardcoding numbers means catalog growth requires manual updates in
+    multiple test files. Compute from the catalog so per-company expected_clean
+    sets stay as behavioral expectations while denominator tracks the catalog.
+
+    Only counts P0/P1/P2 priorities — provider_baseline_replay loads these
+    by default. P3 fields are opt-in.
     """
     payload = json.loads(SOURCE_MAPPING_CATALOG_PATH.read_text(encoding="utf-8"))
-    return len(payload["source_mappings"])
+    selected = {"P0", "P1", "P2"}
+    field_ids: set[str] = set()
+    for group in payload.get("priorities", []):
+        if group.get("priority") in selected:
+            for fid in group.get("fields", []):
+                field_ids.add(str(fid))
+    return len(field_ids)
 
 
 EXPECTED_TOTAL_FIELDS = _expected_total_fields()

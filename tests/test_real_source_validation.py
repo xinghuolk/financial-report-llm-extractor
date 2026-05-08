@@ -23,11 +23,25 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SOURCE_MAPPING_CATALOG_PATH = (
     _REPO_ROOT / "field_catalog" / "turtle_v015_source_mapping_minimal.json"
 )
-EXPECTED_TOTAL_FIELDS = len(
-    json.loads(_SOURCE_MAPPING_CATALOG_PATH.read_text(encoding="utf-8"))[
-        "source_mappings"
-    ]
-)
+
+
+def _count_p0_p1_p2_fields() -> int:
+    """Count fields in P0/P1/P2 priorities (matches real_source_validation
+    and provider_baseline_replay default loading).
+
+    P3 fields are opt-in only and not all yet have provider data.
+    """
+    payload = json.loads(_SOURCE_MAPPING_CATALOG_PATH.read_text(encoding="utf-8"))
+    selected = {"P0", "P1", "P2"}
+    field_ids: set[str] = set()
+    for group in payload.get("priorities", []):
+        if group.get("priority") in selected:
+            for fid in group.get("fields", []):
+                field_ids.add(str(fid))
+    return len(field_ids)
+
+
+EXPECTED_TOTAL_FIELDS = _count_p0_p1_p2_fields()
 
 
 class FakeAkshareClient:
