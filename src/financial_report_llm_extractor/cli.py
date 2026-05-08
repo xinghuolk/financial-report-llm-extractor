@@ -118,6 +118,43 @@ def build_parser() -> argparse.ArgumentParser:
         help="comma-separated priorities (default: P0,P1)",
     )
 
+    extract_llm_batch_parser = subparsers.add_parser(
+        "extract-llm-batch",
+        help="LLM-assisted field extraction across multiple PDFs concurrently",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--manifest", required=True, type=Path,
+        help="JSON manifest: list of {company_id, pdf_path}",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--catalog", required=True, type=Path,
+        help="source mapping catalog JSON",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--taxonomy", required=True, type=Path,
+        help="field taxonomy catalog JSON",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--llm-config", required=True, type=Path,
+        help="LLM transport config JSON",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--out", required=True, type=Path,
+        help="root output directory; per-company subdirectories under it",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--fields", default=None,
+        help="comma-separated subset of field IDs (default: all)",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--priorities", default="P0,P1",
+        help="comma-separated priorities (default: P0,P1)",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--workers", type=int, default=3,
+        help="concurrent worker threads (default: 3)",
+    )
+
     extract_parser = subparsers.add_parser("extract")
     extract_parser.add_argument("--retrieval-probe", required=True, type=Path)
     extract_parser.add_argument("--config", required=True, type=Path)
@@ -346,6 +383,54 @@ def main(argv: list[str] | None = None) -> int:
         print(f"not_found={list(result.fields_not_found)}")
         print(f"failed={list(result.fields_failed)}")
         print(f"artifact={result.artifact_path}")
+        return 0
+
+    if args.command == "extract-llm-batch":
+        from financial_report_llm_extractor.field_metadata import load_field_taxonomy
+        from financial_report_llm_extractor.llm_transport import (
+            LlmTransportConfig,
+            create_llm_client,
+        )
+        from financial_report_llm_extractor.structured_sources.catalog import (
+            load_source_mapping_catalog,
+        )
+        from financial_report_llm_extractor.structured_sources.llm_extraction_batch import (
+            load_manifest,
+            run_batch,
+        )
+
+        priorities = tuple(p.strip() for p in args.priorities.split(",") if p.strip())
+        fields_filter = (
+            tuple(f.strip() for f in args.fields.split(",") if f.strip())
+            if args.fields else None
+        )
+        companies = load_manifest(args.manifest)
+        catalog = load_source_mapping_catalog(args.catalog, priorities=priorities)
+        taxonomy = load_field_taxonomy(args.taxonomy)
+        config = LlmTransportConfig.from_json(args.llm_config)
+        client = create_llm_client(config)
+
+        summary = run_batch(
+            companies=companies,
+            out_dir=args.out,
+            catalog=catalog,
+            taxonomy=taxonomy,
+            client=client,
+            priorities=priorities,
+            fields=fields_filter,
+            workers=args.workers,
+        )
+        print(f"total_companies={summary.total_companies}")
+        print(f"succeeded={summary.succeeded}")
+        print(f"failed={summary.failed}")
+        print(f"summary_path={summary.summary_path}")
+        for entry in summary.companies:
+            print(
+                f"  {entry.company_id}: {entry.status} "
+                f"present={list(entry.fields_present)} "
+                f"not_found={list(entry.fields_not_found)} "
+                f"failed={list(entry.fields_failed)}"
+            )
         return 0
 
     if args.command == "evaluate":
