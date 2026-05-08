@@ -161,12 +161,13 @@ def test_trust_policy_pdf_verified_rules_have_provider_semantics_proof() -> None
                     f"turtle_field_id='{rule.field_id}', "
                     f"raw_field_name={raw_field_name!r})"
                 )
-            assert sem_rule.allowed_as_primary, (
-                f"field '{rule.field_id}': trust_policy has "
-                f"classification='yahoo_pdf_verified' for "
-                f"raw_field_name={raw_field_name!r} but provider_semantics rule "
-                f"has allowed_as_primary=False"
-            )
+            else:
+                assert sem_rule.allowed_as_primary, (
+                    f"field '{rule.field_id}': trust_policy has "
+                    f"classification='yahoo_pdf_verified' for "
+                    f"raw_field_name={raw_field_name!r} but provider_semantics "
+                    f"rule has allowed_as_primary=False"
+                )
 
 
 def test_source_mapping_priority_aligns_with_priority_list() -> None:
