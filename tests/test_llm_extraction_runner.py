@@ -357,3 +357,50 @@ def test_extract_for_chunks_marks_field_not_found_when_no_chunks_selected(
     # No chunks matched the aliases, so revenue is "no_chunks" → not_found
     assert "revenue" in result.fields_not_found
     assert "revenue" not in result.fields_present
+
+
+# ---------------------------------------------------------------------------
+# Task 4: write_llm_evidence_supplement
+# ---------------------------------------------------------------------------
+
+from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+    write_llm_evidence_supplement,
+)
+
+
+def test_write_llm_evidence_supplement_produces_well_formed_artifact(
+    tmp_path: Path,
+) -> None:
+    catalog = _catalog([
+        _entry("revenue", pdf_aliases=("revenue", "营业收入", "total revenue"))
+    ])
+    taxonomy = _taxonomy([_tax_entry("revenue", description="operating revenue")])
+    chunks = [_chunk("c1", 4, "revenue 168838")]
+    client = _CannedJsonClient({
+        "revenue": {
+            "field_id": "revenue", "found": True, "value": "168838",
+            "currency": "CNY", "unit": "thousand", "page": 4,
+            "statement_line": "revenue 168838", "confidence": 0.95,
+            "reasoning": "ok",
+        },
+    })
+
+    result = extract_for_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        client=client, company_id="TEST",
+        pdf_path=Path("test.pdf"), out_dir=tmp_path,
+    )
+    written_path = write_llm_evidence_supplement(result)
+
+    assert written_path == tmp_path / "llm_evidence_supplement.json"
+    assert written_path.exists()
+    payload = json.loads(written_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "llm-evidence-supplement-v1"
+    assert payload["company_id"] == "TEST"
+    assert payload["pdf_path"] == "test.pdf"
+    assert "extracted_at" in payload  # ISO timestamp string
+    item = payload["items"]["revenue"]
+    assert item["status"] == "present"
+    assert item["value"] == "168838"
+    assert item["currency"] == "CNY"
+    assert item["page"] == 4

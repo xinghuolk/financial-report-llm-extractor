@@ -248,3 +248,59 @@ def extract_for_chunks(
         artifact_path=artifact_path,
         items=items,
     )
+
+
+def write_llm_evidence_supplement(result: LlmExtractionRunResult) -> Path:
+    """Write llm_evidence_supplement.json from run result.
+
+    Schema:
+    {
+      "schema_version": "llm-evidence-supplement-v1",
+      "company_id": str,
+      "pdf_path": str,
+      "extracted_at": ISO8601 string,
+      "summary": {fields_attempted, fields_present, fields_not_found,
+                  fields_failed, chunk_count},
+      "items": {field_id: {status, value, parsed_numeric_value, currency,
+                           unit, page, statement_line, confidence, reasoning,
+                           errors}}
+    }
+    """
+    payload: dict[str, object] = {
+        "schema_version": SCHEMA_VERSION,
+        "company_id": result.company_id,
+        "pdf_path": str(result.pdf_path),
+        "extracted_at": datetime.now(timezone.utc).isoformat(),
+        "summary": {
+            "chunk_count": result.chunk_count,
+            "fields_attempted": list(result.fields_attempted),
+            "fields_present": list(result.fields_present),
+            "fields_not_found": list(result.fields_not_found),
+            "fields_failed": list(result.fields_failed),
+        },
+        "items": {
+            fid: {
+                "status": item.status,
+                "value": item.value,
+                "parsed_numeric_value": (
+                    str(item.parsed_numeric_value)
+                    if item.parsed_numeric_value is not None
+                    else None
+                ),
+                "currency": item.currency,
+                "unit": item.unit,
+                "period": item.period,
+                "page": item.page,
+                "statement_line": item.statement_line,
+                "confidence": item.confidence,
+                "reasoning": item.reasoning,
+                "errors": list(item.errors),
+            }
+            for fid, item in result.items.items()
+        },
+    }
+    result.artifact_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return result.artifact_path
