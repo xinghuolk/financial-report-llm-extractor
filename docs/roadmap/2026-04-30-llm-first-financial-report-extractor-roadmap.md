@@ -1127,6 +1127,34 @@ Implementation result:
 
 Bucket 1 closed. Next: Bucket 4 (locked terminal taxonomy) → Phase H deterministic PDF verification.
 
+### Phase H1 Implementation Result
+
+Status: implemented on 2026-05-08. See:
+- `docs/superpowers/plans/2026-05-08-phase-h1-surgical-conflict-resolution.md`
+
+Goal: Resolve 7 (company, field) conflict pairs via JSON catalog adjustments + provider_semantics rules only. No PDF pipeline required.
+
+Changes implemented:
+
+1. **CN revenue/operating_profit**: disabled Yahoo cross-check route (`cross_check_routes: []`, `on_conflict: "preserve_conflict"`) in source_mapping CN market_policies. Yahoo `Total Revenue` and `Operating Income` represent different Turtle concepts than AKShare `营业总收入`/`营业利润` for A-shares; removing the cross-check eliminates spurious semantic_mismatch flags.
+
+2. **CN SGA**: switched CN market_policies `primary_route` to `yahoo_direct` (AKShare reports MANAGE_EXPENSE and SELLING_EXPENSE separately; Yahoo `Selling General And Administration` correctly aggregates). Cross-check removed.
+
+3. **HK fix_assets**: added two `provider_semantics_unverified` rules to `provider_raw_semantics_hk.json`:
+   - Yahoo `Net PPE`: includes ROU assets for some issuers (00001: Fixed assets 100,080 + ROU 59,160 = Yahoo 159,240) but matches directly for others (01113). Per-issuer divergence prevents primary promotion.
+   - AKShare `固定资产`: values do not match PDF Fixed assets for sampled HK issuers (00001: 90,394 vs PDF 100,080; 01113: 65,816 vs PDF 72,868).
+   Both providers locked as terminal non-clean for HK fix_assets.
+
+4. **HK inventories**: added `provider_semantics_sample_verified` rule to `provider_raw_semantics_hk.json` and `yahoo_pdf_verified` rule to `hk_yahoo_trust_policy.json`. Yahoo `Inventory` verified against PDF for both 00001 (Inventories 26,688 HKD million) and 01113 (Properties for sale 122,799 HKD million — IAS 2 inventory for real estate developers). Added `source_policy.market_policies.HK` to inventories source_mapping with `yahoo_direct` primary.
+
+Implementation result:
+
+- 600519: 30/33 → **33/33** clean (revenue, operating_profit, selling_general_administrative all become clean_present)
+- 00001: 20/33 → **21/33** clean (inventories becomes clean_present)
+- 01113: 21/33 → **21/33** clean (no net change; fix_assets was already non-clean, inventories was already clean)
+
+All 450 tests pass. Phase H1 closed via surgical catalog adjustments only.
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:
