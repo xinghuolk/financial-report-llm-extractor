@@ -13,10 +13,12 @@ from financial_report_llm_extractor.field_metadata import (
     FieldValueType,
     Priority,
     StatementType,
+    load_field_taxonomy,
 )
 from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
     SourceMappingEntry,
+    load_source_mapping_catalog,
 )
 from financial_report_llm_extractor.structured_sources.models import SourceValueType
 from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
@@ -28,6 +30,9 @@ from financial_report_llm_extractor.structured_sources.llm_extraction_runner imp
     select_chunks,
     write_llm_evidence_supplement,
 )
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _entry(field_id: str, *, pdf_aliases: tuple[str, ...] = (),
@@ -424,3 +429,51 @@ def test_load_chunks_jsonl_parses_one_chunk_per_line(tmp_path: Path) -> None:
     assert len(chunks) == 2
     assert chunks[0]["chunk_id"] == "c1"
     assert chunks[1]["text"] == "b"
+
+
+# ---------------------------------------------------------------------------
+# Task 6: Integration test against 00001 fixture
+# ---------------------------------------------------------------------------
+
+def test_extract_for_chunks_against_00001_fixture_with_canned_response(
+    tmp_path: Path,
+) -> None:
+    catalog = load_source_mapping_catalog(
+        _REPO_ROOT / "field_catalog" / "turtle_v015_source_mapping_minimal.json",
+        priorities=("P0", "P1"),
+    )
+    taxonomy = load_field_taxonomy(
+        _REPO_ROOT / "field_catalog" / "turtle_v015_field_taxonomy.json"
+    )
+    chunks_path = (
+        _REPO_ROOT / "tests" / "fixtures" / "pdf_chunks" / "00001_2025_chunks.jsonl"
+    )
+    assert chunks_path.exists(), "00001 chunks fixture must exist"
+    chunks = load_chunks_jsonl(chunks_path)
+
+    canned = {
+        "revenue": {
+            "field_id": "revenue", "found": True, "value": "280036",
+            "currency": "HKD", "unit": "million", "period": "2024-12-31",
+            "page": 134, "statement_line": "Revenue 280,036",
+            "confidence": 0.95, "reasoning": "ok",
+        },
+    }
+    client = _CannedJsonClient(canned)
+
+    result = extract_for_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        client=client, company_id="00001",
+        pdf_path=Path("downloads/hk_stocks/00001/annual/2025_annual_en.pdf"),
+        out_dir=tmp_path,
+        fields=("revenue",),
+    )
+
+    assert "revenue" in result.fields_present, (
+        f"revenue should be present; got attempted={result.fields_attempted} "
+        f"present={result.fields_present} not_found={result.fields_not_found} "
+        f"failed={result.fields_failed}"
+    )
+    written = write_llm_evidence_supplement(result)
+    payload = json.loads(written.read_text(encoding="utf-8"))
+    assert payload["items"]["revenue"]["value"] == "280036"
