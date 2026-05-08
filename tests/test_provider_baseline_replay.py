@@ -508,8 +508,9 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
     assert companies["600519"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["00001"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["01113"]["coverage"]["yahoo_only"]["covered_count"] >= 11
-    # Phase H1: CN revenue/operating_profit/SGA all become clean_present (33/33).
-    assert "revenue" in companies["600519"]["coverage"]["combined"]["clean_present_fields"]
+    # 600519: revenue/operating_profit/SGA are unresolved_conflict (AKShare and Yahoo
+    # present with different values; preserve_conflict policy does not select a primary).
+    assert "revenue" in companies["600519"]["review"]["combined"]["conflict_fields"]
     assert companies["00001"]["review"]["combined"]["gap_categories"][
         "pdf_llm_supplement_candidates"
     ]
@@ -540,23 +541,26 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     assert maotai_combined["selected_count"] >= maotai_combined["covered_count"]
     assert maotai_combined["clean_present_count"] <= maotai_combined["selected_count"]
     # Phase H0: null_means_zero promotes bond_payable/st_borr/lt_borr to clean_present.
-    # Phase H1: CN revenue/operating_profit/SGA all become clean_present (33/33).
-    assert maotai_combined["clean_present_count"] == 33
+    # revenue/operating_profit/SGA remain non-clean: AKShare and Yahoo have different
+    # values with preserve_conflict policy — unresolved_conflict, architecturally honest.
+    assert maotai_combined["clean_present_count"] == 30
     assert {"bond_payable", "st_borr", "lt_borr"} <= set(
         maotai_combined["clean_present_fields"]
     )
-    assert {"revenue", "operating_profit", "selling_general_administrative"} <= set(
-        maotai_combined["clean_present_fields"]
+    assert not (
+        {"revenue", "operating_profit", "selling_general_administrative"}
+        & set(maotai_combined["clean_present_fields"])
     )
-    # source_policy_resolvable no longer contains these 3 fields.
+    # source_policy_resolvable no longer contains null_means_zero fields.
     maotai_wc = companies["600519"]["review"]["combined"]["warning_classification"]
     assert "bond_payable" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "st_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "lt_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
-    # revenue, operating_profit, SGA are clean_present — not in warnings.
-    assert "revenue" not in companies["600519"]["review"]["combined"][
-        "selected_with_warnings_fields"
-    ]
+    # revenue/operating_profit/SGA are unresolved conflicts — present in conflict_fields.
+    maotai_review = companies["600519"]["review"]["combined"]
+    assert {"revenue", "operating_profit", "selling_general_administrative"} <= set(
+        maotai_review["conflict_fields"]
+    )
 
     for company_id in HK_COMPANY_IDS:
         hk_combined = companies[company_id]["review"]["combined"]
@@ -816,17 +820,17 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
         "total_cur_liab",
         "total_liabilities",
     }
-    # Phase H1: revenue is now clean_present (TOTAL_OPERATE_INCOME matches Yahoo Total Revenue).
-    assert "revenue" not in combined_review["selected_with_warnings_fields"]
-    assert "revenue" in company["coverage"]["combined"]["clean_present_fields"]
+    # revenue is non-clean: AKShare OPERATE_INCOME (168,838M 营业收入) ≠ Yahoo Total Revenue
+    # (172,054M = TOTAL_OPERATE_INCOME). preserve_conflict policy leaves it unresolved.
+    assert "revenue" in combined_review["conflict_fields"]
+    assert "revenue" not in company["coverage"]["combined"]["clean_present_fields"]
     assert "net_profit" in combined_review["present_fields"]
-    assert "revenue" not in combined_review["conflict_fields"]
     assert "net_profit" not in combined_review["conflict_fields"]
-    # revenue is no longer a real_reconciliation_conflict (values are equivalent).
-    assert "revenue" not in combined_review["gap_categories"][
+    # revenue IS in real_reconciliation_conflict (values differ between sources).
+    assert "revenue" in combined_review["gap_categories"][
         "real_reconciliation_conflict"
     ]
-    assert "revenue" not in combined_review["gap_categories"][
+    assert "revenue" in combined_review["gap_categories"][
         "policy_unresolved_conflict"
     ]
     assert "policy_unresolved_conflict" in combined_review["gap_categories"]
@@ -836,16 +840,16 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
     )
     report = json.loads(report_path.read_text(encoding="utf-8"))
 
-    # Phase H1: revenue now reconciles as equivalent (TOTAL_OPERATE_INCOME = Yahoo Total Revenue).
+    # cash still reconciles as equivalent; revenue is now a conflict.
     assert report["items"]["cash"]["status"] == "equivalent"
     assert (
         report["items"]["cash"]["reason"]
         == "candidate normalized values are equal"
     )
-    assert report["items"]["revenue"]["status"] == "equivalent"
+    assert report["items"]["revenue"]["status"] == "conflict"
     assert (
         report["items"]["revenue"]["reason"]
-        == "candidate normalized values are equal"
+        == "candidate normalized values differ"
     )
     assert report["items"]["net_profit"]["status"] != "conflict"
 

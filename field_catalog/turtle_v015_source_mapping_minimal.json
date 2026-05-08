@@ -62,15 +62,15 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["TOTAL_OPERATE_INCOME", "营业总收入", "OPERATE_INCOME", "营业收入", "Revenue", "Total revenue"],
+        "akshare": ["OPERATE_INCOME", "营业收入", "Revenue", "TOTAL_OPERATE_INCOME", "营业总收入", "Total revenue"],
         "yahoo": ["Total Revenue", "Operating Revenue"]
       },
       "source_policy": {
         "semantic_concept": "operating revenue",
         "semantic_variants": {
           "akshare": {
-            "primary": ["TOTAL_OPERATE_INCOME", "营业总收入"],
-            "related": ["OPERATE_INCOME", "营业收入"]
+            "primary": ["OPERATE_INCOME", "营业收入"],
+            "related": ["TOTAL_OPERATE_INCOME", "营业总收入"]
           },
           "yahoo": {
             "primary": ["Total Revenue", "Operating Revenue"]
@@ -689,7 +689,7 @@
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
         "akshare": ["OPERATE_PROFIT", "营业利润"],
-        "yahoo": ["Total Operating Income As Reported", "Operating Income"]
+        "yahoo": ["Operating Income"]
       },
       "source_policy": {
         "semantic_concept": "operating profit",
@@ -698,7 +698,7 @@
             "primary": ["OPERATE_PROFIT", "营业利润"]
           },
           "yahoo": {
-            "primary": ["Total Operating Income As Reported", "Operating Income"]
+            "primary": ["Operating Income"]
           }
         },
         "market_policies": {
@@ -724,24 +724,30 @@
       "statement_type": "income_statement",
       "domain": "income_statement",
       "source_mode": "direct",
-      "primary_route": "yahoo_direct",
+      "primary_route": "akshare_direct",
       "verification_status": "expected",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
+        "akshare": ["MANAGE_EXPENSE", "SELLING_EXPENSE", "SALE_EXPENSE", "管理费用", "销售费用"],
         "yahoo": ["Selling General And Administration"]
       },
       "source_policy": {
         "semantic_concept": "selling general and administrative expenses",
+        "notes": "AKShare CN reports SGA as 2 separate fields (SELLING_EXPENSE/SALE_EXPENSE + MANAGE_EXPENSE) requiring derivation; single MANAGE_EXPENSE alias is incomplete. Yahoo Selling General And Administration aggregates both but has not been provider-semantics-proven. Field stays non-clean for CN until derivation or proof is implemented.",
         "semantic_variants": {
+          "akshare": {
+            "primary": ["MANAGE_EXPENSE", "管理费用"],
+            "related": ["SELLING_EXPENSE", "SALE_EXPENSE", "销售费用"]
+          },
           "yahoo": {
             "primary": ["Selling General And Administration"]
           }
         },
         "market_policies": {
           "CN": {
-            "primary_route": "yahoo_direct",
+            "primary_route": "akshare_direct",
             "cross_check_routes": [],
             "on_conflict": "preserve_conflict",
             "single_source_requires_pdf": false

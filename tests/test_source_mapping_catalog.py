@@ -249,13 +249,13 @@ def test_minimal_source_mapping_revenue_declares_operating_revenue_policy() -> N
 
     entry = catalog.entries["revenue"]
 
-    # Phase H1: TOTAL_OPERATE_INCOME is now primary (matches Yahoo Total Revenue exactly).
-    assert entry.source_aliases["akshare"][:2] == ("TOTAL_OPERATE_INCOME", "营业总收入")
+    # Turtle revenue = 营业收入 (narrow operating revenue); TOTAL_OPERATE_INCOME is related.
+    assert entry.source_aliases["akshare"][:2] == ("OPERATE_INCOME", "营业收入")
     assert entry.source_policy is not None
     assert entry.source_policy.semantic_variants["akshare"].primary[:1] == (
-        "TOTAL_OPERATE_INCOME",
+        "OPERATE_INCOME",
     )
-    assert "OPERATE_INCOME" in entry.source_policy.semantic_variants["akshare"].related
+    assert "TOTAL_OPERATE_INCOME" in entry.source_policy.semantic_variants["akshare"].related
 
 
 @pytest.mark.parametrize("field_id", ["revenue", "net_profit"])

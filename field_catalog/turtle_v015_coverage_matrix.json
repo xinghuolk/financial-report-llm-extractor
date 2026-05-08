@@ -479,9 +479,16 @@
     "selling_general_administrative": {
       "domain": "income_statement",
       "priority": "P1",
-      "primary_route": "yahoo_direct",
+      "primary_route": "akshare_direct",
       "verification": "expected",
       "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "pdf_required"
+        },
         {
           "source": "yahoo",
           "mode": "direct",
@@ -490,7 +497,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "Phase H1: Yahoo Selling General And Administration is the sole route. AKShare provides only MANAGE_EXPENSE or SELLING_EXPENSE separately (not a combined SGA total), so AKShare is removed from source_aliases to make Yahoo the single clean source for both CN and HK."
+      "notes": "AKShare CN reports SGA as 2 separate fields (SELLING_EXPENSE/SALE_EXPENSE + MANAGE_EXPENSE) requiring derivation; single-field match is incomplete. Yahoo Selling General And Administration aggregates both but has not been provider-semantics-proven. Field stays non-clean for CN until derivation or proof is implemented. HK uses yahoo_direct via market_policies."
     },
     "fv_value_chg_gain": {
       "domain": "income_statement",

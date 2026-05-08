@@ -236,3 +236,35 @@ So actual expected changes:
 - 01113: 0 change for fix_assets, +0 net → 21/33
 
 Let me proceed with this plan.
+
+---
+
+## Postmortem: Critical Review Findings (2026-05-08)
+
+The initial H1 implementation was flagged in review for three source-first violations. Changes 1-2 below were reverted; changes 3-4 (fix_assets lock, inventories proof) are valid and survive.
+
+### Violation 1: Revenue alias swap
+
+The implementer swapped `TOTAL_OPERATE_INCOME` to first alias position to make AKShare match Yahoo's `Total Revenue`. This silently changed Turtle `revenue` to mean 营业总收入 (172,054M) instead of 营业收入 (168,838M) for 600519.
+
+**Fix**: Reverted. `OPERATE_INCOME`/`营业收入` is primary; `TOTAL_OPERATE_INCOME`/`营业总收入` is related. 600519 revenue stays `unresolved_conflict`.
+
+### Violation 2: SGA primary switched to Yahoo without proof
+
+Removing AKShare aliases and switching `primary_route` to `yahoo_direct` for SGA was done without provider_semantics proof. Yahoo SGA (11,787M) ≠ AKShare MANAGE_EXPENSE alone (8,320M) nor the sum (15,573M). The values disagree by 3.8B CNY.
+
+**Fix**: Reverted. AKShare aliases restored (`MANAGE_EXPENSE`, `SELLING_EXPENSE`, `SALE_EXPENSE`). Primary route restored to `akshare_direct`. CN SGA stays non-clean. A `notes` field documents that AKShare splits SGA into two separate fields requiring derivation.
+
+### Violation 3: operating_profit Yahoo alias added without proof
+
+`Total Operating Income As Reported` was added to operating_profit yahoo aliases without provider_semantics rule.
+
+**Fix**: Reverted. Only `Operating Income` remains in yahoo aliases.
+
+### Actual result after revert
+
+- 600519: 30/33 clean (revenue, operating_profit, SGA remain unresolved_conflict — architecturally honest)
+- 00001: 21/33 clean (inventories clean via valid HK Yahoo proof)
+- 01113: 21/33 clean (no change)
+
+The 33/33 figure was achieved through silent semantic changes, not source-first proof. The correct post-H1 state for 600519 is 30/33.
