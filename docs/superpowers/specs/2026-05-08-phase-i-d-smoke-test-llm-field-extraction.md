@@ -6,7 +6,7 @@
 
 ## Goal
 
-Verify the LLM extraction framework is end-to-end functional by running a smoke test against a known-clean field (600519 `revenue` = 168,838M CNY). Cover both fake-LLM (deterministic, always-on) and real-LLM (DeepSeek/Ollama, opt-in) code paths. Produce a reusable `llm_field_extraction.py` module that subsequent Phase I-A (HK notes extraction) builds on.
+Verify the LLM extraction framework is end-to-end functional by running a smoke test against a known-clean field (00001 `revenue` = 280,036M HKD). Cover both fake-LLM (deterministic, always-on) and real-LLM (DeepSeek/Ollama, opt-in) code paths. Produce a reusable `llm_field_extraction.py` module that subsequent Phase I-A (HK notes extraction) builds on.
 
 This is the smallest test that verifies: prompt construction, chunk packaging, transport invocation, JSON schema parsing, error handling, and raw response archival all work together.
 
@@ -36,8 +36,8 @@ class FieldExtractionRequest:
     statement_type: str          # from taxonomy.statement_type
     value_type: str              # "money" | "number" | "text"
     chunks: tuple[dict, ...]     # selected chunk records (page_start, page_end, text)
-    expected_currency: str | None    # hint from source_mapping (e.g., "CNY")
-    expected_unit: str | None        # hint from source_mapping (e.g., "yuan")
+    expected_currency: str | None    # hint from source_mapping (e.g., "HKD")
+    expected_unit: str | None        # hint from source_mapping (e.g., "raw")
 
 
 @dataclass(frozen=True)
@@ -92,8 +92,8 @@ User payload:
     "description": "<from taxonomy.fields[field_id].description>",
     "statement_type": "income_statement",
     "value_type": "money",
-    "expected_currency": "CNY",
-    "expected_unit": "yuan"
+    "expected_currency": "HKD",
+    "expected_unit": "raw"
   },
   "chunks": [
     {"chunk_id": "...", "page_start": 1, "page_end": 1, "text": "..."},
@@ -127,18 +127,18 @@ Pull from `field_catalog/turtle_v015_field_taxonomy.json` via existing `load_fie
 
 Pull from `field_catalog/turtle_v015_source_mapping_minimal.json` for hints:
 - `currency_requirement` (informational)
-- Use AKShare known currency/unit context if available (e.g., "CNY/yuan" for CN)
+- Use AKShare known currency/unit context if available (e.g., "CNY/raw" for CN)
 
 ### Chunk fixture
 
-`tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl` — generated once from `downloads/...600519...pdf`. Source the income statement page subset (use `statement_type` filter).
+`tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl` — generated once from `downloads/...00001...pdf`. Source the income statement page subset (use `statement_type` filter).
 
-`tests/fixtures/pdf_chunks/600519_2025_run_metadata.json` — corresponding metadata.
+`tests/fixtures/pdf_chunks/00001_2025_run_metadata.json` — corresponding metadata.
 
 Generate via existing CLI:
 ```bash
 financial-report-llm-extractor ingest --pdf <path> --out tmp/...
-financial-report-llm-extractor chunk --pages tmp/.../pages.jsonl --metadata tmp/.../run_metadata.json --out tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl
+financial-report-llm-extractor chunk --pages tmp/.../pages.jsonl --metadata tmp/.../run_metadata.json --out tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl
 ```
 
 Filter or trim if file is too large for a fixture; smoke test only needs income statement chunks for revenue.
@@ -161,7 +161,7 @@ Use a `FakeJsonClient` that returns pre-canned JSON dicts.
 Same test file.
 
 Tests:
-- `test_run_extraction_with_real_chunks_and_canned_response_succeeds` — load `tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl`, build request, FakeLlmClient returns canned `{found: true, value: "168838102514.79", ...}`, assert FieldExtractionResult.value matches.
+- `test_run_extraction_with_real_chunks_and_canned_response_succeeds` — load `tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl`, build request, FakeLlmClient returns canned `{found: true, value: "280036000000", ...}`, assert FieldExtractionResult.value matches.
 
 This proves the chunk packaging path works against actual chunk records.
 
@@ -171,10 +171,10 @@ File: `scripts/run-llm-field-extraction-smoke.sh` (new)
 Gated on `REAL_LLM_SMOKE=1`. Reads `LLM_CONFIG=<llm_config.json>` (existing convention from `llm_transport.py`).
 
 Behavior:
-- Loads 600519 chunks fixture
+- Loads 00001 chunks fixture
 - Builds revenue request
 - Calls real DeepSeek (or whatever provider config points to)
-- Asserts `result.parsed_numeric_value` is within ±5% of 168,838,102,514.79 (LLM value tolerance)
+- Asserts `result.parsed_numeric_value` is within ±5% of 280,036,000,000 (LLM value tolerance)
 - Archives raw response to `tmp/runs/llm_smoke/`
 
 Provide `tests/test_llm_field_extraction.py::test_real_llm_smoke_when_enabled` that:
@@ -193,7 +193,7 @@ Provide `tests/test_llm_field_extraction.py::test_real_llm_smoke_when_enabled` t
 
 ## Risk and Mitigation
 
-**Risk:** LLM returns numeric value as string with formatting variations ("168,838,102,514.79" or "168.84B" or "168838.10百万元"). Mitigation: result includes both raw `value` (string as returned) and `parsed_numeric_value` (Decimal after best-effort parse). Smoke test asserts on parsed value with tolerance.
+**Risk:** LLM returns numeric value as string with formatting variations ("280,036,000,000" or "168.84B" or "168838.10百万元"). Mitigation: result includes both raw `value` (string as returned) and `parsed_numeric_value` (Decimal after best-effort parse). Smoke test asserts on parsed value with tolerance.
 
 **Risk:** Real LLM fails intermittently or returns nondeterministic output. Mitigation: smoke test is opt-in only, never in default `pytest`. Tolerance band ±5% absorbs minor LLM variance. Multiple retries via `LlmTransportConfig.max_retries`.
 
@@ -205,7 +205,7 @@ Provide `tests/test_llm_field_extraction.py::test_real_llm_smoke_when_enabled` t
 
 5 tasks:
 
-1. Generate 600519 chunks fixture (via existing CLI, one-time, committed)
+1. Generate 00001 chunks fixture (via existing CLI, one-time, committed)
 2. Implement `llm_field_extraction.py` module (request, result, prompt builder, runner)
 3. Add unit tests against FakeJsonClient
 4. Add integration test against real chunk fixture

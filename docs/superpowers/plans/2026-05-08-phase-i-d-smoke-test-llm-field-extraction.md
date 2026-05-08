@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Verify LLM extraction framework end-to-end by extracting 600519 `revenue` from a PDF chunk fixture; deliver `llm_field_extraction.py` module + 3 layers of tests (unit, integration, opt-in real LLM smoke).
+**Goal:** Verify LLM extraction framework end-to-end by extracting 00001 `revenue` from a PDF chunk fixture; deliver `llm_field_extraction.py` module + 3 layers of tests (unit, integration, opt-in real LLM smoke).
 
 **Architecture:** New module `llm_field_extraction.py` builds a deterministic JSON-schema prompt from (field_id, taxonomy metadata, chunks), calls injected `JsonClient`, parses bounded result, archives raw response. Reuses existing `LlmJsonClient` Protocol (has `complete_json()`). Chunk fixture committed to `tests/fixtures/pdf_chunks/`. Real LLM smoke gated on `REAL_LLM_SMOKE=1`.
 
@@ -15,47 +15,47 @@
 | File | Responsibility |
 |------|----------------|
 | `src/financial_report_llm_extractor/llm_field_extraction.py` | Module: request/result dataclasses, prompt builder, runner |
-| `tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl` | Income-statement chunks for 600519 (committed fixture) |
-| `tests/fixtures/pdf_chunks/600519_2025_run_metadata.json` | Run metadata for the chunks |
+| `tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl` | Income-statement chunks for 00001 (committed fixture) |
+| `tests/fixtures/pdf_chunks/00001_2025_run_metadata.json` | Run metadata for the chunks |
 | `tests/test_llm_field_extraction.py` | Unit + integration tests + opt-in real LLM smoke |
 | `scripts/run-llm-field-extraction-smoke.sh` | Opt-in real LLM smoke runner |
 
 ---
 
-## Task 1: Generate 600519 income statement chunks fixture
+## Task 1: Generate 00001 income statement chunks fixture
 
 **Files:**
-- Create: `tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl`
-- Create: `tests/fixtures/pdf_chunks/600519_2025_run_metadata.json`
+- Create: `tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl`
+- Create: `tests/fixtures/pdf_chunks/00001_2025_run_metadata.json`
 
 This is a one-time fixture generation, not a TDD step.
 
-- [ ] **Step 1: Locate 600519 PDF**
+- [ ] **Step 1: Locate 00001 PDF**
 
 ```bash
 ls downloads/ | head -20
-find downloads -name '*600519*' -type f
+find downloads -name '*00001*' -type f
 ```
-Expected: a 600519 annual report PDF in `downloads/` (likely `downloads/cn_stocks/600519/...` or similar). If multiple, pick the 2024 or 2025 annual report. If not present, STOP and ask user where to source it.
+Expected: a 00001 annual report PDF in `downloads/` (likely `downloads/cn_stocks/00001/...` or similar). If multiple, pick the 2024 or 2025 annual report. If not present, STOP and ask user where to source it.
 
 - [ ] **Step 2: Run ingestion to a temp directory**
 
 ```bash
-PDF_PATH=$(find downloads -name '*600519*annual*' -type f | head -1)
-mkdir -p tmp/runs/600519_chunks_gen
+PDF_PATH=$(find downloads -name '*00001*annual*' -type f | head -1)
+mkdir -p tmp/runs/00001_chunks_gen
 uv run financial-report-llm-extractor ingest \
   --pdf "$PDF_PATH" \
-  --out tmp/runs/600519_chunks_gen
+  --out tmp/runs/00001_chunks_gen
 ```
-Expected: produces `tmp/runs/600519_chunks_gen/pages.jsonl` and `tmp/runs/600519_chunks_gen/run_metadata.json`.
+Expected: produces `tmp/runs/00001_chunks_gen/pages.jsonl` and `tmp/runs/00001_chunks_gen/run_metadata.json`.
 
 - [ ] **Step 3: Run chunking**
 
 ```bash
 uv run financial-report-llm-extractor chunk \
-  --pages tmp/runs/600519_chunks_gen/pages.jsonl \
-  --metadata tmp/runs/600519_chunks_gen/run_metadata.json \
-  --out tmp/runs/600519_chunks_gen/chunks.jsonl
+  --pages tmp/runs/00001_chunks_gen/pages.jsonl \
+  --metadata tmp/runs/00001_chunks_gen/run_metadata.json \
+  --out tmp/runs/00001_chunks_gen/chunks.jsonl
 ```
 Expected: produces `chunks.jsonl` with all logical chunks.
 
@@ -67,7 +67,7 @@ The fixture should be small (target <100KB). Filter chunks where `statement_type
 uv run python3 -c "
 import json
 income_chunks = []
-with open('tmp/runs/600519_chunks_gen/chunks.jsonl') as f:
+with open('tmp/runs/00001_chunks_gen/chunks.jsonl') as f:
     for line in f:
         rec = json.loads(line)
         # Accept statement chunks marked income_statement OR page chunks for income statement pages
@@ -78,7 +78,7 @@ with open('tmp/runs/600519_chunks_gen/chunks.jsonl') as f:
 print(f'filtered chunks: {len(income_chunks)}')
 import os
 os.makedirs('tests/fixtures/pdf_chunks', exist_ok=True)
-with open('tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl', 'w') as out:
+with open('tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl', 'w') as out:
     for rec in income_chunks:
         out.write(json.dumps(rec, ensure_ascii=False) + '\n')
 "
@@ -86,34 +86,34 @@ with open('tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl', 'w') as out:
 
 If 0 chunks were filtered, broaden to take the first 5 chunks (likely covers the income statement) — inspect `chunks.jsonl` and pick by page range. Also check if `chunk_kind` field exists; field names may differ.
 
-If income_statement chunks aren't available with that exact field, fall back to taking ALL chunks under 200KB total. The smoke test only needs 600519 chunks — if filtering proves brittle, just commit a small full-chunks fixture.
+If income_statement chunks aren't available with that exact field, fall back to taking ALL chunks under 200KB total. The smoke test only needs 00001 chunks — if filtering proves brittle, just commit a small full-chunks fixture.
 
 - [ ] **Step 5: Copy run metadata**
 
 ```bash
-cp tmp/runs/600519_chunks_gen/run_metadata.json tests/fixtures/pdf_chunks/600519_2025_run_metadata.json
+cp tmp/runs/00001_chunks_gen/run_metadata.json tests/fixtures/pdf_chunks/00001_2025_run_metadata.json
 ```
 
 - [ ] **Step 6: Verify fixture size and content**
 
 ```bash
 ls -la tests/fixtures/pdf_chunks/
-wc -l tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl
-head -1 tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl | python3 -m json.tool | head -20
+wc -l tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl
+head -1 tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl | python3 -m json.tool | head -20
 ```
 Expected: file size <200KB. First chunk is valid JSON with `chunk_id`, page info, and text containing income-statement-like content.
 
 If the chunks don't include the income statement (no "营业收入" text in any chunk), STOP — investigate which chunks contain revenue and adjust filter.
 
 ```bash
-grep -l "营业收入" tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl && echo "FOUND revenue text"
+grep -l "营业收入" tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl && echo "FOUND revenue text"
 ```
 
 - [ ] **Step 7: Commit fixture**
 
 ```bash
-git add tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl tests/fixtures/pdf_chunks/600519_2025_run_metadata.json
-git commit -m "test: add 600519 income statement chunk fixture for llm smoke"
+git add tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl tests/fixtures/pdf_chunks/00001_2025_run_metadata.json
+git commit -m "test: add 00001 income statement chunk fixture for llm smoke"
 ```
 
 ---
@@ -145,8 +145,8 @@ def test_field_extraction_request_constructs_with_required_fields() -> None:
         statement_type="income_statement",
         value_type="money",
         chunks=({"chunk_id": "c1", "page_start": 1, "page_end": 1, "text": "..."},),
-        expected_currency="CNY",
-        expected_unit="yuan",
+        expected_currency="HKD",
+        expected_unit="raw",
     )
     assert req.field_id == "revenue"
     assert req.value_type == "money"
@@ -157,10 +157,10 @@ def test_field_extraction_result_present_status() -> None:
     result = FieldExtractionResult(
         field_id="revenue",
         status="present",
-        value="168838102514.79",
-        parsed_numeric_value=Decimal("168838102514.79"),
-        currency="CNY",
-        unit="yuan",
+        value="280036000000",
+        parsed_numeric_value=Decimal("280036000000"),
+        currency="HKD",
+        unit="raw",
         period="2025-12-31",
         page=4,
         statement_line="营业收入",
@@ -170,7 +170,7 @@ def test_field_extraction_result_present_status() -> None:
         errors=(),
     )
     assert result.status == "present"
-    assert result.parsed_numeric_value == Decimal("168838102514.79")
+    assert result.parsed_numeric_value == Decimal("280036000000")
 ```
 
 - [ ] **Step 2: Run test, verify FAIL**
@@ -280,8 +280,8 @@ def test_build_prompt_includes_field_metadata_and_chunks() -> None:
         chunks=(
             {"chunk_id": "c1", "page_start": 4, "page_end": 4, "text": "营业收入  168,838"},
         ),
-        expected_currency="CNY",
-        expected_unit="yuan",
+        expected_currency="HKD",
+        expected_unit="raw",
     )
     payload = build_field_extraction_prompt(req)
 
@@ -291,7 +291,7 @@ def test_build_prompt_includes_field_metadata_and_chunks() -> None:
     assert payload["field"]["field_id"] == "revenue"
     assert payload["field"]["description"] == "operating revenue (营业收入)"
     assert payload["field"]["statement_type"] == "income_statement"
-    assert payload["field"]["expected_currency"] == "CNY"
+    assert payload["field"]["expected_currency"] == "HKD"
     assert len(payload["chunks"]) == 1
     assert payload["chunks"][0]["text"] == "营业收入  168,838"
     # Response schema is included for the LLM to follow
@@ -414,8 +414,8 @@ def _sample_request() -> FieldExtractionRequest:
         chunks=(
             {"chunk_id": "c1", "page_start": 4, "page_end": 4, "text": "营业收入  168,838"},
         ),
-        expected_currency="CNY",
-        expected_unit="yuan",
+        expected_currency="HKD",
+        expected_unit="raw",
     )
 
 
@@ -425,9 +425,9 @@ def test_run_extraction_with_present_response_returns_present_result() -> None:
     client = FakeJsonClient({
         "field_id": "revenue",
         "found": True,
-        "value": "168838102514.79",
-        "currency": "CNY",
-        "unit": "yuan",
+        "value": "280036000000",
+        "currency": "HKD",
+        "unit": "raw",
         "period": "2025-12-31",
         "page": 4,
         "statement_line": "营业收入",
@@ -438,9 +438,9 @@ def test_run_extraction_with_present_response_returns_present_result() -> None:
     result = run_field_extraction(_sample_request(), client)
 
     assert result.status == "present"
-    assert result.value == "168838102514.79"
-    assert result.parsed_numeric_value == Decimal("168838102514.79")
-    assert result.currency == "CNY"
+    assert result.value == "280036000000"
+    assert result.parsed_numeric_value == Decimal("280036000000")
+    assert result.currency == "HKD"
     assert result.page == 4
     assert result.statement_line == "营业收入"
     assert result.errors == ()
@@ -633,7 +633,7 @@ def test_run_extraction_with_unparseable_value_marks_extraction_failed() -> None
         "field_id": "revenue",
         "found": True,
         "value": "not-a-number",
-        "currency": "CNY",
+        "currency": "HKD",
     })
 
     result = run_field_extraction(_sample_request(), client)
@@ -652,7 +652,7 @@ def test_run_extraction_archives_raw_response(tmp_path: Path) -> None:
     client = FakeJsonClient({
         "field_id": "revenue",
         "found": True,
-        "value": "168838102514.79",
+        "value": "280036000000",
     })
 
     result = run_field_extraction(_sample_request(), client, raw_response_dir=tmp_path)
@@ -660,7 +660,7 @@ def test_run_extraction_archives_raw_response(tmp_path: Path) -> None:
     archive_path = tmp_path / f"revenue_{PROMPT_VERSION}.json"
     assert archive_path.exists()
     archived = json.loads(archive_path.read_text(encoding="utf-8"))
-    assert archived["value"] == "168838102514.79"
+    assert archived["value"] == "280036000000"
 
 
 import json  # add at top of file if not present
@@ -695,7 +695,7 @@ Add to `tests/test_llm_field_extraction.py`:
 
 ```python
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "pdf_chunks"
-CHUNKS_FIXTURE = FIXTURE_DIR / "600519_2025_chunks.jsonl"
+CHUNKS_FIXTURE = FIXTURE_DIR / "00001_2025_chunks.jsonl"
 
 
 def _load_fixture_chunks() -> tuple[dict[str, object], ...]:
@@ -722,17 +722,17 @@ def test_run_extraction_against_real_fixture_with_canned_response() -> None:
         statement_type="income_statement",
         value_type="money",
         chunks=chunks,
-        expected_currency="CNY",
-        expected_unit="yuan",
+        expected_currency="HKD",
+        expected_unit="raw",
     )
 
-    # Canned LLM response with the known true value for 600519 2024 revenue
+    # Canned LLM response with the known true value for 00001 2024 revenue
     canned_response = {
         "field_id": "revenue",
         "found": True,
-        "value": "168838102514.79",
-        "currency": "CNY",
-        "unit": "yuan",
+        "value": "280036000000",
+        "currency": "HKD",
+        "unit": "raw",
         "period": "2024-12-31",
         "page": 4,
         "statement_line": "营业收入",
@@ -744,7 +744,7 @@ def test_run_extraction_against_real_fixture_with_canned_response() -> None:
     result = run_field_extraction(request, client)
 
     assert result.status == "present"
-    assert result.parsed_numeric_value == Decimal("168838102514.79")
+    assert result.parsed_numeric_value == Decimal("280036000000")
     # Verify the prompt actually packaged the chunks (indirectly: client got them)
 ```
 
@@ -761,7 +761,7 @@ If fixture missing, the test surfaces a clear error pointing to Task 1.
 
 ```bash
 git add tests/
-git commit -m "test: integration test for field extraction against 600519 fixture"
+git commit -m "test: integration test for field extraction against 00001 fixture"
 ```
 
 ---
@@ -804,8 +804,8 @@ def test_real_llm_smoke_extracts_revenue_within_tolerance() -> None:
         statement_type="income_statement",
         value_type="money",
         chunks=chunks,
-        expected_currency="CNY",
-        expected_unit="yuan",
+        expected_currency="HKD",
+        expected_unit="raw",
     )
 
     archive_dir = Path("tmp/runs/llm_smoke")
@@ -817,7 +817,7 @@ def test_real_llm_smoke_extracts_revenue_within_tolerance() -> None:
     )
     assert result.parsed_numeric_value is not None
 
-    expected = Decimal("168838102514.79")
+    expected = Decimal("280036000000")
     delta = abs(result.parsed_numeric_value - expected)
     tolerance = expected * Decimal("0.05")
     assert delta < tolerance, (
@@ -844,7 +844,7 @@ Create `scripts/run-llm-field-extraction-smoke.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# Run the opt-in real-LLM smoke for 600519 revenue.
+# Run the opt-in real-LLM smoke for 00001 revenue.
 #
 # Required env:
 #   REAL_LLM_SMOKE=1
@@ -890,7 +890,7 @@ Expected: no output (syntax OK).
 
 ```bash
 git add tests/test_llm_field_extraction.py scripts/run-llm-field-extraction-smoke.sh
-git commit -m "test: add opt-in real llm smoke for 600519 revenue extraction"
+git commit -m "test: add opt-in real llm smoke for 00001 revenue extraction"
 ```
 
 ---
@@ -927,9 +927,9 @@ Goal: Verify LLM extraction framework end-to-end before notes-level extraction (
 Implementation result:
 
 - New module `src/financial_report_llm_extractor/llm_field_extraction.py` with `FieldExtractionRequest`/`FieldExtractionResult` dataclasses, deterministic JSON-schema prompt builder, and runner with raw response archival.
-- Chunk fixture committed at `tests/fixtures/pdf_chunks/600519_2025_chunks.jsonl`.
+- Chunk fixture committed at `tests/fixtures/pdf_chunks/00001_2025_chunks.jsonl`.
 - 8 unit/integration tests against FakeJsonClient pass.
-- 1 opt-in real-LLM smoke test (`REAL_LLM_SMOKE=1` + `LLM_CONFIG_PATH=...`) extracts 600519 revenue within ±5% of 168,838,102,514.79 CNY.
+- 1 opt-in real-LLM smoke test (`REAL_LLM_SMOKE=1` + `LLM_CONFIG_PATH=...`) extracts 00001 revenue within ±5% of 280,036,000,000 CNY.
 - Smoke runner script at `scripts/run-llm-field-extraction-smoke.sh`.
 
 Phase I-A (HK notes-level extraction) builds on this module. The prompt schema and result dataclass should be reused; field-specific prompt overrides come when notes-pattern failures surface.
