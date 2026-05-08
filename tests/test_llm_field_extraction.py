@@ -153,3 +153,57 @@ def test_run_extraction_with_not_found_response_returns_not_found() -> None:
     assert result.status == "not_found"
     assert result.value is None
     assert result.parsed_numeric_value is None
+
+
+# ---------------------------------------------------------------------------
+# Task 5: Malformed response and raw archival
+# ---------------------------------------------------------------------------
+
+
+def test_run_extraction_with_malformed_response_marks_extraction_failed() -> None:
+    from financial_report_llm_extractor.llm_field_extraction import run_field_extraction
+
+    client = FakeJsonClient({"unexpected": "shape"})  # missing 'found'
+
+    result = run_field_extraction(_sample_request(), client)
+
+    assert result.status == "extraction_failed"
+    assert any("found" in err for err in result.errors)
+    assert result.raw_response == {"unexpected": "shape"}
+
+
+def test_run_extraction_with_unparseable_value_marks_extraction_failed() -> None:
+    from financial_report_llm_extractor.llm_field_extraction import run_field_extraction
+
+    client = FakeJsonClient({
+        "field_id": "revenue",
+        "found": True,
+        "value": "not-a-number",
+        "currency": "HKD",
+    })
+
+    result = run_field_extraction(_sample_request(), client)
+
+    assert result.status == "extraction_failed"
+    assert any("unparseable" in err for err in result.errors)
+    assert result.value == "not-a-number"  # raw value preserved
+
+
+def test_run_extraction_archives_raw_response(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.llm_field_extraction import (
+        PROMPT_VERSION,
+        run_field_extraction,
+    )
+
+    client = FakeJsonClient({
+        "field_id": "revenue",
+        "found": True,
+        "value": "280036000000",
+    })
+
+    run_field_extraction(_sample_request(), client, raw_response_dir=tmp_path)
+
+    archive_path = tmp_path / f"revenue_{PROMPT_VERSION}.json"
+    assert archive_path.exists()
+    archived = json.loads(archive_path.read_text(encoding="utf-8"))
+    assert archived["value"] == "280036000000"
