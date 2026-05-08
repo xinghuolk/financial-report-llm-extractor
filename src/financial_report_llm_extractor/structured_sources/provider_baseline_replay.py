@@ -184,7 +184,7 @@ def write_provider_baseline_period_replay(
         raise FileNotFoundError(f"inventory summary not found: {inventory_summary_path}")
 
     records = read_source_inventory(inventory_path)
-    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1"))
+    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1", "P2"))
     taxonomy = load_field_taxonomy(taxonomy_path)
     hk_yahoo_trust_policy = _load_replay_hk_yahoo_trust_policy(
         hk_yahoo_trust_policy_path
@@ -347,7 +347,7 @@ def _write_slice(
         taxonomy_entries=taxonomy.fields,
         mapping_entries=catalog.entries,
         records=records,
-        priorities=("P0", "P1"),
+        priorities=("P0", "P1", "P2"),
         fixture=f"provider_baseline_period_replay:{company_id}:{market}",
         taxonomy_catalog=taxonomy.catalog_id,
         mapping_catalog=catalog.catalog_id,

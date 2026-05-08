@@ -88,7 +88,7 @@ def run_default_source_first_fixture_evaluation(
     catalog_path: Path,
     output_dir: Path,
 ) -> SourceFirstEvaluationResult:
-    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1"))
+    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1", "P2"))
     return run_source_first_evaluation(
         fixtures=default_source_first_evaluation_fixtures(),
         catalog=catalog,

@@ -48,6 +48,20 @@
         "non_oper_income",
         "non_oper_exp"
       ]
+    },
+    {
+      "priority": "P2",
+      "name": "Cash flow and shareholder return fields",
+      "fields": [
+        "change_in_receivables",
+        "change_in_payables",
+        "change_in_inventory",
+        "receiv_tax_refund",
+        "repurchase_of_stock",
+        "dividends_paid",
+        "capital_expenditures",
+        "depreciation_amortization"
+      ]
     }
   ],
   "source_mappings": {
@@ -1177,6 +1191,133 @@
         "non-operating expense",
         "营业外支出"
       ]
+    },
+    "change_in_receivables": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": ["Change In Receivables", "Change In Account Receivable"],
+        "akshare": ["RECEIVE_RECE_DECREASE", "应收账款减少"]
+      },
+      "pdf_aliases": ["change in receivables", "decrease in receivables", "应收账款减少"]
+    },
+    "change_in_payables": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": ["Change In Payable", "Change In Account Payable", "Change In Payables And Accrued Expense"],
+        "akshare": ["PAYABLE_INCREASE", "应付账款增加"]
+      },
+      "pdf_aliases": ["change in payables", "increase in payables", "应付账款增加"]
+    },
+    "change_in_inventory": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": ["Change In Inventory"],
+        "akshare": ["INVENTORY_REDUCE", "存货(增加)减少"]
+      },
+      "pdf_aliases": ["change in inventory", "decrease in inventory", "存货减少"]
+    },
+    "receiv_tax_refund": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["RECEIVE_TAX_REFUND", "收到的税费返还"]
+      },
+      "pdf_aliases": ["receipts of tax refunds", "tax refund received", "收到的税费返还"]
+    },
+    "repurchase_of_stock": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "shareholder_return",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": ["Repurchase Of Capital Stock"],
+        "akshare": ["BUYBACK_OF_STOCK", "回购股票"]
+      },
+      "pdf_aliases": ["repurchase of capital stock", "share buyback", "stock repurchase", "回购股票"]
+    },
+    "dividends_paid": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "shareholder_return",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": ["ASSIGN_CASH_DIVIDEND", "ASSIGN_DIVIDEND_PORFIT", "分配股利"],
+        "yahoo": ["Cash Dividends Paid", "Common Stock Dividend Paid"]
+      },
+      "pdf_aliases": ["dividends paid", "cash dividends paid", "分配股利"]
+    },
+    "capital_expenditures": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": ["Capital Expenditure"],
+        "akshare": ["CONSTRUCT_LONG_ASSET", "购建固定资产、无形资产和其他长期资产支付的现金"]
+      },
+      "pdf_aliases": ["capital expenditures", "purchase of property plant and equipment", "购建固定资产"]
+    },
+    "depreciation_amortization": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "accounting_adjustments",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": ["Depreciation And Amortization", "Depreciation Amortization Depletion", "Reconciled Depreciation"],
+        "akshare": ["FA_IR_DEPR", "DA"]
+      },
+      "pdf_aliases": ["depreciation and amortization", "depreciation", "amortization", "折旧及摊销"]
     }
   }
 }

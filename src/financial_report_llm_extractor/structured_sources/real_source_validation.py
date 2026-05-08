@@ -210,7 +210,7 @@ def _write_validation_outputs(
     source_artifact_manifest_path: Path | None = None,
     source_artifact_count: int | None = None,
 ) -> RealSourceValidationResult:
-    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1"))
+    catalog = load_source_mapping_catalog(catalog_path, priorities=("P0", "P1", "P2"))
     mapping = map_source_inventory(catalog, records)
     reconciliation = reconcile_mapped_fields(mapping)
     export = build_source_first_export(mapping, reconciliation, profile="source_only")

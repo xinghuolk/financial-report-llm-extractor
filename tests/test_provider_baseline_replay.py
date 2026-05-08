@@ -96,8 +96,10 @@ EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY: dict[str, list[str]] = {
     # invest_income: post-Phase-I-A.2 description expansion now matches
     # provider raw fields via keyword_overlap, moving it from source_unavailable
     # to mapping_expansion_required (correct: provider candidates exist).
-    "00001": ["invest_income", "non_oper_exp", "non_oper_income", "other_cur_assets"],
-    "01113": ["invest_income", "non_oper_exp", "non_oper_income"],
+    # receiv_tax_refund: CN-only AKShare field; HK companies have no provider data
+    # but the alias matches partial inventory entries so lands in mapping_expansion.
+    "00001": ["invest_income", "non_oper_exp", "non_oper_income", "other_cur_assets", "receiv_tax_refund"],
+    "01113": ["invest_income", "non_oper_exp", "non_oper_income", "receiv_tax_refund"],
 }
 EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
     {
@@ -107,8 +109,10 @@ EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
         "rd_exp",
     }
 )
-# 01113 also has selling_general_administrative as source_unavailable; 00001 does not
+# 01113 also has selling_general_administrative as source_unavailable; 00001 does not.
+# 00001 also has repurchase_of_stock as source_unavailable (no Yahoo data for 00001).
 EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE = frozenset({"selling_general_administrative"})
+EXPECTED_00001_EXTRA_SOURCE_UNAVAILABLE = frozenset({"repurchase_of_stock"})
 
 
 CheckedInReplay = tuple[ProviderBaselineReplayResult, dict[str, Any]]
@@ -545,7 +549,9 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     # Phase H0: null_means_zero promotes bond_payable/st_borr/lt_borr to clean_present.
     # revenue/operating_profit/SGA remain non-clean: AKShare and Yahoo have different
     # values with preserve_conflict policy — unresolved_conflict, architecturally honest.
-    assert maotai_combined["clean_present_count"] == 30
+    # N4.A: P2 cash-flow fields added; 600519 gains change_in_receivables/payables/inventory
+    # → clean_present_count rises from 30 to 33.
+    assert maotai_combined["clean_present_count"] == 33
     assert {"bond_payable", "st_borr", "lt_borr"} <= set(
         maotai_combined["clean_present_fields"]
     )
@@ -686,23 +692,30 @@ def test_provider_baseline_replay_applies_default_hk_yahoo_trust_policy(
     assert "hk_yahoo_trust_policy_report: " in markdown
 
 
-def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
+def test_checked_in_hk_replay_reports_exact_41_field_closure_buckets(
     checked_in_provider_baseline_replay: CheckedInReplay,
 ) -> None:
     _, payload = checked_in_provider_baseline_replay
     companies = _companies_by_id(payload)
-    # N3 added 4 more fields to catalog (33 total).
+    # N4.A added 8 P2 cash-flow fields (41 total: P0+P1+P2).
     # rd_exp/fv_value_chg_gain are CN-only akshare fields: source_unavailable for HK.
     # non_oper_income/non_oper_exp land in mapping_expansion_required for HK (partial provider data found).
-    # 00001: equity_to_owners/operating_cost/operating_profit/sga all clean_present.
-    # 01113: equity_to_owners/operating_cost/operating_profit clean; sga source_unavailable.
-    # fix_assets/accounts_receiv/acct_payable remain conflicts for HK.
+    # receiv_tax_refund is CN-only AKShare: lands in mapping_expansion for HK.
+    # repurchase_of_stock: Yahoo has no data for 00001 → source_unavailable for 00001.
+    # 00001: gained capital_expenditures/change_in_payables/change_in_receivables/
+    #         depreciation_amortization/dividends_paid → 26 clean.
+    # 01113: additionally gained change_in_inventory/repurchase_of_stock → 28 clean.
     # H1: inventories clean_present for both 00001 and 01113 (Yahoo Inventory proven against PDF).
     expected_clean_by_company = {
         "00001": {
+            "capital_expenditures",
             "cash",
+            "change_in_payables",
+            "change_in_receivables",
             "defer_tax_assets",
             "defer_tax_liab",
+            "depreciation_amortization",
+            "dividends_paid",
             "equity_attributable_to_owners",
             "financing_cash_flow",
             "inventories",
@@ -723,9 +736,15 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
             "total_liabilities",
         },
         "01113": {
+            "capital_expenditures",
             "cash",
+            "change_in_inventory",
+            "change_in_payables",
+            "change_in_receivables",
             "defer_tax_assets",
             "defer_tax_liab",
+            "depreciation_amortization",
+            "dividends_paid",
             "equity_attributable_to_owners",
             "financing_cash_flow",
             "inventories",
@@ -738,6 +757,7 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
             "operating_cost",
             "operating_profit",
             "other_cur_assets",
+            "repurchase_of_stock",
             "revenue",
             "st_borr",
             "total_assets",
@@ -746,7 +766,7 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 21, "01113": 21}
+    expected_clean_count_by_company = {"00001": 26, "01113": 28}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]
@@ -780,6 +800,13 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
             ), (
                 f"00001 should NOT have {EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE} "
                 f"in source_unavailable but got: {warning_fields['source_unavailable']!r}"
+            )
+            assert (
+                EXPECTED_00001_EXTRA_SOURCE_UNAVAILABLE
+                <= set(warning_fields["source_unavailable"])
+            ), (
+                f"00001 expected {EXPECTED_00001_EXTRA_SOURCE_UNAVAILABLE} in source_unavailable "
+                f"but got: {warning_fields['source_unavailable']!r}"
             )
 
 
