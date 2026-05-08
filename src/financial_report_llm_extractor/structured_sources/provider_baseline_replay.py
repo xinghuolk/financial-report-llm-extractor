@@ -335,9 +335,13 @@ def _write_slice(
         profile="source_only",
         source_policy_report=policy_report,
     )
-    # Optional LLM evidence merge (Phase I-A integration)
-    supplement_candidate = output_dir.parent / "llm_evidence_supplement.json"
-    export = _merge_llm_evidence_supplement(export, supplement_candidate)
+    # Optional LLM evidence merge (Phase I-A integration).
+    # Restrict to combined slice only — LLM supplement is a cross-source
+    # artifact and would pollute per-source coverage views (akshare_only /
+    # yahoo_only).
+    if output_dir.name == "combined":
+        supplement_candidate = output_dir.parent / "llm_evidence_supplement.json"
+        export = _merge_llm_evidence_supplement(export, supplement_candidate)
     candidate_report = discover_provider_field_candidates(
         taxonomy_entries=taxonomy.fields,
         mapping_entries=catalog.entries,
@@ -577,6 +581,10 @@ def _merge_llm_evidence_supplement(
         if currency_raw in ("CNY", "HKD", "USD"):
             currency = currency_raw  # type: ignore[assignment]
 
+        # selected_source="llm" is intentionally distinct from SourceName
+        # ("akshare" | "yahoo" | "fixture"). Downstream consumers should
+        # treat it as a non-provider evidence source (cf. review_notes=
+        # ("llm_supplemented",) for the audit signal).
         new_items[field_id] = SourceFirstExportItem(
             field_id=field_id,
             status="present",

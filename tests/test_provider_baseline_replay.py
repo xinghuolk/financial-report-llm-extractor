@@ -947,3 +947,71 @@ def test_merge_llm_evidence_supplement_no_op_when_schema_mismatch(
 
     merged = _merge_llm_evidence_supplement(export, bad_path)
     assert merged.items["x"].status == "missing"
+
+
+def test_replay_slice_only_merges_llm_supplement_for_combined_slice(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    """Verify the slice gate: per-source slices (akshare_only, yahoo_only)
+    must NOT consume llm_evidence_supplement.json. Only the combined
+    slice merges LLM evidence — otherwise per-source coverage views get
+    polluted with cross-source LLM values.
+    """
+    output_dir = tmp_path_factory.mktemp("slice_gate") / "baseline"
+    company_id = "00001"
+
+    # Pre-create a supplement at the company-dir level. _write_slice
+    # looks at output_dir.parent which is company_dir.
+    company_dir = output_dir / company_id
+    company_dir.mkdir(parents=True, exist_ok=True)
+    (company_dir / "llm_evidence_supplement.json").write_text(json.dumps({
+        "schema_version": "llm-evidence-supplement-v1",
+        "company_id": company_id,
+        "pdf_path": "x.pdf",
+        "extracted_at": "2026-05-08T00:00:00",
+        "summary": {},
+        "items": {
+            "rd_exp": {
+                "status": "present", "value": "999999",
+                "currency": "CNY", "unit": "thousand",
+            },
+        },
+    }), encoding="utf-8")
+
+    write_provider_baseline_period_replay(
+        inventory_path=PROVIDER_BASELINE_INVENTORY_PATH,
+        inventory_summary_path=PROVIDER_BASELINE_INVENTORY_SUMMARY_PATH,
+        catalog_path=SOURCE_MAPPING_CATALOG_PATH,
+        output_dir=output_dir,
+    )
+
+    def _rd_exp_review_notes(slice_name: str) -> list[str]:
+        path = company_dir / slice_name / "extraction_result.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        items = payload.get("items", {})
+        if not isinstance(items, dict):
+            return []
+        rd_exp_item = items.get("rd_exp")
+        if not isinstance(rd_exp_item, dict):
+            return []
+        notes = rd_exp_item.get("review_notes", [])
+        if not isinstance(notes, list):
+            return []
+        return [str(n) for n in notes]
+
+    combined_notes = _rd_exp_review_notes("combined")
+    akshare_notes = _rd_exp_review_notes("akshare_only")
+    yahoo_notes = _rd_exp_review_notes("yahoo_only")
+
+    # combined slice should have llm_supplemented review note
+    assert "llm_supplemented" in combined_notes, (
+        f"combined slice should pick up llm supplement; got {combined_notes}"
+    )
+
+    # per-source slices must NOT have consumed the supplement
+    assert "llm_supplemented" not in akshare_notes, (
+        f"akshare_only slice unexpectedly got llm supplement: {akshare_notes}"
+    )
+    assert "llm_supplemented" not in yahoo_notes, (
+        f"yahoo_only slice unexpectedly got llm supplement: {yahoo_notes}"
+    )
