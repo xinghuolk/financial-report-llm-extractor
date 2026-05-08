@@ -317,19 +317,12 @@ def main(argv: list[str] | None = None) -> int:
 
         chunks_path = ingest_dir / "chunks.jsonl"
         if not chunks_path.exists():
-            import subprocess
             ingest_dir.mkdir(parents=True, exist_ok=True)
-            subprocess.run(
-                ["uv", "run", "financial-report-llm-extractor", "ingest",
-                 "--pdf", str(args.pdf), "--out", str(ingest_dir)],
-                check=True,
-            )
-            subprocess.run(
-                ["uv", "run", "financial-report-llm-extractor", "chunk",
-                 "--pages", str(ingest_dir / "pages.jsonl"),
-                 "--metadata", str(ingest_dir / "run_metadata.json"),
-                 "--out", str(chunks_path)],
-                check=True,
+            ingest_result = ingest_pdf(args.pdf, ingest_dir)
+            build_chunk_store(
+                ingest_result.pages_path,
+                ingest_result.metadata_path,
+                chunks_path=chunks_path,
             )
 
         chunks = load_chunks_jsonl(chunks_path)
