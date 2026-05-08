@@ -727,6 +727,23 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
         )
         assert warning_fields["mapping_expansion_required"] == expected_mapping_expansion
         assert set(warning_fields["source_unavailable"]) >= EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS
+        # 01113 has selling_general_administrative as source_unavailable; 00001 does not
+        if company_id == "01113":
+            assert (
+                EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE
+                <= set(warning_fields["source_unavailable"])
+            ), (
+                f"01113 expected selling_general_administrative in source_unavailable "
+                f"but got: {warning_fields['source_unavailable']!r}"
+            )
+        elif company_id == "00001":
+            assert (
+                not EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE
+                & set(warning_fields["source_unavailable"])
+            ), (
+                f"00001 should NOT have {EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE} "
+                f"in source_unavailable but got: {warning_fields['source_unavailable']!r}"
+            )
 
 
 def test_provider_baseline_replay_can_disable_hk_yahoo_trust_policy(

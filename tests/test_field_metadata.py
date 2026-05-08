@@ -1403,7 +1403,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "consolidated",
             "required",
             "required",
-            "pdf_required",
+            "source_only_allowed",
             "pdf_allowed",
         ),
         "total_cur_liab": (

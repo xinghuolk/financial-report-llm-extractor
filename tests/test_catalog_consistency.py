@@ -93,10 +93,11 @@ def test_provider_semantics_aligns_with_source_mapping() -> None:
 
     for rule in semantics.rules:
         field_id = rule.turtle_field_id
-        if field_id not in source_mapping.entries:
-            # Not every semantics rule needs to be in source_mapping yet
-            # (expansion is in progress), so skip fields not yet promoted.
-            continue
+        assert field_id in source_mapping.entries, (
+            f"provider_semantics rule turtle_field_id={field_id!r} "
+            f"({rule.provider}, {rule.market}, {rule.raw_field_name!r}) "
+            f"is not in source_mapping; rule must reference a mapped field"
+        )
 
         if rule.allowed_as_primary:
             entry = source_mapping.entries[field_id]
@@ -190,3 +191,39 @@ def test_source_mapping_priority_aligns_with_priority_list() -> None:
                 f"field '{field_id}': source_mapping.priority={entry.priority!r} "
                 f"!= priority_list bucket priority={bucket_priority!r}"
             )
+
+
+def test_taxonomy_evidence_requirement_matches_coverage_routes() -> None:
+    """For each field in source_mapping, if taxonomy specifies evidence_requirement
+    and the coverage_matrix specifies evidence_requirement on at least one route,
+    at least one route must match the taxonomy value.
+
+    Taxonomy is the policy authority; coverage_matrix routes must not conflict."""
+    source_mapping = load_source_mapping_catalog(
+        SOURCE_MAPPING, priorities=("P0", "P1")
+    )
+    taxonomy = load_field_taxonomy(TAXONOMY)
+    coverage = load_coverage_matrix(COVERAGE_MATRIX)
+
+    for field_id in source_mapping.entries:
+        tax = taxonomy.fields.get(field_id)
+        if tax is None:
+            continue
+        tax_req = tax.evidence_requirement
+        if not tax_req:
+            continue
+
+        cov = coverage.fields.get(field_id)
+        if cov is None:
+            continue
+
+        route_reqs = [r.evidence_requirement for r in cov.routes if r.evidence_requirement]
+        if not route_reqs:
+            # No route specifies evidence_requirement — lenient, no assertion needed.
+            continue
+
+        assert any(r == tax_req for r in route_reqs), (
+            f"field '{field_id}': taxonomy.evidence_requirement={tax_req!r} "
+            f"but no coverage_matrix route matches; route evidence_requirements={route_reqs!r}. "
+            f"Taxonomy is the policy authority — update coverage_matrix routes to align."
+        )

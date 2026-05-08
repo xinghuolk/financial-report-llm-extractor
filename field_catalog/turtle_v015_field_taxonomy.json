@@ -405,7 +405,7 @@
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
-      "evidence_requirement": "pdf_required",
+      "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Other current assets at the reporting date."
     },

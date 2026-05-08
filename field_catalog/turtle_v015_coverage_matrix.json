@@ -464,14 +464,14 @@
           "mode": "direct",
           "status": "expected",
           "statement_type": "income_statement",
-          "evidence_requirement": "pdf_required"
+          "evidence_requirement": "source_only_allowed"
         },
         {
           "source": "akshare",
           "mode": "direct",
           "status": "expected",
           "statement_type": "income_statement",
-          "evidence_requirement": "pdf_required"
+          "evidence_requirement": "source_only_allowed"
         }
       ],
       "notes": "Captured Yahoo and AKShare HK gross-profit candidates exist, but provider raw field semantics are not proven; keep non-clean until provider semantics proof or selected PDF/derived review is added."
@@ -513,7 +513,7 @@
           "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Yahoo HK does not expose this field; CN-only akshare route by design. No captured proof yet; planned akshare_direct route via akshare direct remains expected."
     },
     "non_oper_income": {
       "domain": "income_statement",
@@ -529,7 +529,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Yahoo HK does not expose this field; CN-only akshare route by design. No captured proof yet; planned akshare_direct route via akshare direct remains expected."
     },
     "non_oper_exp": {
       "domain": "income_statement",
@@ -545,7 +545,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+      "notes": "Yahoo HK does not expose this field; CN-only akshare route by design. No captured proof yet; planned akshare_direct route via akshare direct remains expected."
     },
     "total_cur_assets": {
       "domain": "balance_sheet",
