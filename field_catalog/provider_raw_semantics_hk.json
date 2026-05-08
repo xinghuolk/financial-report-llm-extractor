@@ -243,6 +243,49 @@
       "turtle_field_id": "defer_tax_liab"
     },
     {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Inventory",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "00001",
+          "expected_provider_raw_value": "26688000000",
+          "pdf_page": 136,
+          "pdf_value": "26688",
+          "provider_ticker": "0001.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Inventories",
+          "statement_name": "Consolidated Statement of Financial Position"
+        },
+        {
+          "company_id": "01113",
+          "expected_provider_raw_value": "122799000000",
+          "pdf_page": 71,
+          "pdf_value": "122799",
+          "provider_ticker": "1113.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Properties for sale",
+          "statement_name": "Consolidated Statement of Financial Position"
+        }
+      ],
+      "semantic_claim": "inventory under IAS 2 (includes properties for sale for real estate developers)",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "inventories"
+    },
+    {
       "allowed_as_primary": false,
       "classification": "provider_semantics_unverified",
       "market": "HK",

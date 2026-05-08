@@ -233,6 +233,49 @@
       ]
     },
     {
+      "policy_id": "hk_yahoo_raw_hkd_pdf_verified:inventories",
+      "field_id": "inventories",
+      "classification": "yahoo_pdf_verified",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "allowed_yahoo_raw_fields": [
+        "Inventory"
+      ],
+      "samples": [
+        {
+          "company_id": "00001",
+          "provider_ticker": "0001.HK",
+          "report_ref": "downloads/hk_stocks/00001/annual/2025_annual_en.pdf",
+          "pdf_page": 136,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Inventories",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "26688",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "26688000000",
+          "yahoo_raw_field": "Inventory",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value"
+        },
+        {
+          "company_id": "01113",
+          "provider_ticker": "1113.HK",
+          "report_ref": "downloads/hk_stocks/01113/annual/2025_annual_en.pdf",
+          "pdf_page": 71,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Properties for sale",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "122799",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "122799000000",
+          "yahoo_raw_field": "Inventory",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Properties for sale is inventory under IAS 2 for real estate developers"
+        }
+      ]
+    },
+    {
       "policy_id": "hk_yahoo_raw_hkd_definition_unverified:gross_profit",
       "field_id": "gross_profit",
       "classification": "yahoo_definition_unverified",

@@ -71,6 +71,7 @@ EXPECTED_HK_METADATA_BLOCKER_FIELDS = frozenset(
 EXPECTED_HK_YAHOO_VERIFIED_FIELDS = frozenset(
     {
         "defer_tax_liab",
+        "inventories",
         "net_profit",
         "revenue",
         "total_assets",
@@ -689,7 +690,8 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
     # non_oper_income/non_oper_exp land in mapping_expansion_required for HK (partial provider data found).
     # 00001: equity_to_owners/operating_cost/operating_profit/sga all clean_present.
     # 01113: equity_to_owners/operating_cost/operating_profit clean; sga source_unavailable.
-    # fix_assets/accounts_receiv/acct_payable remain conflicts for HK; inventories conflict for 00001.
+    # fix_assets/accounts_receiv/acct_payable remain conflicts for HK.
+    # H1: inventories clean_present for both 00001 and 01113 (Yahoo Inventory proven against PDF).
     expected_clean_by_company = {
         "00001": {
             "cash",
@@ -697,6 +699,7 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
             "defer_tax_liab",
             "equity_attributable_to_owners",
             "financing_cash_flow",
+            "inventories",
             "investing_cash_flow",
             "lt_borr",
             "minority_int",
@@ -737,7 +740,7 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 20, "01113": 21}
+    expected_clean_count_by_company = {"00001": 21, "01113": 21}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]

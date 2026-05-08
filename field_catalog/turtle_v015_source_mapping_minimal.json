@@ -477,6 +477,26 @@
         "akshare": ["INVENTORY", "存货", "Inventories"],
         "yahoo": ["Inventory"]
       },
+      "source_policy": {
+        "semantic_concept": "inventories under IAS 2",
+        "semantic_variants": {
+          "akshare": {
+            "primary": ["INVENTORY", "存货"]
+          },
+          "yahoo": {
+            "primary": ["Inventory"]
+          }
+        },
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": ["akshare_direct"],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
       "pdf_aliases": ["inventories", "存货", "properties for sale"]
     },
     "money_cap": {
