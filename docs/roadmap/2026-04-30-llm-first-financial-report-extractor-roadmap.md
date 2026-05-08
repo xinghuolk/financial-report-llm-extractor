@@ -1219,12 +1219,15 @@ Cross-company generalization confirmed:
 - Bilingual Chinese/English labels handled (06862)
 - 478 tests passing, ruff clean
 
-Phase I-A.2 follow-ups (deferred):
+Phase I-A.2 follow-ups (status):
 1. ~~`invest_income` aliases expansion (HK joint-venture profit-sharing patterns)~~ **DONE 2026-05-08** — expanded pdf_aliases 1 → 7 + HK-specific description + aggregation guidance. 0/6 → 5/6 (83%) present. Catalog-only change; field-scoped maintenance validated. Overall coverage 21/36 → 26/36 (72%).
-2. Confidence calibration against human-verified accuracy
-3. Concurrent multi-company runner
-4. Restrict supplement merge to combined slice **DONE 2026-05-08** — gate added in `_write_slice` + integration test
-5. `selected_source="llm"` namespace clarification **DONE 2026-05-08** — inline comment documenting non-provider evidence source for batch onboarding
+2. ~~Confidence calibration against human-verified accuracy~~ **FRAMEWORK DONE 2026-05-08** — `--confidence-threshold` added to `extract-llm` and `extract-llm-batch`. Below-threshold `present` results demoted to `extraction_failed` with `low_confidence` error. Calibration workflow documented in `scripts/phase_i_a_demo/CALIBRATION.md`. Actual threshold value deferred until ~50+ labeled (company, field) pairs collected.
+3. ~~Concurrent multi-company runner~~ **DONE 2026-05-08** — new `extract-llm-batch` CLI + `structured_sources/llm_extraction_batch.py` module. ThreadPoolExecutor for IO-bound LLM/pdftotext. Per-company failure isolation. Default 3 workers configurable via `--workers`. JSON manifest input.
+4. ~~Restrict supplement merge to combined slice~~ **DONE 2026-05-08** — gate added in `_write_slice` + integration test
+5. ~~`selected_source="llm"` namespace clarification~~ **DONE 2026-05-08** — inline comment documenting non-provider evidence source
+6. ~~CLI extract-llm subprocess → Python API~~ **DONE 2026-05-08** — direct `ingest_pdf` and `build_chunk_store` calls; eliminates subprocess overhead
+
+Phase I-A.2 closed. All identified follow-ups addressed (1, 4, 5, 6 fully; 2 framework + deferred calibration; 3 fully). Next phases: Phase H deterministic PDF supplement (the 7 conflict fields from Bucket 2), or Phase N4 expansion to P2/P3 fields. for batch onboarding
 
 ## 6. Validation Commands
 
