@@ -1008,6 +1008,34 @@ Exit criteria:
 - 33-field denominator coverage is fully classified.
 - Phase H scope can be defined based on actual `pdf_required` field list, not speculation.
 
+### Phase N Implementation Result
+
+Status: implemented on 2026-05-08. Source mapping catalog expanded from 15 to 33 P0/P1 fields in four sub-phases.
+
+Implementation results:
+
+- **Phase N0** (catalog consistency gate): Added `tests/test_catalog_consistency.py` with 6 cross-catalog invariant tests covering source_mapping ↔ coverage_matrix, source_mapping ↔ taxonomy, provider_semantics ↔ source_mapping, trust_policy ↔ source_mapping, trust_policy ↔ provider_semantics, and priority list ↔ source_mapping.
+- **Phase N1.A**: Added inventories, money_cap, minority_int (simple `cash`-like pattern, no trust policy).
+- **Phase N1.B**: Added defer_tax_assets.
+- **Phase N1.C**: Added fix_assets, st_borr, lt_borr, accounts_receiv, acct_payable, other_cur_assets.
+- **Phase N2**: Added operating_cost, operating_profit, equity_attributable_to_owners, selling_general_administrative.
+- **Phase N3**: Added rd_exp, fv_value_chg_gain, non_oper_income, non_oper_exp (CN-only fields, HK marked source_unavailable or mapping_expansion_required by design).
+
+Final 33-field coverage:
+
+| Company | Market | Clean Present |
+|---------|--------|---------------|
+| 600519 | CN | 27/33 |
+| 00001 | HK | 20/33 |
+| 01113 | HK | 21/33 |
+
+Key architectural validation:
+
+- The simple source_mapping pattern (no trust policy) handles direct-match fields cleanly.
+- The architecture correctly surfaces conflicts (fix_assets 00001 due to Yahoo Net PPE including ROU; accounts_receiv/acct_payable HK due to PDF combined lines), source_policy_resolvable cases (st_borr/lt_borr 600519 because Maotai has no debt), and mapping_expansion_required (other_cur_assets 00001, non_oper_income/exp HK).
+- Phase H/I triggers are now concrete: HK conflict fields (fix_assets, accounts_receiv, acct_payable) need PDF supplement; HK source_unavailable fields (bond_payable, cip, invest_income, rd_exp, fv_value_chg_gain) need either PDF extraction or accepted as out-of-scope.
+- All 444 tests pass; ruff clean.
+
 ### Phase H/I: Triggered After N2/N3
 
 Phase H and Phase I remain designed but not implemented. Their actual trigger:
