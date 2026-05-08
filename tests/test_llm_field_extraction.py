@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 from decimal import Decimal
 from pathlib import Path
+
+import pytest
 
 from financial_report_llm_extractor.llm_field_extraction import (
     FieldExtractionRequest,
@@ -207,3 +210,110 @@ def test_run_extraction_archives_raw_response(tmp_path: Path) -> None:
     assert archive_path.exists()
     archived = json.loads(archive_path.read_text(encoding="utf-8"))
     assert archived["value"] == "280036000000"
+
+
+# ---------------------------------------------------------------------------
+# Task 6: Integration test against real chunk fixture
+# ---------------------------------------------------------------------------
+
+FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "pdf_chunks"
+CHUNKS_FIXTURE = FIXTURE_DIR / "00001_2025_chunks.jsonl"
+
+
+def _load_fixture_chunks() -> tuple[dict[str, object], ...]:
+    chunks: list[dict[str, object]] = []
+    for line in CHUNKS_FIXTURE.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            chunks.append(json.loads(line))
+    return tuple(chunks)
+
+
+def test_run_extraction_against_real_fixture_with_canned_response() -> None:
+    from financial_report_llm_extractor.llm_field_extraction import run_field_extraction
+
+    assert CHUNKS_FIXTURE.exists(), (
+        f"Fixture missing: {CHUNKS_FIXTURE}. Run Task 1 to generate it."
+    )
+
+    chunks = _load_fixture_chunks()
+    assert len(chunks) > 0, "fixture must contain at least one chunk"
+
+    request = FieldExtractionRequest(
+        field_id="revenue",
+        field_description="operating revenue",
+        statement_type="income_statement",
+        value_type="money",
+        chunks=chunks,
+        expected_currency="HKD",
+        expected_unit="raw",
+    )
+
+    # Canned LLM response with the known true value for 00001 2024 revenue
+    canned_response = {
+        "field_id": "revenue",
+        "found": True,
+        "value": "280036000000",
+        "currency": "HKD",
+        "unit": "raw",
+        "period": "2024-12-31",
+        "page": 134,
+        "statement_line": "Revenue",
+        "confidence": 0.95,
+        "reasoning": "found on income statement page 134",
+    }
+    client = FakeJsonClient(canned_response)
+
+    result = run_field_extraction(request, client)
+
+    assert result.status == "present"
+    assert result.parsed_numeric_value == Decimal("280036000000")
+    assert result.currency == "HKD"
+    assert result.page == 134
+
+
+# ---------------------------------------------------------------------------
+# Task 7: Opt-in real LLM smoke test
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    os.environ.get("REAL_LLM_SMOKE") != "1",
+    reason="Set REAL_LLM_SMOKE=1 and LLM_CONFIG_PATH to run real LLM smoke",
+)
+def test_real_llm_smoke_extracts_revenue_within_tolerance() -> None:
+    from financial_report_llm_extractor.llm_field_extraction import run_field_extraction
+    from financial_report_llm_extractor.llm_transport import (
+        LlmTransportConfig,
+        create_llm_client,
+    )
+
+    config_path = Path(os.environ["LLM_CONFIG_PATH"])
+    config = LlmTransportConfig.from_json(config_path)
+    client = create_llm_client(config)
+
+    chunks = _load_fixture_chunks()
+    request = FieldExtractionRequest(
+        field_id="revenue",
+        field_description="operating revenue",
+        statement_type="income_statement",
+        value_type="money",
+        chunks=chunks,
+        expected_currency="HKD",
+        expected_unit="raw",
+    )
+
+    archive_dir = Path("tmp/runs/llm_smoke")
+    result = run_field_extraction(request, client, raw_response_dir=archive_dir)
+
+    assert result.status == "present", (
+        f"smoke failed: status={result.status} errors={result.errors} "
+        f"raw={result.raw_response}"
+    )
+    assert result.parsed_numeric_value is not None
+
+    expected = Decimal("280036000000")
+    delta = abs(result.parsed_numeric_value - expected)
+    tolerance = expected * Decimal("0.05")
+    assert delta < tolerance, (
+        f"smoke value {result.parsed_numeric_value} outside ±5% of {expected}"
+    )
