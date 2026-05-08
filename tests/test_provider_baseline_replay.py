@@ -45,6 +45,20 @@ PROVIDER_BASELINE_REPLAY_SCRIPT_PATH = (
 )
 HK_YAHOO_TRUST_POLICY_PATH = REPO_ROOT / "field_catalog" / "hk_yahoo_trust_policy.json"
 
+
+def _expected_total_fields() -> int:
+    """Derive total field count from the source mapping catalog.
+
+    Why: hardcoding 33 means catalog growth requires manual updates in multiple
+    test files. Compute from the catalog so per-company expected_clean sets
+    stay as behavioral expectations while denominator tracks the catalog.
+    """
+    payload = json.loads(SOURCE_MAPPING_CATALOG_PATH.read_text(encoding="utf-8"))
+    return len(payload["source_mappings"])
+
+
+EXPECTED_TOTAL_FIELDS = _expected_total_fields()
+
 HK_COMPANY_IDS = ("00001", "01113")
 EXPECTED_HK_METADATA_BLOCKER_FIELDS = frozenset(
     {
@@ -483,7 +497,7 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
         "600519",
     }
     assert all(
-        company["coverage"]["combined"]["total_fields"] == 33
+        company["coverage"]["combined"]["total_fields"] == EXPECTED_TOTAL_FIELDS
         for company in payload["companies"]
     )
     companies = {company["company_id"]: company for company in payload["companies"]}
@@ -718,7 +732,7 @@ def test_checked_in_hk_replay_reports_exact_33_field_closure_buckets(
 
         assert set(combined["clean_present_fields"]) == expected_clean_by_company[company_id]
         assert combined["clean_present_count"] == expected_clean_count_by_company[company_id]
-        assert combined["total_fields"] == 33
+        assert combined["total_fields"] == EXPECTED_TOTAL_FIELDS
         assert set(review["yahoo_definition_unverified_fields"]) == {
             "gross_profit",
         }

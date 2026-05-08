@@ -19,6 +19,17 @@ from financial_report_llm_extractor.structured_sources.real_source_validation im
 )
 
 
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_SOURCE_MAPPING_CATALOG_PATH = (
+    _REPO_ROOT / "field_catalog" / "turtle_v015_source_mapping_minimal.json"
+)
+EXPECTED_TOTAL_FIELDS = len(
+    json.loads(_SOURCE_MAPPING_CATALOG_PATH.read_text(encoding="utf-8"))[
+        "source_mappings"
+    ]
+)
+
+
 class FakeAkshareClient:
     def stock_financial_hk_report_em(
         self,
@@ -604,7 +615,7 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "total_liabilities",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 9
-    assert result.summary["mapping_coverage"]["total_fields"] == 33
+    assert result.summary["mapping_coverage"]["total_fields"] == EXPECTED_TOTAL_FIELDS
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )
@@ -656,7 +667,7 @@ def test_captured_source_validation_yahoo_fixture_covers_income_fields(
         "revenue",
     ]
     assert result.summary["mapping_coverage"]["covered_count"] == 3
-    assert result.summary["mapping_coverage"]["total_fields"] == 33
+    assert result.summary["mapping_coverage"]["total_fields"] == EXPECTED_TOTAL_FIELDS
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )
