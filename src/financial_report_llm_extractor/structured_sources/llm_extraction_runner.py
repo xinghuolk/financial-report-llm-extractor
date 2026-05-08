@@ -304,3 +304,13 @@ def write_llm_evidence_supplement(result: LlmExtractionRunResult) -> Path:
         encoding="utf-8",
     )
     return result.artifact_path
+
+
+def load_chunks_jsonl(path: Path) -> list[dict[str, object]]:
+    """Read a chunks.jsonl file produced by the chunk CLI command."""
+    chunks: list[dict[str, object]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            chunks.append(json.loads(line))
+    return chunks

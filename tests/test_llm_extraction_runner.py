@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import cast
 
 from financial_report_llm_extractor.field_metadata import (
@@ -18,9 +20,13 @@ from financial_report_llm_extractor.structured_sources.catalog import (
 )
 from financial_report_llm_extractor.structured_sources.models import SourceValueType
 from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+    LlmExtractionRunResult,
     LlmExtractionTarget,
     derive_targets,
+    extract_for_chunks,
+    load_chunks_jsonl,
     select_chunks,
+    write_llm_evidence_supplement,
 )
 
 
@@ -77,6 +83,10 @@ def _taxonomy(entries: list[FieldTaxonomyEntry]) -> FieldTaxonomyCatalog:
         fields={e.field_id: e for e in entries},
     )
 
+
+# ---------------------------------------------------------------------------
+# Task 1: derive_targets
+# ---------------------------------------------------------------------------
 
 def test_derive_targets_uses_taxonomy_description() -> None:
     catalog = _catalog([
@@ -144,6 +154,10 @@ def test_derive_target_chooses_broad_keyword_for_few_aliases() -> None:
     target = derive_targets(catalog, taxonomy, priorities=("P0",))[0]
     assert target.chunk_strategy == "broad_keyword"
 
+
+# ---------------------------------------------------------------------------
+# Task 2: select_chunks
+# ---------------------------------------------------------------------------
 
 def _chunk(chunk_id: str, page: int, text: str,
            statement_type: str | None = None) -> dict[str, object]:
@@ -254,15 +268,6 @@ def test_select_chunks_alias_top_k_returns_empty_when_no_match() -> None:
 # Task 3: extract_for_chunks orchestrator
 # ---------------------------------------------------------------------------
 
-import json
-from pathlib import Path
-
-from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
-    LlmExtractionRunResult,
-    extract_for_chunks,
-)
-
-
 class _CannedJsonClient:
     """Returns canned response per field_id from request payload."""
 
@@ -363,11 +368,6 @@ def test_extract_for_chunks_marks_field_not_found_when_no_chunks_selected(
 # Task 4: write_llm_evidence_supplement
 # ---------------------------------------------------------------------------
 
-from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
-    write_llm_evidence_supplement,
-)
-
-
 def test_write_llm_evidence_supplement_produces_well_formed_artifact(
     tmp_path: Path,
 ) -> None:
@@ -404,3 +404,23 @@ def test_write_llm_evidence_supplement_produces_well_formed_artifact(
     assert item["value"] == "168838"
     assert item["currency"] == "CNY"
     assert item["page"] == 4
+
+
+# ---------------------------------------------------------------------------
+# Task 5: load_chunks_jsonl helper
+# ---------------------------------------------------------------------------
+
+def test_load_chunks_jsonl_parses_one_chunk_per_line(tmp_path: Path) -> None:
+    chunks_file = tmp_path / "chunks.jsonl"
+    chunks_file.write_text(
+        '{"chunk_id": "c1", "page": 1, "text": "a"}\n'
+        '\n'
+        '{"chunk_id": "c2", "page": 2, "text": "b"}\n',
+        encoding="utf-8",
+    )
+
+    chunks = load_chunks_jsonl(chunks_file)
+
+    assert len(chunks) == 2
+    assert chunks[0]["chunk_id"] == "c1"
+    assert chunks[1]["text"] == "b"
