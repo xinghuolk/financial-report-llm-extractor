@@ -1181,6 +1181,49 @@ Implementation result:
 
 Phase I-A (HK notes-level extraction) builds on this module. Field-specific prompt overrides come when notes-pattern failures surface.
 
+### Phase I-A Implementation Result
+
+Status: implemented on 2026-05-08. See:
+- `docs/superpowers/specs/2026-05-08-phase-i-a-llm-notes-extraction.md`
+- `docs/superpowers/plans/2026-05-08-phase-i-a-llm-notes-extraction.md`
+- `scripts/phase_i_a_demo/REPORT.md` (feasibility demo)
+- `scripts/phase_i_a_demo/VALIDATION.md` (production validation)
+
+Goal: Generalizable LLM-assisted field extraction for HK fields where source-first replay produces source_unavailable / mapping_expansion_required.
+
+Implementation:
+
+- New module `src/financial_report_llm_extractor/structured_sources/llm_extraction_runner.py` with `LlmExtractionTarget`, `derive_targets`, `select_chunks` (alias_top_k or broad_keyword), `extract_for_chunks`, `write_llm_evidence_supplement`.
+- New CLI `extract-llm` subcommand: ingests + chunks a PDF, derives targets from catalog metadata, runs LLM per field, writes `llm_evidence_supplement.json`.
+- `provider_baseline_replay` half-integration: detects per-company `llm_evidence_supplement.json` and merges `present` values into export for fields source-first didn't cover. Never overrides clean source values.
+
+Validation across 6 HK companies × 6 target fields = 36 (company, field) extractions:
+
+| Field | 00001 | 01113 | 01810 | 02498 | 06862 | 09987 |
+|-------|-------|-------|-------|-------|-------|-------|
+| accounts_receiv | ✓ 14,952 | ✓ 2,028 | ✓ 12,662,060 | ✓ 410,611 | ✓ 346,347 | ✓ 95 |
+| acct_payable | ✓ 22,632 | ✓ 3,607 | ✓ 98,280,585 | ✓ 475,825 | ✓ 1,796,362 | ✓ 793 |
+| bond_payable | ✓ 165,366 | ✓ 51,400 | N/A | N/A | ✓ 2,027,867 | N/A |
+| fv_value_chg_gain | N/A | N/A | ✓ 1,050,800 | ✓ 2,799 | ✓ 194,297 | N/A |
+| invest_income | N/A | N/A | N/A | N/A | N/A | N/A |
+| rd_exp | N/A | N/A | ✓ 24,050.5 | ✓ 615,434 | N/A | ✓ 8 |
+
+- Present: 21/36 (58%); Not found: 15/36 (42%); Failed: 0/36
+- Most `not_found` are architecturally correct (company doesn't disclose the field).
+- Outlier: `invest_income` is `not_found` for all 6 companies — suggests its `pdf_aliases`/description need iteration. Phase I-A.2 candidate.
+
+Cross-company generalization confirmed:
+- Zero per-company code or catalog changes
+- 4 of 6 companies (01810, 02498, 06862, 09987) had never been used during prior source-first phases
+- Same code handled CK Hutchison (telecom conglomerate), CK Asset (real estate), Xiaomi (tech), Haidilao (restaurants), Yum China — vastly different layouts and currencies (HKD/RMB)
+- Bilingual Chinese/English labels handled (06862)
+- 478 tests passing, ruff clean
+
+Phase I-A.2 follow-ups (deferred):
+1. `invest_income` aliases expansion (HK joint-venture profit-sharing patterns)
+2. Confidence calibration against human-verified accuracy
+3. Concurrent multi-company runner for batch onboarding
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:
