@@ -80,8 +80,12 @@ Demo previously verified more pairs (`scripts/phase_i_a_demo/REPORT.md`).
 
 ## Known follow-ups (Phase I-A.2 candidates)
 
-1. `invest_income` aliases need expansion to capture HK joint-venture profit
-   sharing patterns
+1. ~~`invest_income` aliases need expansion to capture HK joint-venture profit
+   sharing patterns~~ **RESOLVED in Phase I-A.2** (2026-05-08): aliases expanded
+   from 1 → 7 + HK-specific description with aggregation guidance. Result:
+   5/6 (83%) present. LLM correctly aggregates multi-component cases (00001:
+   Associated + Joint ventures = 19,974) and single-line cases (01810, 02498).
+   06862 correctly returns not_found (restaurant chain with no investments).
 2. Some extracted values across companies use different units (raw / thousand /
    million); downstream money normalizer must reconcile based on `unit` field
 3. Confidence calibration: collect LLM confidence scores against human-verified
@@ -92,3 +96,51 @@ Demo previously verified more pairs (`scripts/phase_i_a_demo/REPORT.md`).
 - Smoke runner: `scripts/run-phase-i-a-smoke.sh`
 - Per-company artifacts: `tmp/runs/phase_i_a_validation/{ticker}/llm_evidence_supplement.json`
 - Demo (parallel exploration): `scripts/phase_i_a_demo/run_demo.py`
+
+---
+
+## Phase I-A.2 update (2026-05-08): invest_income resolution
+
+**Problem**: After Phase I-A, `invest_income` was the single field returning
+`not_found` across ALL 6 HK companies. Initial config was `pdf_aliases=["investment income"]`
++ vague description. HK income statements never use the literal "investment income"
+phrase — instead they report scattered components like "Share of profits less
+losses of: Associated companies / Joint ventures", "Investment and others",
+"Equity in net earnings from equity method investments".
+
+**Fix**: Two-pronged catalog-only change (no code changes):
+
+1. Expanded `pdf_aliases` from 1 → 7 precision-focused terms:
+   - share of profits of joint ventures
+   - share of profits less losses
+   - share of profits of associated companies
+   - share of net profits of investments
+   - share of net profit
+   - equity in net earnings
+   - investment and others
+
+2. Updated `taxonomy.fields[invest_income].description` with HK-specific
+   guidance + explicit aggregation instruction ("if multiple equity-method
+   components appear, SUM them; report best-effort identifiable investment
+   income; do not require the full set to be present").
+
+**Result**: 0/6 → **5/6 (83%) present**.
+
+| Company | Value | Page | LLM behavior |
+|---------|-------|------|--------------|
+| 00001 | 19,974 | 134 | Correctly summed Associated 8,900 + Joint ventures 11,074 |
+| 01113 | 2,841 | 70 | Aggregated Investment and others + Interest from JV |
+| 01810 | 276.8 | 27 | Single line: Share of net profits of investments |
+| 02498 | 10,473 | 9 | Single line: Share of net profit of an associate |
+| 06862 | not_found | - | Correctly identified restaurant chain has no investments |
+| 09987 | 15 | 80 | Single line: Equity in net earnings from equity method |
+
+**Key architectural validation**: The fix is **field-scoped, not company-scoped**.
+Adding 6 aliases + better description benefited ALL companies simultaneously.
+This contrasts with the report-collector dead-end where alias maintenance
+became per-company maintenance. Phase I-A.2 confirms that with LLM in the
+extraction loop, aliases serve as chunk-selection hints (not extraction logic),
+keeping maintenance burden bounded.
+
+**Updated overall 6-field coverage**: 21/36 (58%) → 26/36 (72%) after just
+this one field's alias expansion.

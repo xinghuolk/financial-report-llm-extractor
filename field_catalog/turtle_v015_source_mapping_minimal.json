@@ -62,18 +62,37 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["OPERATE_INCOME", "营业收入", "Revenue", "TOTAL_OPERATE_INCOME", "营业总收入", "Total revenue"],
-        "yahoo": ["Total Revenue", "Operating Revenue"]
+        "akshare": [
+          "OPERATE_INCOME",
+          "营业收入",
+          "Revenue",
+          "TOTAL_OPERATE_INCOME",
+          "营业总收入",
+          "Total revenue"
+        ],
+        "yahoo": [
+          "Total Revenue",
+          "Operating Revenue"
+        ]
       },
       "source_policy": {
         "semantic_concept": "operating revenue",
         "semantic_variants": {
           "akshare": {
-            "primary": ["OPERATE_INCOME", "营业收入"],
-            "related": ["TOTAL_OPERATE_INCOME", "营业总收入"]
+            "primary": [
+              "OPERATE_INCOME",
+              "营业收入"
+            ],
+            "related": [
+              "TOTAL_OPERATE_INCOME",
+              "营业总收入"
+            ]
           },
           "yahoo": {
-            "primary": ["Total Revenue", "Operating Revenue"]
+            "primary": [
+              "Total Revenue",
+              "Operating Revenue"
+            ]
           }
         },
         "market_policies": {
@@ -85,14 +104,19 @@
           },
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": true
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["revenue", "营业收入"]
+      "pdf_aliases": [
+        "revenue",
+        "营业收入"
+      ]
     },
     "net_profit": {
       "value_type": "money",
@@ -105,7 +129,13 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["PARENT_NETPROFIT", "归属于母公司股东的净利润", "Profit attributable to shareholders", "NETPROFIT", "净利润"],
+        "akshare": [
+          "PARENT_NETPROFIT",
+          "归属于母公司股东的净利润",
+          "Profit attributable to shareholders",
+          "NETPROFIT",
+          "净利润"
+        ],
         "yahoo": [
           "Net Income Common Stockholders",
           "Net Income",
@@ -116,11 +146,19 @@
         "semantic_concept": "profit attributable to parent-company shareholders",
         "semantic_variants": {
           "akshare": {
-            "primary": ["PARENT_NETPROFIT", "归属于母公司股东的净利润"],
-            "related": ["NETPROFIT", "净利润"]
+            "primary": [
+              "PARENT_NETPROFIT",
+              "归属于母公司股东的净利润"
+            ],
+            "related": [
+              "NETPROFIT",
+              "净利润"
+            ]
           },
           "yahoo": {
-            "primary": ["Net Income Common Stockholders"],
+            "primary": [
+              "Net Income Common Stockholders"
+            ],
             "related": [
               "Net Income",
               "Net Income From Continuing Operation Net Minority Interest"
@@ -130,20 +168,28 @@
         "market_policies": {
           "CN": {
             "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": true
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["net profit", "profit attributable", "净利润"]
+      "pdf_aliases": [
+        "net profit",
+        "profit attributable",
+        "净利润"
+      ]
     },
     "total_assets": {
       "value_type": "money",
@@ -156,8 +202,15 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["资产总计", "总资产", "Total assets", "TOTAL_ASSETS"],
-        "yahoo": ["Total Assets"]
+        "akshare": [
+          "资产总计",
+          "总资产",
+          "Total assets",
+          "TOTAL_ASSETS"
+        ],
+        "yahoo": [
+          "Total Assets"
+        ]
       },
       "source_policy": {
         "semantic_concept": "reported statement line",
@@ -165,20 +218,27 @@
         "market_policies": {
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },
           "CN": {
             "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
             "on_conflict": "preserve_conflict",
             "single_source_requires_pdf": false
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["total assets", "资产总计"]
+      "pdf_aliases": [
+        "total assets",
+        "资产总计"
+      ]
     },
     "total_liabilities": {
       "value_type": "money",
@@ -191,8 +251,16 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["负债合计", "总负债", "Total liabilities", "TOTAL_LIABILITIES"],
-        "yahoo": ["Total Liabilities Net Minority Interest", "Total Liabilities"]
+        "akshare": [
+          "负债合计",
+          "总负债",
+          "Total liabilities",
+          "TOTAL_LIABILITIES"
+        ],
+        "yahoo": [
+          "Total Liabilities Net Minority Interest",
+          "Total Liabilities"
+        ]
       },
       "source_policy": {
         "semantic_concept": "reported statement line",
@@ -200,20 +268,27 @@
         "market_policies": {
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },
           "CN": {
             "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
             "on_conflict": "preserve_conflict",
             "single_source_requires_pdf": false
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["total liabilities", "负债合计"]
+      "pdf_aliases": [
+        "total liabilities",
+        "负债合计"
+      ]
     },
     "cash": {
       "value_type": "money",
@@ -226,10 +301,21 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["货币资金", "Cash and cash equivalents", "MONETARYFUNDS", "MONETARY_FUNDS"],
-        "yahoo": ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"]
+        "akshare": [
+          "货币资金",
+          "Cash and cash equivalents",
+          "MONETARYFUNDS",
+          "MONETARY_FUNDS"
+        ],
+        "yahoo": [
+          "Cash And Cash Equivalents",
+          "Cash Cash Equivalents And Short Term Investments"
+        ]
       },
-      "pdf_aliases": ["cash and cash equivalents", "货币资金"]
+      "pdf_aliases": [
+        "cash and cash equivalents",
+        "货币资金"
+      ]
     },
     "operating_cash_flow": {
       "value_type": "money",
@@ -242,10 +328,22 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["经营活动产生的现金流量净额", "经营活动现金流量净额", "Net cash generated from operating activities", "NETCASH_OPERATE", "NET_CASH_FLOWS_OPERATE"],
-        "yahoo": ["Operating Cash Flow", "Total Cash From Operating Activities"]
+        "akshare": [
+          "经营活动产生的现金流量净额",
+          "经营活动现金流量净额",
+          "Net cash generated from operating activities",
+          "NETCASH_OPERATE",
+          "NET_CASH_FLOWS_OPERATE"
+        ],
+        "yahoo": [
+          "Operating Cash Flow",
+          "Total Cash From Operating Activities"
+        ]
       },
-      "pdf_aliases": ["operating cash flow", "经营活动产生的现金流量净额"]
+      "pdf_aliases": [
+        "operating cash flow",
+        "经营活动产生的现金流量净额"
+      ]
     },
     "investing_cash_flow": {
       "value_type": "money",
@@ -258,9 +356,13 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "yahoo": ["Investing Cash Flow"]
+        "yahoo": [
+          "Investing Cash Flow"
+        ]
       },
-      "pdf_aliases": ["investing cash flow"]
+      "pdf_aliases": [
+        "investing cash flow"
+      ]
     },
     "financing_cash_flow": {
       "value_type": "money",
@@ -273,9 +375,13 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "yahoo": ["Financing Cash Flow"]
+        "yahoo": [
+          "Financing Cash Flow"
+        ]
       },
-      "pdf_aliases": ["financing cash flow"]
+      "pdf_aliases": [
+        "financing cash flow"
+      ]
     },
     "bond_payable": {
       "value_type": "money",
@@ -289,9 +395,13 @@
       "fallback_policy": "pdf_allowed",
       "null_means_zero": true,
       "source_aliases": {
-        "akshare": ["BOND_PAYABLE"]
+        "akshare": [
+          "BOND_PAYABLE"
+        ]
       },
-      "pdf_aliases": ["bonds payable"]
+      "pdf_aliases": [
+        "bonds payable"
+      ]
     },
     "cip": {
       "value_type": "money",
@@ -304,9 +414,13 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["CIP"]
+        "akshare": [
+          "CIP"
+        ]
       },
-      "pdf_aliases": ["construction in progress"]
+      "pdf_aliases": [
+        "construction in progress"
+      ]
     },
     "invest_income": {
       "value_type": "money",
@@ -319,9 +433,19 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["INVEST_INCOME"]
+        "akshare": [
+          "INVEST_INCOME"
+        ]
       },
-      "pdf_aliases": ["investment income"]
+      "pdf_aliases": [
+        "share of profits of joint ventures",
+        "share of profits less losses",
+        "share of profits of associated companies",
+        "share of net profits of investments",
+        "share of net profit",
+        "equity in net earnings",
+        "investment and others"
+      ]
     },
     "gross_profit": {
       "value_type": "money",
@@ -334,8 +458,15 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["毛利", "Gross profit", "GROSSPROFIT", "GROSS_PROFIT"],
-        "yahoo": ["Gross Profit"]
+        "akshare": [
+          "毛利",
+          "Gross profit",
+          "GROSSPROFIT",
+          "GROSS_PROFIT"
+        ],
+        "yahoo": [
+          "Gross Profit"
+        ]
       },
       "source_policy": {
         "semantic_concept": "reported statement line",
@@ -343,20 +474,27 @@
         "market_policies": {
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": true
           },
           "CN": {
             "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
             "on_conflict": "preserve_conflict",
             "single_source_requires_pdf": false
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["gross profit", "毛利"]
+      "pdf_aliases": [
+        "gross profit",
+        "毛利"
+      ]
     },
     "total_cur_assets": {
       "value_type": "money",
@@ -369,8 +507,15 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["流动资产合计", "Total current assets", "TOTAL_CURRENT_ASSETS"],
-        "yahoo": ["Current Assets", "Total Current Assets"]
+        "akshare": [
+          "流动资产合计",
+          "Total current assets",
+          "TOTAL_CURRENT_ASSETS"
+        ],
+        "yahoo": [
+          "Current Assets",
+          "Total Current Assets"
+        ]
       },
       "source_policy": {
         "semantic_concept": "reported statement line",
@@ -378,20 +523,27 @@
         "market_policies": {
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },
           "CN": {
             "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
             "on_conflict": "preserve_conflict",
             "single_source_requires_pdf": false
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["current assets", "流动资产合计"]
+      "pdf_aliases": [
+        "current assets",
+        "流动资产合计"
+      ]
     },
     "total_cur_liab": {
       "value_type": "money",
@@ -404,8 +556,15 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["流动负债合计", "Total current liabilities", "TOTAL_CURRENT_LIAB"],
-        "yahoo": ["Current Liabilities", "Total Current Liabilities"]
+        "akshare": [
+          "流动负债合计",
+          "Total current liabilities",
+          "TOTAL_CURRENT_LIAB"
+        ],
+        "yahoo": [
+          "Current Liabilities",
+          "Total Current Liabilities"
+        ]
       },
       "source_policy": {
         "semantic_concept": "reported statement line",
@@ -413,20 +572,27 @@
         "market_policies": {
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           },
           "CN": {
             "primary_route": "akshare_direct",
-            "cross_check_routes": ["yahoo_direct"],
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
             "on_conflict": "preserve_conflict",
             "single_source_requires_pdf": false
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["current liabilities", "流动负债合计"]
+      "pdf_aliases": [
+        "current liabilities",
+        "流动负债合计"
+      ]
     },
     "defer_tax_liab": {
       "value_type": "money",
@@ -461,7 +627,9 @@
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["deferred tax liabilities"]
+      "pdf_aliases": [
+        "deferred tax liabilities"
+      ]
     },
     "inventories": {
       "value_type": "money",
@@ -474,30 +642,47 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["INVENTORY", "存货", "Inventories"],
-        "yahoo": ["Inventory"]
+        "akshare": [
+          "INVENTORY",
+          "存货",
+          "Inventories"
+        ],
+        "yahoo": [
+          "Inventory"
+        ]
       },
       "source_policy": {
         "semantic_concept": "inventories under IAS 2",
         "semantic_variants": {
           "akshare": {
-            "primary": ["INVENTORY", "存货"]
+            "primary": [
+              "INVENTORY",
+              "存货"
+            ]
           },
           "yahoo": {
-            "primary": ["Inventory"]
+            "primary": [
+              "Inventory"
+            ]
           }
         },
         "market_policies": {
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["inventories", "存货", "properties for sale"]
+      "pdf_aliases": [
+        "inventories",
+        "存货",
+        "properties for sale"
+      ]
     },
     "money_cap": {
       "value_type": "money",
@@ -510,10 +695,21 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["MONEY_CAP", "MONETARYFUNDS", "MONETARY_FUNDS", "货币资金"],
-        "yahoo": ["Cash And Cash Equivalents"]
+        "akshare": [
+          "MONEY_CAP",
+          "MONETARYFUNDS",
+          "MONETARY_FUNDS",
+          "货币资金"
+        ],
+        "yahoo": [
+          "Cash And Cash Equivalents"
+        ]
       },
-      "pdf_aliases": ["cash and cash equivalents", "bank balances and deposits", "货币资金"]
+      "pdf_aliases": [
+        "cash and cash equivalents",
+        "bank balances and deposits",
+        "货币资金"
+      ]
     },
     "defer_tax_assets": {
       "value_type": "money",
@@ -526,10 +722,16 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["DEFER_TAX_ASSET"],
-        "yahoo": ["Non Current Deferred Taxes Assets"]
+        "akshare": [
+          "DEFER_TAX_ASSET"
+        ],
+        "yahoo": [
+          "Non Current Deferred Taxes Assets"
+        ]
       },
-      "pdf_aliases": ["deferred tax assets"]
+      "pdf_aliases": [
+        "deferred tax assets"
+      ]
     },
     "minority_int": {
       "value_type": "money",
@@ -542,10 +744,18 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["MINORITY_EQUITY"],
-        "yahoo": ["Minority Interest"]
+        "akshare": [
+          "MINORITY_EQUITY"
+        ],
+        "yahoo": [
+          "Minority Interest"
+        ]
       },
-      "pdf_aliases": ["non-controlling interests", "minority interest", "少数股东权益"]
+      "pdf_aliases": [
+        "non-controlling interests",
+        "minority interest",
+        "少数股东权益"
+      ]
     },
     "fix_assets": {
       "value_type": "money",
@@ -558,10 +768,19 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["FIX_ASSET", "固定资产"],
-        "yahoo": ["Net PPE"]
+        "akshare": [
+          "FIX_ASSET",
+          "固定资产"
+        ],
+        "yahoo": [
+          "Net PPE"
+        ]
       },
-      "pdf_aliases": ["fixed assets", "property plant and equipment", "固定资产"]
+      "pdf_aliases": [
+        "fixed assets",
+        "property plant and equipment",
+        "固定资产"
+      ]
     },
     "st_borr": {
       "value_type": "money",
@@ -575,10 +794,19 @@
       "fallback_policy": "pdf_allowed",
       "null_means_zero": true,
       "source_aliases": {
-        "akshare": ["SHORT_LOAN", "短期借款"],
-        "yahoo": ["Current Debt"]
+        "akshare": [
+          "SHORT_LOAN",
+          "短期借款"
+        ],
+        "yahoo": [
+          "Current Debt"
+        ]
       },
-      "pdf_aliases": ["short-term borrowings", "bank and other debts current", "短期借款"]
+      "pdf_aliases": [
+        "short-term borrowings",
+        "bank and other debts current",
+        "短期借款"
+      ]
     },
     "lt_borr": {
       "value_type": "money",
@@ -592,10 +820,19 @@
       "fallback_policy": "pdf_allowed",
       "null_means_zero": true,
       "source_aliases": {
-        "akshare": ["LONG_LOAN", "长期借款"],
-        "yahoo": ["Long Term Debt"]
+        "akshare": [
+          "LONG_LOAN",
+          "长期借款"
+        ],
+        "yahoo": [
+          "Long Term Debt"
+        ]
       },
-      "pdf_aliases": ["long-term borrowings", "bank and other debts non-current", "长期借款"]
+      "pdf_aliases": [
+        "long-term borrowings",
+        "bank and other debts non-current",
+        "长期借款"
+      ]
     },
     "accounts_receiv": {
       "value_type": "money",
@@ -608,10 +845,21 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["ACCOUNTS_RECE", "应收帐款", "应收账款"],
-        "yahoo": ["Accounts Receivable"]
+        "akshare": [
+          "ACCOUNTS_RECE",
+          "应收帐款",
+          "应收账款"
+        ],
+        "yahoo": [
+          "Accounts Receivable"
+        ]
       },
-      "pdf_aliases": ["accounts receivable", "trade receivables", "debtors", "应收账款"]
+      "pdf_aliases": [
+        "accounts receivable",
+        "trade receivables",
+        "debtors",
+        "应收账款"
+      ]
     },
     "acct_payable": {
       "value_type": "money",
@@ -624,10 +872,21 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["ACCOUNTS_PAYABLE", "应付帐款", "应付账款"],
-        "yahoo": ["Accounts Payable"]
+        "akshare": [
+          "ACCOUNTS_PAYABLE",
+          "应付帐款",
+          "应付账款"
+        ],
+        "yahoo": [
+          "Accounts Payable"
+        ]
       },
-      "pdf_aliases": ["accounts payable", "trade payables", "creditors", "应付账款"]
+      "pdf_aliases": [
+        "accounts payable",
+        "trade payables",
+        "creditors",
+        "应付账款"
+      ]
     },
     "other_cur_assets": {
       "value_type": "money",
@@ -640,10 +899,18 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["OTHER_CUR_ASSET", "其他流动资产"],
-        "yahoo": ["Other Current Assets"]
+        "akshare": [
+          "OTHER_CUR_ASSET",
+          "其他流动资产"
+        ],
+        "yahoo": [
+          "Other Current Assets"
+        ]
       },
-      "pdf_aliases": ["other current assets", "其他流动资产"]
+      "pdf_aliases": [
+        "other current assets",
+        "其他流动资产"
+      ]
     },
     "equity_attributable_to_owners": {
       "value_type": "money",
@@ -656,10 +923,20 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["EQUITY_PARENT_COMPANY", "归属于母公司股东权益"],
-        "yahoo": ["Stockholders Equity", "Common Stock Equity"]
+        "akshare": [
+          "EQUITY_PARENT_COMPANY",
+          "归属于母公司股东权益"
+        ],
+        "yahoo": [
+          "Stockholders Equity",
+          "Common Stock Equity"
+        ]
       },
-      "pdf_aliases": ["total ordinary shareholders' funds", "stockholders equity", "归属于母公司股东权益"]
+      "pdf_aliases": [
+        "total ordinary shareholders' funds",
+        "stockholders equity",
+        "归属于母公司股东权益"
+      ]
     },
     "operating_cost": {
       "value_type": "money",
@@ -672,10 +949,22 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["OPERATE_COST", "TOTAL_OPERATE_COST", "营业成本", "营业总成本"],
-        "yahoo": ["Cost Of Revenue", "Reconciled Cost Of Revenue"]
+        "akshare": [
+          "OPERATE_COST",
+          "TOTAL_OPERATE_COST",
+          "营业成本",
+          "营业总成本"
+        ],
+        "yahoo": [
+          "Cost Of Revenue",
+          "Reconciled Cost Of Revenue"
+        ]
       },
-      "pdf_aliases": ["operating costs", "cost of revenue", "营业成本"]
+      "pdf_aliases": [
+        "operating costs",
+        "cost of revenue",
+        "营业成本"
+      ]
     },
     "operating_profit": {
       "value_type": "money",
@@ -688,17 +977,27 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["OPERATE_PROFIT", "营业利润"],
-        "yahoo": ["Operating Income"]
+        "akshare": [
+          "OPERATE_PROFIT",
+          "营业利润"
+        ],
+        "yahoo": [
+          "Operating Income"
+        ]
       },
       "source_policy": {
         "semantic_concept": "operating profit",
         "semantic_variants": {
           "akshare": {
-            "primary": ["OPERATE_PROFIT", "营业利润"]
+            "primary": [
+              "OPERATE_PROFIT",
+              "营业利润"
+            ]
           },
           "yahoo": {
-            "primary": ["Operating Income"]
+            "primary": [
+              "Operating Income"
+            ]
           }
         },
         "market_policies": {
@@ -710,14 +1009,20 @@
           },
           "HK": {
             "primary_route": "yahoo_direct",
-            "cross_check_routes": ["akshare_direct"],
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
             "on_conflict": "select_primary_require_pdf",
             "single_source_requires_pdf": false
           }
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["operating profit", "operating income", "营业利润"]
+      "pdf_aliases": [
+        "operating profit",
+        "operating income",
+        "营业利润"
+      ]
     },
     "selling_general_administrative": {
       "value_type": "money",
@@ -730,19 +1035,36 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["MANAGE_EXPENSE", "SELLING_EXPENSE", "SALE_EXPENSE", "管理费用", "销售费用"],
-        "yahoo": ["Selling General And Administration"]
+        "akshare": [
+          "MANAGE_EXPENSE",
+          "SELLING_EXPENSE",
+          "SALE_EXPENSE",
+          "管理费用",
+          "销售费用"
+        ],
+        "yahoo": [
+          "Selling General And Administration"
+        ]
       },
       "source_policy": {
         "semantic_concept": "selling general and administrative expenses",
         "notes": "AKShare CN reports SGA as 2 separate fields (SELLING_EXPENSE/SALE_EXPENSE + MANAGE_EXPENSE) requiring derivation; single MANAGE_EXPENSE alias is incomplete. Yahoo Selling General And Administration aggregates both but has not been provider-semantics-proven. Field stays non-clean for CN until derivation or proof is implemented.",
         "semantic_variants": {
           "akshare": {
-            "primary": ["MANAGE_EXPENSE", "管理费用"],
-            "related": ["SELLING_EXPENSE", "SALE_EXPENSE", "销售费用"]
+            "primary": [
+              "MANAGE_EXPENSE",
+              "管理费用"
+            ],
+            "related": [
+              "SELLING_EXPENSE",
+              "SALE_EXPENSE",
+              "销售费用"
+            ]
           },
           "yahoo": {
-            "primary": ["Selling General And Administration"]
+            "primary": [
+              "Selling General And Administration"
+            ]
           }
         },
         "market_policies": {
@@ -761,7 +1083,12 @@
         },
         "verification_requirement": "pdf_required_on_conflict"
       },
-      "pdf_aliases": ["selling general and administrative", "management expenses", "销售费用", "管理费用"]
+      "pdf_aliases": [
+        "selling general and administrative",
+        "management expenses",
+        "销售费用",
+        "管理费用"
+      ]
     },
     "rd_exp": {
       "value_type": "money",
@@ -774,10 +1101,19 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["RESEARCH_EXPENSE", "研发费用"],
-        "yahoo": ["Research And Development"]
+        "akshare": [
+          "RESEARCH_EXPENSE",
+          "研发费用"
+        ],
+        "yahoo": [
+          "Research And Development"
+        ]
       },
-      "pdf_aliases": ["research and development", "research expense", "研发费用"]
+      "pdf_aliases": [
+        "research and development",
+        "research expense",
+        "研发费用"
+      ]
     },
     "fv_value_chg_gain": {
       "value_type": "money",
@@ -790,9 +1126,15 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["FAIRVALUE_CHANGE_INCOME", "公允价值变动收益"]
+        "akshare": [
+          "FAIRVALUE_CHANGE_INCOME",
+          "公允价值变动收益"
+        ]
       },
-      "pdf_aliases": ["fair value change", "公允价值变动收益"]
+      "pdf_aliases": [
+        "fair value change",
+        "公允价值变动收益"
+      ]
     },
     "non_oper_income": {
       "value_type": "money",
@@ -805,9 +1147,15 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["NONBUSINESS_INCOME", "营业外收入"]
+        "akshare": [
+          "NONBUSINESS_INCOME",
+          "营业外收入"
+        ]
       },
-      "pdf_aliases": ["non-operating income", "营业外收入"]
+      "pdf_aliases": [
+        "non-operating income",
+        "营业外收入"
+      ]
     },
     "non_oper_exp": {
       "value_type": "money",
@@ -820,9 +1168,15 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "source_aliases": {
-        "akshare": ["NONBUSINESS_EXPENSE", "营业外支出"]
+        "akshare": [
+          "NONBUSINESS_EXPENSE",
+          "营业外支出"
+        ]
       },
-      "pdf_aliases": ["non-operating expense", "营业外支出"]
+      "pdf_aliases": [
+        "non-operating expense",
+        "营业外支出"
+      ]
     }
   }
 }

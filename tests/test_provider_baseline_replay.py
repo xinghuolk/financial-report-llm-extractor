@@ -93,15 +93,17 @@ EXPECTED_HK_PDF_VERIFICATION_FIELDS = frozenset(
     }
 )
 EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY: dict[str, list[str]] = {
-    "00001": ["non_oper_exp", "non_oper_income", "other_cur_assets"],
-    "01113": ["non_oper_exp", "non_oper_income"],
+    # invest_income: post-Phase-I-A.2 description expansion now matches
+    # provider raw fields via keyword_overlap, moving it from source_unavailable
+    # to mapping_expansion_required (correct: provider candidates exist).
+    "00001": ["invest_income", "non_oper_exp", "non_oper_income", "other_cur_assets"],
+    "01113": ["invest_income", "non_oper_exp", "non_oper_income"],
 }
 EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
     {
         "bond_payable",
         "cip",
         "fv_value_chg_gain",
-        "invest_income",
         "rd_exp",
     }
 )

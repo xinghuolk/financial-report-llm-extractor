@@ -309,7 +309,7 @@
       "unit_requirement": "required",
       "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
-      "description": "Investment income for the reporting period."
+      "description": "Investment income for the reporting period, primarily from equity-method investments (joint ventures and associated companies) and other investment vehicles. In HK income statements this typically appears as 'Share of profits less losses of: Associated companies / Joint ventures' or 'Share of net profits of investments accounted for using the equity method', or as 'Investment and others' subtotal. Extraction guidance: if multiple equity-method components appear (associated companies + joint ventures), SUM them and report the total. If a single investment-related line is present (e.g., 'Investment and others'), report that figure. Report best-effort identifiable investment income; do not require the full set to be present."
     },
     "gross_profit": {
       "priority": "P1",

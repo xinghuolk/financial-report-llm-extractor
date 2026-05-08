@@ -1220,9 +1220,11 @@ Cross-company generalization confirmed:
 - 478 tests passing, ruff clean
 
 Phase I-A.2 follow-ups (deferred):
-1. `invest_income` aliases expansion (HK joint-venture profit-sharing patterns)
+1. ~~`invest_income` aliases expansion (HK joint-venture profit-sharing patterns)~~ **DONE 2026-05-08** — expanded pdf_aliases 1 → 7 + HK-specific description + aggregation guidance. 0/6 → 5/6 (83%) present. Catalog-only change; field-scoped maintenance validated. Overall coverage 21/36 → 26/36 (72%).
 2. Confidence calibration against human-verified accuracy
-3. Concurrent multi-company runner for batch onboarding
+3. Concurrent multi-company runner
+4. Restrict supplement merge to combined slice **DONE 2026-05-08** — gate added in `_write_slice` + integration test
+5. `selected_source="llm"` namespace clarification **DONE 2026-05-08** — inline comment documenting non-provider evidence source for batch onboarding
 
 ## 6. Validation Commands
 
