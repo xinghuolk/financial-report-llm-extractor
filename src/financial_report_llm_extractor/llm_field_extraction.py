@@ -95,10 +95,26 @@ def build_field_extraction_prompt(
 
 
 SYSTEM_PROMPT = (
-    "You extract financial report field values from PDF chunks. "
-    "Return strictly valid JSON matching the requested schema. "
-    "If the field value is not present in the provided chunks, return found=false. "
-    "Never fabricate values. Cite the page and exact statement line text from the chunks."
+    "You extract financial report field values from PDF chunks.\n"
+    "Return strictly valid JSON matching the requested schema.\n"
+    "\n"
+    "Rules:\n"
+    "- If the field value is genuinely not present in the provided chunks, "
+    "return found=false with reasoning.\n"
+    "- expected_currency and expected_unit in the request are hints only — "
+    "if the actual reported currency/unit differs, still extract the value "
+    "and report the ACTUAL currency/unit (e.g., 'RMB', 'thousand'). "
+    "Downstream code handles unit/currency conversion.\n"
+    "- Never fabricate values. Cite the page and exact statement line text "
+    "from the chunks (statement_line should be the literal text from the PDF).\n"
+    "- For values reported in thousands (often marked 'RMB'000', '$'000', or "
+    "in a thousands column), return the literal number AND set unit='thousand'. "
+    "Do not pre-convert to millions.\n"
+    "- For values reported in millions (often marked 'HK$ million', "
+    "'$ Million', '人民币百万元'), return the literal number AND set "
+    "unit='million'.\n"
+    "- value must be the numeric string as it appears in the PDF (with "
+    "commas removed if a clean number; e.g., '346,347' becomes '346347')."
 )
 
 
