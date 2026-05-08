@@ -539,6 +539,16 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     maotai_combined = companies["600519"]["coverage"]["combined"]
     assert maotai_combined["selected_count"] >= maotai_combined["covered_count"]
     assert maotai_combined["clean_present_count"] <= maotai_combined["selected_count"]
+    # Phase H0: null_means_zero promotes bond_payable/st_borr/lt_borr to clean_present.
+    assert maotai_combined["clean_present_count"] == 30
+    assert {"bond_payable", "st_borr", "lt_borr"} <= set(
+        maotai_combined["clean_present_fields"]
+    )
+    # source_policy_resolvable no longer contains these 3 fields.
+    maotai_wc = companies["600519"]["review"]["combined"]["warning_classification"]
+    assert "bond_payable" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
+    assert "st_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
+    assert "lt_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "revenue" in companies["600519"]["review"]["combined"][
         "selected_with_warnings_fields"
     ]
