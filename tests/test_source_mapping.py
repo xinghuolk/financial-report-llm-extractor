@@ -962,6 +962,9 @@ def test_null_record_with_null_means_zero_produces_present_zero_field() -> None:
     assert candidate.errors == ()
     assert candidate.value == Decimal("0")
     assert candidate.normalized_value == Decimal("0")
+    # Audit trail must reach both candidate and mapped field
+    assert candidate.review_notes == ("null_interpreted_as_zero",)
+    assert mapped.review_notes == ("null_interpreted_as_zero",)
 
 
 def test_null_record_without_null_means_zero_is_blocked() -> None:

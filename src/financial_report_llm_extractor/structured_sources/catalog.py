@@ -148,6 +148,11 @@ class SourceMappingEntry:
         _validate_literal("currency_requirement", self.currency_requirement, Requirement)
         _validate_literal("unit_requirement", self.unit_requirement, Requirement)
         _validate_literal("invalid fallback_policy", self.fallback_policy, FallbackPolicy)
+        if self.null_means_zero and self.value_type != "money":
+            raise ValueError(
+                f"null_means_zero is only supported for value_type='money' "
+                f"(field {self.field_id} has value_type={self.value_type})"
+            )
         if self.source_policy is not None:
             self.source_policy.validate()
 

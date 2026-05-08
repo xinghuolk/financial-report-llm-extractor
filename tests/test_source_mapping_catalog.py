@@ -857,6 +857,30 @@ def test_source_mapping_entry_null_means_zero_defaults_to_false(tmp_path: Path) 
     assert catalog.entries["fld"].null_means_zero is False
 
 
+def test_source_mapping_entry_rejects_null_means_zero_on_non_money_value_type(
+    tmp_path: Path,
+) -> None:
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(
+        json.dumps({
+            "catalog_id": "test",
+            "version": "1",
+            "priorities": [{"priority": "P0", "fields": ["fld"]}],
+            "source_mappings": {
+                "fld": {
+                    "value_type": "text",
+                    "statement_type": "balance_sheet",
+                    "source_aliases": {"akshare": ["FLD"]},
+                    "null_means_zero": True,
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="null_means_zero is only supported"):
+        load_source_mapping_catalog(catalog_path, priorities=("P0",))
+
+
 def test_minimal_source_mapping_entries_match_taxonomy_and_coverage() -> None:
     taxonomy = load_field_taxonomy(
         Path("field_catalog/turtle_v015_field_taxonomy.json")

@@ -231,6 +231,9 @@ def _build_item(
     conflict_classifications = (
         policy_item.conflict_classifications if policy_item is not None else ()
     )
+    # Intentionally exclude field.review_notes (e.g., null_interpreted_as_zero):
+    # those are mapping-layer audit signals only and must not gate clean_present.
+    # See docs/superpowers/specs/2026-05-08-phase-h0-null-as-zero-policy.md.
     review_notes = (
         tuple(policy_item.conflict_classifications) if policy_item is not None else ()
     )
