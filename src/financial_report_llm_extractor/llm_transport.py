@@ -459,3 +459,76 @@ def _write_raw_exchanges(
             + "\n",
             encoding="utf-8",
         )
+
+
+def _extract_openai_json_content(raw_response: dict[str, object]) -> dict[str, object]:
+    """Extract JSON content from OpenAI-compatible chat.completion response.
+
+    OpenAI returns the LLM's JSON output as a string in choices[0].message.content
+    when response_format=json_object. We parse and return that JSON dict so callers
+    don't need to handle transport-level structure.
+    """
+    choices = raw_response.get("choices")
+    if not isinstance(choices, list) or not choices:
+        raise ValueError(
+            f"openai response missing 'choices' array: {raw_response!r}"
+        )
+    first = choices[0]
+    if not isinstance(first, dict):
+        raise ValueError(f"openai response choice is not an object: {first!r}")
+    message = first.get("message")
+    if not isinstance(message, dict):
+        raise ValueError(f"openai response message is not an object: {message!r}")
+    content = message.get("content")
+    if not isinstance(content, str):
+        raise ValueError(f"openai response message.content is not a string: {content!r}")
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"openai response message.content is not valid JSON: {content!r}"
+        ) from exc
+    if not isinstance(parsed, dict):
+        raise ValueError(
+            f"openai response content parses to non-object: {parsed!r}"
+        )
+    return cast(dict[str, object], parsed)
+
+
+def _extract_gemini_json_content(raw_response: dict[str, object]) -> dict[str, object]:
+    """Extract JSON content from Gemini generateContent response.
+
+    Gemini returns the LLM's JSON output as a string in
+    candidates[0].content.parts[0].text when responseMimeType=application/json.
+    """
+    candidates = raw_response.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        raise ValueError(
+            f"gemini response missing 'candidates' array: {raw_response!r}"
+        )
+    first = candidates[0]
+    if not isinstance(first, dict):
+        raise ValueError(f"gemini response candidate is not an object: {first!r}")
+    content = first.get("content")
+    if not isinstance(content, dict):
+        raise ValueError(f"gemini response candidate.content is not an object: {content!r}")
+    parts = content.get("parts")
+    if not isinstance(parts, list) or not parts:
+        raise ValueError(f"gemini response content.parts is empty or invalid: {parts!r}")
+    text_part = parts[0]
+    if not isinstance(text_part, dict):
+        raise ValueError(f"gemini response part is not an object: {text_part!r}")
+    text = text_part.get("text")
+    if not isinstance(text, str):
+        raise ValueError(f"gemini response part.text is not a string: {text!r}")
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"gemini response part.text is not valid JSON: {text!r}"
+        ) from exc
+    if not isinstance(parsed, dict):
+        raise ValueError(
+            f"gemini response text parses to non-object: {parsed!r}"
+        )
+    return cast(dict[str, object], parsed)

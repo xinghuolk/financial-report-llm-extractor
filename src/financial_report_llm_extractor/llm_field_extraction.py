@@ -132,14 +132,72 @@ def run_field_extraction(
             encoding="utf-8",
         )
 
-    return _parse_response(request, raw)
+    # Real LLM transports (OpenAI-compatible, Gemini) return wrapped responses.
+    # Unwrap to the inner JSON content if needed; FakeJsonClient returns the
+    # content directly so unwrap_llm_content is idempotent for that case.
+    content = unwrap_llm_content(raw)
+
+    return _parse_response(request, content, raw_response=raw)
+
+
+def unwrap_llm_content(raw: dict[str, object]) -> dict[str, object]:
+    """Extract inner JSON content from wrapped LLM responses.
+
+    Detects three response shapes:
+    - Already-parsed content (FakeJsonClient): has top-level keys like
+      'found' or 'field_id'. Returned as-is.
+    - OpenAI-compatible (DeepSeek, Ollama, OpenAI): has 'choices' array
+      with 'message.content' string that holds the JSON.
+    - Gemini: has 'candidates' array with 'content.parts[0].text' string.
+
+    Returns the inner JSON dict. Raises ValueError if a wrapped shape is
+    detected but malformed.
+    """
+    # Already parsed (FakeJsonClient or pre-unwrapped): no transport keys.
+    if "choices" not in raw and "candidates" not in raw:
+        return raw
+
+    # OpenAI-compatible
+    choices = raw.get("choices")
+    if isinstance(choices, list) and choices:
+        first = choices[0]
+        if isinstance(first, dict):
+            message = first.get("message")
+            if isinstance(message, dict):
+                content = message.get("content")
+                if isinstance(content, str):
+                    parsed = json.loads(content)
+                    if isinstance(parsed, dict):
+                        return parsed
+
+    # Gemini
+    candidates = raw.get("candidates")
+    if isinstance(candidates, list) and candidates:
+        first = candidates[0]
+        if isinstance(first, dict):
+            gcontent = first.get("content")
+            if isinstance(gcontent, dict):
+                parts = gcontent.get("parts")
+                if isinstance(parts, list) and parts:
+                    part = parts[0]
+                    if isinstance(part, dict):
+                        text = part.get("text")
+                        if isinstance(text, str):
+                            parsed = json.loads(text)
+                            if isinstance(parsed, dict):
+                                return parsed
+
+    raise ValueError(f"unable to unwrap LLM response: {raw!r}")
 
 
 def _parse_response(
     request: FieldExtractionRequest,
     raw: dict[str, object],
+    *,
+    raw_response: dict[str, object] | None = None,
 ) -> FieldExtractionResult:
     errors: list[str] = []
+    archive = raw_response if raw_response is not None else raw
 
     found = raw.get("found")
     if not isinstance(found, bool):
@@ -147,7 +205,7 @@ def _parse_response(
         return FieldExtractionResult(
             field_id=request.field_id,
             status="extraction_failed",
-            raw_response=raw,
+            raw_response=archive,
             errors=tuple(errors),
         )
 
@@ -156,7 +214,7 @@ def _parse_response(
             field_id=request.field_id,
             status="not_found",
             reasoning=_str_or_none(raw.get("reasoning")),
-            raw_response=raw,
+            raw_response=archive,
         )
 
     value_raw = _str_or_none(raw.get("value"))
@@ -179,7 +237,7 @@ def _parse_response(
         statement_line=_str_or_none(raw.get("statement_line")),
         confidence=_float_or_none(raw.get("confidence")),
         reasoning=_str_or_none(raw.get("reasoning")),
-        raw_response=raw,
+        raw_response=archive,
         errors=tuple(errors),
     )
 
