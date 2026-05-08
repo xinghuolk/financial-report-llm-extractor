@@ -11,13 +11,25 @@ exports for fields where source providers have no value.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
 from financial_report_llm_extractor.field_metadata import FieldTaxonomyCatalog
+from financial_report_llm_extractor.llm_field_extraction import (
+    FieldExtractionRequest,
+    FieldExtractionResult,
+    JsonClient,
+    run_field_extraction,
+)
 from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
 )
+
+
+SCHEMA_VERSION = "llm-evidence-supplement-v1"
 
 
 ChunkStrategy = Literal["alias_top_k", "broad_keyword"]
@@ -118,3 +130,121 @@ def select_chunks(
         if len(selected) >= broad_limit:
             break
     return selected
+
+
+@dataclass(frozen=True)
+class LlmExtractionRunResult:
+    pdf_path: Path
+    company_id: str
+    chunk_count: int
+    fields_attempted: tuple[str, ...]
+    fields_present: tuple[str, ...]
+    fields_not_found: tuple[str, ...]
+    fields_failed: tuple[str, ...]
+    artifact_path: Path
+    items: dict[str, FieldExtractionResult] = field(default_factory=dict)
+
+
+def _trim_chunk_text(chunk: dict[str, object], max_chars: int) -> dict[str, object]:
+    """Return a copy of chunk with text truncated to max_chars."""
+    text = str(chunk.get("text", "") or "")
+    if len(text) > max_chars:
+        text = text[:max_chars] + "...[truncated]"
+    out = dict(chunk)
+    out["text"] = text
+    return out
+
+
+def extract_for_chunks(
+    *,
+    chunks: list[dict[str, object]],
+    catalog: SourceMappingCatalog,
+    taxonomy: FieldTaxonomyCatalog,
+    client: JsonClient,
+    company_id: str,
+    pdf_path: Path,
+    out_dir: Path,
+    priorities: tuple[str, ...] = ("P0", "P1"),
+    fields: tuple[str, ...] | None = None,
+    max_chars_per_chunk: int = 2000,
+) -> LlmExtractionRunResult:
+    """Run LLM extraction for all targets derived from catalog.
+
+    fields parameter optionally restricts to a subset of field_ids. If a
+    target's selected chunks are empty, the field is recorded as not_found
+    without calling the LLM.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    targets = derive_targets(catalog, taxonomy, priorities=priorities)
+    if fields is not None:
+        wanted = set(fields)
+        targets = [t for t in targets if t.field_id in wanted]
+
+    items: dict[str, FieldExtractionResult] = {}
+    fields_present: list[str] = []
+    fields_not_found: list[str] = []
+    fields_failed: list[str] = []
+
+    for target in targets:
+        field_dir = out_dir / target.field_id
+        field_dir.mkdir(parents=True, exist_ok=True)
+
+        selected = select_chunks(chunks, target)
+
+        if not selected:
+            item = FieldExtractionResult(
+                field_id=target.field_id,
+                status="not_found",
+                reasoning="no chunks matched aliases for this field",
+                raw_response={},
+            )
+            items[target.field_id] = item
+            fields_not_found.append(target.field_id)
+            continue
+
+        trimmed = tuple(
+            _trim_chunk_text(c, max_chars_per_chunk) for c in selected
+        )
+        request = FieldExtractionRequest(
+            field_id=target.field_id,
+            field_description=target.field_description,
+            statement_type=target.statement_type,
+            value_type=target.value_type,
+            chunks=trimmed,
+            expected_currency=target.expected_currency,
+            expected_unit=target.expected_unit,
+        )
+
+        try:
+            result = run_field_extraction(
+                request, client, raw_response_dir=field_dir,
+            )
+        except Exception as exc:
+            result = FieldExtractionResult(
+                field_id=target.field_id,
+                status="extraction_failed",
+                errors=(f"runner caught exception: {exc}",),
+                raw_response={},
+            )
+
+        items[target.field_id] = result
+        if result.status == "present":
+            fields_present.append(target.field_id)
+        elif result.status == "not_found":
+            fields_not_found.append(target.field_id)
+        else:
+            fields_failed.append(target.field_id)
+
+    artifact_path = out_dir / "llm_evidence_supplement.json"
+    return LlmExtractionRunResult(
+        pdf_path=pdf_path,
+        company_id=company_id,
+        chunk_count=len(chunks),
+        fields_attempted=tuple(t.field_id for t in targets),
+        fields_present=tuple(fields_present),
+        fields_not_found=tuple(fields_not_found),
+        fields_failed=tuple(fields_failed),
+        artifact_path=artifact_path,
+        items=items,
+    )

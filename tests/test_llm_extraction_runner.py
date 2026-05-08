@@ -248,3 +248,112 @@ def test_select_chunks_alias_top_k_returns_empty_when_no_match() -> None:
     chunks = [_chunk("a", 1, "no match")]
 
     assert select_chunks(chunks, target) == []
+
+
+# ---------------------------------------------------------------------------
+# Task 3: extract_for_chunks orchestrator
+# ---------------------------------------------------------------------------
+
+import json
+from pathlib import Path
+
+from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+    LlmExtractionRunResult,
+    extract_for_chunks,
+)
+
+
+class _CannedJsonClient:
+    """Returns canned response per field_id from request payload."""
+
+    def __init__(self, responses: dict[str, dict[str, object]]) -> None:
+        self._responses = responses
+
+    def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object]:
+        field_obj = user_payload.get("field", {})
+        if isinstance(field_obj, dict):
+            fid = str(field_obj.get("field_id"))
+        else:
+            fid = ""
+        return self._responses.get(fid, {"field_id": fid, "found": False})
+
+
+def test_extract_for_chunks_iterates_targets_and_collects_results(
+    tmp_path: Path,
+) -> None:
+    catalog = _catalog([
+        _entry("revenue", pdf_aliases=("revenue", "营业收入", "total revenue")),
+        _entry("rd_exp", pdf_aliases=("research and development",)),
+    ])
+    taxonomy = _taxonomy([
+        _tax_entry("revenue", description="operating revenue"),
+        _tax_entry("rd_exp", description="research and development expenses"),
+    ])
+    chunks = [
+        _chunk("c1", 4, "revenue 168838 营业收入"),
+        _chunk("c2", 9, "research and development 615434"),
+    ]
+
+    client = _CannedJsonClient({
+        "revenue": {
+            "field_id": "revenue", "found": True, "value": "168838",
+            "currency": "CNY", "unit": "thousand", "page": 4,
+            "statement_line": "revenue 168838",
+            "confidence": 0.95, "reasoning": "ok",
+        },
+        "rd_exp": {
+            "field_id": "rd_exp", "found": True, "value": "615434",
+            "currency": "RMB", "unit": "thousand", "page": 9,
+            "statement_line": "research and development 615434",
+            "confidence": 0.9, "reasoning": "ok",
+        },
+    })
+
+    result = extract_for_chunks(
+        chunks=chunks,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        client=client,
+        company_id="TEST",
+        pdf_path=Path("test.pdf"),
+        out_dir=tmp_path,
+    )
+
+    assert isinstance(result, LlmExtractionRunResult)
+    assert result.company_id == "TEST"
+    assert result.chunk_count == 2
+    assert set(result.fields_attempted) == {"revenue", "rd_exp"}
+    assert set(result.fields_present) == {"revenue", "rd_exp"}
+    assert result.fields_not_found == ()
+    assert result.fields_failed == ()
+
+
+def test_extract_for_chunks_marks_field_not_found_when_no_chunks_selected(
+    tmp_path: Path,
+) -> None:
+    catalog = _catalog([
+        _entry("revenue", pdf_aliases=("revenue", "营业收入", "total revenue"))
+    ])
+    taxonomy = _taxonomy([_tax_entry("revenue")])
+    chunks = [_chunk("c1", 4, "no relevant content")]
+
+    client = _CannedJsonClient({})
+
+    result = extract_for_chunks(
+        chunks=chunks,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        client=client,
+        company_id="TEST",
+        pdf_path=Path("test.pdf"),
+        out_dir=tmp_path,
+    )
+
+    # No chunks matched the aliases, so revenue is "no_chunks" → not_found
+    assert "revenue" in result.fields_not_found
+    assert "revenue" not in result.fields_present
