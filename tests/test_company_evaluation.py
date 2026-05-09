@@ -357,6 +357,51 @@ def test_render_evaluation_markdown_lists_priority_bucket_grid() -> None:
     assert "/ total" not in md.lower()
 
 
+def test_render_markdown_shows_candidate_values_for_conflict_rows() -> None:
+    """Phase EC Tier 1: unresolved_conflict rows show 'src1:val / src2:val'
+    inline so reviewers can triage without opening source_policy_report.json."""
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        CompanyEvaluation, CompanyFieldEvaluation, render_evaluation_markdown,
+    )
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+    )
+
+    evaluation = CompanyEvaluation(
+        company="600519",
+        period=PeriodSpec.from_year(2024),
+        market="CN",
+        generated_at="2026-05-09T00:00:00+00:00",
+        fields=(
+            CompanyFieldEvaluation(
+                field_id="revenue",
+                bucket="unresolved_conflict",
+                selected_source=None,
+                value=None,
+                currency=None,
+                unit=None,
+                reason="normalized_value_conflict",
+                candidate_values=(("akshare", "170.90B"), ("yahoo", "174.14B")),
+            ),
+        ),
+        by_bucket={
+            "clean_present": 0, "unresolved_conflict": 1, "llm_supplement_present": 0,
+            "terminal_unverified": 0, "not_in_scope": 0, "source_unavailable": 0,
+        },
+        by_priority={"P0": {
+            "clean_present": 0, "unresolved_conflict": 1, "llm_supplement_present": 0,
+            "terminal_unverified": 0, "not_in_scope": 0, "source_unavailable": 0,
+        }},
+    )
+
+    md = render_evaluation_markdown(evaluation)
+
+    # Candidate values appear in the Value column for conflict rows.
+    assert "akshare:170.90B" in md
+    assert "yahoo:174.14B" in md
+    assert "akshare:170.90B / yahoo:174.14B" in md
+
+
 def test_orchestrator_with_fake_stack_writes_all_artifacts(
     tmp_path: Path,
 ) -> None:

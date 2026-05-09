@@ -31,6 +31,9 @@ from financial_report_llm_extractor.structured_sources.export import (
     SourceFirstExportItem,
     SourceFirstExportResult,
 )
+from financial_report_llm_extractor.structured_sources.mapping import (
+    TurtleMappingResult,
+)
 from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
     evaluate_source_first_slice,
 )
@@ -117,6 +120,10 @@ class CompanyFieldEvaluation:
     currency: str | None
     unit: str | None
     reason: str | None
+    # Phase EC Tier 1: per-source candidate values for review of conflicts.
+    # Tuple of (source_name, normalized_value_str). Populated for non-clean
+    # rows where mapping_result was provided to build_company_evaluation.
+    candidate_values: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -151,6 +158,7 @@ def build_company_evaluation(
     catalog: SourceMappingCatalog,
     taxonomy: FieldTaxonomyCatalog,
     pdf_provided: bool,
+    mapping: TurtleMappingResult | None = None,
 ) -> CompanyEvaluation:
     """Aggregate per-field bucket classification into priority × bucket grid.
 
@@ -161,6 +169,11 @@ def build_company_evaluation(
     `supplement` parameter is currently informational (LLM merge already
     happens upstream via _merge_llm_evidence_supplement; the dict is reserved
     for future per-field LLM metadata that doesn't flow through export).
+
+    `mapping` (optional, Phase EC Tier 1): if provided, populate
+    CompanyFieldEvaluation.candidate_values for non-clean rows so the
+    markdown renderer can show per-source values inline (e.g. for
+    unresolved_conflict triage).
     """
     export_by_id = export.items
     warnings_by_id = warning_classification.items
@@ -182,6 +195,10 @@ def build_company_evaluation(
             pdf_provided=pdf_provided,
         )
 
+        candidate_values = _collect_candidate_values(
+            field_id, bucket, mapping,
+        )
+
         fields.append(CompanyFieldEvaluation(
             field_id=field_id,
             bucket=bucket,
@@ -190,6 +207,7 @@ def build_company_evaluation(
             currency=export_item.currency,
             unit=export_item.unit,
             reason=reason,
+            candidate_values=candidate_values,
         ))
         by_bucket[bucket] += 1
         priority = mapping_entry.priority
@@ -218,6 +236,45 @@ def _missing_export_item(field_id: str) -> SourceFirstExportItem:
         conflict_classifications=(),
         review_notes=(),
     )
+
+
+def _collect_candidate_values(
+    field_id: str,
+    bucket: BucketName,
+    mapping: TurtleMappingResult | None,
+) -> tuple[tuple[str, str], ...]:
+    """Pull per-source candidate normalized values from mapping for non-clean
+    rows so the markdown renderer can show 'akshare:170.9B / yahoo:174.1B'
+    inline. Returns empty tuple if mapping not provided OR field has no
+    multi-source candidates OR field is clean (single selected source).
+    """
+    if mapping is None:
+        return ()
+    # Only emit candidates for buckets where the user benefits from triage.
+    if bucket not in {"unresolved_conflict", "terminal_unverified", "source_unavailable"}:
+        return ()
+    field = mapping.fields.get(field_id)
+    if field is None:
+        return ()
+    out: list[tuple[str, str]] = []
+    for c in field.candidates:
+        if c.normalized_value is None:
+            continue
+        out.append((c.source, _format_money_short(c.normalized_value)))
+    return tuple(out)
+
+
+def _format_money_short(value: Decimal) -> str:
+    """Format Decimal compactly: 170,899,152,276.34 → '170.9B'."""
+    f = float(value)
+    abs_f = abs(f)
+    if abs_f >= 1e9:
+        return f"{f / 1e9:.2f}B"
+    if abs_f >= 1e6:
+        return f"{f / 1e6:.2f}M"
+    if abs_f >= 1e3:
+        return f"{f / 1e3:.2f}K"
+    return f"{f:.2f}"
 
 
 def render_evaluation_markdown(evaluation: CompanyEvaluation) -> str:
@@ -250,7 +307,13 @@ def render_evaluation_markdown(evaluation: CompanyEvaluation) -> str:
     for f in evaluation.fields:
         marker = "**llm**" if f.selected_source == "llm" else (f.selected_source or "")
         reason = f.reason or ""
-        value_str = str(f.value) if f.value is not None else ""
+        if f.value is not None:
+            value_str = str(f.value)
+        elif f.candidate_values:
+            # Phase EC Tier 1: show per-source candidates inline for triage.
+            value_str = " / ".join(f"{src}:{val}" for src, val in f.candidate_values)
+        else:
+            value_str = ""
         lines.append(
             f"| {f.field_id} | {f.bucket} | {marker} | {value_str} | {reason} |"
         )
@@ -324,6 +387,7 @@ def run_company_evaluation(
     )
     export = slice_result["export_object"]
     warning_classification = slice_result["warning_classification_object"]
+    mapping = slice_result.get("mapping_object")
 
     evaluation = build_company_evaluation(
         company=company,
@@ -335,6 +399,7 @@ def run_company_evaluation(
         catalog=catalog,
         taxonomy=taxonomy,
         pdf_provided=pdf_provided,
+        mapping=mapping,
     )
 
     (out_dir / "evaluation.json").write_text(

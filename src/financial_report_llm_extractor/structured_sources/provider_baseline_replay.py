@@ -440,6 +440,9 @@ def evaluate_source_first_slice(
         "artifact_paths": artifact_paths,
         "export_object": export,
         "warning_classification_object": warning_classification,
+        # Phase EC Tier 1: expose mapping so company_evaluation can render
+        # per-source candidate values for unresolved_conflict rows.
+        "mapping_object": mapping,
     }
 
 
