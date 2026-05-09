@@ -1316,6 +1316,31 @@ Artifacts: `tmp/runs/phase_i_c_validation/{00001,01113,01810,02498,06862,09987}/
 
 493 unit tests + ruff + mypy clean.
 
+#### Phase I-C.1 Follow-Up: Whitespace-Normalized Alias Retrieval
+
+Investigation of the 3 zero-hit fields revealed a **chunk retrieval defect** rather than weak aliases. PDFs (via `pdftotext -layout`) wrap multi-word phrases mid-sentence, so chunks contain `"Aging analysis of trade and notes\nreceivables ..."` with internal newlines. The previous `select_chunks` used `text.lower().count(alias)` substring matching which scored 0 against the catalog's single-spaced alias `"aging analysis of trade and notes receivables"`. Aliases ≥4 words were silently dropped by retrieval before the LLM saw any chunks.
+
+PDF spot-check first established that 4 of 6 zero-hit (company, field) pairs were architecturally correct terminal states (e.g., 01810/02498 explicitly disclose `"no significant development expenses had been capitalized"`; 06862/09987 have no receivables ageing at all). The remaining 2 (01810 receivables_aging, 06862 bad_debt_provision) had legitimate disclosures blocked by the retrieval bug.
+
+Fix:
+- `llm_extraction_runner.py::select_chunks`: collapse whitespace (`re.sub(r"\s+", " ", text)`) on both alias and chunk text before substring count, so multi-word aliases survive PDF line-wrap. Code change is contained to the `alias_top_k` branch.
+- New unit test `test_select_chunks_alias_top_k_matches_across_pdf_layout_whitespace` covers the regression.
+- `receivables_aging.pdf_aliases`: extended from 3 → 9 entries to include US `aging` spelling and the `"... trade and notes receivables"` HK telecom variant observed in 01810.
+
+Re-run on identical 6×14 grid:
+
+| Δ from v1 | 00001 | 01113 | 01810 | 02498 | 06862 | 09987 | New hits |
+|-----------|-------|-------|-------|-------|-------|-------|----------|
+| bad_debt_provision | – | – | – | – | **+P** | – | 1 (RMB 2,670 thousand) |
+| lease_liability_maturity | – | – | **+P** | – | – | – | 1 (RMB 45,990 thousand total) |
+| receivables_aging | – | – | **+P** | – | – | – | 1 (RMB Up-to-3-months 12,652,651 thousand etc.) |
+
+**v2 summary**: present 33/84 (39%), not_found 51/84 (61%), failed 0. The 3 remaining 0/6 fields (`capitalized_rd`, `interest_paid_cash`, plus all-not_disclosed cohort) are confirmed terminal — `capitalized_rd` is architecturally not-disclosed by the sampled HK issuers, and `interest_paid_cash` is covered by Yahoo `Interest Paid Cfo/Cff/Direct` source path (LLM 0/6 is orthogonal to source-first coverage).
+
+Artifacts: `tmp/runs/phase_i_c_validation_v2/{00001,01113,01810,02498,06862,09987}/llm_evidence_supplement.json`.
+
+494 unit tests + ruff + mypy clean.
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:
