@@ -1386,6 +1386,30 @@ scripts/run-real-source-validation.sh
 
 Use real provider calls only to create or refresh captured fixtures, then drive mapping and reconciliation fixes from those saved artifacts.
 
+### Per-(company, period) end-to-end validation
+
+```bash
+# Step 1: live fetch (env-driven shell wrapper)
+COMPANY=600519 YEAR=2024 MARKET=CN PROVIDERS=akshare \
+  scripts/run-fetch-source-inventory.sh
+
+# Step 2: evaluate (deterministic from cache; auto-runs LLM if PDF given)
+COMPANY=600519 YEAR=2024 MARKET=CN \
+  PDF_PATH=downloads/cn_stocks/600519/annual/2024_年度报告.pdf \
+  LLM_CONFIG=tmp/llm_configs/deepseek.json \
+  scripts/run-evaluate-company.sh
+```
+
+Outputs land in `tmp/runs/${COMPANY}_${PERIOD_END}/`:
+`source_inventory.jsonl`, `source_inventory_summary.json`,
+`extraction_result.json`, `llm_evidence_supplement.json` (if PDF set),
+`evaluation.json`, `evaluation.md`.
+
+`evaluate-company` 与 `replay-provider-baseline` 的边界：
+
+- `evaluate-company`：单 (公司, 期末)，可选 live (via `fetch-source-inventory`) 或 fixture，含 LLM supplement，输出 bucket-classified evaluation。
+- `replay-provider-baseline`：多公司 batch，仅从已有 fixture replay，输出 multi-slice export。
+
 ## 7. Branch Completion Criteria
 
 This branch is complete when:
