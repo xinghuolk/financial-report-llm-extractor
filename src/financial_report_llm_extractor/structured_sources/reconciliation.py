@@ -72,9 +72,16 @@ def reconcile_mapped_fields(
     result: TurtleMappingResult,
     *,
     tolerance: Decimal = Decimal("0"),
+    sign_normalize_fields: frozenset[str] | None = None,
 ) -> ReconciliationReport:
+    sign_normalize_fields = sign_normalize_fields or frozenset()
     items = {
-        field_id: _reconcile_field(field_id, field.candidates, tolerance=tolerance)
+        field_id: _reconcile_field(
+            field_id,
+            field.candidates,
+            tolerance=tolerance,
+            sign_normalize=field_id in sign_normalize_fields,
+        )
         for field_id, field in result.fields.items()
     }
     return ReconciliationReport(
@@ -102,6 +109,7 @@ def _reconcile_field(
     candidates: tuple[TurtleMappingCandidate, ...],
     *,
     tolerance: Decimal,
+    sign_normalize: bool = False,
 ) -> ReconciliationItem:
     sources = tuple(candidate.source for candidate in candidates)
     if not candidates:
@@ -145,6 +153,8 @@ def _reconcile_field(
             reason="candidate normalized value missing",
         )
     normalized_values = [value for value in values if value is not None]
+    if sign_normalize:
+        normalized_values = [abs(v) for v in normalized_values]
     max_difference = max(normalized_values) - min(normalized_values)
     if max_difference == 0:
         return ReconciliationItem(

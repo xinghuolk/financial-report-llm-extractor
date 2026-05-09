@@ -57,6 +57,7 @@ class MarketSourcePolicy:
     cross_check_routes: tuple[str, ...] = field(default_factory=tuple)
     on_conflict: str = "preserve_conflict"
     single_source_requires_pdf: bool = False
+    sign_normalize: str = "raw"
 
     def validate(self) -> None:
         _validate_literal(
@@ -82,6 +83,10 @@ class MarketSourcePolicy:
         if not isinstance(self.single_source_requires_pdf, bool):
             raise ValueError(
                 "source_policy market policy single_source_requires_pdf must be a bool"
+            )
+        if self.sign_normalize not in ("raw", "absolute"):
+            raise ValueError(
+                f"sign_normalize must be 'raw' or 'absolute' (got {self.sign_normalize!r})"
             )
 
 
@@ -292,6 +297,9 @@ def _parse_source_policy(raw_policy: object) -> SourcePolicy | None:
             raise ValueError(
                 "source_policy market policy single_source_requires_pdf must be a bool"
             )
+        sign_normalize = value.get("sign_normalize", "raw")
+        if not isinstance(sign_normalize, str):
+            raise ValueError("sign_normalize must be a string")
         market_policies[str(market)] = MarketSourcePolicy(
             primary_route=str(value.get("primary_route", "")),
             cross_check_routes=_parse_string_list(
@@ -300,6 +308,7 @@ def _parse_source_policy(raw_policy: object) -> SourcePolicy | None:
             ),
             on_conflict=str(value.get("on_conflict", "preserve_conflict")),
             single_source_requires_pdf=single_source_requires_pdf,
+            sign_normalize=sign_normalize,
         )
 
     return SourcePolicy(

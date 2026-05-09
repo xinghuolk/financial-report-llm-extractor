@@ -336,6 +336,43 @@ def test_write_reconciliation_report_writes_json(tmp_path: Path) -> None:
     assert payload["items"]["cash"]["status"] == "single_source"
 
 
+def test_reconcile_sign_normalize_absolute_treats_mirrored_values_as_match() -> None:
+    """Phase H2 Module A: when sign_normalize_fields contains the field,
+    reconciliation compares abs() — capital_expenditures akshare:+4.68B vs
+    yahoo:-4.68B becomes equivalent, not conflict."""
+    result = _result(
+        "capital_expenditures",
+        _field(
+            "capital_expenditures",
+            _candidate("akshare", Decimal("4678712053.56")),
+            _candidate("yahoo", Decimal("-4678712053.56")),
+        ),
+    )
+
+    report = reconcile_mapped_fields(
+        result, sign_normalize_fields=frozenset({"capital_expenditures"})
+    )
+
+    assert report.items["capital_expenditures"].status != "conflict"
+    assert report.items["capital_expenditures"].status in {"equivalent", "close"}
+
+
+def test_reconcile_sign_normalize_default_keeps_mirrored_values_as_conflict() -> None:
+    """Regression: default behavior (no sign_normalize_fields) unchanged."""
+    result = _result(
+        "capital_expenditures",
+        _field(
+            "capital_expenditures",
+            _candidate("akshare", Decimal("4678712053.56")),
+            _candidate("yahoo", Decimal("-4678712053.56")),
+        ),
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    assert report.items["capital_expenditures"].status == "conflict"
+
+
 def _result(field_id: str, field: MappedTurtleField) -> TurtleMappingResult:
     return TurtleMappingResult(
         catalog_id="test",
