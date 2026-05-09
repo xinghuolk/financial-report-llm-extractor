@@ -35,6 +35,9 @@ from financial_report_llm_extractor.structured_sources.field_candidate_discovery
 from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
     write_provider_baseline_period_replay,
 )
+from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+    PeriodSpec,
+)
 from financial_report_llm_extractor.structured_sources.source_mapping_expansion import (
     write_source_mapping_expansion_review,
 )
@@ -230,11 +233,67 @@ def build_parser() -> argparse.ArgumentParser:
     baseline_replay_parser.add_argument("--out", required=True, type=Path)
     baseline_replay_parser.add_argument("--hk-yahoo-trust-policy", type=Path)
 
+    fetch_source_parser = subparsers.add_parser(
+        "fetch-source-inventory",
+        help="Live fetch AKShare/Yahoo data for a single (company, period).",
+    )
+    fetch_source_parser.add_argument("--company", required=True)
+    fetch_source_parser.add_argument("--year", type=int)
+    fetch_source_parser.add_argument("--period-end")
+    fetch_source_parser.add_argument("--report-type", default="annual")
+    fetch_source_parser.add_argument(
+        "--market", required=True, choices=["CN", "HK"]
+    )
+    fetch_source_parser.add_argument("--providers", default="akshare,yahoo")
+    fetch_source_parser.add_argument("--out", type=Path, required=True)
+    fetch_source_parser.add_argument(
+        "--catalog", type=Path, required=True,
+        help="Source mapping catalog JSON path.",
+    )
+
     return parser
 
 
+def _run_fetch_source_inventory(
+    *,
+    company: str,
+    period: PeriodSpec,
+    market: str,
+    providers: tuple[str, ...],
+    out_dir: Path,
+    catalog_path: Path,
+) -> None:
+    from financial_report_llm_extractor.structured_sources.real_source_validation import (
+        PandasAkshareClient,
+        YFinanceStatementClient,
+    )
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        fetch_source_inventory,
+    )
+
+    akshare_client = PandasAkshareClient() if "akshare" in providers else None
+    yahoo_client = YFinanceStatementClient() if "yahoo" in providers else None
+
+    artifact = fetch_source_inventory(
+        company=company,
+        period=period,
+        market=market,  # type: ignore[arg-type]
+        providers=providers,  # type: ignore[arg-type]
+        akshare_client=akshare_client,
+        yahoo_client=yahoo_client,
+        out_dir=out_dir,
+        catalog_path=catalog_path,
+    )
+    print(json.dumps({
+        "inventory_path": str(artifact.inventory_path),
+        "summary_path": str(artifact.summary_path),
+        "record_count": artifact.record_count,
+    }, indent=2))
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     if args.command == "ingest":
         ingest_result = ingest_pdf(args.pdf, args.out)
@@ -584,6 +643,28 @@ def main(argv: list[str] | None = None) -> int:
         print(f"companies={replay_result.company_count}")
         print(f"provider_baseline_replay_summary={replay_result.summary_path}")
         print(f"provider_baseline_replay_markdown={replay_result.markdown_path}")
+        return 0
+
+    if args.command == "fetch-source-inventory":
+        if args.year is not None and args.period_end is not None:
+            parser.error("--year and --period-end are mutually exclusive")
+        if args.year is not None:
+            period = PeriodSpec.from_year(args.year)
+        elif args.period_end is not None:
+            period = PeriodSpec.from_period_end(args.period_end, args.report_type)
+        else:
+            parser.error("one of --year or --period-end is required")
+        providers = tuple(
+            p.strip() for p in args.providers.split(",") if p.strip()
+        )
+        _run_fetch_source_inventory(
+            company=args.company,
+            period=period,
+            market=args.market,
+            providers=providers,
+            out_dir=args.out,
+            catalog_path=args.catalog,
+        )
         return 0
 
     raise ValueError(f"unknown command: {args.command}")

@@ -837,6 +837,65 @@ def test_discover_rows_llm_command_calls_row_discovery_layer(
     ]
 
 
+def test_fetch_source_inventory_subcommand_dispatches_correctly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """argv → run_fetch wiring 测，主体逻辑 mock 掉。"""
+    from financial_report_llm_extractor.cli import main
+
+    captured: dict[str, object] = {}
+
+    def fake_runner(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.cli._run_fetch_source_inventory",
+        fake_runner,
+    )
+
+    main([
+        "fetch-source-inventory",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--providers", "akshare",
+        "--out", str(tmp_path),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+    ])
+
+    assert captured["company"] == "600519"
+    assert captured["market"] == "CN"
+    # YEAR shortcut expanded
+    from datetime import date
+
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+    )
+
+    period = captured["period"]
+    assert isinstance(period, PeriodSpec)
+    assert period.period_end == date(2024, 12, 31)
+
+
+def test_fetch_source_inventory_subcommand_rejects_year_and_period_end_together(
+    tmp_path: Path,
+) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    with pytest.raises(SystemExit):
+        main([
+            "fetch-source-inventory",
+            "--company", "600519",
+            "--year", "2024",
+            "--period-end", "2024-12-31",
+            "--market", "CN",
+            "--providers", "akshare",
+            "--out", str(tmp_path),
+            "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        ])
+
+
 def test_extract_llm_help_lists_required_args() -> None:
     """Verify the extract-llm subcommand is registered."""
     import argparse
