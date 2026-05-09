@@ -70,30 +70,39 @@
     },
     {
       "allowed_as_primary": false,
-      "classification": "provider_semantics_unverified",
+      "classification": "provider_semantics_sample_verified",
       "market": "CN",
-      "negative_examples": [],
+      "negative_examples": [
+        "MANAGE_EXPENSE alone (管理费用 only, missing 销售费用)",
+        "SALE_EXPENSE alone (销售费用 only, missing 管理费用)"
+      ],
       "proof_origin": "sampled_pdf_policy_proof",
       "provider": "akshare",
-      "raw_field_code": null,
+      "raw_field_code": "MANAGE_EXPENSE",
       "raw_field_name": "MANAGE_EXPENSE",
       "related_only_fields": [
         "SALE_EXPENSE"
       ],
       "required_proof": [
-        "catalog addition derivation support (Phase H2.1)"
+        "multi-company sample-verification (Phase H2.2 candidate)"
       ],
       "samples": [
         {
           "company_id": "600519",
           "currency": "CNY",
-          "matches_raw_value": false,
-          "matches_raw_value_reason": "akshare MANAGE_EXPENSE alone is 管理费用 only; full SGA requires MANAGE_EXPENSE + SALE_EXPENSE which catalog cannot derive currently",
-          "pdf_value": "9,315,650,060.38",
-          "period_end": "2024-12-31"
+          "expected_provider_raw_value": "14954950119.87",
+          "matches_raw_value": true,
+          "matches_raw_value_reason": "AKShare MANAGE_EXPENSE (5,639,299,940.94) + SALE_EXPENSE (9,315,650,178.93) = 14,954,950,119.87 EXACT match PDF (销售费用+管理费用) for 600519/2024 (see docs/phase_h2_1_sga_spot_check.md)",
+          "pdf_page": "consolidated_income_statement_notes_43_44",
+          "pdf_value": "14,954,950,119.87",
+          "period_end": "2024-12-31",
+          "provider_ticker": "600519",
+          "reported_currency": "CNY",
+          "reported_unit": "yuan",
+          "reported_unit_multiplier": 1
         }
       ],
-      "semantic_claim": "管理费用 alone, excluding 销售费用 (SALE_EXPENSE) — single AKShare alias is incomplete; full SGA requires MANAGE_EXPENSE + SALE_EXPENSE addition derivation, not yet supported by catalog (mapping.py only supports subtraction). Phase H2.1 candidate.",
+      "semantic_claim": "Phase H2.1: full SGA = AKShare MANAGE_EXPENSE (管理费用) + SALE_EXPENSE (销售费用) per CN P&L convention. EXACT match PDF (销售费用+管理费用) for 600519/2024-12-31 = 14,954,950,119.87 CNY. Catalog applies derivation 'akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE'; this rule keys the composite proof to the MANAGE_EXPENSE leg with related_only_fields=[SALE_EXPENSE]. Yahoo SGA scope unclear (10.36B vs PDF 14.95B; ~30% off); not used.",
       "trusted_currency": "CNY",
       "trusted_unit": "yuan",
       "trusted_unit_multiplier": 1,

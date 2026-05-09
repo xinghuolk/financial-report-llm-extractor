@@ -1046,40 +1046,28 @@
       "value_type": "money",
       "statement_type": "income_statement",
       "domain": "income_statement",
-      "source_mode": "direct",
+      "source_mode": "derived",
       "primary_route": "akshare_direct",
-      "verification_status": "expected",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
+      "derivation": "akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE",
       "source_aliases": {
-        "akshare": [
-          "MANAGE_EXPENSE",
-          "SALE_EXPENSE",
-          "管理费用",
-          "销售费用"
-        ],
-        "yahoo": [
-          "Selling General And Administration"
-        ]
+        "akshare": [],
+        "yahoo": []
       },
       "source_policy": {
         "semantic_concept": "selling general and administrative expenses",
-        "notes": "AKShare CN reports SGA as 2 separate fields (SELLING_EXPENSE/SALE_EXPENSE + MANAGE_EXPENSE) requiring derivation; single MANAGE_EXPENSE alias is incomplete. Yahoo Selling General And Administration aggregates both but has not been provider-semantics-proven. Field stays non-clean for CN until derivation or proof is implemented.",
+        "notes": "Phase H2.1: CN SGA = AKShare MANAGE_EXPENSE + SALE_EXPENSE addition derivation, EXACT match PDF (销售费用+管理费用) for 600519/2024 = 14,954,950,119.87 CNY (see docs/phase_h2_1_sga_spot_check.md). Yahoo SGA scope unclear (10.36B vs PDF 14.95B; ~30% off); not used as candidate. HK still terminal_unverified per H2 (akshare HK has no MANAGE/SALE raw fields).",
         "semantic_variants": {
           "akshare": {
             "primary": [
-              "MANAGE_EXPENSE",
-              "管理费用"
-            ],
-            "related": [
-              "SELLING_EXPENSE",
-              "SALE_EXPENSE",
-              "销售费用"
+              "MANAGE_EXPENSE+SALE_EXPENSE (derived)"
             ]
           },
           "yahoo": {
-            "primary": [
+            "related": [
               "Selling General And Administration"
             ]
           }
@@ -1098,7 +1086,7 @@
             "single_source_requires_pdf": false
           }
         },
-        "verification_requirement": "pdf_required_on_conflict"
+        "verification_requirement": "none"
       },
       "pdf_aliases": [
         "selling general and administrative",

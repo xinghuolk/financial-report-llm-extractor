@@ -22,21 +22,54 @@ def _load_semantics(path: Path) -> list[dict]:
     return rules
 
 
-def test_phase_h2_sga_and_da_have_unverified_rules() -> None:
-    """SGA: catalog derivation only supports A-B; addition is out of scope.
-    D&A: AKShare FA_IR_DEPR is fixed-asset-only; semantically unequal to
-    Yahoo D&A (which includes intangibles amortization).
-    Both stay terminal_unverified across CN+HK in H2."""
+def test_phase_h2_da_remains_unverified() -> None:
+    """D&A stays terminal_unverified per H2: AKShare FA_IR_DEPR is
+    fixed-asset-only; semantically unequal to Yahoo D&A (which includes
+    intangibles amortization). No Phase H2.1 work for D&A."""
     cn_rules = _load_semantics(SEMANTICS_CN)
     hk_rules = _load_semantics(SEMANTICS_HK)
+    da_rules = [
+        r
+        for r in cn_rules + hk_rules
+        if r.get("turtle_field_id") == "depreciation_amortization"
+    ]
+    assert any(
+        r.get("classification") == "provider_semantics_unverified" for r in da_rules
+    ), (
+        "depreciation_amortization must have at least one "
+        "provider_semantics_unverified rule"
+    )
 
-    for field_id in ("selling_general_administrative", "depreciation_amortization"):
-        cn_match = [r for r in cn_rules if r.get("turtle_field_id") == field_id]
-        hk_match = [r for r in hk_rules if r.get("turtle_field_id") == field_id]
-        assert any(
-            r.get("classification") == "provider_semantics_unverified"
-            for r in cn_match + hk_match
-        ), f"{field_id} must have at least one provider_semantics_unverified rule"
+
+def test_phase_h2_1_cn_sga_promoted_to_sample_verified() -> None:
+    """Phase H2.1: CN SGA derivation MANAGE_EXPENSE + SALE_EXPENSE EXACT-matches
+    PDF for 600519/2024 (14,954,950,119.87 CNY); promoted from
+    provider_semantics_unverified to provider_semantics_sample_verified."""
+    cn_rules = _load_semantics(SEMANTICS_CN)
+    sga_cn_rules = [
+        r
+        for r in cn_rules
+        if r.get("turtle_field_id") == "selling_general_administrative"
+    ]
+    assert sga_cn_rules, "expected at least one CN SGA rule"
+    assert any(
+        r.get("classification") == "provider_semantics_sample_verified"
+        and r.get("provider") == "akshare"
+        for r in sga_cn_rules
+    ), (
+        "CN SGA must have at least one akshare provider_semantics_sample_verified "
+        "rule after Phase H2.1"
+    )
+    # Ensure the old unverified MANAGE_EXPENSE-only rule is gone — otherwise the
+    # composite proof is moot and the unverified rule would still fire.
+    assert not any(
+        r.get("classification") == "provider_semantics_unverified"
+        and r.get("raw_field_name") == "MANAGE_EXPENSE"
+        for r in sga_cn_rules
+    ), (
+        "Phase H2.1 must remove the obsolete MANAGE_EXPENSE-only unverified rule "
+        "for selling_general_administrative"
+    )
 
 
 def test_phase_h2_dividends_paid_terminal_for_cn() -> None:

@@ -1333,7 +1333,7 @@ def test_real_turtle_taxonomy_matches_expected_metadata() -> None:
             "income_statement",
             "income_statement",
             "money",
-            "direct",
+            "derived",
             "duration",
             "consolidated",
             "required",

@@ -178,6 +178,18 @@ def _resolve_field(
             hk_yahoo_trust_policy,
             provider_semantics_catalog,
         )
+    if field.status == "derived" and not field.candidates:
+        # Phase H2.1: derived fields without per-source candidates (e.g.
+        # `derivation = "akshare:RAW_A + akshare:RAW_B"` resolves directly
+        # against records, bypassing direct-alias matching) carry no provider
+        # conflict to resolve. The derivation IS the single source: emit a
+        # clean selected_single_source result so export keeps status="present"
+        # and the field reaches clean_present.
+        return SourcePolicyItem(
+            field_id=field.field_id,
+            selection_status="selected_single_source",
+            reconciliation_status=reconciliation_status,
+        )
 
     classifications = _classifications(entry, field, market=market, fx_like=fx_like)
     candidate = _primary_candidate(entry, field, market)

@@ -330,14 +330,14 @@
       "domain": "income_statement",
       "statement_type": "income_statement",
       "value_type": "money",
-      "source_mode": "direct",
+      "source_mode": "derived",
       "period_type": "duration",
       "scope_expectation": "consolidated",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
-      "description": "Selling, general, and administrative expense."
+      "description": "Selling, general, and administrative expense. Phase H2.1: CN derived from AKShare MANAGE_EXPENSE + SALE_EXPENSE."
     },
     "fv_value_chg_gain": {
       "priority": "P1",

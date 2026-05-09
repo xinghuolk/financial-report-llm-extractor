@@ -633,6 +633,10 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
     review_summary = json.loads(
         (tmp_path / "review_summary.json").read_text(encoding="utf-8")
     )
+    # Phase H2.1: selling_general_administrative moved to blocked_fields
+    # (catalog source_aliases emptied + derivation 'akshare:MANAGE_EXPENSE +
+    # akshare:SALE_EXPENSE'; this fixture lacks MANAGE_EXPENSE/SALE_EXPENSE
+    # records so the derivation is blocked).
     assert review_summary["missing_fields"] == [
         "accounts_receiv",
         "acct_payable",
@@ -664,10 +668,10 @@ def test_captured_source_validation_combined_akshare_fixtures_cover_minimal_fiel
         "rd_exp",
         "receiv_tax_refund",
         "repurchase_of_stock",
-        "selling_general_administrative",
         "st_borr",
         "stock_based_compensation",
     ]
+    assert "selling_general_administrative" in review_summary["blocked_fields"]
 
 
 def test_captured_source_validation_yahoo_fixture_covers_income_fields(

@@ -480,12 +480,12 @@
       "domain": "income_statement",
       "priority": "P1",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "income_statement",
           "evidence_requirement": "pdf_required"
         },
@@ -497,7 +497,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "AKShare CN reports SGA as 2 separate fields (SELLING_EXPENSE/SALE_EXPENSE + MANAGE_EXPENSE) requiring derivation; single-field match is incomplete. Yahoo Selling General And Administration aggregates both but has not been provider-semantics-proven. Field stays non-clean for CN until derivation or proof is implemented. HK uses yahoo_direct via market_policies."
+      "notes": "Phase H2.1: CN SGA = AKShare MANAGE_EXPENSE + SALE_EXPENSE addition derivation, EXACT match PDF (销售费用+管理费用) for 600519/2024 = 14,954,950,119.87 CNY (see docs/phase_h2_1_sga_spot_check.md). source_mapping has source_aliases.akshare=[] so direct match misses, then derivation fires (mapping.py:130). Yahoo SGA scope unclear (10.36B vs PDF 14.95B; ~30% off); not used. HK still terminal_unverified per H2 (akshare HK has no MANAGE/SALE raw fields)."
     },
     "fv_value_chg_gain": {
       "domain": "income_statement",

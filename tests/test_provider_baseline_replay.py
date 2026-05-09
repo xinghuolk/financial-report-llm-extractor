@@ -121,9 +121,12 @@ EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
         "rd_exp",
     }
 )
-# 01113 also has selling_general_administrative as source_unavailable; 00001 does not.
-# 00001 also has repurchase_of_stock as source_unavailable (no Yahoo data for 00001).
-EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE = frozenset({"selling_general_administrative"})
+# Phase H2.1: selling_general_administrative is now CN-derived
+# (akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE) with empty source_aliases;
+# HK akshare lacks MANAGE/SALE so HK SGA blocks → source_policy_resolvable bucket
+# (not source_unavailable, because the derivation is attempted but its operands
+# are not present rather than the source itself being unavailable).
+# 00001 has repurchase_of_stock as source_unavailable (no Yahoo data for 00001).
 EXPECTED_00001_EXTRA_SOURCE_UNAVAILABLE = frozenset({"repurchase_of_stock"})
 
 
@@ -528,11 +531,12 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
     assert companies["01113"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     # H2 Task 3: revenue + operating_profit promoted to clean_present via
     # provider_semantics_sample_verified (CN AKShare OPERATE_INCOME / OPERATE_PROFIT
-    # match PDF 营业收入 / 营业利润 exactly per 600519 sample). SGA stays unresolved
-    # (no derivation/proof yet).
-    assert "selling_general_administrative" in companies["600519"]["review"]["combined"][
-        "conflict_fields"
-    ]
+    # match PDF 营业收入 / 营业利润 exactly per 600519 sample).
+    # H2.1 Task 4: SGA promoted to clean_present via akshare derivation
+    # (MANAGE_EXPENSE + SALE_EXPENSE EXACT-matches PDF for 600519/2024 sample).
+    assert "selling_general_administrative" not in companies["600519"]["review"][
+        "combined"
+    ]["conflict_fields"]
     assert "revenue" not in companies["600519"]["review"]["combined"]["conflict_fields"]
     assert "operating_profit" not in companies["600519"]["review"]["combined"][
         "conflict_fields"
@@ -567,8 +571,6 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     assert maotai_combined["selected_count"] >= maotai_combined["covered_count"]
     assert maotai_combined["clean_present_count"] <= maotai_combined["selected_count"]
     # Phase H0: null_means_zero promotes bond_payable/st_borr/lt_borr to clean_present.
-    # SGA remains non-clean: AKShare splits into MANAGE_EXPENSE + SELLING_EXPENSE
-    # while Yahoo aggregates them, no derivation rule yet — unresolved_conflict.
     # N4.A: P2 cash-flow fields added; 600519 gains change_in_receivables/payables/inventory
     # → clean_present_count rises from 30 to 33.
     # H2 Task 2: capital_expenditures (P2) gets sign_normalize='absolute' on CN,
@@ -577,7 +579,9 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     # H2 Task 3: revenue + operating_profit promoted via
     # provider_semantics_sample_verified (CN AKShare OPERATE_INCOME / OPERATE_PROFIT
     # match PDF exactly per 600519 sample) — clean_present 34 → 36.
-    assert maotai_combined["clean_present_count"] == 36
+    # H2.1 Task 4: SGA promoted via akshare derivation MANAGE_EXPENSE + SALE_EXPENSE
+    # (EXACT-matches PDF for 600519/2024 sample) — clean_present 36 → 37.
+    assert maotai_combined["clean_present_count"] == 37
     assert {
         "bond_payable",
         "st_borr",
@@ -585,19 +589,18 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
         "capital_expenditures",
         "revenue",
         "operating_profit",
+        "selling_general_administrative",
     } <= set(maotai_combined["clean_present_fields"])
-    assert "selling_general_administrative" not in set(
-        maotai_combined["clean_present_fields"]
-    )
     # source_policy_resolvable no longer contains null_means_zero fields.
     maotai_wc = companies["600519"]["review"]["combined"]["warning_classification"]
     assert "bond_payable" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "st_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "lt_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
-    # SGA is still an unresolved conflict — present in conflict_fields.
     maotai_review = companies["600519"]["review"]["combined"]
-    assert "selling_general_administrative" in set(maotai_review["conflict_fields"])
     # H2 Task 3: revenue + operating_profit no longer in conflict_fields.
+    # H2.1 Task 4: SGA also no longer in conflict_fields (derivation produces
+    # single derived value, no provider conflict to resolve).
+    assert "selling_general_administrative" not in set(maotai_review["conflict_fields"])
     assert "revenue" not in set(maotai_review["conflict_fields"])
     assert "operating_profit" not in set(maotai_review["conflict_fields"])
 
@@ -760,7 +763,6 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "operating_cost",
             "operating_profit",
             "revenue",
-            "selling_general_administrative",
             "st_borr",
             "total_assets",
             "total_cur_assets",
@@ -798,7 +800,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 27, "01113": 28}
+    expected_clean_count_by_company = {"00001": 26, "01113": 28}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]
@@ -816,23 +818,16 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
         )
         assert warning_fields["mapping_expansion_required"] == expected_mapping_expansion
         assert set(warning_fields["source_unavailable"]) >= EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS
-        # 01113 has selling_general_administrative as source_unavailable; 00001 does not
-        if company_id == "01113":
-            assert (
-                EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE
-                <= set(warning_fields["source_unavailable"])
-            ), (
-                f"01113 expected selling_general_administrative in source_unavailable "
-                f"but got: {warning_fields['source_unavailable']!r}"
-            )
-        elif company_id == "00001":
-            assert (
-                not EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE
-                & set(warning_fields["source_unavailable"])
-            ), (
-                f"00001 should NOT have {EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE} "
-                f"in source_unavailable but got: {warning_fields['source_unavailable']!r}"
-            )
+        # Phase H2.1: SGA derivation runs (and blocks) for HK; lands in
+        # source_policy_resolvable for both 00001 and 01113, not source_unavailable.
+        assert "selling_general_administrative" in warning_fields[
+            "source_policy_resolvable"
+        ], (
+            f"{company_id} expected selling_general_administrative in "
+            f"source_policy_resolvable (HK derivation blocked); got "
+            f"source_policy_resolvable={warning_fields['source_policy_resolvable']!r}"
+        )
+        if company_id == "00001":
             assert (
                 EXPECTED_00001_EXTRA_SOURCE_UNAVAILABLE
                 <= set(warning_fields["source_unavailable"])
