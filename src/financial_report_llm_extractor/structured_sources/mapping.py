@@ -250,13 +250,15 @@ def _derive_field(
 ) -> MappedTurtleField:
     assert entry.derivation is not None
     parts = entry.derivation.split()
-    if len(parts) != 3 or parts[1] != "-":
+    if len(parts) != 3 or parts[1] not in {"-", "+"}:
         return MappedTurtleField(
             field_id=entry.field_id,
             status="blocked",
             errors=(f"unsupported derivation: {entry.derivation}",),
         )
 
+    op = parts[1]
+    sign = 1 if op == "+" else -1
     left = mapped.get(parts[0])
     right = mapped.get(parts[2])
     if left is None or right is None:
@@ -289,9 +291,9 @@ def _derive_field(
         )
 
     if left.unit == right.unit:
-        value = left.value - right.value
+        value = left.value + sign * right.value
         normalized_value = (
-            left.normalized_value - right.normalized_value
+            left.normalized_value + sign * right.normalized_value
             if left.normalized_value is not None and right.normalized_value is not None
             else None
         )
@@ -303,7 +305,7 @@ def _derive_field(
                 status="blocked",
                 errors=("derivation input normalized value missing",),
             )
-        value = left.normalized_value - right.normalized_value
+        value = left.normalized_value + sign * right.normalized_value
         normalized_value = value
         unit = left.canonical_unit
     return MappedTurtleField(

@@ -1084,3 +1084,53 @@ def _source_evidence(source: str, raw_field_name: str) -> SourceEvidence:
         raw_record_id=f"{source}:{raw_field_name}",
         raw_field_name=raw_field_name,
     )
+
+
+def test_derive_supports_addition_operator() -> None:
+    """Phase H2.1: derivation should accept `A + B` (currently only `A - B`)."""
+    from decimal import Decimal
+
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        SourceMappingEntry,
+    )
+    from financial_report_llm_extractor.structured_sources.mapping import (
+        MappedTurtleField,
+        _derive_field,
+    )
+
+    entry = SourceMappingEntry(
+        field_id="x_plus_y",
+        priority="P3",
+        value_type="money",
+        statement_type="income_statement",
+        currency_requirement="required",
+        unit_requirement="required",
+        source_aliases={"akshare": ("X_PLUS_Y",)},
+        derivation="x + y",
+    )
+    mapped = {
+        "x": MappedTurtleField(
+            field_id="x",
+            status="present",
+            value=Decimal("100"),
+            normalized_value=Decimal("100"),
+            currency="CNY",
+            unit="yuan",
+            canonical_unit="CNY",
+        ),
+        "y": MappedTurtleField(
+            field_id="y",
+            status="present",
+            value=Decimal("50"),
+            normalized_value=Decimal("50"),
+            currency="CNY",
+            unit="yuan",
+            canonical_unit="CNY",
+        ),
+    }
+
+    result = _derive_field(entry, mapped)
+
+    assert result.status == "derived"
+    assert result.value == Decimal("150")
+    assert result.normalized_value == Decimal("150")
