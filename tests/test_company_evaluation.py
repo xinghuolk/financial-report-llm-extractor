@@ -205,3 +205,152 @@ def test_classify_clean_present_with_yahoo_pdf_verified_warning() -> None:
 
     assert bucket == "clean_present"
     assert reason is None
+
+
+def _build_minimal_catalog() -> Any:
+    """3-field SourceMappingCatalog: P0=revenue, P1=gross_profit, P3=dividend_plan."""
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        SourceMappingCatalog,
+    )
+    return SourceMappingCatalog(
+        catalog_id="test-catalog",
+        version="v0",
+        entries={
+            "revenue": _make_mapping_entry(source_mode="direct"),  # priority defaults P0
+            "gross_profit": _replace(_make_mapping_entry(source_mode="direct"),
+                                     field_id="gross_profit", priority="P1"),
+            "dividend_plan": _replace(_make_mapping_entry(source_mode="pdf_only"),
+                                      field_id="dividend_plan", priority="P3"),
+        },
+    )
+
+
+def _build_minimal_taxonomy() -> Any:
+    """Minimal FieldTaxonomyCatalog stub."""
+    from financial_report_llm_extractor.field_metadata import FieldTaxonomyCatalog
+    return FieldTaxonomyCatalog(
+        catalog_id="test-taxonomy",
+        version="v0",
+        source_priority_catalog="test-priorities",
+        fields={},
+    )
+
+
+def _replace(entry: Any, **kwargs: Any) -> Any:
+    """Frozen-dataclass shallow replace helper for test fixtures."""
+    import dataclasses
+    return dataclasses.replace(entry, **kwargs)
+
+
+def test_build_company_evaluation_counts_buckets_and_priorities() -> None:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        build_company_evaluation,
+    )
+    from financial_report_llm_extractor.structured_sources.export import (
+        SourceFirstExportResult,
+    )
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+    )
+    from financial_report_llm_extractor.structured_sources.warning_classification import (
+        WarningClassificationResult,
+    )
+
+    catalog = _build_minimal_catalog()
+    taxonomy = _build_minimal_taxonomy()
+
+    # Note: SourceFirstExportResult requires profile + catalog_id + catalog_version
+    # + items: dict (NOT tuple).
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="test-catalog",
+        catalog_version="v0",
+        items={
+            "revenue": _make_export_item(field_id="revenue", status="present", selected_source="akshare"),
+            "gross_profit": _make_export_item(field_id="gross_profit", status="missing", selected_source=None),
+            "dividend_plan": _make_export_item(field_id="dividend_plan", status="missing", selected_source=None),
+        },
+    )
+    warning = WarningClassificationResult(items={
+        "gross_profit": _make_warning_item("yahoo_definition_unverified", field_id="gross_profit"),
+    })
+
+    evaluation = build_company_evaluation(
+        company="01113",
+        period=PeriodSpec.from_year(2024),
+        market="HK",
+        export=export,
+        warning_classification=warning,
+        supplement=None,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        pdf_provided=False,
+    )
+
+    assert evaluation.by_bucket["clean_present"] == 1
+    assert evaluation.by_bucket["terminal_unverified"] == 1
+    assert evaluation.by_bucket["not_in_scope"] == 1  # dividend_plan pdf_only
+
+    assert evaluation.by_priority["P0"]["clean_present"] == 1
+    assert evaluation.by_priority["P1"]["terminal_unverified"] == 1
+    assert evaluation.by_priority["P3"]["not_in_scope"] == 1
+
+
+def _build_sample_evaluation() -> Any:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        build_company_evaluation,
+    )
+    from financial_report_llm_extractor.structured_sources.export import (
+        SourceFirstExportResult,
+    )
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+    )
+    from financial_report_llm_extractor.structured_sources.warning_classification import (
+        WarningClassificationResult,
+    )
+
+    catalog = _build_minimal_catalog()
+    taxonomy = _build_minimal_taxonomy()
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="test-catalog",
+        catalog_version="v0",
+        items={
+            "revenue": _make_export_item(field_id="revenue", status="present", selected_source="akshare"),
+            "gross_profit": _make_export_item(field_id="gross_profit", status="missing", selected_source=None),
+            "dividend_plan": _make_export_item(field_id="dividend_plan", status="missing", selected_source=None),
+        },
+    )
+    warning = WarningClassificationResult(items={
+        "gross_profit": _make_warning_item("yahoo_definition_unverified", field_id="gross_profit"),
+    })
+
+    return build_company_evaluation(
+        company="01113",
+        period=PeriodSpec.from_year(2024),
+        market="HK",
+        export=export,
+        warning_classification=warning,
+        supplement=None,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        pdf_provided=False,
+    )
+
+
+def test_render_evaluation_markdown_lists_priority_bucket_grid() -> None:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        render_evaluation_markdown,
+    )
+
+    evaluation = _build_sample_evaluation()
+    md = render_evaluation_markdown(evaluation)
+
+    assert "01113" in md  # company
+    assert "2024-12-31" in md  # period
+    assert "clean_present" in md
+    assert "P0" in md and "P3" in md
+    # 不出现 "% clean" 字面 —— 与 drift §177 一致
+    assert "% clean" not in md.lower()
+    assert "/ total" not in md.lower()
