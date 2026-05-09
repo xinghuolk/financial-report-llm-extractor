@@ -16,6 +16,7 @@ from financial_report_llm_extractor.structured_sources.export import (
     SourceFirstExportItem,
 )
 from financial_report_llm_extractor.structured_sources.warning_classification import (
+    WarningCategory,
     WarningClassificationItem,
 )
 
@@ -30,7 +31,7 @@ BucketName = Literal[
 ]
 
 
-_TERMINAL_UNVERIFIED_CATEGORIES: frozenset[str] = frozenset({
+_TERMINAL_UNVERIFIED_CATEGORIES: frozenset[WarningCategory] = frozenset({
     "yahoo_definition_unverified",
     "pdf_required",
     "pdf_verification_required",
@@ -38,11 +39,16 @@ _TERMINAL_UNVERIFIED_CATEGORIES: frozenset[str] = frozenset({
 })
 
 
+_BENIGN_WARNING_CATEGORIES: frozenset[WarningCategory] = frozenset({
+    "yahoo_pdf_verified",
+    "source_policy_resolvable",
+})
+
+
 def classify_field(
     *,
     export_item: SourceFirstExportItem,
     warning_item: WarningClassificationItem | None,
-    supplement_item: object | None,  # LLM evidence dict; placeholder for future shape
     mapping_entry: SourceMappingEntry,
     pdf_provided: bool,
 ) -> tuple[BucketName, str | None]:
@@ -57,7 +63,10 @@ def classify_field(
         return ("llm_supplement_present", None)
 
     # Bucket 3: Clean present from a real source.
-    if export_item.status == "present" and warning_item is None:
+    if export_item.status == "present" and (
+        warning_item is None
+        or warning_item.category in _BENIGN_WARNING_CATEGORIES
+    ):
         return ("clean_present", None)
 
     # Bucket 4: Terminal unverified per warning_classification.

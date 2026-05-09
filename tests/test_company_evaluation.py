@@ -39,7 +39,6 @@ def _make_warning_item(category: str, *, field_id: str = "x") -> Any:
     from financial_report_llm_extractor.structured_sources.warning_classification import (
         WarningClassificationItem,
     )
-    # 字段对应实际 dataclass — 9 fields total (verified in models)
     return WarningClassificationItem(
         field_id=field_id,
         category=category,  # type: ignore[arg-type]
@@ -82,7 +81,6 @@ def test_classify_clean_present() -> None:
     bucket, reason = classify_field(
         export_item=_make_export_item(),
         warning_item=None,
-        supplement_item=None,
         mapping_entry=_make_mapping_entry(),
         pdf_provided=False,
     )
@@ -99,7 +97,6 @@ def test_classify_unresolved_conflict() -> None:
     bucket, reason = classify_field(
         export_item=_make_export_item(conflict_classifications=("provider_value_mismatch",)),
         warning_item=None,
-        supplement_item=None,
         mapping_entry=_make_mapping_entry(),
         pdf_provided=False,
     )
@@ -116,7 +113,6 @@ def test_classify_llm_supplement_present() -> None:
     bucket, _ = classify_field(
         export_item=_make_export_item(selected_source="llm"),
         warning_item=None,
-        supplement_item=None,
         mapping_entry=_make_mapping_entry(source_mode="pdf_only"),
         pdf_provided=True,
     )
@@ -132,7 +128,6 @@ def test_classify_terminal_unverified_for_yahoo_definition_unverified() -> None:
     bucket, reason = classify_field(
         export_item=_make_export_item(status="missing", selected_source=None),
         warning_item=_make_warning_item("yahoo_definition_unverified"),
-        supplement_item=None,
         mapping_entry=_make_mapping_entry(),
         pdf_provided=False,
     )
@@ -149,7 +144,6 @@ def test_classify_not_in_scope_pdf_only_without_pdf() -> None:
     bucket, _ = classify_field(
         export_item=_make_export_item(status="missing", selected_source=None),
         warning_item=None,
-        supplement_item=None,
         mapping_entry=_make_mapping_entry(source_mode="pdf_only"),
         pdf_provided=False,
     )
@@ -165,7 +159,6 @@ def test_classify_source_unavailable_default() -> None:
     bucket, reason = classify_field(
         export_item=_make_export_item(status="missing", selected_source=None),
         warning_item=_make_warning_item("source_unavailable"),
-        supplement_item=None,
         mapping_entry=_make_mapping_entry(),
         pdf_provided=False,
     )
@@ -186,9 +179,29 @@ def test_classify_cn_gross_profit_clean_not_terminal() -> None:
     bucket, _ = classify_field(
         export_item=_make_export_item(field_id="gross_profit", selected_source="akshare"),
         warning_item=None,  # 关键：CN clean 时无 warning
-        supplement_item=None,
         mapping_entry=_make_mapping_entry(),
         pdf_provided=False,
     )
 
     assert bucket == "clean_present"
+
+
+def test_classify_clean_present_with_yahoo_pdf_verified_warning() -> None:
+    """A field with status='present' AND a benign warning (yahoo_pdf_verified
+    or source_policy_resolvable) must land in clean_present, NOT source_unavailable.
+
+    Regression for review §"clean-with-warning" cascade gap.
+    """
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        classify_field,
+    )
+
+    bucket, reason = classify_field(
+        export_item=_make_export_item(selected_source="yahoo"),
+        warning_item=_make_warning_item("yahoo_pdf_verified"),
+        mapping_entry=_make_mapping_entry(),
+        pdf_provided=False,
+    )
+
+    assert bucket == "clean_present"
+    assert reason is None
