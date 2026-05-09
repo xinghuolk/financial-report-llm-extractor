@@ -491,6 +491,13 @@ def _load_replay_provider_semantics_catalog() -> ProviderSemanticsCatalog | None
 
     Returns None only when neither file is present. When both are present,
     rules are concatenated (HK first, then CN) into one ProviderSemanticsCatalog.
+
+    fail-loud on collision: rule lookup keys on
+    `(provider, market, turtle_field_id, raw_field_name)` (provider_semantics.py
+    rule_for). If two files declare the same key (which would let `rule_for`
+    silently return only the first match), raise ValueError so the
+    inconsistency is visible at load time rather than as latent silent-shadowing
+    bugs.
     """
     catalogs: list[ProviderSemanticsCatalog] = []
     if DEFAULT_PROVIDER_RAW_SEMANTICS_PATH.exists():
@@ -502,6 +509,21 @@ def _load_replay_provider_semantics_catalog() -> ProviderSemanticsCatalog | None
     if len(catalogs) == 1:
         return catalogs[0]
     merged_rules = tuple(rule for c in catalogs for rule in c.rules)
+    seen: set[tuple[str, str, str, str]] = set()
+    duplicates: list[tuple[str, str, str, str]] = []
+    for rule in merged_rules:
+        key = (rule.provider, rule.market, rule.turtle_field_id, rule.raw_field_name)
+        if key in seen:
+            duplicates.append(key)
+        seen.add(key)
+    if duplicates:
+        raise ValueError(
+            "duplicate provider semantics rule keys across HK + CN catalogs "
+            f"(provider, market, turtle_field_id, raw_field_name): {duplicates}. "
+            f"Each lookup key must be unique; rule_for would silently return only "
+            f"the first match. Resolve by removing the duplicate or differentiating "
+            f"raw_field_name."
+        )
     return ProviderSemanticsCatalog(rules=merged_rules)
 
 

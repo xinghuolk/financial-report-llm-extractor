@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 
 CATALOG_PATH = Path("field_catalog/turtle_v015_source_mapping_minimal.json")
 SEMANTICS_CN = Path("field_catalog/provider_raw_semantics_cn.json")
@@ -46,6 +48,54 @@ def test_phase_h2_dividends_paid_terminal_for_cn() -> None:
         r.get("classification") == "provider_semantics_unverified"
         for r in matches
     )
+
+
+def test_provider_semantics_merge_raises_on_duplicate_rule_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase H2 follow-up: when HK + CN catalogs declare the same lookup key
+    (provider, market, turtle_field_id, raw_field_name), the merge must
+    fail-loud rather than silently shadow.
+
+    Without the explicit collision check, ProviderSemanticsCatalog.rule_for
+    returns the first match and the second rule is silently ignored.
+    """
+    import json
+
+    from financial_report_llm_extractor.structured_sources import provider_baseline_replay
+
+    duplicate_rule = {
+        "provider": "akshare",
+        "market": "CN",
+        "raw_field_name": "DUPLICATE_FIELD",
+        "raw_field_code": "DUPLICATE_FIELD",
+        "turtle_field_id": "revenue",
+        "semantic_claim": "duplicate rule for collision test",
+        "classification": "provider_semantics_unverified",
+        "trusted_currency": "CNY",
+        "trusted_unit": "yuan",
+        "trusted_unit_multiplier": 1,
+        "allowed_as_primary": False,
+        "related_only_fields": [],
+        "negative_examples": [],
+        "proof_origin": "sampled_pdf_policy_proof",
+        "samples": [],
+        "required_proof": [],
+    }
+    fake_hk = tmp_path / "hk.json"
+    fake_cn = tmp_path / "cn.json"
+    fake_hk.write_text(json.dumps({"rules": [duplicate_rule]}))
+    fake_cn.write_text(json.dumps({"rules": [duplicate_rule]}))
+
+    monkeypatch.setattr(
+        provider_baseline_replay, "DEFAULT_PROVIDER_RAW_SEMANTICS_PATH", fake_hk
+    )
+    monkeypatch.setattr(
+        provider_baseline_replay, "DEFAULT_PROVIDER_RAW_SEMANTICS_CN_PATH", fake_cn
+    )
+
+    with pytest.raises(ValueError, match="duplicate provider semantics rule keys"):
+        provider_baseline_replay._load_replay_provider_semantics_catalog()
 
 
 def test_phase_h2_cn_akshare_rule_raw_field_name_matches_adapter_alias_map() -> None:
