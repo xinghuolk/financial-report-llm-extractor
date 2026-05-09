@@ -67,6 +67,91 @@
       "trusted_unit": "yuan",
       "trusted_unit_multiplier": 1,
       "turtle_field_id": "operating_profit"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "CN",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "MANAGE_EXPENSE",
+      "related_only_fields": [
+        "SALE_EXPENSE"
+      ],
+      "required_proof": [
+        "catalog addition derivation support (Phase H2.1)"
+      ],
+      "samples": [
+        {
+          "company_id": "600519",
+          "currency": "CNY",
+          "matches_raw_value": false,
+          "matches_raw_value_reason": "akshare MANAGE_EXPENSE alone is 管理费用 only; full SGA requires MANAGE_EXPENSE + SALE_EXPENSE which catalog cannot derive currently",
+          "pdf_value": "9,315,650,060.38",
+          "period_end": "2024-12-31"
+        }
+      ],
+      "semantic_claim": "管理费用 alone, excluding 销售费用 (SALE_EXPENSE) — single AKShare alias is incomplete; full SGA requires MANAGE_EXPENSE + SALE_EXPENSE addition derivation, not yet supported by catalog (mapping.py only supports subtraction). Phase H2.1 candidate.",
+      "trusted_currency": "CNY",
+      "trusted_unit": "yuan",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "selling_general_administrative"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "CN",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "FA_IR_DEPR",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "600519",
+          "currency": "CNY",
+          "matches_raw_value": false,
+          "matches_raw_value_reason": "AKShare reports depreciation only (1.72B); Yahoo D&A is 2.06B including amortization. Different scopes.",
+          "pdf_value": "1,721,165,327.14",
+          "period_end": "2024-12-31"
+        }
+      ],
+      "semantic_claim": "AKShare FA_IR_DEPR is 固定资产折旧 (fixed-asset depreciation) only; Turtle depreciation_amortization expects D+A (depreciation plus amortization of intangibles). Not equivalent.",
+      "trusted_currency": "CNY",
+      "trusted_unit": "yuan",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "depreciation_amortization"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "CN",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "ASSIGN_DIVIDEND_PORFIT",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "600519",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "matches_raw_value_reason": "AKShare value matches but Yahoo's value (also 'Cash Dividends Paid') has timing-mismatch residual 2.9% — semantically the two providers measure different things",
+          "pdf_value": "70,951,027,702.94",
+          "period_end": "2024-12-31"
+        }
+      ],
+      "semantic_claim": "After sign-normalize, AKShare 70.95B vs Yahoo 68.79B residual 2.9% gap reflects timing-mismatch (已付 vs 宣告 dividends).",
+      "trusted_currency": "CNY",
+      "trusted_unit": "yuan",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "dividends_paid"
     }
   ]
 }

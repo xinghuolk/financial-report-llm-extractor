@@ -399,6 +399,75 @@
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
       "turtle_field_id": "operating_profit"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Selling General And Administration",
+      "related_only_fields": [
+        "General And Administrative Expense",
+        "Selling And Marketing Expense"
+      ],
+      "required_proof": [
+        "per-issuer PDF reconciliation against HK conglomerate operating expense breakdowns"
+      ],
+      "samples": [],
+      "semantic_claim": "Yahoo HK Selling General And Administration aggregates expense lines but has not been PDF-proven equivalent to the Turtle SGA semantics for HK conglomerates (which often report distribution costs and administrative expenses separately at scopes that diverge from Yahoo normalization). Same scope concerns apply as the CN side; HK SGA stays terminal_unverified pending proof.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "selling_general_administrative"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Depreciation And Amortization",
+      "related_only_fields": [
+        "Reconciled Depreciation",
+        "Depreciation",
+        "Amortization"
+      ],
+      "required_proof": [
+        "per-issuer PDF reconciliation confirming D+A scope (depreciation of PPE + amortization of intangibles + ROU depreciation handling)"
+      ],
+      "samples": [],
+      "semantic_claim": "Yahoo HK Depreciation And Amortization scope (PPE depreciation + intangibles amortization, with inconsistent treatment of right-of-use asset depreciation across HK issuers per fix_assets analysis) has not been PDF-proven equivalent to the Turtle depreciation_amortization definition. Same provider semantics issue as CN; HK D&A stays terminal_unverified.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "depreciation_amortization"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Cash Dividends Paid",
+      "related_only_fields": [
+        "Common Stock Dividend Paid"
+      ],
+      "required_proof": [
+        "per-issuer reconciliation between AKShare 已付股息(融资) and Yahoo Cash Dividends Paid timing semantics (paid vs declared)"
+      ],
+      "samples": [],
+      "semantic_claim": "Yahoo HK Cash Dividends Paid vs AKShare 已付股息(融资) suspected to have the same timing-semantics divergence (已付 vs 宣告) observed for CN dividends_paid. Without per-issuer PDF reconciliation, HK dividends_paid stays terminal_unverified.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "dividends_paid"
     }
   ]
 }
