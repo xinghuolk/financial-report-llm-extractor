@@ -154,9 +154,7 @@ def build_company_evaluation(
     market: str,
     export: SourceFirstExportResult,
     warning_classification: WarningClassificationResult,
-    supplement: dict[str, object] | None,
     catalog: SourceMappingCatalog,
-    taxonomy: FieldTaxonomyCatalog,
     pdf_provided: bool,
     mapping: TurtleMappingResult | None = None,
 ) -> CompanyEvaluation:
@@ -165,10 +163,6 @@ def build_company_evaluation(
     Iterates over catalog.entries (the canonical denominator), looks up
     matching export.items + warning_classification.items, calls classify_field
     for each, accumulates totals.
-
-    `supplement` parameter is currently informational (LLM merge already
-    happens upstream via _merge_llm_evidence_supplement; the dict is reserved
-    for future per-field LLM metadata that doesn't flow through export).
 
     `mapping` (optional, Phase EC Tier 1): if provided, populate
     CompanyFieldEvaluation.candidate_values for non-clean rows so the
@@ -264,6 +258,15 @@ def _collect_candidate_values(
     return tuple(out)
 
 
+def _format_decimal_plain(value: Decimal) -> str:
+    """Render Decimal in plain notation (no scientific notation).
+
+    Avoids '1E+9' for large finance values. `format(d, "f")` always produces
+    fixed-point output and preserves trailing precision baked into the Decimal.
+    """
+    return format(value, "f")
+
+
 def _format_money_short(value: Decimal) -> str:
     """Format Decimal compactly: 170,899,152,276.34 → '170.9B'."""
     f = float(value)
@@ -308,7 +311,7 @@ def render_evaluation_markdown(evaluation: CompanyEvaluation) -> str:
         marker = "**llm**" if f.selected_source == "llm" else (f.selected_source or "")
         reason = f.reason or ""
         if f.value is not None:
-            value_str = str(f.value)
+            value_str = _format_decimal_plain(f.value)
         elif f.candidate_values:
             # Phase EC Tier 1: show per-source candidates inline for triage.
             value_str = " / ".join(f"{src}:{val}" for src, val in f.candidate_values)
@@ -326,7 +329,7 @@ def run_company_evaluation(
     period: PeriodSpec,
     market: str,
     inventory_path: Path,
-    inventory_summary_path: Path,
+    inventory_summary_path: Path | None = None,
     catalog_path: Path,
     taxonomy_path: Path,
     pdf_path: Path | None,
@@ -395,9 +398,7 @@ def run_company_evaluation(
         market=market,
         export=export,
         warning_classification=warning_classification,
-        supplement=None,
         catalog=catalog,
-        taxonomy=taxonomy,
         pdf_provided=pdf_provided,
         mapping=mapping,
     )
@@ -492,7 +493,7 @@ def _evaluation_to_dict(ev: CompanyEvaluation) -> dict[str, object]:
             f.field_id: {
                 "bucket": f.bucket,
                 "selected_source": f.selected_source,
-                "value": str(f.value) if f.value is not None else None,
+                "value": _format_decimal_plain(f.value) if f.value is not None else None,
                 "currency": f.currency,
                 "unit": f.unit,
                 "reason": f.reason,

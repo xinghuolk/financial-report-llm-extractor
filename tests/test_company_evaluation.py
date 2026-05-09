@@ -258,7 +258,6 @@ def test_build_company_evaluation_counts_buckets_and_priorities() -> None:
     )
 
     catalog = _build_minimal_catalog()
-    taxonomy = _build_minimal_taxonomy()
 
     # Note: SourceFirstExportResult requires profile + catalog_id + catalog_version
     # + items: dict (NOT tuple).
@@ -282,9 +281,7 @@ def test_build_company_evaluation_counts_buckets_and_priorities() -> None:
         market="HK",
         export=export,
         warning_classification=warning,
-        supplement=None,
         catalog=catalog,
-        taxonomy=taxonomy,
         pdf_provided=False,
     )
 
@@ -312,7 +309,6 @@ def _build_sample_evaluation() -> Any:
     )
 
     catalog = _build_minimal_catalog()
-    taxonomy = _build_minimal_taxonomy()
     export = SourceFirstExportResult(
         profile="source_only",
         catalog_id="test-catalog",
@@ -333,9 +329,7 @@ def _build_sample_evaluation() -> Any:
         market="HK",
         export=export,
         warning_classification=warning,
-        supplement=None,
         catalog=catalog,
-        taxonomy=taxonomy,
         pdf_provided=False,
     )
 

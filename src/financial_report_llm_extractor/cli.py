@@ -263,7 +263,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--market", required=True, choices=["CN", "HK"]
     )
     evaluate_parser.add_argument("--inventory", type=Path, required=True)
-    evaluate_parser.add_argument("--inventory-summary", type=Path, required=True)
+    # Informational: not consumed by the orchestrator. Kept optional so users
+    # can pass the path produced by fetch-source-inventory for parity.
+    evaluate_parser.add_argument("--inventory-summary", type=Path)
     evaluate_parser.add_argument("--catalog", type=Path, required=True)
     evaluate_parser.add_argument("--taxonomy", type=Path, required=True)
     evaluate_parser.add_argument("--pdf", type=Path)
