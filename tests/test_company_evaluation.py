@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 
@@ -354,3 +355,66 @@ def test_render_evaluation_markdown_lists_priority_bucket_grid() -> None:
     # 不出现 "% clean" 字面 —— 与 drift §177 一致
     assert "% clean" not in md.lower()
     assert "/ total" not in md.lower()
+
+
+def test_orchestrator_with_fake_stack_writes_all_artifacts(
+    tmp_path: Path,
+) -> None:
+    """End-to-end with fake provider client → fetch → evaluate. No PDF, no LLM."""
+    import sys
+
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        run_company_evaluation,
+    )
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+        fetch_source_inventory,
+    )
+
+    # The tests/ dir is on sys.path via pytest's rootdir mechanism but not as
+    # a package; load _FakeAkshareClient by direct module name since there is
+    # no tests/__init__.py.
+    tests_dir = str(Path(__file__).parent)
+    if tests_dir not in sys.path:
+        sys.path.insert(0, tests_dir)
+    from test_source_inventory_fetch import _FakeAkshareClient  # type: ignore[import-not-found]
+
+    catalog_path = Path("field_catalog/turtle_v015_source_mapping_minimal.json")
+    taxonomy_path = Path("field_catalog/turtle_v015_field_taxonomy.json")
+
+    # 1. Live fetch with fake client (writes inventory artifacts to tmp_path).
+    fetch_source_inventory(
+        company="600519",
+        period=PeriodSpec.from_year(2024),
+        market="CN",
+        providers=("akshare",),
+        akshare_client=_FakeAkshareClient(),
+        yahoo_client=None,
+        out_dir=tmp_path,
+        catalog_path=catalog_path,
+    )
+
+    # 2. Evaluate (no PDF → skip LLM step).
+    evaluation = run_company_evaluation(
+        company="600519",
+        period=PeriodSpec.from_year(2024),
+        market="CN",
+        inventory_path=tmp_path / "source_inventory.jsonl",
+        inventory_summary_path=tmp_path / "source_inventory_summary.json",
+        catalog_path=catalog_path,
+        taxonomy_path=taxonomy_path,
+        pdf_path=None,
+        llm_config_path=None,
+        priorities=("P0", "P1", "P2", "P3"),
+        out_dir=tmp_path,
+    )
+
+    # IMPORTANT: real artifact name is `extraction_result.json` (not
+    # `source_first_export.json`); see export.py:189.
+    assert (tmp_path / "extraction_result.json").exists()
+    assert (tmp_path / "evaluation.json").exists()
+    assert (tmp_path / "evaluation.md").exists()
+    assert evaluation.company == "600519"
+    # Revenue should be clean_present after the fake-client fetch.
+    revenue = next(f for f in evaluation.fields if f.field_id == "revenue")
+    assert revenue.bucket == "clean_present"

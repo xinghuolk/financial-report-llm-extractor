@@ -896,6 +896,44 @@ def test_fetch_source_inventory_subcommand_rejects_year_and_period_end_together(
         ])
 
 
+def test_evaluate_company_subcommand_dispatches_correctly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    captured: dict[str, object] = {}
+
+    def fake_runner(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.cli._run_evaluate_company",
+        fake_runner,
+    )
+
+    inv = tmp_path / "source_inventory.jsonl"
+    inv.write_text("")
+    inv_summary = tmp_path / "source_inventory_summary.json"
+    inv_summary.write_text("{}")
+
+    main([
+        "evaluate-company",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--inventory", str(inv),
+        "--inventory-summary", str(inv_summary),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--taxonomy", "field_catalog/turtle_v015_field_taxonomy.json",
+        "--out", str(tmp_path),
+    ])
+
+    assert captured["company"] == "600519"
+    assert captured["market"] == "CN"
+    assert captured["pdf_path"] is None
+
+
 def test_extract_llm_help_lists_required_args() -> None:
     """Verify the extract-llm subcommand is registered."""
     import argparse

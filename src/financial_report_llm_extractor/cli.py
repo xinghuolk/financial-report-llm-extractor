@@ -251,6 +251,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Source mapping catalog JSON path.",
     )
 
+    evaluate_parser = subparsers.add_parser(
+        "evaluate-company",
+        help="Per-(company, period) source-first + optional LLM evaluation.",
+    )
+    evaluate_parser.add_argument("--company", required=True)
+    evaluate_parser.add_argument("--year", type=int)
+    evaluate_parser.add_argument("--period-end")
+    evaluate_parser.add_argument("--report-type", default="annual")
+    evaluate_parser.add_argument(
+        "--market", required=True, choices=["CN", "HK"]
+    )
+    evaluate_parser.add_argument("--inventory", type=Path, required=True)
+    evaluate_parser.add_argument("--inventory-summary", type=Path, required=True)
+    evaluate_parser.add_argument("--catalog", type=Path, required=True)
+    evaluate_parser.add_argument("--taxonomy", type=Path, required=True)
+    evaluate_parser.add_argument("--pdf", type=Path)
+    evaluate_parser.add_argument("--llm-config", type=Path)
+    evaluate_parser.add_argument("--priorities", default="P0,P1,P2,P3")
+    evaluate_parser.add_argument("--out", type=Path, required=True)
+
     return parser
 
 
@@ -288,6 +308,17 @@ def _run_fetch_source_inventory(
         "inventory_path": str(artifact.inventory_path),
         "summary_path": str(artifact.summary_path),
         "record_count": artifact.record_count,
+    }, indent=2))
+
+
+def _run_evaluate_company(**kwargs: object) -> None:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        run_company_evaluation,
+    )
+    evaluation = run_company_evaluation(**kwargs)  # type: ignore[arg-type]
+    print(json.dumps({
+        "company": evaluation.company,
+        "summary": dict(evaluation.by_bucket),
     }, indent=2))
 
 
@@ -664,6 +695,33 @@ def main(argv: list[str] | None = None) -> int:
             providers=providers,
             out_dir=args.out,
             catalog_path=args.catalog,
+        )
+        return 0
+
+    if args.command == "evaluate-company":
+        if args.year is not None and args.period_end is not None:
+            parser.error("--year and --period-end are mutually exclusive")
+        if args.year is not None:
+            period = PeriodSpec.from_year(args.year)
+        elif args.period_end is not None:
+            period = PeriodSpec.from_period_end(args.period_end, args.report_type)
+        else:
+            parser.error("one of --year or --period-end is required")
+        priorities = tuple(
+            p.strip() for p in args.priorities.split(",") if p.strip()
+        )
+        _run_evaluate_company(
+            company=args.company,
+            period=period,
+            market=args.market,
+            inventory_path=args.inventory,
+            inventory_summary_path=args.inventory_summary,
+            catalog_path=args.catalog,
+            taxonomy_path=args.taxonomy,
+            pdf_path=args.pdf,
+            llm_config_path=args.llm_config,
+            priorities=priorities,
+            out_dir=args.out,
         )
         return 0
 

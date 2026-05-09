@@ -7,19 +7,32 @@ field) inputs; no global hardcoded field lists.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Literal, Mapping
 
-from financial_report_llm_extractor.field_metadata import FieldTaxonomyCatalog
+from financial_report_llm_extractor.field_metadata import (
+    FieldTaxonomyCatalog,
+    load_field_taxonomy,
+)
+from financial_report_llm_extractor.llm_field_extraction import JsonClient
+from financial_report_llm_extractor.structured_sources.artifacts import (
+    read_source_inventory,
+)
 from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
     SourceMappingEntry,
+    load_source_mapping_catalog,
 )
 from financial_report_llm_extractor.structured_sources.export import (
     SourceFirstExportItem,
     SourceFirstExportResult,
+)
+from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+    evaluate_source_first_slice,
 )
 from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
     PeriodSpec,
@@ -242,3 +255,173 @@ def render_evaluation_markdown(evaluation: CompanyEvaluation) -> str:
             f"| {f.field_id} | {f.bucket} | {marker} | {value_str} | {reason} |"
         )
     return "\n".join(lines) + "\n"
+
+
+def run_company_evaluation(
+    *,
+    company: str,
+    period: PeriodSpec,
+    market: str,
+    inventory_path: Path,
+    inventory_summary_path: Path,
+    catalog_path: Path,
+    taxonomy_path: Path,
+    pdf_path: Path | None,
+    llm_config_path: Path | None,
+    priorities: tuple[str, ...],
+    out_dir: Path,
+    json_client: JsonClient | None = None,
+) -> CompanyEvaluation:
+    """End-to-end: replay → optional LLM supplement → classify → write artifacts.
+
+    Reads the cached inventory from inventory_path, runs the source-first
+    slice (mapping → policy_report → export → warning_classification), and
+    optionally invokes the LLM supplement step when PDF + llm-config are set.
+    Writes evaluation.json + evaluation.md to out_dir.
+
+    inventory_summary_path is currently informational (preserved for parity
+    with the fetch step's output layout); future versions may consume it.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    catalog = load_source_mapping_catalog(catalog_path, priorities=priorities)
+    taxonomy = load_field_taxonomy(taxonomy_path)
+
+    records = read_source_inventory(inventory_path)
+
+    pdf_provided = pdf_path is not None
+    if pdf_provided and llm_config_path is not None:
+        assert pdf_path is not None  # narrow for mypy
+        _run_llm_supplement_step(
+            company=company,
+            pdf_path=pdf_path,
+            llm_config_path=llm_config_path,
+            catalog=catalog,
+            taxonomy=taxonomy,
+            priorities=priorities,
+            out_dir=out_dir,
+            json_client=json_client,
+        )
+
+    slice_result = evaluate_source_first_slice(
+        out_dir,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        records=records,
+        company_id=company,
+        market=market,
+        hk_yahoo_trust_policy=None,
+        provider_semantics_catalog=None,
+    )
+    export = slice_result["export_object"]
+    warning_classification = slice_result["warning_classification_object"]
+
+    evaluation = build_company_evaluation(
+        company=company,
+        period=period,
+        market=market,
+        export=export,
+        warning_classification=warning_classification,
+        supplement=None,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        pdf_provided=pdf_provided,
+    )
+
+    (out_dir / "evaluation.json").write_text(
+        json.dumps(
+            _evaluation_to_dict(evaluation),
+            indent=2,
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    (out_dir / "evaluation.md").write_text(
+        render_evaluation_markdown(evaluation), encoding="utf-8",
+    )
+    return evaluation
+
+
+def _run_llm_supplement_step(
+    *,
+    company: str,
+    pdf_path: Path,
+    llm_config_path: Path,
+    catalog: SourceMappingCatalog,
+    taxonomy: FieldTaxonomyCatalog,
+    priorities: tuple[str, ...],
+    out_dir: Path,
+    json_client: JsonClient | None,
+) -> None:
+    """Mirror llm_extraction_batch._process_one_company minus batching.
+
+    extract_for_chunks signature is (chunks, catalog, taxonomy, client,
+    company_id, pdf_path, out_dir, priorities) — derive_targets happens
+    inside extract_for_chunks; do NOT call it manually here.
+    """
+    from financial_report_llm_extractor.chunking import build_chunk_store
+    from financial_report_llm_extractor.ingestion import ingest_pdf
+    from financial_report_llm_extractor.llm_transport import (
+        LlmTransportConfig,
+        create_llm_client,
+    )
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        extract_for_chunks,
+        load_chunks_jsonl,
+        write_llm_evidence_supplement,
+    )
+
+    ingest_dir = out_dir / "ingest"
+    chunks_path = ingest_dir / "chunks.jsonl"
+    if not chunks_path.exists():
+        ingest_dir.mkdir(parents=True, exist_ok=True)
+        ingest_result = ingest_pdf(pdf_path, ingest_dir)
+        build_chunk_store(
+            ingest_result.pages_path,
+            ingest_result.metadata_path,
+            chunks_path=chunks_path,
+        )
+    chunks = load_chunks_jsonl(chunks_path)
+
+    if json_client is None:
+        config = LlmTransportConfig.from_json(llm_config_path)
+        json_client = create_llm_client(config)
+
+    result = extract_for_chunks(
+        chunks=chunks,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        client=json_client,
+        company_id=company,
+        pdf_path=pdf_path,
+        out_dir=out_dir,
+        priorities=priorities,
+    )
+    write_llm_evidence_supplement(result)
+
+
+def _evaluation_to_dict(ev: CompanyEvaluation) -> dict[str, object]:
+    return {
+        "schema_version": "company-evaluation-v1",
+        "company": ev.company,
+        "period_end": ev.period.period_end.isoformat(),
+        "report_type": ev.period.report_type,
+        "market": ev.market,
+        "generated_at": ev.generated_at,
+        "summary": {
+            "total_fields": len(ev.fields),
+            "by_bucket": dict(ev.by_bucket),
+            "by_priority": {p: dict(b) for p, b in ev.by_priority.items()},
+        },
+        "fields": {
+            f.field_id: {
+                "bucket": f.bucket,
+                "selected_source": f.selected_source,
+                "value": str(f.value) if f.value is not None else None,
+                "currency": f.currency,
+                "unit": f.unit,
+                "reason": f.reason,
+            }
+            for f in ev.fields
+        },
+    }
