@@ -311,6 +311,16 @@ def run_company_evaluation(
         market=market,
         hk_yahoo_trust_policy=None,
         provider_semantics_catalog=None,
+        # Forward explicit supplement path so the merge fires regardless of
+        # out_dir name. _run_llm_supplement_step (above) wrote the file at
+        # this exact path when PDF + llm-config were provided. The legacy
+        # dir-name gate (combined-slice layout) doesn't apply to the
+        # orchestrator's flat out_dir layout.
+        llm_supplement_path=(
+            (out_dir / "llm_evidence_supplement.json")
+            if pdf_provided and llm_config_path is not None
+            else None
+        ),
     )
     export = slice_result["export_object"]
     warning_classification = slice_result["warning_classification_object"]

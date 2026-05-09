@@ -1187,3 +1187,78 @@ def test_merge_llm_evidence_supplement_normalizes_rmb_currency(tmp_path: Path) -
     assert merged.items["rd_exp"].value == Decimal("24050")
     # CRITICAL: RMB must map to CNY, not silently degrade to "unknown"
     assert merged.items["rd_exp"].currency == "CNY"
+
+
+def test_evaluate_source_first_slice_merges_supplement_from_explicit_path(
+    tmp_path: Path,
+) -> None:
+    """Refactor: orchestrator-friendly supplement merge via explicit path,
+    independent of output_dir.name == 'combined' gate.
+
+    Regression for the Task 5 integration bug where run_company_evaluation
+    writes llm_evidence_supplement.json into out_dir but the merge gate
+    looked for output_dir.parent/llm_evidence_supplement.json with
+    name=='combined'.
+    """
+    from financial_report_llm_extractor.field_metadata import load_field_taxonomy
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        load_source_mapping_catalog,
+    )
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        evaluate_source_first_slice,
+    )
+
+    catalog = load_source_mapping_catalog(
+        SOURCE_MAPPING_CATALOG_PATH, priorities=("P0", "P1", "P2", "P3")
+    )
+    taxonomy = load_field_taxonomy(
+        REPO_ROOT / "field_catalog" / "turtle_v015_field_taxonomy.json"
+    )
+    records = (_record(),)
+
+    # Use a non-"combined"-named dir to mimic the orchestrator's layout.
+    out_dir = tmp_path / "anything_not_combined"
+    out_dir.mkdir()
+
+    # Write a supplement file at the explicit path we'll pass.
+    # rd_exp is missing from the minimal CN record fixture so the merge
+    # would visibly upgrade it.
+    supplement_path = out_dir / "llm_evidence_supplement.json"
+    supplement_path.write_text(json.dumps({
+        "schema_version": "llm-evidence-supplement-v1",
+        "company_id": "600519",
+        "pdf_path": "x.pdf",
+        "extracted_at": "2026-05-08T00:00:00",
+        "summary": {},
+        "items": {
+            "rd_exp": {
+                "status": "present",
+                "value": "100",
+                "currency": "CNY",
+                "unit": "raw",
+                "page": 1,
+                "statement_line": "rd",
+                "confidence": 0.95,
+                "reasoning": "test",
+            },
+        },
+    }), encoding="utf-8")
+
+    result = evaluate_source_first_slice(
+        out_dir,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        records=records,
+        company_id="600519",
+        market="CN",
+        hk_yahoo_trust_policy=None,
+        provider_semantics_catalog=None,
+        llm_supplement_path=supplement_path,  # NEW: explicit path
+    )
+
+    export = result["export_object"]
+    item = export.items.get("rd_exp")
+    assert item is not None
+    assert item.selected_source == "llm", (
+        f"expected llm-merged item, got selected_source={item.selected_source!r}"
+    )

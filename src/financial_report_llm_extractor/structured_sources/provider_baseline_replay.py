@@ -313,6 +313,7 @@ def evaluate_source_first_slice(
     market: str,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
     provider_semantics_catalog: ProviderSemanticsCatalog | None,
+    llm_supplement_path: Path | None = None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     slice_hk_yahoo_trust_policy = (
@@ -337,10 +338,17 @@ def evaluate_source_first_slice(
         source_policy_report=policy_report,
     )
     # Optional LLM evidence merge (Phase I-A integration).
-    # Restrict to combined slice only — LLM supplement is a cross-source
-    # artifact and would pollute per-source coverage views (akshare_only /
-    # yahoo_only).
-    if output_dir.name == COMBINED_SLICE_NAME:
+    # Two paths:
+    #   1. Explicit llm_supplement_path (orchestrator path, e.g.
+    #      run_company_evaluation): merge from the exact path provided,
+    #      regardless of output_dir.name.
+    #   2. Legacy dir-name gate (provider_baseline_replay slice layout):
+    #      restrict to combined slice only — LLM supplement is a cross-source
+    #      artifact and would pollute per-source coverage views (akshare_only /
+    #      yahoo_only).
+    if llm_supplement_path is not None:
+        export = _merge_llm_evidence_supplement(export, llm_supplement_path)
+    elif output_dir.name == COMBINED_SLICE_NAME:
         supplement_candidate = output_dir.parent / "llm_evidence_supplement.json"
         export = _merge_llm_evidence_supplement(export, supplement_candidate)
     candidate_report = discover_provider_field_candidates(
