@@ -324,3 +324,39 @@ def test_real_llm_smoke_extracts_revenue_within_tolerance() -> None:
         f"PDF literal {expected_literal} (±1%) or raw {expected_raw} (±5%); "
         f"unit returned: {result.unit!r}"
     )
+
+
+def test_extract_text_field_skips_decimal_parse() -> None:
+    """Phase I-C: text-typed fields should not attempt Decimal parsing.
+    Long narrative values must be returned as-is in `value` without
+    extraction_failed errors.
+    """
+    from financial_report_llm_extractor.llm_field_extraction import run_field_extraction
+
+    request = FieldExtractionRequest(
+        field_id="dividend_plan",
+        field_description="Dividend plan disclosure text.",
+        statement_type="announcement",
+        value_type="text",
+        chunks=({"chunk_id": "c1", "page": 50, "text": "..."},),
+        expected_currency=None,
+        expected_unit=None,
+    )
+    canned = {
+        "field_id": "dividend_plan",
+        "found": True,
+        "value": "Final dividend of HKD 1.20 per share for the year ended 31 December 2024, payable on 1 May 2025.",
+        "currency": None,
+        "unit": None,
+        "page": 50,
+        "statement_line": "Dividend Plan",
+        "confidence": 0.9,
+        "reasoning": "from notice section",
+    }
+    client = FakeJsonClient(canned)
+    result = run_field_extraction(request, client)
+
+    assert result.status == "present"
+    assert result.value == canned["value"]
+    assert result.parsed_numeric_value is None
+    assert result.errors == ()

@@ -1274,6 +1274,20 @@ Remaining 12 P3 fields are taxonomy-marked `pdf_only` (text values: dividend_pla
 
 491 tests passing, ruff clean. for batch onboarding
 
+### Phase I-C Implementation Result
+
+Goal: Enable text-mode LLM extraction for the 12 remaining P3 `pdf_only` fields (7 text-typed + 5 money-typed) so the catalog covers all P0–P3 fields.
+
+Changes:
+- `llm_field_extraction.py::_parse_response`: gate Decimal parsing to `value_type in {money, number}`. Text fields (e.g., `dividend_plan`, `segment_revenue_profit`) preserve narrative `value` without `extraction_failed` errors.
+- `turtle_v015_source_mapping_minimal.json`: added 12 P3 entries with `pdf_aliases` covering EN+ZH variants. 7 text-typed (dividend_plan, buyback_cancellation_progress, receivables_aging, related_party_receivables_payables, contingent_liabilities_commitments, lease_liability_maturity, segment_revenue_profit) + 5 money-typed (capitalized_rd, capitalized_interest, restricted_cash, time_deposits_or_wealth_products, dps).
+- P3 priority list expanded from 2 → 14 fields.
+- New unit test `test_extract_text_field_skips_decimal_parse` covers text-mode path.
+
+**Total mapped fields: 56** (P0:22 + P1:11 + P2:9 + P3:14). 6 P3/P4 fields remain unmapped (deeper notes-only disclosures with weak retrieval signal).
+
+Coverage validation deferred to live LLM batch run (extract-llm-batch). Framework correctness verified by 493 unit tests + ruff clean.
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:

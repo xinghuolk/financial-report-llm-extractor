@@ -67,8 +67,20 @@
     {
       "priority": "P3",
       "fields": [
+        "bad_debt_provision",
+        "buyback_cancellation_progress",
+        "capitalized_interest",
+        "capitalized_rd",
+        "contingent_liabilities_commitments",
+        "dividend_plan",
+        "dps",
         "interest_paid_cash",
-        "bad_debt_provision"
+        "lease_liability_maturity",
+        "receivables_aging",
+        "related_party_receivables_payables",
+        "restricted_cash",
+        "segment_revenue_profit",
+        "time_deposits_or_wealth_products"
       ]
     }
   ],
@@ -1445,6 +1457,275 @@
         "expected credit loss",
         "bad debt provision",
         "坏账准备"
+      ]
+    },
+    "dividend_plan": {
+      "value_type": "text",
+      "statement_type": "announcement",
+      "domain": "shareholder_return",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Dividend Plan"
+        ]
+      },
+      "pdf_aliases": [
+        "dividend plan",
+        "dividend policy",
+        "proposed dividend",
+        "final dividend",
+        "派息",
+        "股息政策"
+      ]
+    },
+    "buyback_cancellation_progress": {
+      "value_type": "text",
+      "statement_type": "announcement",
+      "domain": "shareholder_return",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Buyback Progress"
+        ]
+      },
+      "pdf_aliases": [
+        "share buyback",
+        "share repurchase progress",
+        "cancellation of shares",
+        "回购进展",
+        "注销"
+      ]
+    },
+    "receivables_aging": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Receivables Aging"
+        ]
+      },
+      "pdf_aliases": [
+        "ageing analysis of trade receivables",
+        "ageing analysis of receivables",
+        "应收账款账龄"
+      ]
+    },
+    "related_party_receivables_payables": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Related Party Receivables Payables"
+        ]
+      },
+      "pdf_aliases": [
+        "related party transactions",
+        "amounts due from related parties",
+        "amounts due to related parties",
+        "关联方"
+      ]
+    },
+    "contingent_liabilities_commitments": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Contingent Liabilities"
+        ]
+      },
+      "pdf_aliases": [
+        "contingent liabilities",
+        "commitments",
+        "guarantees",
+        "或有负债",
+        "承诺"
+      ]
+    },
+    "lease_liability_maturity": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Lease Liability Maturity"
+        ]
+      },
+      "pdf_aliases": [
+        "lease liabilities maturity",
+        "lease liability analysis",
+        "minimum lease payments",
+        "租赁负债到期"
+      ]
+    },
+    "segment_revenue_profit": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Segment Revenue Profit"
+        ]
+      },
+      "pdf_aliases": [
+        "operating segment information",
+        "segment revenue",
+        "segment profit",
+        "operating segments",
+        "分部信息"
+      ]
+    },
+    "capitalized_rd": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Capitalized Research"
+        ]
+      },
+      "pdf_aliases": [
+        "capitalized research and development",
+        "development costs capitalized",
+        "research costs capitalized",
+        "资本化研发"
+      ]
+    },
+    "capitalized_interest": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Capitalized Interest"
+        ]
+      },
+      "pdf_aliases": [
+        "capitalized borrowing costs",
+        "capitalized interest",
+        "interest capitalised",
+        "资本化利息"
+      ]
+    },
+    "restricted_cash": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Restricted Cash"
+        ]
+      },
+      "pdf_aliases": [
+        "restricted cash",
+        "pledged deposits",
+        "cash held as collateral",
+        "受限制现金",
+        "受限制存款"
+      ]
+    },
+    "time_deposits_or_wealth_products": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Time Deposits"
+        ]
+      },
+      "pdf_aliases": [
+        "time deposits",
+        "wealth management products",
+        "structured deposits",
+        "理财产品",
+        "定期存款"
+      ]
+    },
+    "dps": {
+      "value_type": "money",
+      "statement_type": "announcement",
+      "domain": "shareholder_return",
+      "source_mode": "source_optional",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Dividends Per Share"
+        ]
+      },
+      "pdf_aliases": [
+        "dividends per share",
+        "dividend per share",
+        "每股股息"
       ]
     }
   }

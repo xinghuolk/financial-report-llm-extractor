@@ -235,7 +235,11 @@ def _parse_response(
 
     value_raw = _str_or_none(raw.get("value"))
     parsed_numeric_value: Decimal | None = None
-    if value_raw is not None:
+    # Phase I-C: only attempt Decimal parse for numeric value types.
+    # Text fields (e.g., dividend_plan, segment_revenue_profit) carry
+    # narrative content where Decimal parsing is meaningless.
+    is_numeric_field = request.value_type in ("money", "number")
+    if value_raw is not None and is_numeric_field:
         try:
             parsed_numeric_value = Decimal(value_raw.replace(",", "").strip())
         except (InvalidOperation, ValueError):
