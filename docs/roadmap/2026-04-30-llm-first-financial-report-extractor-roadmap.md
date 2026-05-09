@@ -1,8 +1,10 @@
 # Source-First Financial Report Extractor Roadmap
 
 > Status: revised roadmap
-> Date: 2026-05-07
+> Date: 2026-05-07 (last validation: 2026-05-09 Phase I-C.1)
 > Scope: Pivot the project from PDF-first LLM extraction to AKShare/Yahoo-first structured financial data extraction, with PDF/LLM retained as the final evidence supplement and ambiguity review layer.
+>
+> Implementation status (2026-05-09): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval) — all complete. 494 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed.
 
 ## 1. Decision Summary
 
@@ -1402,3 +1404,19 @@ AKShare
 -> PDF evidence supplement
 -> LLM ambiguity review
 ```
+
+### Status (2026-05-09)
+
+All 5 criteria met:
+
+1. ✅ Source-first as main direction — codified in `docs/design/2026-05-01-structured-data-source-first-financial-extraction-design.md` and `docs/2026-05-07-source-first-architecture-drift-analysis.zh.md`.
+2. ✅ Phase ordering Taxonomy → Coverage Matrix → Minimal Mapping → Adapters — sections 4.1, 4.2, A1–A3, C, D above.
+3. ✅ PDF/LLM as bounded selected-field fallback — Phase H0/H1 (deterministic surgical fixes), Phase I-A/I-C (LLM with field-scoped chunk selection, never broad PDF retrieval).
+4. ✅ Prior PDF/LLM phases preserved as fallback infrastructure — `extraction.py`, `retrieval.py`, `chunking.py`, `ingestion.py` all reused by Phase I-A's `llm_extraction_runner.py`.
+5. ✅ Source priority chain expressed consistently across design supplement / requirements / roadmap — `provider_baseline_replay` → `source_policy` → `llm_evidence_supplement` merge gate respects this order at the code level.
+
+Remaining post-branch follow-ups (out of branch scope):
+
+- 6 P3/P4 fields with no source provider data and no current `pdf_aliases` (deeper notes-only disclosures with weak retrieval signal). Either land via a future Phase I-D iteration with curated alias sets per disclosure pattern, or accept as locked terminal `not_in_scope`.
+- Confidence threshold value calibration (Phase I-A.2 follow-up #2) deferred until ~50+ labeled (company, field) pairs collected. Framework already in place.
+- Bulk re-validation across more HK and CN issuers when batch extract budget allows (current validation set is 6 HK companies; CN P3 LLM coverage not validated).

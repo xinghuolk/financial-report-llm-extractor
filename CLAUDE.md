@@ -50,6 +50,10 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 | M5 | `field_catalog/*.json` | defer_tax_liab Yahoo 证明 + gross_profit 终态降级 |
 | N0 | `tests/test_catalog_consistency.py` | 5 个 JSON catalog 跨文件一致性 gate |
 | N1-N3 | `field_catalog/turtle_v015_source_mapping_minimal.json` | 33 P0/P1 字段映射（CN 27/33, HK 20-21/33） |
+| N4 | 同上 | P2 (9) + P3 partial (2) 扩展，共 44 字段 |
+| I-A | `structured_sources/llm_extraction_runner.py` + `llm_extraction_batch.py` | HK notes-level LLM 抽取（field-scoped、bounded queue） |
+| I-C | `llm_field_extraction.py` `_parse_response` | text-mode value_type 门控；catalog +12 P3 pdf_only 字段，total 56 |
+| I-C.1 | `llm_extraction_runner.select_chunks` | alias_top_k 空白归一化（修跨 PDF 排版换行的 substring miss） |
 
 所有源码在 `src/financial_report_llm_extractor/`，测试在 `tests/` 中按阶段对应，字段定义在 `field_catalog/`。
 
@@ -77,10 +81,10 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 ## 文档导读
 
-优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Phase N 已完成，下一步为 Bucket 1 (source policy 修正) → Bucket 4 (终态分类) → Phase H → Phase I。
+优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）；HK LLM 验证 33/84 hits, 0 extraction_failed。下一步候选：合并到 main、6 个剩余 P3/P4 fields 的 terminal-state 收尾、或新阶段。
 
-`docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径。
+`docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 
-AGENTS.md 仍有效，但部分内容（HK 15-field closure 状态）已被 33-field 扩展取代。设计文档在 `docs/design/`（2026-05-07 drift analysis 仍是关键参考），历史 specs/plans 在 `docs/superpowers/archive/`。
+AGENTS.md 仍有效，但部分内容（HK 15-field closure 状态）已被 33-field/56-field 扩展取代。设计文档在 `docs/design/`（2026-05-07 drift analysis 仍是关键参考），历史 specs/plans 在 `docs/superpowers/archive/`。
 
-真实 LLM 使用的 API key 模板在 `env.example`（Phase I 启动时使用）。
+真实 LLM 使用的 API key 模板在 `env.example`；本地常用 LLM config 在 `tmp/llm_configs/deepseek.json`，HK 6 公司 manifest 在 `tmp/llm_configs/n4b_manifest.json`。

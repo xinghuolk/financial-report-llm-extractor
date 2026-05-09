@@ -3,6 +3,7 @@
 > 日期：2026-05-08
 > 评估基线（v1）：Phase M5 完成后（HK 11/15 clean present, 438 tests）
 > 更新基线（v2）：Phase N 完成后（33-field denominator, 445 tests）
+> **后续状态（v3，2026-05-09）**：本文档下方推荐的全部 buckets 均已落地 —— Bucket 1 → Phase H0；Bucket 4 → 锁定终态；Phase H → H1（partially reverted post-review，保持 architectural honesty）；Phase I → I-A/I-A.2（6 follow-ups closed）+ I-C（text-mode）+ I-C.1（whitespace 归一化）。catalog 已扩到 56 字段（P0:22 + P1:11 + P2:9 + P3:14），CN 600519 stable at 30/33 clean。本文的 v1/v2 分析仍可作为方法论参考；最新进展请直接读 roadmap §"Implementation status"。
 
 ## 0. 评估更新（v2，Phase N 完成后）
 
