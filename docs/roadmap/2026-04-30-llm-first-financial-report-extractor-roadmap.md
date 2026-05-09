@@ -1,10 +1,10 @@
 # Source-First Financial Report Extractor Roadmap
 
 > Status: revised roadmap
-> Date: 2026-05-07 (last validation: 2026-05-09 Phase I-C.1)
+> Date: 2026-05-07 (last validation: 2026-05-09 Phase EC live run)
 > Scope: Pivot the project from PDF-first LLM extraction to AKShare/Yahoo-first structured financial data extraction, with PDF/LLM retained as the final evidence supplement and ambiguity review layer.
 >
-> Implementation status (2026-05-09): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval) — all complete. 494 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed.
+> Implementation status (2026-05-09): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation) — all complete. 515 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed. Live evaluate-company on 600519/2024 surfaced 39 unresolved_conflict broken into 16 period-string false-positives (Tier 1 fix) + 3 sign-convention + 5 true semantic gaps (Phase H2 candidate).
 
 ## 1. Decision Summary
 
@@ -1342,6 +1342,69 @@ Re-run on identical 6×14 grid:
 Artifacts: `tmp/runs/phase_i_c_validation_v2/{00001,01113,01810,02498,06862,09987}/llm_evidence_supplement.json`.
 
 494 unit tests + ruff + mypy clean.
+
+### Phase EC Implementation Result (evaluate-company orchestrator)
+
+Status: implemented on 2026-05-09. See:
+- `docs/superpowers/specs/2026-05-09-evaluate-company-orchestrator-design.md`
+- `docs/superpowers/plans/2026-05-09-evaluate-company-orchestrator.md`
+
+Goal: per-(company, period) validation orchestrator usable as the regular regression check after catalog / source policy / LLM prompt changes.
+
+Design decisions (locked during brainstorming):
+- Two-step CLI: `fetch-source-inventory` (live AKShare/Yahoo, opt-in) + `evaluate-company` (deterministic from cache + optional LLM if PDF set).
+- `PERIOD_END=YYYY-MM-DD` canonical; `YEAR=YYYY` shortcut. TTM/interim future-extensible via `report_type`.
+- Bucket cascade: `unresolved_conflict → llm_supplement_present → clean_present → terminal_unverified → not_in_scope → source_unavailable`. Buckets derived from per-(company, field, market) `WarningCategory` (no global field lists). CN gross_profit cleanly via akshare → `clean_present` (regression test locks this).
+- evaluation.json/.md outputs full 6-bucket distribution per priority — no `% clean` framing per drift §177.
+
+Key implementation steps:
+1. Refactor `provider_baseline_replay._write_slice` → public `evaluate_source_first_slice`; extend return dict with `export_object` + `warning_classification_object` so the orchestrator can reuse the slice without re-deriving.
+2. New `source_inventory_fetch.py`: `PeriodSpec` dataclass (annual/half_year/quarterly/ttm) + fail-loud `select_records_for_period` filter + `fetch_source_inventory` that wraps existing `AkshareAdapter` / `YahooAdapter` primitives.
+3. New `company_evaluation.py`: `classify_field` 6-bucket cascade + `build_company_evaluation` priority×bucket aggregator + `render_evaluation_markdown` (no `% clean`) + `run_company_evaluation` orchestrator.
+4. New CLI subcommands `fetch-source-inventory` + `evaluate-company` with env-driven shell wrappers.
+5. **Critical fix surfaced by live run**: `evaluate_source_first_slice` had hardcoded `if output_dir.name == "combined"` gate for LLM supplement merge — never fired for orchestrator's out_dir. Fixed by adding explicit `llm_supplement_path` parameter; orchestrator now passes `out_dir / "llm_evidence_supplement.json"` directly.
+
+Live validation on 600519 / 2024 (CN, AKShare+Yahoo fixture replay + DeepSeek LLM on PDF):
+
+| Run | Coverage |
+|-----|----------|
+| P0–P3, no LLM | 15 clean / 39 unresolved_conflict / 1 terminal_unverified (net_profit pdf_verification_required) / 1 source_unavailable |
+| P3 only, with PDF + DeepSeek | 1 clean / 5 llm_supplement_present (capitalized_rd 101,596,919 CNY, dividend_plan, contingent_liabilities_commitments, buyback_cancellation_progress, related_party_receivables_payables) / 8 unresolved_conflict |
+
+CN `gross_profit` lands in `clean_present` (yahoo: 160,354,587,590 CNY) — verified by `test_classify_cn_gross_profit_clean_not_terminal`.
+
+515 unit tests + ruff + mypy clean. 9 commits across the orchestrator branch.
+
+#### Conflict root-cause analysis (600519 / 2024 baseline)
+
+The 25 `normalized_value_conflict` fields decompose into 3 categories:
+
+| Category | Count | Pattern | Fix |
+|----------|------:|---------|-----|
+| **Period string drift** | 16 | AKShare `"2024-12-31 00:00:00"` vs Yahoo `"2024-12-31"`; identical normalized values; reconciliation reports "candidate periods differ" | reconciliation period normalization (`period.split(" ")[0]`) — ~5 LoC |
+| **Sign convention** | 3 | `capital_expenditures`, `interest_paid_cash`, `dividends_paid` — Yahoo cash-flow-outflow=negative vs AKShare = positive; same fact, opposite sign | per-field `provider_sign_conventions` rule in catalog |
+| **True semantic gap** | 5 | revenue (营业收入 vs 营业总收入, 1.86% Δ), operating_profit (1.18%), SGA (10.11%), depreciation_amortization (16.64%), dividends_paid (after sign-adjust 2.9%) | Phase H2-style surgical resolution per field (8-10h) |
+
+Plus 14 `missing_source_candidate` fields (P2/P3 with single-source coverage, e.g. `repurchase_of_stock`, `stock_based_compensation`) — architecturally correct, not real conflicts.
+
+**Insight**: 16/39 (41%) of "conflict" reports are spurious false-positives from period string formatting. Tier 1 follow-up (period normalization) is near-free and would drop 600519 from 39 → ~23 conflicts immediately, exposing the real semantic work for Phase H2.
+
+### Phase EC Follow-Ups (post-merge)
+
+Tier 1 — small fixes (~150 LoC, 1-2h, can land in this branch):
+
+- **Period string normalization in reconciliation** to clear 16 false-positive conflicts.
+- **Markdown candidate-value rendering**: `unresolved_conflict` rows currently show empty value column; render `akshare:170.9B / yahoo:174.1B (Δ 1.9%)` so reviewers can triage without opening source_policy_report.json.
+- **Drop or wire 3 dead parameters**: `inventory_summary_path`, `build_company_evaluation.supplement`, `fetch_source_inventory.catalog_path`.
+- **Move `_FakeAkshareClient` to `tests/conftest.py`** to remove the cross-test sys.path hack.
+- **`Decimal` JSON formatting**: prevent scientific notation (`format(value, "f")`) in evaluation.json.
+
+Tier 2 — separate phases (out of branch scope):
+
+- **Phase H2 candidate**: surgical resolution of the 3 sign-convention + 5 true-semantic-gap CN fields. Each requires PDF verification of which provider value matches Turtle field semantics (~8-10h total). Same pattern as H1 but for CN-side conflicts.
+- **Coverage delta tool** (`evaluate-company-diff`): compare two evaluation.json files, surface bucket migrations. Useful for "did this catalog change regress anything?"
+- **`_run_llm_supplement_step` test with FakeJsonClient + canned chunks** to cover the LLM-merge path end-to-end without real API calls.
+- **HK live validation**: run evaluate-company on 00001 / 01113 / 01810 to exercise HK Yahoo trust policy + provider_semantics_catalog paths.
 
 ## 6. Validation Commands
 

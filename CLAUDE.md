@@ -54,7 +54,7 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 | I-A | `structured_sources/llm_extraction_runner.py` + `llm_extraction_batch.py` | HK notes-level LLM 抽取（field-scoped、bounded queue） |
 | I-C | `llm_field_extraction.py` `_parse_response` | text-mode value_type 门控；catalog +12 P3 pdf_only 字段，total 56 |
 | I-C.1 | `llm_extraction_runner.select_chunks` | alias_top_k 空白归一化（修跨 PDF 排版换行的 substring miss） |
-| evaluate-company | `structured_sources/source_inventory_fetch.py` + `company_evaluation.py` | 单 (公司, 期末) 验证 orchestrator：fetch-source-inventory + evaluate-company 两步 CLI；输出 extraction_result.json + 可选 llm_evidence_supplement.json + evaluation.json + evaluation.md |
+| EC | `structured_sources/source_inventory_fetch.py` + `company_evaluation.py` | evaluate-company orchestrator：fetch-source-inventory + evaluate-company 两步 CLI；6-bucket 分类 + markdown；live 600519/2024 验证 conflict 三类（period 漂移 16 / sign 3 / 真语义差 5） |
 
 所有源码在 `src/financial_report_llm_extractor/`，测试在 `tests/` 中按阶段对应，字段定义在 `field_catalog/`。
 
@@ -82,7 +82,7 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 ## 文档导读
 
-优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）；HK LLM 验证 33/84 hits, 0 extraction_failed。下一步候选：用 `evaluate-company` 跑 (公司, 期末) 回归（catalog / policy / LLM prompt 改动后）、合并到 main、6 个剩余 P3/P4 fields 的 terminal-state 收尾、或新阶段。
+优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator + live 600519/2024 验证）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）；HK LLM 验证 33/84 hits, 0 extraction_failed；CN 600519/2024 conflict 三类拆解（16 period 漂移 + 3 sign + 5 真语义差 + 14 missing_source_candidate）。下一步候选：Phase EC Tier 1 follow-ups（period 归一化 + markdown 候选值 + 3 dead params）、Phase H2（5 真语义差 surgical proof）、合并到 main、或新阶段。
 
 `docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 
