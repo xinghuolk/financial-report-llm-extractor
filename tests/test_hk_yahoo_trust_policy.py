@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
+    HkYahooTrustSample,
     load_hk_yahoo_trust_policy,
     validate_hk_yahoo_trust_policy_samples,
 )
@@ -93,7 +94,7 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
 def test_hk_yahoo_trust_policy_validates_sample_page_text() -> None:
     policy = load_hk_yahoo_trust_policy(POLICY_PATH)
 
-    def resolver(sample):
+    def resolver(sample: HkYahooTrustSample) -> str:
         return (
             f"{sample.statement_line}\n"
             f"Reported in {sample.reported_currency} {sample.reported_unit}\n"
@@ -106,7 +107,7 @@ def test_hk_yahoo_trust_policy_validates_sample_page_text() -> None:
 def test_hk_yahoo_trust_policy_rejects_sample_page_text_without_statement_line() -> None:
     policy = load_hk_yahoo_trust_policy(POLICY_PATH)
 
-    def resolver(sample):
+    def resolver(sample: HkYahooTrustSample) -> str:
         return f"{sample.reported_currency} {sample.reported_unit} {sample.pdf_value}"
 
     with pytest.raises(ValueError, match="sample statement_line not found on pdf_page"):

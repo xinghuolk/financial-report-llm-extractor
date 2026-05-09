@@ -288,7 +288,7 @@ def _closure_item(
     else:
         category = "selected_with_warnings"
 
-    reasons: tuple[str, ...] = _fallback_reasons(item, candidate_entry)
+    reasons = _fallback_reasons(item, candidate_entry)
     return Hk15FieldClosureItem(
         field_id=field_id,
         category=category,
