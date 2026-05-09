@@ -171,8 +171,17 @@ def _reconcile_field(
     )
 
 
+def _normalize_period(period: str | None) -> str | None:
+    """Strip trailing time component so AKShare '2024-12-31 00:00:00' and
+    Yahoo '2024-12-31' compare equal. Phase EC Tier 1 fix for spurious
+    'candidate periods differ' on identical-date candidates."""
+    if period is None:
+        return None
+    return period.split(" ")[0]
+
+
 def _metadata_error(candidates: tuple[TurtleMappingCandidate, ...]) -> str | None:
-    if len({candidate.period for candidate in candidates}) > 1:
+    if len({_normalize_period(candidate.period) for candidate in candidates}) > 1:
         return "candidate periods differ"
     if len({candidate.currency for candidate in candidates}) > 1:
         return "candidate currencies differ"

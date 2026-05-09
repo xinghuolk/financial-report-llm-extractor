@@ -265,6 +265,49 @@ def test_reconcile_marks_metadata_mismatch_conflict() -> None:
     assert report.items["revenue"].reason == "candidate periods differ"
 
 
+def test_reconcile_treats_period_with_time_suffix_as_same_period() -> None:
+    """Phase EC Tier 1: period strings that differ only in trailing time
+    component (e.g. AKShare '2024-12-31 00:00:00' vs Yahoo '2024-12-31')
+    must NOT trigger 'candidate periods differ'.
+
+    Live 600519/2024 run showed 16/25 normalized_value_conflict cases were
+    spurious — identical normalized values but periods reported with
+    different formatting by AKShare vs Yahoo.
+    """
+    result = _result(
+        "revenue",
+        _field(
+            "revenue",
+            _candidate("akshare", Decimal("100"), period="2024-12-31 00:00:00"),
+            _candidate("yahoo", Decimal("100"), period="2024-12-31"),
+        ),
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    # Same date despite formatting drift → identical values → not a conflict.
+    assert report.items["revenue"].status != "conflict"
+    assert report.items["revenue"].reason != "candidate periods differ"
+
+
+def test_reconcile_distinguishes_truly_different_periods() -> None:
+    """Sanity check: the date-portion comparison still flags real period
+    drift (different actual dates, not just formatting)."""
+    result = _result(
+        "revenue",
+        _field(
+            "revenue",
+            _candidate("akshare", Decimal("100"), period="2024-12-31"),
+            _candidate("yahoo", Decimal("100"), period="2023-12-31 00:00:00"),
+        ),
+    )
+
+    report = reconcile_mapped_fields(result)
+
+    assert report.items["revenue"].status == "conflict"
+    assert report.items["revenue"].reason == "candidate periods differ"
+
+
 def test_write_reconciliation_report_writes_json(tmp_path: Path) -> None:
     result = TurtleMappingResult(
         catalog_id="test",
