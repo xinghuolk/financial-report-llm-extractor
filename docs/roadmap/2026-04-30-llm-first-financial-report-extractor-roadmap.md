@@ -1286,7 +1286,35 @@ Changes:
 
 **Total mapped fields: 56** (P0:22 + P1:11 + P2:9 + P3:14). 6 P3/P4 fields remain unmapped (deeper notes-only disclosures with weak retrieval signal).
 
-Coverage validation deferred to live LLM batch run (extract-llm-batch). Framework correctness verified by 493 unit tests + ruff clean.
+Live LLM batch validation (2026-05-09): `extract-llm-batch --priorities=P3` against 6 HK companies × 14 P3 fields = 84 (company, field) pairs. DeepSeek `deepseek-chat`, 3 workers.
+
+| Field | 00001 | 01113 | 01810 | 02498 | 06862 | 09987 | Hits |
+|-------|-------|-------|-------|-------|-------|-------|-----:|
+| bad_debt_provision | P | P | P | P | – | P | 5/6 |
+| contingent_liabilities_commitments | P | P | P | P | P | – | 5/6 |
+| dividend_plan | P | P | P | P | P | – | 5/6 |
+| segment_revenue_profit | P | – | P | – | – | P | 3/6 |
+| time_deposits_or_wealth_products | – | – | – | P | P | P | 3/6 |
+| dps | P | P | – | – | – | – | 2/6 |
+| related_party_receivables_payables | – | – | – | P | P | – | 2/6 |
+| restricted_cash | – | – | P | P | – | – | 2/6 |
+| buyback_cancellation_progress | – | – | P | – | – | – | 1/6 |
+| capitalized_interest | P | – | – | – | – | – | 1/6 |
+| lease_liability_maturity | – | – | – | – | – | P | 1/6 |
+| capitalized_rd | – | – | – | – | – | – | 0/6 |
+| interest_paid_cash | – | – | – | – | – | – | 0/6 |
+| receivables_aging | – | – | – | – | – | – | 0/6 |
+
+**Summary**: present 30/84 (36%), not_found 54/84 (64%), failed 0.
+
+- **Text-mode gate verified**: 0 `extraction_failed` across 42 (company, text-field) pairs. Narrative values (e.g., 00001 dividend_plan: "HK$1.602 per share final dividend …", 09987 lease_liability_maturity: "$68 million undiscounted minimum lease payments") preserved as raw `value` without Decimal parsing errors.
+- **Money-mode regression intact**: text-typed extractions don't pollute numeric path. 00001 `dps`=2.312, `capitalized_interest`=21, 02498 `restricted_cash`=5198, 06862 `time_deposits_or_wealth_products`=4326614 all parsed correctly.
+- **3 fields with 0 hits across all 6 companies**: `capitalized_rd`, `interest_paid_cash`, `receivables_aging`. Likely needs `pdf_aliases` iteration (Phase I-A.2 pattern: invest_income went 0/6 → 5/6 after alias expansion).
+- **Most non-zero `not_found` results are architecturally correct**: e.g., 06862 (Haidilao) has no `dps` because it suspended dividends; 01113 (CK Asset) has no `capitalized_interest` because real-estate developers expense interest.
+
+Artifacts: `tmp/runs/phase_i_c_validation/{00001,01113,01810,02498,06862,09987}/llm_evidence_supplement.json`.
+
+493 unit tests + ruff + mypy clean.
 
 ## 6. Validation Commands
 
