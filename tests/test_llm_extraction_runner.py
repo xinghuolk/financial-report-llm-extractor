@@ -199,6 +199,39 @@ def test_select_chunks_alias_top_k_orders_by_alias_count() -> None:
     assert selected_ids == ["b", "d", "a"]
 
 
+def test_select_chunks_alias_top_k_matches_across_pdf_layout_whitespace() -> None:
+    """A multi-word alias should match across PDF-layout newlines and runs of
+    whitespace inside chunk text.
+
+    Real PDFs (via pdftotext -layout) wrap lines mid-phrase, so a chunk may
+    contain `"aging analysis of trade and notes\\nreceivables ..."` while the
+    catalog stores the canonical single-spaced phrase. Substring count without
+    whitespace normalization scores 0 and the chunk is dropped from retrieval,
+    even though the disclosure is actually present.
+    """
+    target = LlmExtractionTarget(
+        field_id="receivables_aging",
+        field_description="d",
+        statement_type="notes",
+        value_type="text",
+        aliases=("aging analysis of trade and notes receivables",),
+        chunk_strategy="alias_top_k",
+    )
+    chunks = [
+        _chunk(
+            "wrapped",
+            336,
+            "The Group ... Aging analysis of trade and notes\n"
+            "receivables based on invoice date is as follows: ...",
+        ),
+        _chunk("nope", 99, "unrelated content"),
+    ]
+
+    selected = select_chunks(chunks, target, top_k_standard=10)
+
+    assert [c["chunk_id"] for c in selected] == ["wrapped"]
+
+
 def test_select_chunks_alias_top_k_caps_at_top_k() -> None:
     target = LlmExtractionTarget(
         field_id="revenue",

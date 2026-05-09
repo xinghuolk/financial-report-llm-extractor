@@ -12,6 +12,7 @@ exports for fields where source providers have no value.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,6 +31,13 @@ from financial_report_llm_extractor.structured_sources.catalog import (
 
 
 SCHEMA_VERSION = "llm-evidence-supplement-v1"
+
+
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _normalize_whitespace(s: str) -> str:
+    return _WHITESPACE_RE.sub(" ", s).strip()
 
 
 ChunkStrategy = Literal["alias_top_k", "broad_keyword"]
@@ -100,10 +108,15 @@ def select_chunks(
     """
     if target.chunk_strategy == "alias_top_k":
         scored: list[tuple[int, dict[str, object]]] = []
-        aliases_lower = [a.lower() for a in target.aliases]
+        # Normalize whitespace so multi-word aliases survive PDF-layout
+        # line wrapping ("trade and notes\nreceivables" → "trade and notes
+        # receivables").
+        aliases_norm = [_normalize_whitespace(a.lower()) for a in target.aliases]
         for chunk in chunks:
-            text_lower = str(chunk.get("text", "") or "").lower()
-            score = sum(text_lower.count(a) for a in aliases_lower)
+            text_norm = _normalize_whitespace(
+                str(chunk.get("text", "") or "").lower()
+            )
+            score = sum(text_norm.count(a) for a in aliases_norm)
             if score > 0:
                 scored.append((score, chunk))
         scored.sort(key=lambda x: -x[0])
