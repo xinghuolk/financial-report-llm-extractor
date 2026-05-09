@@ -72,6 +72,31 @@ def test_phase_h2_1_cn_sga_promoted_to_sample_verified() -> None:
     )
 
 
+def test_phase_h2_2_promoted_cn_rules_have_multi_company_samples() -> None:
+    """Phase H2.2 Sub-A: each provider_semantics_sample_verified rule for CN
+    should have ≥ 2 sample companies — single-sample sample_verified is a
+    drift §177 sampling-bias risk."""
+    cn_rules = _load_semantics(SEMANTICS_CN)
+    promoted = [
+        r for r in cn_rules
+        if r.get("classification") == "provider_semantics_sample_verified"
+    ]
+    assert promoted, "expected at least one promoted rule"
+    for rule in promoted:
+        samples = rule.get("samples", [])
+        sample_companies = {
+            s.get("company_id") for s in samples if s.get("company_id")
+        }
+        assert len(sample_companies) >= 2, (
+            f"rule for turtle_field_id="
+            f"{rule.get('turtle_field_id')!r} (raw "
+            f"{rule.get('raw_field_name')!r}) has only "
+            f"{len(sample_companies)} sample companies: "
+            f"{sample_companies}. Phase H2.2 Sub-A requires ≥ 2 to "
+            f"mitigate sampling-bias."
+        )
+
+
 def test_phase_h2_dividends_paid_terminal_for_cn() -> None:
     """dividends_paid: even after sign-normalize, AKShare 70.95B vs Yahoo 68.79B
     has 2.9% residual gap (timing: 已付 vs 宣告)."""

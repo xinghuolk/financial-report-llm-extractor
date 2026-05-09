@@ -29,6 +29,31 @@
           "reported_unit_multiplier": 1,
           "statement_line": "营业收入",
           "statement_name": "Consolidated Income Statement"
+        },
+        {
+          "company_id": "300750",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "matches_raw_value_reason": "PDF reports 423,701,834 in 千元 = 423,701,834,000 yuan; matches AKShare OPERATE_INCOME EXACT",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "423,701,834,000",
+          "period_end": "2025-12-31"
+        },
+        {
+          "company_id": "601919",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "219,503,805,222.70",
+          "period_end": "2025-12-31"
+        },
+        {
+          "company_id": "688008",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "5,456,316,783.63",
+          "period_end": "2025-12-31"
         }
       ],
       "semantic_claim": "营业收入 = 主营业务收入 + 其他业务收入; CN P&L convention. Excludes finance-subsidiary 利息收入 (which is bundled into 营业总收入 / TOTAL_OPERATE_INCOME for issuers with finance subsidiaries).",
@@ -60,6 +85,31 @@
           "reported_unit_multiplier": 1,
           "statement_line": "营业利润",
           "statement_name": "Consolidated Income Statement"
+        },
+        {
+          "company_id": "300750",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "matches_raw_value_reason": "PDF in 千元 (89,518,636) = 89.5B yuan; AKShare OPERATE_PROFIT EXACT",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "89,518,636,000",
+          "period_end": "2025-12-31"
+        },
+        {
+          "company_id": "601919",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "42,039,041,074.21",
+          "period_end": "2025-12-31"
+        },
+        {
+          "company_id": "688008",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "2,321,777,105.55",
+          "period_end": "2025-12-31"
         }
       ],
       "semantic_claim": "营业利润 (operating profit) per CN P&L convention; matches PDF formal income statement line exactly. Yahoo Operating Income at the consolidated level may differ by adjustments specific to Yahoo's normalization.",
@@ -100,6 +150,33 @@
           "reported_currency": "CNY",
           "reported_unit": "yuan",
           "reported_unit_multiplier": 1
+        },
+        {
+          "company_id": "300750",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "matches_raw_value_reason": "PDF 销售费用 3,735,118 + 管理费用 11,666,741 (千元) = 15,401,859,000 yuan; AKShare SALE_EXPENSE+MANAGE_EXPENSE EXACT",
+          "pdf_page": "consolidated_income_statement_components",
+          "pdf_value": "15,401,859,000",
+          "period_end": "2025-12-31"
+        },
+        {
+          "company_id": "601919",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "matches_raw_value_reason": "PDF 销售费用 825,422,692.68 + 管理费用 8,243,469,490.23 = 9,068,892,182.91; AKShare SALE+MANAGE EXACT",
+          "pdf_page": "consolidated_income_statement_components",
+          "pdf_value": "9,068,892,182.91",
+          "period_end": "2025-12-31"
+        },
+        {
+          "company_id": "688008",
+          "currency": "CNY",
+          "matches_raw_value": true,
+          "matches_raw_value_reason": "PDF 销售费用 120,228,658.51 + 管理费用 526,287,844.89 = 646,516,503.40; AKShare SALE+MANAGE EXACT",
+          "pdf_page": "consolidated_income_statement_components",
+          "pdf_value": "646,516,503.40",
+          "period_end": "2025-12-31"
         }
       ],
       "semantic_claim": "Phase H2.1: full SGA = AKShare MANAGE_EXPENSE (管理费用) + SALE_EXPENSE (销售费用) per CN P&L convention. EXACT match PDF (销售费用+管理费用) for 600519/2024-12-31 = 14,954,950,119.87 CNY. Catalog applies derivation 'akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE'; this rule keys the composite proof to the MANAGE_EXPENSE leg with related_only_fields=[SALE_EXPENSE]. Yahoo SGA scope unclear (10.36B vs PDF 14.95B; ~30% off); not used.",
