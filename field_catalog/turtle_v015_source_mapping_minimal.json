@@ -1352,6 +1352,31 @@
           "Capital Expenditure"
         ]
       },
+      "source_policy": {
+        "semantic_concept": "cash outflow for capital expenditures",
+        "semantic_variants": {},
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false,
+            "sign_normalize": "absolute"
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false,
+            "sign_normalize": "absolute"
+          }
+        },
+        "verification_requirement": "none"
+      },
       "pdf_aliases": [
         "capital expenditures",
         "purchase of property plant and equipment",
@@ -1430,6 +1455,31 @@
           "Interest Paid Cff",
           "Interest Paid Direct"
         ]
+      },
+      "source_policy": {
+        "semantic_concept": "cash outflow for interest paid",
+        "semantic_variants": {},
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false,
+            "sign_normalize": "absolute"
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false,
+            "sign_normalize": "absolute"
+          }
+        },
+        "verification_requirement": "none"
       },
       "pdf_aliases": [
         "interest paid",

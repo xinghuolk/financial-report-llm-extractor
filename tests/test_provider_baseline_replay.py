@@ -563,8 +563,11 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     # values with preserve_conflict policy — unresolved_conflict, architecturally honest.
     # N4.A: P2 cash-flow fields added; 600519 gains change_in_receivables/payables/inventory
     # → clean_present_count rises from 30 to 33.
-    assert maotai_combined["clean_present_count"] == 33
-    assert {"bond_payable", "st_borr", "lt_borr"} <= set(
+    # H2 Task 2: capital_expenditures (P2) gets sign_normalize='absolute' on CN,
+    # resolving the AKShare(+) / Yahoo(-) sign-mirror conflict — clean_present
+    # count rises 33 → 34. (interest_paid_cash is P3 and not loaded by this replay.)
+    assert maotai_combined["clean_present_count"] == 34
+    assert {"bond_payable", "st_borr", "lt_borr", "capital_expenditures"} <= set(
         maotai_combined["clean_present_fields"]
     )
     assert not (
@@ -1262,3 +1265,34 @@ def test_evaluate_source_first_slice_merges_supplement_from_explicit_path(
     assert item.selected_source == "llm", (
         f"expected llm-merged item, got selected_source={item.selected_source!r}"
     )
+
+
+def test_evaluate_source_first_slice_passes_sign_normalize_fields_to_reconciliation() -> None:
+    """Phase H2 Module A: catalog edits + slice plumbing should expose
+    capital_expenditures + interest_paid_cash as sign_normalize='absolute'
+    fields in CN and HK markets, and the helper used by
+    evaluate_source_first_slice should pick them up.
+
+    Full integration is implicitly verified by the live 600519/2024 run
+    (Step 7 of the H2 Task 2 spec): both fields move from
+    unresolved_conflict to clean_present after this change.
+    """
+    from financial_report_llm_extractor.structured_sources.catalog import (  # type: ignore[import-untyped]
+        load_source_mapping_catalog,
+    )
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (  # type: ignore[import-untyped]
+        _extract_sign_normalize_fields,
+    )
+
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1", "P2", "P3"),
+    )
+
+    cn_set = _extract_sign_normalize_fields(catalog, "CN")
+    hk_set = _extract_sign_normalize_fields(catalog, "HK")
+
+    assert "capital_expenditures" in cn_set
+    assert "capital_expenditures" in hk_set
+    assert "interest_paid_cash" in cn_set
+    assert "interest_paid_cash" in hk_set

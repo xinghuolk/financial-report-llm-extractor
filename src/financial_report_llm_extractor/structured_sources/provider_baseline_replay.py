@@ -303,6 +303,22 @@ def write_provider_baseline_period_replay(
     )
 
 
+def _extract_sign_normalize_fields(catalog: Any, market: str) -> frozenset[str]:
+    """Build the set of field_ids whose market policy says sign_normalize='absolute'.
+
+    Phase H2 Module A: reconciliation uses this to trigger abs() comparison
+    for sign-convention-divergent fields like capital_expenditures.
+    """
+    out: set[str] = set()
+    for field_id, entry in catalog.entries.items():
+        if entry.source_policy is None:
+            continue
+        mp = entry.source_policy.market_policies.get(market)
+        if mp is not None and mp.sign_normalize == "absolute":
+            out.add(field_id)
+    return frozenset(out)
+
+
 def evaluate_source_first_slice(
     output_dir: Path,
     *,
@@ -321,7 +337,10 @@ def evaluate_source_first_slice(
     )
     write_source_inventory(output_dir / "source_inventory.jsonl", records)
     mapping = map_source_inventory(catalog, records)
-    reconciliation = reconcile_mapped_fields(mapping)
+    reconciliation = reconcile_mapped_fields(
+        mapping,
+        sign_normalize_fields=_extract_sign_normalize_fields(catalog, market),
+    )
     policy_report = build_source_policy_report(
         catalog,
         mapping,
