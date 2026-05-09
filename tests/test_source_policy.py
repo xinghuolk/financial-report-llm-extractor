@@ -1311,6 +1311,63 @@ def _trust_rule(
     )
 
 
+def test_source_policy_emits_clean_for_derived_field_without_candidates() -> None:
+    """Phase H2.1 follow-up: when a field's mapping result has status='derived'
+    AND no per-source candidates (because `_derive_field` resolved operands
+    directly from records via `provider:RAW` syntax), source_policy must emit
+    `selected_single_source` so the field carries to clean_present.
+
+    Without this branch, _resolve_field would treat the empty candidates list
+    as 'no primary candidate' and mis-classify as unresolved_conflict, masking
+    the derivation result.
+    """
+    catalog = _catalog(
+        "selling_general_administrative",
+        SourcePolicy(
+            semantic_concept="selling general and administrative expenses",
+            market_policies={
+                "CN": MarketSourcePolicy(
+                    primary_route="akshare_direct",
+                    cross_check_routes=(),
+                    on_conflict="select_primary",
+                )
+            },
+        ),
+    )
+    derived_mapping = TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            "selling_general_administrative": MappedTurtleField(
+                field_id="selling_general_administrative",
+                status="derived",
+                value=Decimal("14954950119.87"),
+                normalized_value=Decimal("14954950119.87"),
+                currency="CNY",
+                unit="yuan",
+                canonical_unit="CNY",
+                # No candidates: derivation built the value from raw records.
+                candidates=(),
+                derived_from=("akshare:MANAGE_EXPENSE", "akshare:SALE_EXPENSE"),
+            )
+        },
+    )
+    reconciliation = reconcile_mapped_fields(derived_mapping)
+
+    report = build_source_policy_report(
+        catalog,
+        derived_mapping,
+        reconciliation,
+        market="CN",
+        company_id="600519",
+    )
+
+    item = report.items["selling_general_administrative"]
+    assert item.selection_status == "selected_single_source"
+    assert item.conflict_classifications == ()
+    assert item.verification_required is False
+
+
 def _trust_sample(field_id: str, raw_field_name: str) -> HkYahooTrustSample:
     return HkYahooTrustSample(
         company_id="00001",
