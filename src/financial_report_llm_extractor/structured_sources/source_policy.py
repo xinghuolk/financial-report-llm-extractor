@@ -508,10 +508,91 @@ def _apply_trust_policies(
         hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         provider_semantics_catalog=provider_semantics_catalog,
     )
-    return _apply_provider_semantics_promotion(
+    item = _apply_provider_semantics_promotion(
         item,
         market=market,
         provider_semantics_catalog=provider_semantics_catalog,
+    )
+    return _apply_provider_semantics_unverified_warning(
+        item,
+        market=market,
+        provider_semantics_catalog=provider_semantics_catalog,
+    )
+
+
+# Phase H2.2 Sub-B: when a selected candidate matches a
+# provider_semantics_unverified rule (e.g. HK Yahoo SGA per 00001/01113
+# spot-check), the rule documents a known scope mismatch with PDF. Surface
+# this as verification_required + a warning so the field lands in
+# pdf_required → terminal_unverified rather than silently clean_present.
+def _apply_provider_semantics_unverified_warning(
+    item: SourcePolicyItem,
+    *,
+    market: str | None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None,
+) -> SourcePolicyItem:
+    if provider_semantics_catalog is None or market is None:
+        return item
+    if item.selection_status not in {"selected_primary", "selected_single_source"}:
+        return item
+    candidate = item.selected_candidate
+    if candidate is None or not candidate.raw_field_name:
+        return item
+    # If trust_policy_evidence already documents a sample_verified rule, the
+    # candidate is explained — don't re-add an unverified warning.
+    if (
+        item.trust_policy_evidence is not None
+        and item.trust_policy_evidence.get("provider_semantics_classification")
+        == "provider_semantics_sample_verified"
+    ):
+        return item
+    semantics_rule = provider_semantics_catalog.rule_for(
+        provider=candidate.source,
+        market=market,
+        turtle_field_id=item.field_id,
+        raw_field_name=candidate.raw_field_name,
+    )
+    if (
+        semantics_rule is None
+        or semantics_rule.classification != "provider_semantics_unverified"
+    ):
+        return item
+    # Phase H2.2 Sub-B: only gate when the unverified rule carries fresh PDF
+    # spot-check samples documenting the scope mismatch. Older stub-level
+    # unverified rules without samples are documentation-only and must not
+    # silently regress fields that previously passed clean_present.
+    if not semantics_rule.samples:
+        return item
+    warning = (
+        f"provider semantics unverified for {candidate.source} "
+        f"{candidate.raw_field_name!r} on {market}: "
+        f"{semantics_rule.classification}"
+    )
+    if warning in item.warnings:
+        return item
+    new_trust_policy_evidence: dict[str, object] = {
+        "proof_class": "sampled_pdf_policy_proof",
+        "is_final_pdf_evidence": False,
+        "provider_semantics_classification": semantics_rule.classification,
+        "provider_semantics_proof_origin": semantics_rule.proof_origin,
+        "provider_semantics_raw_field": semantics_rule.raw_field_name,
+        "provider_semantics_provider": semantics_rule.provider,
+        "provider_semantics_market": semantics_rule.market,
+    }
+    if item.trust_policy_evidence is not None:
+        new_trust_policy_evidence = {
+            **item.trust_policy_evidence,
+            **new_trust_policy_evidence,
+        }
+    return SourcePolicyItem(
+        field_id=item.field_id,
+        selection_status=item.selection_status,
+        selected_candidate=candidate,
+        conflict_classifications=item.conflict_classifications,
+        verification_required=True,
+        warnings=item.warnings + (warning,),
+        reconciliation_status=item.reconciliation_status,
+        trust_policy_evidence=new_trust_policy_evidence,
     )
 
 

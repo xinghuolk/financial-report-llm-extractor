@@ -205,3 +205,36 @@ def test_phase_h2_cn_akshare_rule_raw_field_name_matches_adapter_alias_map() -> 
             f"{expected_name!r}, OR\n"
             f"  (b) revert the CN_WIDE_FIELD_ALIASES change."
         )
+
+
+def test_phase_h2_2_hk_sga_yahoo_unverified_rule_exists() -> None:
+    """Phase H2.2 Sub-B: HK SGA Yahoo alias restored via by_market schema, but
+    rule classification stays provider_semantics_unverified per spot-check
+    (Yahoo SGA scope ≠ PDF on 00001/01113)."""
+    hk_rules = _load_semantics(SEMANTICS_HK)
+    hk_sga_yahoo_rules = [
+        r for r in hk_rules
+        if r.get("turtle_field_id") == "selling_general_administrative"
+        and r.get("provider") == "yahoo"
+    ]
+    assert hk_sga_yahoo_rules, (
+        "expected at least one HK Yahoo SGA rule after Phase H2.2 Sub-B"
+    )
+    assert all(
+        r.get("classification") == "provider_semantics_unverified"
+        for r in hk_sga_yahoo_rules
+    ), (
+        "HK Yahoo SGA rules must remain unverified per H2.2 spot-check decision"
+    )
+
+
+def test_phase_h2_2_sga_catalog_has_by_market_hk_yahoo_alias() -> None:
+    """Phase H2.2 Sub-B: catalog SGA entry has by_market.HK.yahoo restored."""
+    import json
+    catalog_doc = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    sga = catalog_doc["source_mappings"]["selling_general_administrative"]
+    by_market = sga.get("source_aliases", {}).get("by_market", {})
+    hk_yahoo = by_market.get("HK", {}).get("yahoo", [])
+    assert "Selling General And Administration" in hk_yahoo, (
+        f"expected HK Yahoo SGA alias in by_market.HK.yahoo; got {hk_yahoo}"
+    )

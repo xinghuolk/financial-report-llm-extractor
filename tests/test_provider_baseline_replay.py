@@ -818,22 +818,37 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
         )
         assert warning_fields["mapping_expansion_required"] == expected_mapping_expansion
         assert set(warning_fields["source_unavailable"]) >= EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS
-        # Phase H2.1: SGA derivation runs (and blocks) for HK; lands in
-        # source_policy_resolvable for both 00001 and 01113, not source_unavailable.
-        assert "selling_general_administrative" in warning_fields[
-            "source_policy_resolvable"
-        ], (
-            f"{company_id} expected selling_general_administrative in "
-            f"source_policy_resolvable (HK derivation blocked); got "
-            f"source_policy_resolvable={warning_fields['source_policy_resolvable']!r}"
-        )
+        # Phase H2.2 Sub-B: HK Yahoo SGA alias restored under
+        # source_aliases.by_market.HK.yahoo. The provider_semantics_unverified
+        # rule (with 00001/01113 spot-check samples) gates the candidate when
+        # one matches: 00001 has a Yahoo SGA record → pdf_required (rule
+        # documents scope mismatch). 01113 has no Yahoo SGA inventory record;
+        # AKShare HK derivation still blocks → stays source_policy_resolvable.
         if company_id == "00001":
+            assert "selling_general_administrative" in warning_fields[
+                "pdf_required"
+            ], (
+                f"{company_id} expected selling_general_administrative in "
+                f"pdf_required (H2.2 Sub-B unverified rule gates Yahoo "
+                f"candidate); got pdf_required="
+                f"{warning_fields['pdf_required']!r}"
+            )
             assert (
                 EXPECTED_00001_EXTRA_SOURCE_UNAVAILABLE
                 <= set(warning_fields["source_unavailable"])
             ), (
                 f"00001 expected {EXPECTED_00001_EXTRA_SOURCE_UNAVAILABLE} in source_unavailable "
                 f"but got: {warning_fields['source_unavailable']!r}"
+            )
+        else:
+            assert "selling_general_administrative" in warning_fields[
+                "source_policy_resolvable"
+            ], (
+                f"{company_id} expected selling_general_administrative in "
+                f"source_policy_resolvable (no Yahoo SGA inventory record; "
+                f"AKShare HK derivation blocked); got "
+                f"source_policy_resolvable="
+                f"{warning_fields['source_policy_resolvable']!r}"
             )
 
 

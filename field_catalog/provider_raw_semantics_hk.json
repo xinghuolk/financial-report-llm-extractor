@@ -416,8 +416,27 @@
       "required_proof": [
         "per-issuer PDF reconciliation against HK conglomerate operating expense breakdowns"
       ],
-      "samples": [],
-      "semantic_claim": "Yahoo HK Selling General And Administration aggregates expense lines but has not been PDF-proven equivalent to the Turtle SGA semantics for HK conglomerates (which often report distribution costs and administrative expenses separately at scopes that diverge from Yahoo normalization). Same scope concerns apply as the CN side; HK SGA stays terminal_unverified pending proof.",
+      "samples": [
+        {
+          "company_id": "00001",
+          "period_end": "2025-12-31",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "9,466,000,000",
+          "currency": "HKD",
+          "matches_raw_value": false,
+          "matches_raw_value_reason": "PDF reports 'Office and general administrative expenses' 9,466M HKD (one component); Yahoo SGA 16,491M aggregates Selling+Marketing+G&A — different scopes"
+        },
+        {
+          "company_id": "01113",
+          "period_end": "2025-12-31",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "n/a",
+          "currency": "HKD",
+          "matches_raw_value": false,
+          "matches_raw_value_reason": "PDF has no single SGA line (real-estate developer convention; expenses split across segments)"
+        }
+      ],
+      "semantic_claim": "Yahoo HK Selling General And Administration aggregates 'Selling And Marketing Expense' + 'General And Administrative Expense'; for HK conglomerates the consolidated PDF reports these costs across multiple operational segments rather than one SGA line. Spot-check on 00001/2025 found PDF 'Office and general administrative expenses' 9,466M HKD vs Yahoo SGA 16,491M HKD — different scope. 01113/2025 has no single SGA PDF line (real-estate convention). HK SGA stays terminal_unverified pending per-issuer PDF reconciliation.",
       "trusted_currency": "HKD",
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
