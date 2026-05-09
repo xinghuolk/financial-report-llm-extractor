@@ -57,6 +57,7 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 | EC | `structured_sources/source_inventory_fetch.py` + `company_evaluation.py` | evaluate-company orchestrator：fetch-source-inventory + evaluate-company 两步 CLI；6-bucket 分类 + markdown；live 600519/2024 验证 conflict 三类（period 漂移 16 / sign 3 / 真语义差 5） |
 | H2 | `MarketSourcePolicy.sign_normalize` + `provider_raw_semantics_cn.json` + `_apply_provider_semantics_promotion` (source_policy.py) | CN+HK conflict surgical resolution：sign_normalize=absolute (capex+interest_paid_cash) + PDF semantics promote (CN revenue+operating_profit) + terminal_unverified lock (SGA/D&A/dividends_paid)；600519 clean 34→38 |
 | H2.1 | `mapping._derive_field` `+` 操作符 + `provider:RAW` operand + source_policy `derived` 分支 | catalog `derivation` 语法扩展为加法 + raw provider 字段引用；CN SGA = `akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE` PDF EXACT promote；600519 clean 38→39 |
+| H2.2 | `SourceMappingEntry.by_market_aliases` + multi-sample provider_raw_semantics_cn + Sub-C clean-row candidate audit | (A) 4 CN companies × 4 fields multi-sample (300750/601919/688008 PDF EXACT) ；(B) HK SGA market-scoped Yahoo alias + 终态 unverified；(C) clean rows 显示双 provider 候选值 |
 
 所有源码在 `src/financial_report_llm_extractor/`，测试在 `tests/` 中按阶段对应，字段定义在 `field_catalog/`。
 
@@ -84,7 +85,7 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 ## 文档导读
 
-优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）；HK LLM 验证 33/84 hits, 0 extraction_failed；CN 600519/2024 evaluate-company 后状态：clean_present 39/56（H2+H2.1 净 +5），unresolved_conflict 16/56。下一步候选：Phase H2.2（多公司 sample-verification + HK SGA 修复）、Phase HK-coverage（HK fixture/catalog 0 clean 修复）、合并到 main、或新阶段。
+优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）；HK LLM 验证 33/84 hits, 0 extraction_failed；CN 600519/2024 evaluate-company 后状态：clean_present 39/56，unresolved_conflict 16/56；H2.2 后 H2/H2.1 promotion 由 4 CN 公司 sample-verified 背书。下一步候选：Phase H2.3（CN bank interest_paid_cash + HK 01113 SGA + fixture 持久化）、Phase HK-coverage（HK fixture/catalog 0 clean 修复）、合并到 main、或新阶段。
 
 `docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 

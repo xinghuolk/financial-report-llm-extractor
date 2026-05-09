@@ -4,7 +4,7 @@
 > Date: 2026-05-07 (last validation: 2026-05-09 Phase EC live run)
 > Scope: Pivot the project from PDF-first LLM extraction to AKShare/Yahoo-first structured financial data extraction, with PDF/LLM retained as the final evidence supplement and ambiguity review layer.
 >
-> Implementation status (2026-05-09): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation), Phase H2 (CN/HK conflict surgical resolution), Phase H2.1 (CN SGA addition derivation: catalog `derivation` syntax extended to `+` operator + `provider:RAW` operands; CN SGA promoted) — all complete. 533 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed. Live evaluate-company on 600519/2024 after H2.1: 39/56 clean_present (+5 over Phase EC), 16/56 unresolved_conflict (−5).
+> Implementation status (2026-05-10): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation), Phase H2 (CN/HK conflict surgical resolution), Phase H2.1 (CN SGA addition derivation), Phase H2.2 (multi-company sample-verification + market-scoped source_aliases + clean-row candidate audit display) — all complete. 540 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed. Live evaluate-company on 600519/2024 after H2.2: 39/56 clean_present (+5 over Phase EC), 16/56 unresolved_conflict (−5). Sample-verification breadth: 4 CN companies × 4 fields = 16 EXACT-match samples backing the H2/H2.1 promotions.
 
 ## 1. Decision Summary
 
@@ -1478,9 +1478,40 @@ CN SGA → `clean_present | (derived) | 14954950119.87`.
 **524 → 533 unit tests** (T1: +1, T2: +4, T4: +new SGA test + HK regression updates, T4-followup: +1 source_policy unit). Ruff + mypy clean throughout.
 
 **Phase H2.2 candidates** identified:
-- Multi-company sample-verification for the H2 + H2.1 promotions (5 fields × 600519 only currently). Per drift §177 single-sample sample_verified rules carry sample-bias risk. ≥3 CN issuers would harden.
-- HK SGA via market-scoped source_aliases refactor OR per-issuer Yahoo HK PDF spot-check.
+- ~~Multi-company sample-verification~~ **DONE 2026-05-10** — see Phase H2.2 Implementation Result.
+- ~~HK SGA via market-scoped source_aliases refactor~~ **DONE 2026-05-10** — see Phase H2.2 Implementation Result.
 - `_resolve_derivation_operand` period-equality assertion (currently could silently sum across periods if multi-period inventory passed).
+
+### Phase H2.2 Implementation Result
+
+Status: implemented on 2026-05-10. 6 commits + 1 fetch fixture (`0faf829` → `8beee8d` → `8cd9857` → `e6ebec1` → `0a578a0` + spec/plan).
+
+See:
+- Spec: `docs/superpowers/specs/2026-05-09-phase-h2-2-multi-sample-and-market-scoped.md`
+- Plan: `docs/superpowers/plans/2026-05-09-phase-h2-2-multi-sample-and-market-scoped.md`
+- Multi-company spot-check: `docs/phase_h2_2_multi_company_spot_check.md`
+- Validation report: `docs/phase_h2_2_validation_report.md`
+
+Three independent sub-modules:
+
+**Sub-A** — multi-company sample-verification: live `real_source_validation` (akshare 1.18.60) against 300750 (CATL battery) + 601919 (COSCO shipping) + 688008 (Hygon semiconductor) for FY2025 annual reports. PDF spot-check confirmed 12/12 applicable cells EXACT (5 fields × 3 companies, minus 3 PAY_INTEREST_COMMISSION cells N/A for non-financial issuers). `provider_raw_semantics_cn.json` revenue / operating_profit / SGA rules each gain 3 new sample companies (1 → 4 total). Drift §177 single-sample concern mitigated.
+
+**Sub-B** — `SourceMappingEntry.by_market_aliases` schema + `mapping._record_matches_entry` market-scoped lookup precedence + `source_policy._apply_provider_semantics_unverified_warning` for unverified-rule-with-samples classification. Applied to HK SGA: catalog `source_aliases.by_market.HK.yahoo = ["Selling General And Administration"]` restored; PDF spot-check (00001 PDF "Office and general administrative expenses" 9,466M HKD vs Yahoo SGA 16,491M HKD) confirmed scope mismatch → rule stays `provider_semantics_unverified` with 2 samples documenting the divergence; HK 00001 SGA bucket transitioned `source_policy_resolvable` → `terminal_unverified` (architecturally honest).
+
+**Sub-C** — `_collect_candidate_values` drops bucket filter; clean_present + llm_supplement_present rows with ≥ 2 candidates now display all provider values inline (e.g. `revenue: akshare:170.90B / yahoo:174.14B`). Audit transparency for sample-bias spot-checking.
+
+**Live counts**:
+- 600519/2024-12-31: clean_present 39 unchanged (Sub-A is documentation strengthening, no bucket movement).
+- 00001/2025-12-31: 28 clean_present + **1 terminal_unverified** (SGA, was source_policy_resolvable).
+- 01113/2025-12-31: 29 clean_present (SGA stays source_unavailable; no Yahoo SGA fixture record for 1113.HK).
+
+**533 → 540 unit tests**, ruff + mypy clean. New regression tests: `test_phase_h2_2_promoted_cn_rules_have_multi_company_samples`, `test_phase_h2_2_hk_sga_yahoo_unverified_rule_exists`, `test_phase_h2_2_sga_catalog_has_by_market_hk_yahoo_alias`, plus 3 by_market mapping tests + Sub-C clean-row test.
+
+**Phase H2.3 candidates** identified:
+- `interest_paid_cash` multi-sample: include a CN bank (e.g., 600036) where PAY_INTEREST_COMMISSION is non-null.
+- HK 01113 SGA: real-estate developer convention has no single SGA line; revisit as structurally non-applicable terminal vs `source_unavailable`.
+- Persist 300750 / 601919 / 688008 records to `tests/fixtures/provider_captures/` for offline regression testing.
+- `_resolve_derivation_operand` period-equality assertion (carried over from Phase H2.1).
 
 ## 6. Validation Commands
 
