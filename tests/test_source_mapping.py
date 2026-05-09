@@ -1134,3 +1134,171 @@ def test_derive_supports_addition_operator() -> None:
     assert result.status == "derived"
     assert result.value == Decimal("150")
     assert result.normalized_value == Decimal("150")
+
+
+def _h2_1_catalog_with_provider_derivation(
+    field_id: str, derivation: str
+) -> SourceMappingCatalog:
+    """Single-entry catalog where the field has the given derivation string.
+
+    The direct alias is intentionally non-existent so the field starts as
+    `missing` and falls into the derivation branch.
+    """
+    return SourceMappingCatalog(
+        catalog_id="h2_1_test",
+        version="v0",
+        entries={
+            field_id: SourceMappingEntry(
+                field_id=field_id,
+                priority="P3",
+                value_type="money",
+                statement_type="income_statement",
+                currency_requirement="required",
+                unit_requirement="required",
+                source_aliases={
+                    "akshare": (f"{field_id}_NONEXISTENT_DIRECT_ALIAS",),
+                },
+                derivation=derivation,
+            ),
+        },
+    )
+
+
+def _h2_1_record(
+    *,
+    source: str,
+    raw_field_name: str,
+    parsed_numeric_value: Decimal,
+    currency: str = "CNY",
+    unit: str = "yuan",
+    period: str = "2024-12-31",
+) -> SourceInventoryRecord:
+    return SourceInventoryRecord(
+        source=source,  # type: ignore[arg-type]
+        market="CN",
+        ticker="600519",
+        statement_type="income_statement",
+        period=period,
+        raw_field_name=raw_field_name,
+        raw_value=str(parsed_numeric_value),
+        parsed_numeric_value=parsed_numeric_value,
+        currency=currency,  # type: ignore[arg-type]
+        unit=unit,
+        source_status="present",
+        source_evidence=(
+            SourceEvidence(
+                source=source,  # type: ignore[arg-type]
+                adapter="test",
+                function="test",
+                artifact_id="test",
+                raw_record_id=f"{source}:{raw_field_name}",
+                raw_field_name=raw_field_name,
+            ),
+        ),
+    )
+
+
+def test_derive_with_provider_raw_operands_sums_correctly() -> None:
+    """Phase H2.1: derivation operands like 'akshare:MANAGE_EXPENSE' look up raw
+    values directly from source records, bypassing mapped Turtle fields."""
+    catalog = _h2_1_catalog_with_provider_derivation(
+        "selling_general_administrative",
+        "akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE",
+    )
+    records = (
+        _h2_1_record(
+            source="akshare",
+            raw_field_name="MANAGE_EXPENSE",
+            parsed_numeric_value=Decimal("9315650060.38"),
+        ),
+        _h2_1_record(
+            source="akshare",
+            raw_field_name="SALE_EXPENSE",
+            parsed_numeric_value=Decimal("7252900000.00"),
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+
+    sga = result.fields["selling_general_administrative"]
+    assert sga.status == "derived"
+    assert sga.value == Decimal("16568550060.38")
+
+
+def test_derive_provider_raw_blocks_when_one_raw_field_missing() -> None:
+    """If a provider:RAW operand isn't present in records → blocked with reason
+    mentioning the missing raw field."""
+    catalog = _h2_1_catalog_with_provider_derivation(
+        "selling_general_administrative",
+        "akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE",
+    )
+    records = (
+        _h2_1_record(
+            source="akshare",
+            raw_field_name="MANAGE_EXPENSE",
+            parsed_numeric_value=Decimal("100"),
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+
+    sga = result.fields["selling_general_administrative"]
+    assert sga.status == "blocked"
+    assert any("SALE_EXPENSE" in err for err in sga.errors)
+
+
+def test_derive_rejects_cross_provider_addition() -> None:
+    """`akshare:X + yahoo:Y` → blocked. Operand resolvers must come from the
+    same provider."""
+    catalog = _h2_1_catalog_with_provider_derivation(
+        "selling_general_administrative",
+        "akshare:MANAGE_EXPENSE + yahoo:SALE_EXPENSE",
+    )
+    records = (
+        _h2_1_record(
+            source="akshare",
+            raw_field_name="MANAGE_EXPENSE",
+            parsed_numeric_value=Decimal("100"),
+        ),
+        _h2_1_record(
+            source="yahoo",
+            raw_field_name="SALE_EXPENSE",
+            parsed_numeric_value=Decimal("50"),
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+
+    sga = result.fields["selling_general_administrative"]
+    assert sga.status == "blocked"
+    assert any("provider" in err.lower() for err in sga.errors)
+
+
+def test_derive_provider_raw_inherits_currency_from_records() -> None:
+    """Derived field inherits currency/unit/canonical from raw records."""
+    catalog = _h2_1_catalog_with_provider_derivation(
+        "selling_general_administrative",
+        "akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE",
+    )
+    records = (
+        _h2_1_record(
+            source="akshare",
+            raw_field_name="MANAGE_EXPENSE",
+            parsed_numeric_value=Decimal("100"),
+            currency="CNY",
+            unit="yuan",
+        ),
+        _h2_1_record(
+            source="akshare",
+            raw_field_name="SALE_EXPENSE",
+            parsed_numeric_value=Decimal("50"),
+            currency="CNY",
+            unit="yuan",
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+    sga = result.fields["selling_general_administrative"]
+    assert sga.status == "derived"
+    assert sga.currency == "CNY"
+    assert sga.unit == "yuan"

@@ -129,7 +129,7 @@ def map_source_inventory(
     for field_id, entry in catalog.entries.items():
         if not entry.derivation or mapped[field_id].status != "missing":
             continue
-        mapped[field_id] = _derive_field(entry, mapped)
+        mapped[field_id] = _derive_field(entry, mapped, records)
 
     return TurtleMappingResult(
         catalog_id=catalog.catalog_id,
@@ -247,6 +247,7 @@ def _map_direct_field(
 def _derive_field(
     entry: SourceMappingEntry,
     mapped: dict[str, MappedTurtleField],
+    records: list[SourceInventoryRecord] | tuple[SourceInventoryRecord, ...] = (),
 ) -> MappedTurtleField:
     assert entry.derivation is not None
     parts = entry.derivation.split()
@@ -259,14 +260,33 @@ def _derive_field(
 
     op = parts[1]
     sign = 1 if op == "+" else -1
-    left = mapped.get(parts[0])
-    right = mapped.get(parts[2])
-    if left is None or right is None:
+    left_op_str, right_op_str = parts[0], parts[2]
+
+    # Cross-provider check (before resolving): if both operands use provider:RAW
+    # form, providers must match.
+    if ":" in left_op_str and ":" in right_op_str:
+        left_provider = left_op_str.split(":", 1)[0]
+        right_provider = right_op_str.split(":", 1)[0]
+        if left_provider != right_provider:
+            return MappedTurtleField(
+                field_id=entry.field_id,
+                status="blocked",
+                errors=(
+                    f"derivation operands use different providers: "
+                    f"{entry.derivation}",
+                ),
+            )
+
+    left, left_err = _resolve_derivation_operand(left_op_str, mapped, records)
+    right, right_err = _resolve_derivation_operand(right_op_str, mapped, records)
+    if left_err or right_err:
+        errs = tuple(e for e in (left_err, right_err) if e)
         return MappedTurtleField(
             field_id=entry.field_id,
             status="blocked",
-            errors=(f"derivation input missing from catalog: {entry.derivation}",),
+            errors=errs,
         )
+    assert left is not None and right is not None
     if left.status not in {"present", "derived"} or right.status not in {
         "present",
         "derived",
@@ -320,6 +340,55 @@ def _derive_field(
         scope=left.scope,
         source_evidence=left.source_evidence + right.source_evidence,
         derived_from=(left.field_id, right.field_id),
+    )
+
+
+def _resolve_derivation_operand(
+    operand: str,
+    mapped: dict[str, MappedTurtleField],
+    records: list[SourceInventoryRecord] | tuple[SourceInventoryRecord, ...],
+) -> tuple[MappedTurtleField | None, str | None]:
+    """Return (operand-as-MappedTurtleField, error).
+
+    For `provider:RAW` form, look up raw value directly from source records,
+    bypassing mapped Turtle field lookup. Otherwise look up Turtle field ID
+    in `mapped`.
+    """
+    if ":" not in operand:
+        m = mapped.get(operand)
+        if m is None:
+            return None, f"derivation input missing from catalog: {operand}"
+        return m, None
+
+    provider, raw_field_name = operand.split(":", 1)
+    matches = [
+        r
+        for r in records
+        if r.source == provider
+        and r.raw_field_name == raw_field_name
+        and r.source_status == "present"
+    ]
+    if not matches:
+        return None, f"derivation input not present: {operand}"
+    if len(matches) > 1:
+        return None, f"derivation input has multiple records: {operand}"
+
+    rec = matches[0]
+    canonical = rec.currency if rec.currency not in {"unknown", "ambiguous"} else None
+    return (
+        MappedTurtleField(
+            field_id=operand,
+            status="present",
+            value=rec.parsed_numeric_value,
+            normalized_value=rec.parsed_numeric_value,
+            currency=rec.currency,
+            unit=rec.unit,
+            canonical_unit=canonical,
+            period=rec.period,
+            scope=rec.scope,
+            source_evidence=rec.source_evidence,
+        ),
+        None,
     )
 
 
