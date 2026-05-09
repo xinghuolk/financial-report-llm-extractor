@@ -230,6 +230,24 @@ def test_taxonomy_evidence_requirement_matches_coverage_routes() -> None:
         )
 
 
+def test_provider_raw_semantics_cn_loads_h2_rules() -> None:
+    """Phase H2 Task 3: provider_raw_semantics_cn.json must include sample-verified
+    rules for revenue + operating_profit (CN promote AKShare per 600519/2024 PDF)."""
+    catalog = load_provider_semantics_catalog(
+        Path("field_catalog/provider_raw_semantics_cn.json")
+    )
+    rule_field_ids = {rule.turtle_field_id for rule in catalog.rules}
+    assert "revenue" in rule_field_ids
+    assert "operating_profit" in rule_field_ids
+
+    # The CN revenue + operating_profit rules must be sample-verified (promote).
+    cn_revenue_rules = [r for r in catalog.rules if r.turtle_field_id == "revenue"]
+    assert any(
+        r.classification == "provider_semantics_sample_verified"
+        for r in cn_revenue_rules
+    )
+
+
 def test_akshare_aliases_appear_in_provider_baseline_inventory() -> None:
     """N4 review fix: akshare aliases in source_mapping must appear in the
     captured provider field baseline. Catches fabricated/typo aliases.

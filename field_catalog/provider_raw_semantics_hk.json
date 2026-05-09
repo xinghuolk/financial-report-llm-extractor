@@ -324,6 +324,81 @@
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
       "turtle_field_id": "fix_assets"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "营运收入",
+      "related_only_fields": [],
+      "required_proof": [
+        "AKShare HK 营运收入 reports listed-company-only revenue (00001 2025: 252,934M HKD), whereas HK Total Revenue per HKFRS Note 1 (00001 2025 Annual Report) includes proportionate share of associates and joint ventures (PDF Total Revenue 507,297M HKD). Different reporting scopes — not equivalent. Provider semantics unverified for the listed-company-only definition vs Turtle revenue intent."
+      ],
+      "samples": [
+        {
+          "company_id": "00001",
+          "period_end": "2025-12-31",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "507297000000",
+          "expected_provider_raw_value": "252934115920",
+          "reported_currency": "HKD",
+          "reported_unit": "raw",
+          "reported_unit_multiplier": 1,
+          "statement_line": "Total revenue (incl. share of associates per Note 1)",
+          "statement_name": "Consolidated Income Statement",
+          "matches_raw_value": false,
+          "matches_raw_value_reason": "PDF Total Revenue 507,297M includes share of associates; AKShare 营运收入 252,934M is listed-company-only"
+        }
+      ],
+      "semantic_claim": "AKShare 营运收入 measures listed-company-only revenue; HK Total Revenue per HKFRS includes proportionate share of associates and joint ventures (per 00001 2025 Annual Report Note 1). Different reporting scopes prevent primary promotion.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "revenue"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "除税前溢利",
+      "related_only_fields": [],
+      "required_proof": [
+        "HK conglomerates report 除税前溢利(业务利润) (AKShare) at a different scope than Yahoo Operating Income — without a per-issuer PDF spot-check confirming 除税前溢利 maps to Turtle operating_profit semantics across issuers, this rule cannot be promoted. Different reporting scopes (listed-company-only vs consolidated incl. associates) suspected."
+      ],
+      "samples": [],
+      "semantic_claim": "AKShare 除税前溢利 (HK conglomerate operating profit) — scope diverges from Turtle operating_profit definition; not provable without per-issuer PDF reconciliation.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "operating_profit"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Operating Income",
+      "related_only_fields": [],
+      "required_proof": [
+        "Yahoo HK Operating Income has not been PDF-proven equivalent to the Turtle operating_profit definition for HK issuers. HK conglomerates often report 除税前溢利(业务利润) at a scope (listed-company-only vs incl. associates) that differs from Yahoo's normalization. Provider semantics unverified."
+      ],
+      "samples": [],
+      "semantic_claim": "Yahoo HK Operating Income — scope diverges from Turtle operating_profit definition for HK conglomerates; requires per-issuer PDF proof.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "operating_profit"
     }
   ]
 }

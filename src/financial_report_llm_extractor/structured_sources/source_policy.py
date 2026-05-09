@@ -216,7 +216,7 @@ def _resolve_field(
                 ),
                 reconciliation_status=reconciliation_status,
             )
-        return _apply_hk_yahoo_trust_policy(
+        return _apply_trust_policies(
             SourcePolicyItem(
                 field_id=field.field_id,
                 selection_status="unresolved_conflict",
@@ -235,7 +235,7 @@ def _resolve_field(
             provider_semantics_catalog=provider_semantics_catalog,
         )
     if reconciliation_status in {"equivalent", "close"}:
-        return _apply_hk_yahoo_trust_policy(
+        return _apply_trust_policies(
             SourcePolicyItem(
                 field_id=field.field_id,
                 selection_status="selected_primary",
@@ -252,7 +252,7 @@ def _resolve_field(
         and market_policy is not None
         and market_policy.on_conflict == "select_primary_require_pdf"
     ):
-        return _apply_hk_yahoo_trust_policy(
+        return _apply_trust_policies(
             SourcePolicyItem(
                 field_id=field.field_id,
                 selection_status="selected_primary",
@@ -308,7 +308,7 @@ def _resolve_single_source(
                 warnings=(_metadata_warning(market, prefix="single source candidate"),),
                 reconciliation_status=reconciliation_status,
             )
-        return _apply_hk_yahoo_trust_policy(
+        return _apply_trust_policies(
             SourcePolicyItem(
                 field_id=field.field_id,
                 selection_status="unresolved_conflict",
@@ -325,7 +325,7 @@ def _resolve_single_source(
     classifications: tuple[ConflictClassification, ...] = (
         ("single_source_unverified",) if requires_pdf else ()
     )
-    return _apply_hk_yahoo_trust_policy(
+    return _apply_trust_policies(
         SourcePolicyItem(
             field_id=field.field_id,
             selection_status="selected_single_source",
@@ -351,6 +351,18 @@ _HK_YAHOO_TRUSTED_UNCERTAINTIES: tuple[ConflictClassification, ...] = (
     "single_source_unverified",
     "currency_as_unit",
     "statement_metadata_unproven",
+)
+
+
+# Phase H2 Task 3: classifications that a provider_semantics_sample_verified
+# rule "explains" — they describe why provider raw values diverge (e.g. AKShare
+# OPERATE_INCOME vs Yahoo Total Revenue including finance-subsidiary 利息收入).
+# When a sample-verified rule applies to the selected primary candidate, these
+# classifications are cleared because the divergence is the *expected*
+# semantic gap documented in the catalog rule.
+_PROVIDER_SEMANTICS_EXPLAINED_CLASSIFICATIONS: tuple[ConflictClassification, ...] = (
+    "semantic_mismatch",
+    "normalized_value_conflict",
 )
 
 
@@ -461,6 +473,105 @@ def _is_hk_yahoo_trusted_uncertainty_warning(warning: str) -> bool:
     return any(
         f"despite {classification}" in warning
         for classification in _HK_YAHOO_TRUSTED_UNCERTAINTIES
+    )
+
+
+def _apply_trust_policies(
+    item: SourcePolicyItem,
+    *,
+    market: str | None,
+    hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None,
+) -> SourcePolicyItem:
+    """Apply HK Yahoo trust policy + market-agnostic provider semantics promotion.
+
+    Both mechanisms can clear classifications/warnings on a selected primary
+    candidate; HK trust policy fires first (HK Yahoo specific), provider
+    semantics promotion fires second (CN AKShare and any other market with a
+    provider_semantics_sample_verified rule).
+    """
+    item = _apply_hk_yahoo_trust_policy(
+        item,
+        market=market,
+        hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+        provider_semantics_catalog=provider_semantics_catalog,
+    )
+    return _apply_provider_semantics_promotion(
+        item,
+        market=market,
+        provider_semantics_catalog=provider_semantics_catalog,
+    )
+
+
+# Phase H2 Task 3: market-agnostic provider semantics promotion. When a
+# selected_primary candidate matches a provider_semantics_sample_verified rule
+# (allowed_as_primary=True), the rule documents the per-provider semantic
+# divergence. We clear semantic_mismatch / normalized_value_conflict
+# classifications because the rule is the proof that the chosen provider value
+# is the correct Turtle field, even if cross-source values differ.
+def _apply_provider_semantics_promotion(
+    item: SourcePolicyItem,
+    *,
+    market: str | None,
+    provider_semantics_catalog: ProviderSemanticsCatalog | None,
+) -> SourcePolicyItem:
+    if provider_semantics_catalog is None or market is None:
+        return item
+    if item.selection_status != "selected_primary":
+        return item
+    candidate = item.selected_candidate
+    if candidate is None or not candidate.raw_field_name:
+        return item
+    semantics_rule = provider_semantics_catalog.rule_for(
+        provider=candidate.source,
+        market=market,
+        turtle_field_id=item.field_id,
+        raw_field_name=candidate.raw_field_name,
+    )
+    if (
+        semantics_rule is None
+        or not semantics_rule.allowed_as_primary
+        or semantics_rule.classification != "provider_semantics_sample_verified"
+    ):
+        return item
+
+    remaining_classifications = tuple(
+        classification
+        for classification in item.conflict_classifications
+        if classification not in _PROVIDER_SEMANTICS_EXPLAINED_CLASSIFICATIONS
+    )
+    remaining_warnings = tuple(
+        warning
+        for warning in item.warnings
+        if not _is_provider_semantics_explained_warning(warning)
+    )
+    trust_policy_evidence: dict[str, object] = {
+        "proof_class": "sampled_pdf_policy_proof",
+        "is_final_pdf_evidence": False,
+        "provider_semantics_classification": semantics_rule.classification,
+        "provider_semantics_proof_origin": semantics_rule.proof_origin,
+        "provider_semantics_raw_field": semantics_rule.raw_field_name,
+        "provider_semantics_provider": semantics_rule.provider,
+        "provider_semantics_market": semantics_rule.market,
+    }
+    if item.trust_policy_evidence is not None:
+        trust_policy_evidence = {**item.trust_policy_evidence, **trust_policy_evidence}
+    return SourcePolicyItem(
+        field_id=item.field_id,
+        selection_status=item.selection_status,
+        selected_candidate=candidate,
+        conflict_classifications=remaining_classifications,
+        verification_required=bool(remaining_classifications or remaining_warnings),
+        warnings=remaining_warnings,
+        reconciliation_status=item.reconciliation_status,
+        trust_policy_evidence=trust_policy_evidence,
+    )
+
+
+def _is_provider_semantics_explained_warning(warning: str) -> bool:
+    return any(
+        f"despite {classification}" in warning
+        for classification in _PROVIDER_SEMANTICS_EXPLAINED_CLASSIFICATIONS
     )
 
 

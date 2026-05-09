@@ -526,9 +526,17 @@ def test_provider_baseline_period_replay_uses_checked_in_fixture(
     assert companies["600519"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["00001"]["coverage"]["yahoo_only"]["covered_count"] >= 11
     assert companies["01113"]["coverage"]["yahoo_only"]["covered_count"] >= 11
-    # 600519: revenue/operating_profit/SGA are unresolved_conflict (AKShare and Yahoo
-    # present with different values; preserve_conflict policy does not select a primary).
-    assert "revenue" in companies["600519"]["review"]["combined"]["conflict_fields"]
+    # H2 Task 3: revenue + operating_profit promoted to clean_present via
+    # provider_semantics_sample_verified (CN AKShare OPERATE_INCOME / OPERATE_PROFIT
+    # match PDF 营业收入 / 营业利润 exactly per 600519 sample). SGA stays unresolved
+    # (no derivation/proof yet).
+    assert "selling_general_administrative" in companies["600519"]["review"]["combined"][
+        "conflict_fields"
+    ]
+    assert "revenue" not in companies["600519"]["review"]["combined"]["conflict_fields"]
+    assert "operating_profit" not in companies["600519"]["review"]["combined"][
+        "conflict_fields"
+    ]
     assert companies["00001"]["review"]["combined"]["gap_categories"][
         "pdf_llm_supplement_candidates"
     ]
@@ -559,31 +567,39 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     assert maotai_combined["selected_count"] >= maotai_combined["covered_count"]
     assert maotai_combined["clean_present_count"] <= maotai_combined["selected_count"]
     # Phase H0: null_means_zero promotes bond_payable/st_borr/lt_borr to clean_present.
-    # revenue/operating_profit/SGA remain non-clean: AKShare and Yahoo have different
-    # values with preserve_conflict policy — unresolved_conflict, architecturally honest.
+    # SGA remains non-clean: AKShare splits into MANAGE_EXPENSE + SELLING_EXPENSE
+    # while Yahoo aggregates them, no derivation rule yet — unresolved_conflict.
     # N4.A: P2 cash-flow fields added; 600519 gains change_in_receivables/payables/inventory
     # → clean_present_count rises from 30 to 33.
     # H2 Task 2: capital_expenditures (P2) gets sign_normalize='absolute' on CN,
     # resolving the AKShare(+) / Yahoo(-) sign-mirror conflict — clean_present
     # count rises 33 → 34. (interest_paid_cash is P3 and not loaded by this replay.)
-    assert maotai_combined["clean_present_count"] == 34
-    assert {"bond_payable", "st_borr", "lt_borr", "capital_expenditures"} <= set(
+    # H2 Task 3: revenue + operating_profit promoted via
+    # provider_semantics_sample_verified (CN AKShare OPERATE_INCOME / OPERATE_PROFIT
+    # match PDF exactly per 600519 sample) — clean_present 34 → 36.
+    assert maotai_combined["clean_present_count"] == 36
+    assert {
+        "bond_payable",
+        "st_borr",
+        "lt_borr",
+        "capital_expenditures",
+        "revenue",
+        "operating_profit",
+    } <= set(maotai_combined["clean_present_fields"])
+    assert "selling_general_administrative" not in set(
         maotai_combined["clean_present_fields"]
-    )
-    assert not (
-        {"revenue", "operating_profit", "selling_general_administrative"}
-        & set(maotai_combined["clean_present_fields"])
     )
     # source_policy_resolvable no longer contains null_means_zero fields.
     maotai_wc = companies["600519"]["review"]["combined"]["warning_classification"]
     assert "bond_payable" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "st_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
     assert "lt_borr" not in maotai_wc["fields_by_category"]["source_policy_resolvable"]
-    # revenue/operating_profit/SGA are unresolved conflicts — present in conflict_fields.
+    # SGA is still an unresolved conflict — present in conflict_fields.
     maotai_review = companies["600519"]["review"]["combined"]
-    assert {"revenue", "operating_profit", "selling_general_administrative"} <= set(
-        maotai_review["conflict_fields"]
-    )
+    assert "selling_general_administrative" in set(maotai_review["conflict_fields"])
+    # H2 Task 3: revenue + operating_profit no longer in conflict_fields.
+    assert "revenue" not in set(maotai_review["conflict_fields"])
+    assert "operating_profit" not in set(maotai_review["conflict_fields"])
 
     for company_id in HK_COMPANY_IDS:
         hk_combined = companies[company_id]["review"]["combined"]
@@ -865,17 +881,23 @@ def test_provider_baseline_replay_combined_uses_canonical_units_for_600519(
         "total_cur_liab",
         "total_liabilities",
     }
-    # revenue is non-clean: AKShare OPERATE_INCOME (168,838M 营业收入) ≠ Yahoo Total Revenue
-    # (172,054M = TOTAL_OPERATE_INCOME). preserve_conflict policy leaves it unresolved.
-    assert "revenue" in combined_review["conflict_fields"]
-    assert "revenue" not in company["coverage"]["combined"]["clean_present_fields"]
+    # H2 Task 3: revenue promoted to clean_present via
+    # provider_semantics_sample_verified rule (akshare CN OPERATE_INCOME = PDF
+    # 营业收入 exactly per 600519 2024 sample). The rule documents that Yahoo
+    # Total Revenue (matching AKShare TOTAL_OPERATE_INCOME) reflects a different
+    # semantic scope (含 finance subsidiary 利息收入). reconciliation still
+    # records the values differ; policy now resolves cleanly.
+    assert "revenue" not in combined_review["conflict_fields"]
+    assert "revenue" in company["coverage"]["combined"]["clean_present_fields"]
     assert "net_profit" in combined_review["present_fields"]
     assert "net_profit" not in combined_review["conflict_fields"]
-    # revenue IS in real_reconciliation_conflict (values differ between sources).
+    # revenue IS still in real_reconciliation_conflict (raw values differ
+    # between sources by ~3.2B yuan); the conflict is resolved at policy
+    # level by the sample-verified semantics rule, not at reconciliation level.
     assert "revenue" in combined_review["gap_categories"][
         "real_reconciliation_conflict"
     ]
-    assert "revenue" in combined_review["gap_categories"][
+    assert "revenue" not in combined_review["gap_categories"][
         "policy_unresolved_conflict"
     ]
     assert "policy_unresolved_conflict" in combined_review["gap_categories"]

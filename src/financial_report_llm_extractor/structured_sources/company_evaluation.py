@@ -368,6 +368,15 @@ def run_company_evaluation(
             json_client=json_client,
         )
 
+    # Phase H2 Task 3: load HK trust policy + merged HK/CN provider semantics
+    # catalogs so the orchestrator path matches provider_baseline_replay's
+    # resolution behavior. Both files are optional — load only when present.
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        _load_replay_hk_yahoo_trust_policy,
+        _load_replay_provider_semantics_catalog,
+        AUTO_HK_YAHOO_TRUST_POLICY_PATH,
+    )
+
     slice_result = evaluate_source_first_slice(
         out_dir,
         catalog=catalog,
@@ -375,8 +384,10 @@ def run_company_evaluation(
         records=records,
         company_id=company,
         market=market,
-        hk_yahoo_trust_policy=None,
-        provider_semantics_catalog=None,
+        hk_yahoo_trust_policy=_load_replay_hk_yahoo_trust_policy(
+            AUTO_HK_YAHOO_TRUST_POLICY_PATH
+        ),
+        provider_semantics_catalog=_load_replay_provider_semantics_catalog(),
         # Forward explicit supplement path so the merge fires regardless of
         # out_dir name. _run_llm_supplement_step (above) wrote the file at
         # this exact path when PDF + llm-config were provided. The legacy

@@ -1,0 +1,72 @@
+{
+  "rules": [
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "CN",
+      "negative_examples": [
+        "TOTAL_OPERATE_INCOME",
+        "营业总收入"
+      ],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "akshare",
+      "raw_field_code": "OPERATE_INCOME",
+      "raw_field_name": "营业收入",
+      "related_only_fields": [
+        "TOTAL_OPERATE_INCOME",
+        "营业总收入"
+      ],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "600519",
+          "expected_provider_raw_value": "170899152276.34",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "170,899,152,276.34",
+          "provider_ticker": "600519",
+          "reported_currency": "CNY",
+          "reported_unit": "yuan",
+          "reported_unit_multiplier": 1,
+          "statement_line": "营业收入",
+          "statement_name": "Consolidated Income Statement"
+        }
+      ],
+      "semantic_claim": "营业收入 = 主营业务收入 + 其他业务收入; CN P&L convention. Excludes finance-subsidiary 利息收入 (which is bundled into 营业总收入 / TOTAL_OPERATE_INCOME for issuers with finance subsidiaries).",
+      "trusted_currency": "CNY",
+      "trusted_unit": "yuan",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "revenue"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "CN",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "akshare",
+      "raw_field_code": "OPERATE_PROFIT",
+      "raw_field_name": "OPERATE_PROFIT",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "600519",
+          "expected_provider_raw_value": "119688579453.23",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "119,688,579,453.23",
+          "provider_ticker": "600519",
+          "reported_currency": "CNY",
+          "reported_unit": "yuan",
+          "reported_unit_multiplier": 1,
+          "statement_line": "营业利润",
+          "statement_name": "Consolidated Income Statement"
+        }
+      ],
+      "semantic_claim": "营业利润 (operating profit) per CN P&L convention; matches PDF formal income statement line exactly. Yahoo Operating Income at the consolidated level may differ by adjustments specific to Yahoo's normalization.",
+      "trusted_currency": "CNY",
+      "trusted_unit": "yuan",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "operating_profit"
+    }
+  ]
+}

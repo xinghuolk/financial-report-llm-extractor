@@ -75,6 +75,12 @@ DEFAULT_HK_YAHOO_TRUST_POLICY_PATH = (
 DEFAULT_PROVIDER_RAW_SEMANTICS_PATH = (
     REPO_ROOT / "field_catalog" / "provider_raw_semantics_hk.json"
 )
+# Phase H2 Task 3: CN provider raw semantics (akshare CN promotion proof).
+# Auto-merged with the HK file when present, so per-market rules coexist in a
+# single ProviderSemanticsCatalog passed to source_policy resolution.
+DEFAULT_PROVIDER_RAW_SEMANTICS_CN_PATH = (
+    REPO_ROOT / "field_catalog" / "provider_raw_semantics_cn.json"
+)
 METADATA_REVIEW_NOTES = {
     "currency_metadata_required",
     "metadata_currency_suspected",
@@ -481,9 +487,22 @@ def _load_replay_hk_yahoo_trust_policy(
 
 
 def _load_replay_provider_semantics_catalog() -> ProviderSemanticsCatalog | None:
-    if not DEFAULT_PROVIDER_RAW_SEMANTICS_PATH.exists():
+    """Load and merge HK + CN provider semantics catalogs into a single tuple.
+
+    Returns None only when neither file is present. When both are present,
+    rules are concatenated (HK first, then CN) into one ProviderSemanticsCatalog.
+    """
+    catalogs: list[ProviderSemanticsCatalog] = []
+    if DEFAULT_PROVIDER_RAW_SEMANTICS_PATH.exists():
+        catalogs.append(load_provider_semantics_catalog(DEFAULT_PROVIDER_RAW_SEMANTICS_PATH))
+    if DEFAULT_PROVIDER_RAW_SEMANTICS_CN_PATH.exists():
+        catalogs.append(load_provider_semantics_catalog(DEFAULT_PROVIDER_RAW_SEMANTICS_CN_PATH))
+    if not catalogs:
         return None
-    return load_provider_semantics_catalog(DEFAULT_PROVIDER_RAW_SEMANTICS_PATH)
+    if len(catalogs) == 1:
+        return catalogs[0]
+    merged_rules = tuple(rule for c in catalogs for rule in c.rules)
+    return ProviderSemanticsCatalog(rules=merged_rules)
 
 
 def _hk_yahoo_trust_review_lists(
