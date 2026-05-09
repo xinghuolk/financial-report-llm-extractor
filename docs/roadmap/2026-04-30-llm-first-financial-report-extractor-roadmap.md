@@ -4,7 +4,7 @@
 > Date: 2026-05-07 (last validation: 2026-05-09 Phase EC live run)
 > Scope: Pivot the project from PDF-first LLM extraction to AKShare/Yahoo-first structured financial data extraction, with PDF/LLM retained as the final evidence supplement and ambiguity review layer.
 >
-> Implementation status (2026-05-09): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation), Phase H2 (CN/HK conflict surgical resolution: 4 fields promoted on 600519/2024 via sign_normalize + sample-verified PDF semantics; 3 fields locked terminal_unverified) — all complete. 524 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed. Live evaluate-company on 600519/2024 after H2: 38/56 clean_present (+4 over Phase EC), 17/56 unresolved_conflict (−4).
+> Implementation status (2026-05-09): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation), Phase H2 (CN/HK conflict surgical resolution), Phase H2.1 (CN SGA addition derivation: catalog `derivation` syntax extended to `+` operator + `provider:RAW` operands; CN SGA promoted) — all complete. 533 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed. Live evaluate-company on 600519/2024 after H2.1: 39/56 clean_present (+5 over Phase EC), 16/56 unresolved_conflict (−5).
 
 ## 1. Decision Summary
 
@@ -1444,7 +1444,43 @@ Fields promoted: capital_expenditures, interest_paid_cash, revenue, operating_pr
 
 515 → 524 unit tests, ruff + mypy clean throughout. 9 new tests + 2 new files.
 
-Phase H2.1 candidate identified: catalog `derivation` field extension to support addition (`A + B`) — would unlock CN SGA promotion.
+Phase H2.1 candidate identified: catalog `derivation` field extension to support addition (`A + B`) — would unlock CN SGA promotion. **DONE 2026-05-09** — see Phase H2.1 Implementation Result below.
+
+### Phase H2.1 Implementation Result
+
+Status: implemented on 2026-05-09. 5 commits + 1 follow-up test commit (`762994d` → `5058f16` → `9fc8d4c` → `56f1eda` → `0b6b397`).
+
+See:
+- Spec: `docs/superpowers/specs/2026-05-09-phase-h2-1-cn-sga-addition-derivation.md`
+- Plan: `docs/superpowers/plans/2026-05-09-phase-h2-1-cn-sga-addition-derivation.md`
+- PDF spot-check: `docs/phase_h2_1_sga_spot_check.md`
+- Validation report: `docs/phase_h2_1_validation_report.md`
+
+Goal: unlock CN SGA promotion via addition derivation `akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE`. Promotion gate sticks to H2 standard (AKShare derivation = PDF EXACT; no tolerance).
+
+**Mechanism additions**:
+- `mapping._derive_field` parser supports `+` operator (was: `-` only).
+- New `_resolve_derivation_operand` helper handles `provider:RAW_FIELD_NAME` operand syntax — resolves directly from `SourceInventoryRecord` records, bypassing mapped Turtle field lookup. Cross-provider sums rejected (akshare:X + yahoo:Y).
+- `source_policy._resolve_field` gained a `derived && not field.candidates` branch returning `selected_single_source` — necessary because derived fields don't carry per-source candidates.
+- Catalog SGA: source_aliases emptied (akshare + yahoo) so `_map_direct_field` returns `status="missing"`, gating derivation to fire. New `derivation` field with the addition expression. `provider_raw_semantics_cn.json` SGA rule promoted unverified → sample_verified citing 600519/2024 PDF spot-check (销售费用 + 管理费用 = 14,954,950,119.87 EXACT).
+
+**Live validation (600519/2024-12-31)**:
+
+| Bucket | Phase H2 final | Phase H2.1 final | Δ |
+|--------|----------------|------------------|---|
+| clean_present | 38 | **39** | **+1** |
+| unresolved_conflict | 17 | **16** | **−1** |
+
+CN SGA → `clean_present | (derived) | 14954950119.87`.
+
+**HK SGA classification change**: 00001 SGA went from clean_present (incidental Yahoo match) → source_policy_resolvable (catalog-driven). HK Yahoo SGA was `provider_semantics_unverified` per H2; the previous clean_present was not policy-justified. H2.1 makes the HK classification consistent with policy state. Future Phase H2.2 candidate for HK: PDF spot-check Yahoo HK SGA per-issuer + decide to promote or stay terminal.
+
+**524 → 533 unit tests** (T1: +1, T2: +4, T4: +new SGA test + HK regression updates, T4-followup: +1 source_policy unit). Ruff + mypy clean throughout.
+
+**Phase H2.2 candidates** identified:
+- Multi-company sample-verification for the H2 + H2.1 promotions (5 fields × 600519 only currently). Per drift §177 single-sample sample_verified rules carry sample-bias risk. ≥3 CN issuers would harden.
+- HK SGA via market-scoped source_aliases refactor OR per-issuer Yahoo HK PDF spot-check.
+- `_resolve_derivation_operand` period-equality assertion (currently could silently sum across periods if multi-period inventory passed).
 
 ## 6. Validation Commands
 
