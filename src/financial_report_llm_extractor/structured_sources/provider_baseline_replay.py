@@ -210,7 +210,7 @@ def write_provider_baseline_period_replay(
         company_market = _company_market(company_groups)
 
         company_dir = output_dir / company_id
-        akshare_report = _write_slice(
+        akshare_report = evaluate_source_first_slice(
             company_dir / "akshare_only",
             catalog=catalog,
             taxonomy=taxonomy,
@@ -220,7 +220,7 @@ def write_provider_baseline_period_replay(
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
             provider_semantics_catalog=provider_semantics_catalog,
         )
-        yahoo_report = _write_slice(
+        yahoo_report = evaluate_source_first_slice(
             company_dir / "yahoo_only",
             catalog=catalog,
             taxonomy=taxonomy,
@@ -230,7 +230,7 @@ def write_provider_baseline_period_replay(
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
             provider_semantics_catalog=provider_semantics_catalog,
         )
-        combined_report = _write_slice(
+        combined_report = evaluate_source_first_slice(
             company_dir / "combined",
             catalog=catalog,
             taxonomy=taxonomy,
@@ -303,7 +303,7 @@ def write_provider_baseline_period_replay(
     )
 
 
-def _write_slice(
+def evaluate_source_first_slice(
     output_dir: Path,
     *,
     catalog: Any,
@@ -430,6 +430,8 @@ def _write_slice(
         "coverage": _export_coverage(export),
         "review": review,
         "artifact_paths": artifact_paths,
+        "export_object": export,
+        "warning_classification_object": warning_classification,
     }
 
 

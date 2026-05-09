@@ -991,6 +991,55 @@ def test_merge_llm_evidence_supplement_no_op_when_schema_mismatch(
     assert merged.items["x"].status == "missing"
 
 
+def test_evaluate_source_first_slice_is_publicly_callable_with_same_behavior(
+    tmp_path: Path,
+) -> None:
+    """Refactor 0 regression: 提为 public 后行为不变。
+
+    Locks the public contract for downstream evaluate-company orchestrator:
+    - existing keys (coverage / review / artifact_paths) preserved
+    - new keys (export_object / warning_classification_object) carry the
+      live SourceFirstExportResult / WarningClassificationResult objects
+    """
+    from financial_report_llm_extractor.field_metadata import load_field_taxonomy
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        load_source_mapping_catalog,
+    )
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        evaluate_source_first_slice,
+    )
+
+    catalog = load_source_mapping_catalog(
+        SOURCE_MAPPING_CATALOG_PATH, priorities=("P0", "P1", "P2")
+    )
+    taxonomy = load_field_taxonomy(
+        REPO_ROOT / "field_catalog" / "turtle_v015_field_taxonomy.json"
+    )
+    records = (_record(),)
+
+    out_dir = tmp_path / "slice"
+    result = evaluate_source_first_slice(
+        out_dir,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        records=records,
+        company_id="600519",
+        market="CN",
+        hk_yahoo_trust_policy=None,
+        provider_semantics_catalog=None,
+    )
+
+    assert (out_dir / "source_inventory.jsonl").exists()
+    assert (out_dir / "extraction_result.json").exists()
+    # Existing keys preserved
+    assert "coverage" in result and "review" in result and "artifact_paths" in result
+    # NEW keys for downstream orchestrators
+    assert "export_object" in result
+    assert "warning_classification_object" in result
+    assert hasattr(result["export_object"], "items")
+    assert hasattr(result["warning_classification_object"], "items")
+
+
 def test_replay_slice_only_merges_llm_supplement_for_combined_slice(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> None:
