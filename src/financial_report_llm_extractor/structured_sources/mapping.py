@@ -46,6 +46,7 @@ class TurtleMappingCandidate:
     unit_proof_source: str | None = None
     reporting_metadata_proof_source: str | None = None
     review_notes: tuple[str, ...] = field(default_factory=tuple)
+    market: str = ""
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
@@ -398,6 +399,18 @@ def _record_matches_entry(
 ) -> bool:
     if record.source_status != "present":
         return False
+    # Phase H2.2 Sub-B: prefer market-scoped aliases when present
+    market_aliases = entry.by_market_aliases.get(record.market, {}).get(
+        record.source, ()
+    )
+    if market_aliases and (
+        record.raw_field_name in market_aliases
+        or (
+            record.raw_field_code is not None
+            and record.raw_field_code in market_aliases
+        )
+    ):
+        return True
     aliases = entry.source_aliases.get(record.source, ())
     return record.raw_field_name in aliases or (
         record.raw_field_code is not None and record.raw_field_code in aliases
@@ -439,6 +452,7 @@ def _candidate_from_record(
                 unit_proof_source=_unit_proof_source(record),
                 reporting_metadata_proof_source=_reporting_metadata_proof_source(record),
                 review_notes=("null_interpreted_as_zero",),
+                market=record.market,
             )
         except ValueError:
             # Record is structurally invalid; fall through to normal error path
@@ -489,6 +503,7 @@ def _candidate_from_record(
         reporting_metadata_proof_source=(
             _reporting_metadata_proof_source(record) if record_is_valid else None
         ),
+        market=record.market,
     )
 
 
@@ -560,11 +575,19 @@ def _apply_alias_precedence(
 
 
 def _alias_rank(entry: SourceMappingEntry, candidate: TurtleMappingCandidate) -> int:
+    # Phase H2.2 Sub-B: market-scoped aliases take precedence over provider-level
+    market_aliases = entry.by_market_aliases.get(candidate.market, {}).get(
+        candidate.source, ()
+    )
+    for index, alias in enumerate(market_aliases):
+        if candidate.raw_field_name == alias or candidate.raw_field_code == alias:
+            return index
     aliases = entry.source_aliases.get(candidate.source, ())
     for index, alias in enumerate(aliases):
         if candidate.raw_field_name == alias or candidate.raw_field_code == alias:
-            return index
-    return len(aliases)
+            # Offset by len(market_aliases) so market matches always rank ahead
+            return len(market_aliases) + index
+    return len(market_aliases) + len(aliases)
 
 
 def _compatibility_error(

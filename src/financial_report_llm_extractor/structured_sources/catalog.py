@@ -129,6 +129,9 @@ class SourceMappingEntry:
     fallback_policy: str = "pdf_allowed"
     source_policy: SourcePolicy | None = None
     null_means_zero: bool = False
+    by_market_aliases: dict[str, dict[str, tuple[str, ...]]] = field(
+        default_factory=dict
+    )
 
     def validate(self) -> None:
         if not self.field_id:
@@ -137,8 +140,16 @@ class SourceMappingEntry:
             raise ValueError("priority is required")
         if not self.statement_type:
             raise ValueError("statement_type is required")
-        if not self.source_aliases:
-            raise ValueError("source_aliases is required")
+        if not self.source_aliases and not self.by_market_aliases:
+            raise ValueError("source_aliases is required (or by_market_aliases)")
+        for market, market_dict in self.by_market_aliases.items():
+            if not isinstance(market_dict, dict):
+                raise ValueError(f"by_market_aliases[{market!r}] must be a dict")
+            for provider, aliases in market_dict.items():
+                if not isinstance(aliases, tuple):
+                    raise ValueError(
+                        f"by_market_aliases[{market!r}][{provider!r}] must be tuple"
+                    )
         _validate_literal("invalid value_type", self.value_type, SourceValueType)
         _validate_literal("invalid statement_type", self.statement_type, StatementType)
         if self.domain != "unknown":
@@ -224,7 +235,27 @@ def load_source_mapping_catalog(
         if not isinstance(raw_aliases, dict):
             raise ValueError("source_aliases must be an object")
         aliases: dict[str, tuple[str, ...]] = {}
+        by_market_aliases: dict[str, dict[str, tuple[str, ...]]] = {}
         for source, values in raw_aliases.items():
+            if source == "by_market":
+                if not isinstance(values, dict):
+                    raise ValueError(
+                        "source_aliases.by_market must be an object"
+                    )
+                for market, market_dict in values.items():
+                    if not isinstance(market_dict, dict):
+                        raise ValueError(
+                            "source_aliases.by_market entries must be objects"
+                        )
+                    by_market_aliases[str(market)] = {
+                        str(provider): tuple(
+                            str(alias) for alias in alist
+                        )
+                        if isinstance(alist, list)
+                        else ()
+                        for provider, alist in market_dict.items()
+                    }
+                continue
             if not isinstance(values, list):
                 raise ValueError("source alias values must be a list")
             aliases[str(source)] = tuple(str(alias) for alias in values)
@@ -248,6 +279,7 @@ def load_source_mapping_catalog(
             fallback_policy=mapping.get("fallback_policy", "pdf_allowed"),
             source_policy=_parse_source_policy(mapping.get("source_policy")),
             null_means_zero=bool(mapping.get("null_means_zero", False)),
+            by_market_aliases=by_market_aliases,
         )
         entry.validate()
         entries[field_id] = entry

@@ -1172,10 +1172,11 @@ def _h2_1_record(
     currency: str = "CNY",
     unit: str = "yuan",
     period: str = "2024-12-31",
+    market: str = "CN",
 ) -> SourceInventoryRecord:
     return SourceInventoryRecord(
         source=source,  # type: ignore[arg-type]
-        market="CN",
+        market=market,
         ticker="600519",
         statement_type="income_statement",
         period=period,
@@ -1302,3 +1303,138 @@ def test_derive_provider_raw_inherits_currency_from_records() -> None:
     assert sga.status == "derived"
     assert sga.currency == "CNY"
     assert sga.unit == "yuan"
+
+
+def test_source_aliases_by_market_takes_precedence_for_target_market() -> None:
+    """Phase H2.2 Sub-B: when source_aliases has by_market.<MARKET>.<provider>,
+    HK records match those aliases (in addition to provider-level aliases).
+    Verifies HK Yahoo SGA can be matched via by_market.HK.yahoo."""
+    from decimal import Decimal
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        SourceMappingCatalog, SourceMappingEntry,
+    )
+    from financial_report_llm_extractor.structured_sources.mapping import (
+        map_source_inventory,
+    )
+
+    entry = SourceMappingEntry(
+        field_id="selling_general_administrative",
+        priority="P1",
+        value_type="money",
+        statement_type="income_statement",
+        currency_requirement="required",
+        unit_requirement="required",
+        source_aliases={"akshare": (), "yahoo": ()},
+        by_market_aliases={
+            "HK": {"yahoo": ("Selling General And Administration",)},
+        },
+    )
+    catalog = SourceMappingCatalog(
+        catalog_id="test", version="v0",
+        entries={"selling_general_administrative": entry},
+    )
+    records = (
+        _h2_1_record(
+            source="yahoo",
+            raw_field_name="Selling General And Administration",
+            parsed_numeric_value=Decimal("100"),
+            currency="HKD",
+            market="HK",
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+    sga = result.fields["selling_general_administrative"]
+    assert sga.status == "present"
+    assert sga.value == Decimal("100")
+
+
+def test_source_aliases_by_market_does_not_match_other_markets() -> None:
+    """Sub-B: HK-scoped Yahoo alias does NOT match a CN-market yahoo record."""
+    from decimal import Decimal
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        SourceMappingCatalog, SourceMappingEntry,
+    )
+    from financial_report_llm_extractor.structured_sources.mapping import (
+        map_source_inventory,
+    )
+
+    entry = SourceMappingEntry(
+        field_id="selling_general_administrative",
+        priority="P1",
+        value_type="money",
+        statement_type="income_statement",
+        currency_requirement="required",
+        unit_requirement="required",
+        source_aliases={"akshare": (), "yahoo": ()},
+        by_market_aliases={
+            "HK": {"yahoo": ("Selling General And Administration",)},
+        },
+    )
+    catalog = SourceMappingCatalog(
+        catalog_id="test", version="v0",
+        entries={"selling_general_administrative": entry},
+    )
+    records = (
+        _h2_1_record(
+            source="yahoo",
+            raw_field_name="Selling General And Administration",
+            parsed_numeric_value=Decimal("100"),
+            currency="CNY",
+            market="CN",  # CN, not HK
+        ),
+    )
+
+    result = map_source_inventory(catalog, records)
+    sga = result.fields["selling_general_administrative"]
+    # No alias matches CN — field stays missing.
+    assert sga.status == "missing"
+
+
+def test_catalog_loads_by_market_aliases_from_json() -> None:
+    """Sub-B: JSON `source_aliases.by_market` populates by_market_aliases."""
+    import json
+    from pathlib import Path
+    import tempfile
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        load_source_mapping_catalog,
+    )
+
+    catalog_doc = {
+        "catalog_id": "test_by_market",
+        "version": "v0",
+        "priorities": [{"priority": "P0", "name": "core", "fields": ["x"]}],
+        "source_mappings": {
+            "x": {
+                "value_type": "money",
+                "statement_type": "income_statement",
+                "domain": "income_statement",
+                "currency_requirement": "required",
+                "unit_requirement": "required",
+                "source_aliases": {
+                    "akshare": ["X_RAW"],
+                    "yahoo": [],
+                    "by_market": {
+                        "HK": {"yahoo": ["X Raw HK"]},
+                        "CN": {"akshare": ["X_RAW_CN_OVERRIDE"]},
+                    },
+                },
+            },
+        },
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        json.dump(catalog_doc, f)
+        path = Path(f.name)
+
+    try:
+        catalog = load_source_mapping_catalog(path, priorities=("P0",))
+        entry = catalog.entries["x"]
+        assert entry.source_aliases.get("akshare") == ("X_RAW",)
+        # Provider-level yahoo is empty (by_market shouldn't pollute provider-level)
+        assert entry.source_aliases.get("yahoo", ()) == ()
+        # by_market_aliases populated
+        assert entry.by_market_aliases.get("HK", {}).get("yahoo") == ("X Raw HK",)
+        assert entry.by_market_aliases.get("CN", {}).get("akshare") == ("X_RAW_CN_OVERRIDE",)
+    finally:
+        path.unlink()
