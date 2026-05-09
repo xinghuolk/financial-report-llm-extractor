@@ -237,18 +237,15 @@ def _collect_candidate_values(
     bucket: BucketName,
     mapping: TurtleMappingResult | None,
 ) -> tuple[tuple[str, str], ...]:
-    """Pull per-source candidate normalized values from mapping for non-clean
-    rows so the markdown renderer can show 'akshare:170.9B / yahoo:174.1B'
-    inline. Returns empty tuple if mapping not provided OR field has no
-    multi-source candidates OR field is clean (single selected source).
-    """
+    """Pull per-source candidate normalized values from mapping for any field
+    with multi-source candidates. Phase H2.2 Sub-C: emit for ALL buckets so
+    clean_present + llm_supplement_present rows also show competing provider
+    values for audit transparency. Single-candidate fields remain empty
+    (Source/Value columns already convey the same info)."""
     if mapping is None:
         return ()
-    # Only emit candidates for buckets where the user benefits from triage.
-    if bucket not in {"unresolved_conflict", "terminal_unverified", "source_unavailable"}:
-        return ()
     field = mapping.fields.get(field_id)
-    if field is None:
+    if field is None or len(field.candidates) < 2:
         return ()
     out: list[tuple[str, str]] = []
     for c in field.candidates:
@@ -310,11 +307,12 @@ def render_evaluation_markdown(evaluation: CompanyEvaluation) -> str:
     for f in evaluation.fields:
         marker = "**llm**" if f.selected_source == "llm" else (f.selected_source or "")
         reason = f.reason or ""
-        if f.value is not None:
-            value_str = _format_decimal_plain(f.value)
-        elif f.candidate_values:
-            # Phase EC Tier 1: show per-source candidates inline for triage.
+        if f.candidate_values and len(f.candidate_values) >= 2:
+            # Phase H2.2 Sub-C: multi-source row shows all candidates for audit
+            # transparency. Source column conveys which one was selected.
             value_str = " / ".join(f"{src}:{val}" for src, val in f.candidate_values)
+        elif f.value is not None:
+            value_str = _format_decimal_plain(f.value)
         else:
             value_str = ""
         lines.append(

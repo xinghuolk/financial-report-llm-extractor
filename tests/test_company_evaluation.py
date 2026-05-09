@@ -396,6 +396,56 @@ def test_render_markdown_shows_candidate_values_for_conflict_rows() -> None:
     assert "akshare:170.90B / yahoo:174.14B" in md
 
 
+def test_render_markdown_shows_candidate_values_for_clean_present_with_multi_source() -> None:
+    """Phase H2.2 Sub-C: clean_present rows with >= 2 candidates show all
+    provider values inline (audit transparency). Single-candidate rows render
+    only the selected value."""
+    from decimal import Decimal
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        CompanyEvaluation, CompanyFieldEvaluation, render_evaluation_markdown,
+    )
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+    )
+
+    evaluation = CompanyEvaluation(
+        company="600519",
+        period=PeriodSpec.from_year(2024),
+        market="CN",
+        generated_at="2026-05-09T00:00:00+00:00",
+        fields=(
+            CompanyFieldEvaluation(
+                field_id="revenue",
+                bucket="clean_present",
+                selected_source="akshare",
+                value=Decimal("170899152276.34"),
+                currency="CNY",
+                unit="yuan",
+                reason=None,
+                candidate_values=(
+                    ("akshare", "170.90B"),
+                    ("yahoo", "174.14B"),
+                ),
+            ),
+        ),
+        by_bucket={
+            "clean_present": 1, "unresolved_conflict": 0, "llm_supplement_present": 0,
+            "terminal_unverified": 0, "not_in_scope": 0, "source_unavailable": 0,
+        },
+        by_priority={"P0": {
+            "clean_present": 1, "unresolved_conflict": 0, "llm_supplement_present": 0,
+            "terminal_unverified": 0, "not_in_scope": 0, "source_unavailable": 0,
+        }},
+    )
+
+    md = render_evaluation_markdown(evaluation)
+
+    assert "akshare:170.90B" in md
+    assert "yahoo:174.14B" in md
+    # Selected source still appears in Source column.
+    assert "akshare" in md
+
+
 def test_orchestrator_with_fake_stack_writes_all_artifacts(
     tmp_path: Path,
 ) -> None:
