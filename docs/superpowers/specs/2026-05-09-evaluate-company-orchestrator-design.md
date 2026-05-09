@@ -1,49 +1,39 @@
-# evaluate-company Orchestrator Design Spec
+# evaluate-company Orchestrator 设计 Spec
 
-> Date: 2026-05-09
-> Status: Draft
-> Predecessor phases: Phase I-A/I-A.2 (LLM extraction), Phase N4 (P2/P3 expansion), Phase I-C/I-C.1 (text-mode + whitespace fix)
-> Roadmap follow-up: §"Status (2026-05-09)" branch closure prep — orchestrator becomes the regular local-validation and regression-gate command for source-first + LLM evaluation per (company, period).
+> 日期：2026-05-09
+> 状态：Draft
+> 前置阶段：Phase I-A/I-A.2（LLM 抽取）、Phase N4（P2/P3 扩展）、Phase I-C/I-C.1（text-mode + whitespace 修复）
+> Roadmap follow-up：§"Status (2026-05-09)" 分支收尾准备 —— 本 orchestrator 成为 catalog/source-policy/LLM-prompt 改动后的常规本地验证 + 回归 gate 命令。
 
-## Goal
+## 目标
 
-A reusable, env- or args-driven validation module that takes a single
-(company, period) and produces a complete reviewable artifact bundle:
-provider source-first export, optional LLM PDF supplement, evaluation
-result with bucket classification and coverage counts. Becomes the
-regular regression check for catalog/source-policy/LLM-prompt changes.
+一个可复用、env 或 args 驱动的验证模块，输入单个 (company, period)，产出完整可审 artifact 包：provider source-first export、可选 LLM PDF supplement、带 bucket 分类与覆盖率统计的 evaluation 结果。成为 catalog / source-policy / LLM prompt 改动后的常规回归验证。
 
 ## Non-Goals
 
-- Multi-company batch (`extract-llm-batch` already covers the LLM batch
-  use case). Future batch wrapper can iterate evaluate-company.
-- New retrieval / chunking / mapping / reconciliation logic. The
-  orchestrator only wires existing modules.
-- New provider adapters or new field semantics proof. Reuses
-  `AKShareSourceAdapter`, `YahooSourceAdapter`, `provider_baseline_replay`,
-  `extract-llm` as-is.
-- Real-time monitoring or scheduled runs.
-- Persistent run history / database. Each run is a self-contained dir
-  under `tmp/runs/<company>_<period_end>/`.
+- 多公司批量（`extract-llm-batch` 已覆盖 LLM 批量场景）。未来批量包装可在 evaluate-company 之上写循环。
+- 新的 retrieval / chunking / mapping / reconciliation 逻辑。orchestrator 只串联现有模块。
+- 新的 provider adapter 或新的字段语义证明。复用现有 `AKShareSourceAdapter`、`YahooSourceAdapter`、`provider_baseline_replay`、`extract-llm`。
+- 实时监控或定时调度。
+- 持久化运行历史 / 数据库。每次运行是 `tmp/runs/<company>_<period_end>/` 下自包含的目录。
 
-## Architecture Overview
+## 架构总览
 
-Two-step CLI separates network calls from deterministic evaluation:
+两步式 CLI 把网络调用与确定性求值分开：
 
 ```
 fetch-source-inventory     →   live AKShare/Yahoo fetch       →   tmp/runs/<id>/source_inventory.jsonl
                                                                     + source_inventory_summary.json
 
-evaluate-company           →   replay + (optional) LLM        →   tmp/runs/<id>/source_first_export.json
-  reads source_inventory                                           + llm_evidence_supplement.json (if PDF set)
+evaluate-company           →   replay + (可选) LLM             →   tmp/runs/<id>/source_first_export.json
+  读取 source_inventory                                            + llm_evidence_supplement.json (设了 PDF 才有)
                                                                    + evaluation.json
                                                                    + evaluation.md
 ```
 
-Each step is independently invokable. Step 1 hits network and is
-opt-in. Step 2 is fully deterministic and CI-friendly.
+每一步可独立调用。Step 1 联网，opt-in。Step 2 完全确定性，CI 友好。
 
-## CLI Surface
+## CLI 接口
 
 ### Subcommand `fetch-source-inventory`
 
@@ -56,9 +46,7 @@ uv run financial-report-llm-extractor fetch-source-inventory \
   --out tmp/runs/600519_2024-12-31/
 ```
 
-Optional shortcut: `--year 2024` expands to `--period-end 2024-12-31
---report-type annual`. `--year` and `--period-end` are mutually
-exclusive; specifying both errors out.
+可选 shortcut：`--year 2024` 展开为 `--period-end 2024-12-31 --report-type annual`。`--year` 与 `--period-end` 互斥；同设报错。
 
 ### Subcommand `evaluate-company`
 
@@ -77,13 +65,9 @@ uv run financial-report-llm-extractor evaluate-company \
   --out tmp/runs/600519_2024-12-31/
 ```
 
-LLM step runs only if `--pdf` AND `--llm-config` are both set; otherwise
-skipped. The orchestrator merges any present `llm_evidence_supplement.json`
-when building the source-first export, regardless of whether this run
-created it (so users can also pre-supply a supplement from a separate
-`extract-llm` run).
+LLM 步骤仅当 `--pdf` 与 `--llm-config` 同时设置时执行；否则跳过。无论本次是否生成，orchestrator 在构造 source-first export 时都会 merge 当前 out 目录下任何已存在的 `llm_evidence_supplement.json`（用户也可以独立先跑 `extract-llm` 再来 evaluate）。
 
-### Shell wrappers
+### Shell 包装
 
 ```bash
 # scripts/run-fetch-source-inventory.sh
@@ -100,28 +84,27 @@ COMPANY=600519 PERIOD_END=2024-12-31 MARKET=CN \
   scripts/run-evaluate-company.sh
 ```
 
-`YEAR=2024` is supported as shortcut on both wrappers (mutually exclusive
-with `PERIOD_END`).
+`YEAR=2024` 在两个 wrapper 都可作 shortcut（与 `PERIOD_END` 互斥）。
 
-Default values where unset:
-- `MARKET`: inferred from ticker pattern (`6\d{5}` / `[03]\d{5}` → CN, `\d{4,5}` → HK with `.HK` suffix); fail if ambiguous.
-- `PROVIDERS`: `akshare,yahoo`.
-- `REPORT_TYPE`: `annual`.
-- `OUT_DIR`: `tmp/runs/${COMPANY}_${PERIOD_END}/`.
-- `CATALOG`: `field_catalog/turtle_v015_source_mapping_minimal.json`.
-- `TAXONOMY`: `field_catalog/turtle_v015_field_taxonomy.json`.
-- `PRIORITIES`: `P0,P1,P2,P3`.
+未设时的默认值：
+- `MARKET`：从 ticker 模式推断（`6\d{5}` / `[03]\d{5}` → CN，`\d{4,5}` → HK 加 `.HK` 后缀）；无法判定时报错。
+- `PROVIDERS`：`akshare,yahoo`。
+- `REPORT_TYPE`：`annual`。
+- `OUT_DIR`：`tmp/runs/${COMPANY}_${PERIOD_END}/`。
+- `CATALOG`：`field_catalog/turtle_v015_source_mapping_minimal.json`。
+- `TAXONOMY`：`field_catalog/turtle_v015_field_taxonomy.json`。
+- `PRIORITIES`：`P0,P1,P2,P3`。
 
-## Output Artifacts
+## 输出 Artifacts
 
 ```
 tmp/runs/<COMPANY>_<PERIOD_END>/
-├── source_inventory.jsonl                    # fetch-source-inventory writes
-├── source_inventory_summary.json             # fetch-source-inventory writes
-├── source_first_export.json                  # evaluate-company writes
-├── llm_evidence_supplement.json              # evaluate-company writes if PDF + llm-config set
-├── evaluation.json                           # evaluate-company writes
-└── evaluation.md                             # evaluate-company writes
+├── source_inventory.jsonl                    # fetch-source-inventory 写
+├── source_inventory_summary.json             # fetch-source-inventory 写
+├── source_first_export.json                  # evaluate-company 写
+├── llm_evidence_supplement.json              # evaluate-company 写（PDF + llm-config 设了才有）
+├── evaluation.json                           # evaluate-company 写
+└── evaluation.md                             # evaluate-company 写
 ```
 
 ### evaluation.json schema
@@ -169,53 +152,41 @@ tmp/runs/<COMPANY>_<PERIOD_END>/
 }
 ```
 
-### evaluation.md format
+### evaluation.md 格式
 
-Human-readable summary with three sections:
-1. Header: company / period / market / generated_at
-2. Coverage table: priority × bucket grid
-3. Per-field detail table (collapsed for clean_present, expanded for
-   conflict / supplement / terminal)
+人可读总结，三个段落：
+1. 头部：company / period / market / generated_at
+2. 覆盖率表：priority × bucket 网格
+3. 逐字段明细表（clean_present 折叠，conflict / supplement / terminal 展开）
 
-Used for visual inspection and PR review attachments.
+用于人工审查与 PR review 附件。
 
-## Bucket Classification
+## 桶分类（Bucket Classification）
 
-`classify_field` is a pure function over `(SourceFirstExportItem,
-LlmEvidenceSupplementItem | None, SourceMappingEntry,
-FieldTaxonomyEntry, *, pdf_provided: bool)`. Buckets are mutually
-exclusive; cascade evaluates in the order below and the first match wins.
+`classify_field` 是关于 `(SourceFirstExportItem, LlmEvidenceSupplementItem | None, SourceMappingEntry, FieldTaxonomyEntry, *, pdf_provided: bool)` 的纯函数。桶互斥；级联按下表顺序匹配，第一命中胜出。
 
-| # | Bucket | Trigger |
-|---|--------|---------|
-| 1 | `terminal_locked` | catalog `verification_status` in `{"yahoo_definition_unverified", "provider_semantics_unverified"}` OR field is in the roadmap "Locked Terminal States" cohort defined as `gross_profit, cip, non_oper_income, non_oper_exp, other_cur_assets`. (List sourced from `docs/2026-05-08-roadmap-evaluation.zh.md` §0 bucket 4; encoded as a constant `TERMINAL_LOCKED_FIELDS` in `company_evaluation.py` so the source is traceable.) |
-| 2 | `unresolved_conflict` | `export.conflict_classifications` non-empty |
-| 3 | `clean_present` | `export.status == "present"` AND no review_notes AND no conflicts |
-| 4 | `llm_supplement_present` | `export.status != "present"` AND `supplement is not None` AND `supplement.status == "present"` |
-| 5 | `not_in_scope` | catalog `source_mode == "pdf_only"` AND `pdf_provided is False` (we did not even attempt the LLM path) |
-| 6 | `source_unavailable` | everything else (export missing, no provider candidate, LLM either not attempted by source_mode or attempted-and-not-found) |
+| # | Bucket | 触发条件 |
+|---|--------|----------|
+| 1 | `terminal_locked` | catalog `verification_status` ∈ `{"yahoo_definition_unverified", "provider_semantics_unverified"}` 或字段属于 roadmap "Locked Terminal States" 集合，定义为 `gross_profit, cip, non_oper_income, non_oper_exp, other_cur_assets`。（来源：`docs/2026-05-08-roadmap-evaluation.zh.md` §0 bucket 4；在 `company_evaluation.py` 中编码为常量 `TERMINAL_LOCKED_FIELDS` 以便溯源。） |
+| 2 | `unresolved_conflict` | `export.conflict_classifications` 非空 |
+| 3 | `clean_present` | `export.status == "present"` 且无 review_notes 且无 conflicts |
+| 4 | `llm_supplement_present` | `export.status != "present"` 且 `supplement is not None` 且 `supplement.status == "present"` |
+| 5 | `not_in_scope` | catalog `source_mode == "pdf_only"` 且 `pdf_provided is False`（连 LLM 路径都没尝试） |
+| 6 | `source_unavailable` | 其他（export missing、无 provider candidate、LLM 因 source_mode 未跑或跑了未找到） |
 
-Notes:
+说明：
 
-- `not_in_scope` differs from `source_unavailable`: `not_in_scope` means
-  the field could only come from PDF + LLM and we never ran the LLM
-  step. `source_unavailable` means we did run all available paths and
-  none returned a value. This distinction matters because adding a PDF
-  to a future evaluate-company run can move fields from `not_in_scope`
-  into a present or supplement bucket without it being a regression.
-- `not_disclosed` (a stricter sub-bucket of `source_unavailable` for
-  fields the LLM examined and confirmed absent) is deliberately deferred
-  until disclosure-presence detection is reliable. Tracked in the
-  Open Questions section.
+- `not_in_scope` 与 `source_unavailable` 不同：前者表示该字段只能来自 PDF + LLM 而我们根本没有跑 LLM 步骤；后者表示已经把所有可用路径跑完都没拿到值。这一区分关键 —— 给后续 evaluate-company 加上 PDF 后，字段从 `not_in_scope` 转为 present 或 supplement 桶不是回归。
+- `not_disclosed`（针对"LLM 已查阅并确认不存在"的 `source_unavailable` 严格子桶）刻意推迟到披露存在性检测可靠之后。在 Open Questions 中跟踪。
 
-## Module Boundaries
+## 模块边界
 
-### `src/financial_report_llm_extractor/structured_sources/source_inventory_fetch.py` (~120 LoC)
+### `src/financial_report_llm_extractor/structured_sources/source_inventory_fetch.py`（约 120 行）
 
 ```python
 @dataclass(frozen=True)
 class PeriodSpec:
-    period_end: date          # canonical
+    period_end: date          # 规范形式
     report_type: ReportType   # annual | half_year | quarterly | ttm
 
     @classmethod
@@ -234,15 +205,14 @@ def fetch_source_inventory(
     yahoo_client: YahooClientProtocol | None = None,
     out_dir: Path,
 ) -> SourceInventoryArtifact:
-    """Live fetch from real (or injected fake) provider clients.
-    Writes source_inventory.jsonl + source_inventory_summary.json.
-    Reuses existing AKShareSourceAdapter / YahooSourceAdapter primitives
-    from real_source_validation; new sample builder is per-(company, period)
-    rather than the hardcoded list build_default_validation_samples uses.
+    """从真实（或注入的 fake）provider client live fetch。
+    写 source_inventory.jsonl + source_inventory_summary.json。
+    复用 real_source_validation 的 AKShareSourceAdapter / YahooSourceAdapter primitives；
+    新的 sample builder 是按 (company, period) 而非 build_default_validation_samples 写死的列表。
     """
 ```
 
-### `src/financial_report_llm_extractor/structured_sources/company_evaluation.py` (~180 LoC)
+### `src/financial_report_llm_extractor/structured_sources/company_evaluation.py`（约 180 行）
 
 ```python
 BucketName = Literal[
@@ -259,7 +229,7 @@ class CompanyFieldEvaluation:
     value: str | None
     currency: str | None
     unit: str | None
-    reason: str | None  # populated for non-clean buckets
+    reason: str | None  # 非 clean 桶填这里
 
 
 @dataclass(frozen=True)
@@ -302,75 +272,66 @@ def run_company_evaluation(
     out_dir: Path,
     json_client: JsonClient | None = None,
 ) -> CompanyEvaluation:
-    """Orchestrator: replay → optional LLM → classify → write artifacts."""
+    """Orchestrator：replay → 可选 LLM → classify → 写 artifacts。"""
 ```
 
-### CLI integration
+### CLI 集成
 
-`cli.py` adds two subparsers (`fetch-source-inventory`, `evaluate-company`)
-that dispatch to the above functions. No business logic in `cli.py`.
+`cli.py` 加两个 subparser（`fetch-source-inventory`、`evaluate-company`）dispatch 到上述函数。`cli.py` 不放业务逻辑。
 
-### Reuse (no rewriting)
+### 复用清单（不重写）
 
-| Existing | Used by |
-|----------|---------|
-| `AKShareSourceAdapter`, `YahooSourceAdapter` (real_source_validation.py) | source_inventory_fetch.fetch_source_inventory |
-| `map_source_inventory` (mapping.py) | run_company_evaluation |
-| `reconcile_mapped_fields` (reconciliation.py) | run_company_evaluation |
-| `build_source_first_export` (export.py) | run_company_evaluation |
-| `run_llm_extraction_for_company` (llm_extraction_runner.py) | run_company_evaluation when pdf_path + llm_config set |
-| `load_source_mapping_catalog`, `load_field_taxonomy_catalog` | both subcommands |
+| 现有模块 | 被谁用 |
+|----------|--------|
+| `AKShareSourceAdapter`、`YahooSourceAdapter`（real_source_validation.py） | source_inventory_fetch.fetch_source_inventory |
+| `map_source_inventory`（mapping.py） | run_company_evaluation |
+| `reconcile_mapped_fields`（reconciliation.py） | run_company_evaluation |
+| `build_source_first_export`（export.py） | run_company_evaluation |
+| `run_llm_extraction_for_company`（llm_extraction_runner.py） | run_company_evaluation 当 pdf_path + llm_config 设了 |
+| `load_source_mapping_catalog`、`load_field_taxonomy_catalog` | 两个 subcommand |
 
-## Test Strategy
+## 测试策略
 
-| Test | Type | Coverage | Default-on |
-|------|------|----------|-----------|
-| `test_source_inventory_fetch.py::test_fetch_with_fake_clients` | Unit | Fake AKShare + Yahoo clients return canned records → write inventory artifacts | ✅ |
-| `test_source_inventory_fetch.py::test_period_spec_year_shortcut_expands` | Unit | `PeriodSpec.from_year(2024)` → period_end=2024-12-31, report_type=annual | ✅ |
-| `test_source_inventory_fetch.py::test_period_spec_rejects_both_year_and_period_end` | Unit | CLI parser raises if both --year and --period-end | ✅ |
-| `test_source_inventory_fetch.py::test_real_fetch_smoke` | Integration | gated `REAL_SOURCE_VALIDATION=1`; fetches one CN ticker | ❌ opt-in |
-| `test_company_evaluation.py::test_classify_field_buckets` | Unit | each bucket has at least one positive + one negative case | ✅ |
-| `test_company_evaluation.py::test_orchestrator_with_fake_clients` | Unit | full evaluate-company flow with FakeAkShareClient + FakeYahooClient + FakeJsonClient + canned PDF chunks | ✅ |
-| `test_company_evaluation.py::test_renders_evaluation_markdown` | Unit | snapshot-style assertion on markdown output | ✅ |
-| `test_company_evaluation.py::test_orchestrator_skips_llm_without_pdf` | Unit | evaluation runs when pdf_path=None | ✅ |
-| `test_cli.py::test_evaluate_company_subcommand_dispatches_correctly` | Unit | CLI argv parsing → run_company_evaluation invoked with correct args | ✅ |
+| 测试 | 类型 | 覆盖 | 默认跑 |
+|------|------|------|--------|
+| `test_source_inventory_fetch.py::test_fetch_with_fake_clients` | 单测 | Fake AKShare + Yahoo client 返回 canned record → 写 inventory artifact | ✅ |
+| `test_source_inventory_fetch.py::test_period_spec_year_shortcut_expands` | 单测 | `PeriodSpec.from_year(2024)` → period_end=2024-12-31, report_type=annual | ✅ |
+| `test_source_inventory_fetch.py::test_period_spec_rejects_both_year_and_period_end` | 单测 | CLI parser 在同设 --year 与 --period-end 时报错 | ✅ |
+| `test_source_inventory_fetch.py::test_real_fetch_smoke` | 集成 | gate `REAL_SOURCE_VALIDATION=1`；fetch 一个 CN ticker | ❌ opt-in |
+| `test_company_evaluation.py::test_classify_field_buckets` | 单测 | 每个桶至少一个正例 + 一个反例 | ✅ |
+| `test_company_evaluation.py::test_orchestrator_with_fake_clients` | 单测 | 整套 evaluate-company 流程，FakeAkShareClient + FakeYahooClient + FakeJsonClient + canned PDF chunks | ✅ |
+| `test_company_evaluation.py::test_renders_evaluation_markdown` | 单测 | 对 markdown 输出做 snapshot 风格断言 | ✅ |
+| `test_company_evaluation.py::test_orchestrator_skips_llm_without_pdf` | 单测 | pdf_path=None 时仍能跑完 evaluation | ✅ |
+| `test_cli.py::test_evaluate_company_subcommand_dispatches_correctly` | 单测 | CLI argv 解析 → run_company_evaluation 拿到正确参数 | ✅ |
 
-CI gate adds 5 unit tests to default `pytest -v`. Real provider/LLM
-tests stay opt-in behind env-gated guards.
+CI gate 给默认 `pytest -v` 加 5 个单测。真 provider / 真 LLM 测试维持 env-gated opt-in。
 
-## Implementation Phasing
+## 实现拆分
 
-Four independent commits:
+四个独立 commit：
 
-| Commit | Subject | LoC | Notes |
-|--------|---------|----:|-------|
-| 1 | `feat: source_inventory_fetch + fetch-source-inventory subcommand` | ~200 | New module + CLI wiring + 4 unit tests + shell wrapper |
-| 2 | `feat: company_evaluation pure-function bucket classifier + markdown` | ~250 | New module + 4 unit tests; no CLI yet |
-| 3 | `feat: evaluate-company subcommand orchestrator + shell wrapper` | ~150 | Wires Commits 1+2; 1 orchestrator test + 1 CLI test |
-| 4 | `docs: add evaluate-company to CLAUDE.md + roadmap §6 + sample run` | ~50 | Doc-only |
+| Commit | 主题 | LoC | 备注 |
+|--------|------|----:|------|
+| 1 | `feat: source_inventory_fetch + fetch-source-inventory subcommand` | ~200 | 新模块 + CLI 接线 + 4 单测 + shell 包装 |
+| 2 | `feat: company_evaluation pure-function bucket classifier + markdown` | ~250 | 新模块 + 4 单测；尚无 CLI |
+| 3 | `feat: evaluate-company subcommand orchestrator + shell wrapper` | ~150 | 接 Commit 1+2；1 个 orchestrator 测 + 1 个 CLI 测 |
+| 4 | `docs: 把 evaluate-company 加进 CLAUDE.md + roadmap §6 + sample run` | ~50 | 仅文档 |
 
-Each commit independently green: pytest + ruff + mypy.
+每个 commit 独立绿灯：pytest + ruff + mypy。
 
-## Open Questions / Out-of-Branch Follow-ups
+## Open Questions / 出本分支跟踪
 
-- Multi-company batch wrapper (post-MVP). Likely a thin loop over
-  evaluate-company invocations.
-- Coverage delta vs prior run (compare two evaluation.json files).
-  Useful for "did this catalog change regress anything?". Phase 2.
-- Auto-resolve `--pdf` from a downloads directory by `<company>_<period>` convention. YAGNI for MVP.
-- TTM calculation. PeriodSpec already accommodates `report_type=ttm`,
-  but the actual derivation logic (sum 4 quarters) is not in scope here.
-- `not_disclosed` terminal sub-bucket. Currently bundled into
-  `source_unavailable`. Phase 2 if disclosure-presence detection becomes
-  reliable.
+- 多公司批量包装（post-MVP）。可能就是 evaluate-company 调用上的薄循环。
+- 与上次跑的 coverage delta（比较两个 evaluation.json）。用于"这次 catalog 改动有没有回归？"。Phase 2。
+- 按 `<company>_<period>` 约定从 downloads 目录自动解析 `--pdf`。MVP 阶段 YAGNI。
+- TTM 计算。PeriodSpec 已经留了 `report_type=ttm`，但实际推导逻辑（4 个季度求和）不在本次范围。
+- `not_disclosed` terminal 子桶。当前归到 `source_unavailable`。Phase 2 待披露存在性检测可靠后再做。
 
-## Acceptance Criteria
+## 验收标准
 
-- `uv run pytest -v` shows ≥ 9 new unit tests pass.
-- `uv run ruff check .` clean.
-- `uv run mypy src tests` clean.
-- One end-to-end demo run on 600519 / 2024 succeeds with all 4 artifacts
-  produced (gated by `REAL_SOURCE_VALIDATION=1` and DeepSeek API key).
-- `evaluation.md` is human-readable and matches the priority × bucket
-  shape described above.
-- The roadmap `## 6. Validation Commands` block lists the new CLI.
+- `uv run pytest -v` 显示 ≥ 9 个新增单测通过。
+- `uv run ruff check .` clean。
+- `uv run mypy src tests` clean。
+- 一个端到端 demo run 在 600519 / 2024 上跑通，4 个 artifact 都生成（gate 在 `REAL_SOURCE_VALIDATION=1` 与 DeepSeek API key 上）。
+- `evaluation.md` 人可读且符合上文 priority × bucket 形式。
+- roadmap `## 6. Validation Commands` 块列出新 CLI。
