@@ -55,6 +55,7 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 | I-C | `llm_field_extraction.py` `_parse_response` | text-mode value_type 门控；catalog +12 P3 pdf_only 字段，total 56 |
 | I-C.1 | `llm_extraction_runner.select_chunks` | alias_top_k 空白归一化（修跨 PDF 排版换行的 substring miss） |
 | EC | `structured_sources/source_inventory_fetch.py` + `company_evaluation.py` | evaluate-company orchestrator：fetch-source-inventory + evaluate-company 两步 CLI；6-bucket 分类 + markdown；live 600519/2024 验证 conflict 三类（period 漂移 16 / sign 3 / 真语义差 5） |
+| H2 | `MarketSourcePolicy.sign_normalize` + `provider_raw_semantics_cn.json` + `_apply_provider_semantics_promotion` (source_policy.py) | CN+HK conflict surgical resolution：sign_normalize=absolute (capex+interest_paid_cash) + PDF semantics promote (CN revenue+operating_profit) + terminal_unverified lock (SGA/D&A/dividends_paid)；600519 clean 34→38 |
 
 所有源码在 `src/financial_report_llm_extractor/`，测试在 `tests/` 中按阶段对应，字段定义在 `field_catalog/`。
 
@@ -82,7 +83,7 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 ## 文档导读
 
-优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator + live 600519/2024 验证）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）；HK LLM 验证 33/84 hits, 0 extraction_failed；CN 600519/2024 conflict 三类拆解（16 period 漂移 + 3 sign + 5 真语义差 + 14 missing_source_candidate）。下一步候选：Phase EC Tier 1 follow-ups（period 归一化 + markdown 候选值 + 3 dead params）、Phase H2（5 真语义差 surgical proof）、合并到 main、或新阶段。
+优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）；HK LLM 验证 33/84 hits, 0 extraction_failed；CN 600519/2024 evaluate-company 后状态：clean_present 38/56（H2 净 +4），unresolved_conflict 17/56（剩 7 normalized_value_conflict + 10 missing_source_candidate）。下一步候选：Phase H2.1（catalog 加法 derivation 解锁 SGA）、Phase HK-coverage（HK fixture/catalog 0 clean 修复）、合并到 main、或新阶段。
 
 `docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 

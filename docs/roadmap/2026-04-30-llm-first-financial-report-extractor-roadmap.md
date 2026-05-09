@@ -4,7 +4,7 @@
 > Date: 2026-05-07 (last validation: 2026-05-09 Phase EC live run)
 > Scope: Pivot the project from PDF-first LLM extraction to AKShare/Yahoo-first structured financial data extraction, with PDF/LLM retained as the final evidence supplement and ambiguity review layer.
 >
-> Implementation status (2026-05-09): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation) — all complete. 515 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed. Live evaluate-company on 600519/2024 surfaced 39 unresolved_conflict broken into 16 period-string false-positives (Tier 1 fix) + 3 sign-convention + 5 true semantic gaps (Phase H2 candidate).
+> Implementation status (2026-05-09): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation), Phase H2 (CN/HK conflict surgical resolution: 4 fields promoted on 600519/2024 via sign_normalize + sample-verified PDF semantics; 3 fields locked terminal_unverified) — all complete. 524 tests + ruff + mypy clean. Live LLM batch validation on 6 HK companies × 14 P3 fields: 33/84 (39%) present, 0 extraction_failed. Live evaluate-company on 600519/2024 after H2: 38/56 clean_present (+4 over Phase EC), 17/56 unresolved_conflict (−4).
 
 ## 1. Decision Summary
 
@@ -1401,10 +1401,50 @@ Tier 1 — small fixes (~150 LoC, 1-2h, can land in this branch):
 
 Tier 2 — separate phases (out of branch scope):
 
-- **Phase H2 candidate**: surgical resolution of the 3 sign-convention + 5 true-semantic-gap CN fields. Each requires PDF verification of which provider value matches Turtle field semantics (~8-10h total). Same pattern as H1 but for CN-side conflicts.
-- **Coverage delta tool** (`evaluate-company-diff`): compare two evaluation.json files, surface bucket migrations. Useful for "did this catalog change regress anything?"
+- ~~**Phase H2 candidate**: surgical resolution of the 3 sign-convention + 5 true-semantic-gap CN fields.~~ **DONE 2026-05-09** — see Phase H2 Implementation Result below.
+- **Coverage delta tool** (`evaluate-company-diff`): compare two evaluation.json files, surface bucket migrations.
 - **`_run_llm_supplement_step` test with FakeJsonClient + canned chunks** to cover the LLM-merge path end-to-end without real API calls.
-- **HK live validation**: run evaluate-company on 00001 / 01113 / 01810 to exercise HK Yahoo trust policy + provider_semantics_catalog paths.
+- **HK orchestrator coverage**: H2 live runs on 00001/01113 surfaced 0/56 clean. Pre-existing fixture/catalog gap, not H2 regression. Worth a dedicated phase.
+
+### Phase H2 Implementation Result
+
+Status: implemented on 2026-05-09. 5 commits (`1428281` → `568063e` → `769117e` → `ac3660b` → docs).
+
+See:
+- Spec: `docs/superpowers/specs/2026-05-09-phase-h2-cn-hk-conflict-surgical-resolution.md`
+- Plan: `docs/superpowers/plans/2026-05-09-phase-h2-cn-hk-conflict-surgical-resolution.md`
+- Validation report: `docs/phase_h2_validation_report.md`
+
+Goal: surgical resolution of the 7 normalized_value_conflict fields surfaced by Phase EC live run on 600519/2024.
+
+**Module A** — `MarketSourcePolicy.sign_normalize` ("raw" | "absolute") + reconciliation `abs()` comparison branch. Applied to `capital_expenditures` + `interest_paid_cash` (CN+HK). 2 fields move from `unresolved_conflict` → `clean_present`.
+
+**Module B** — per-field PDF semantics proof:
+
+- **Promoted** (CN): `revenue` (akshare OPERATE_INCOME 170,899,152,276.34 = PDF 营业收入 EXACTLY; Yahoo Total Revenue includes finance subsidiary 利息收入), `operating_profit` (akshare OPERATE_PROFIT 119,688,579,453.23 = PDF 营业利润 EXACTLY; Yahoo Operating Income excludes adjustments). New `field_catalog/provider_raw_semantics_cn.json` with `provider_semantics_sample_verified` rules.
+- **Locked terminal_unverified** (CN+HK): SGA (catalog derivation only supports `A-B` subtraction; addition for MANAGE+SALE_EXPENSE deferred to Phase H2.1), D&A (FA_IR_DEPR vs D&A semantically unequal), dividends_paid (sign-normalized residual 2.9% gap from 已付/宣告 timing). 6 `provider_semantics_unverified` rules added (3 CN + 3 HK).
+- HK side: revenue + operating_profit also marked `provider_semantics_unverified` (AKShare 营运收入 listed-company-only vs HKFRS Total Revenue including share of associates per Note 1).
+
+**Architecture additions**:
+- Market-agnostic `_apply_provider_semantics_promotion` in `source_policy.py` — replaces 5 `_apply_hk_yahoo_trust_policy` callsites with a `_apply_trust_policies` chain. Conservative: only clears `semantic_mismatch` + `normalized_value_conflict` from `conflict_classifications` when rule is `provider_semantics_sample_verified` + `allowed_as_primary=True`. Trust evidence dict records `proof_class=sampled_pdf_policy_proof, is_final_pdf_evidence=False`.
+- `_load_replay_provider_semantics_catalog` now merges HK + CN catalogs (when both files present). Orchestrator path also wired (Task 3 pivot).
+
+**Live validation (600519/2024-12-31)**:
+
+| Bucket | Phase EC final | Phase H2 final | Δ |
+|--------|----------------|----------------|---|
+| clean_present | 34 | **38** | **+4** |
+| unresolved_conflict | 21 | **17** | **−4** |
+| terminal_unverified | 0 | 0 | 0 |
+| source_unavailable | 1 | 1 | 0 |
+
+Fields promoted: capital_expenditures, interest_paid_cash, revenue, operating_profit. Other 7 conflict-flagged fields remain non-clean by explicit `provider_semantics_unverified` rule (4 fields × 2 markets including Yahoo HK Operating Income; SGA + D&A + dividends_paid + HK revenue/operating_profit).
+
+**HK live runs on 00001/01113**: both 0 clean / 56 unresolved_conflict. Not a Phase H2 regression — most HK fields land in `unresolved_conflict` with reason `missing_source_candidate` (no AKShare alias matches the fixture rows) or `currency_as_unit` / `statement_metadata_unproven`. H2 specifically targets `normalized_value_conflict`; the HK gap is upstream of H2's scope.
+
+515 → 524 unit tests, ruff + mypy clean throughout. 9 new tests + 2 new files.
+
+Phase H2.1 candidate identified: catalog `derivation` field extension to support addition (`A + B`) — would unlock CN SGA promotion.
 
 ## 6. Validation Commands
 
