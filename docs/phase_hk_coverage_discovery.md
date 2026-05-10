@@ -83,3 +83,41 @@ These are notes-level fields handled by the Phase I-A HK LLM extraction pipeline
 
 1. **HK adapter inventory**: do AKShare HK / Yahoo HK actually expose the missing fields? Bucket A's effort estimate assumes "alias missing in catalog, value present in adapter" — needs verification per field. First step of HK-A is `fetch-source-inventory` for both HK tickers and grep for the candidate raw_field codes.
 2. **Industry-aware terminal classification**: HK-C's `not_applicable_terminal` semantic doesn't exist yet. Adding it is XS but precedent-setting — should we generalize this? Could resolve other industry-NA cases (e.g., CN financial-issuer-only fields like PAY_INTEREST_COMMISSION for non-financials).
+
+## Reality-check (post-discovery, 2026-05-10)
+
+Inventory scan of `tmp/runs/h2_2_after/{00001,01113}/source_inventory.jsonl` reveals that **most Bucket A fields are genuinely missing from the adapters, not from the catalog**. Per-field empirical findings:
+
+| Field | Yahoo HK 00001 | Yahoo HK 01113 | AKShare HK 00001 | AKShare HK 01113 | Catalog already has? | Truly fixable? |
+|-------|---|---|---|---|---|---|
+| bond_payable | "Long Term Debt" only (broader scope) | "Long Term Debt" only | none | none | `akshare:["BOND_PAYABLE"]` (CN code, miss) | NO — Yahoo LT Debt ≠ bonds payable; AKShare HK doesn't break out bonds. Needs PDF spot-check + scope decision. |
+| cip | none | none | none | none | none | NO — adapters don't expose CIP separately for HK |
+| invest_income | none (only "Investmentsin Associates at Cost" — BS line) | same | "减:投资收益" | "减:投资收益" | `akshare:["INVEST_INCOME"]` (CN code, miss) | **YES — add `by_market.HK.akshare:["减:投资收益"]`. 2 cells.** |
+| rd_exp | none | none | none | none | none | NO — adapters don't expose R&D for HK |
+| other_cur_assets | none | "Other Current Assets" (already matched) | none | none | `yahoo:["Other Current Assets"]` (already matches 01113) | NO additional fix possible — 00001 Yahoo doesn't expose this line at all (HSBC bank Yahoo schema gap) |
+| fv_value_chg_gain | "Financial Assets Designatedas Fair Value Through Profitor Loss Total" (BS, both) | same | none | none | `akshare:["FAIRVALUE_CHANGE_INCOME", "公允价值变动收益"]` | NO — Yahoo exposes BS line not P&L gain; semantic mismatch |
+| non_oper_income | "Other Non Operating Income Expenses" (combined) | none | none | "其他收益" | unknown — needs check | MAYBE — inconsistent: 00001 Yahoo combined income+expense; 01113 AKShare 其他收益. Different scope per company. |
+| non_oper_exp | none | "Other Operating Expenses" (note: OPERATING not NON-operating) | none | none | unknown | MAYBE — Yahoo "Other Operating Expenses" naming conflicts with non_oper_exp semantic |
+
+### Revised HK-A scope
+
+| Field | Cells closable | Effort | Confidence |
+|-------|---------------:|--------|------------|
+| invest_income (add `by_market.HK.akshare`) | 2 (both companies) | XS (~30 min) | HIGH — clean AKShare HK alias match |
+| Everything else | 0 cells via clean alias | — | structural / semantic mismatch |
+
+**Total realistic HK-A delta: 2 cells**, not 16. The discovery doc's pre-empirical estimate was overoptimistic by ~8x.
+
+### What this means for sub-phase ranking
+
+- **HK-A is no longer the highest-leverage move** — it's now an XS 2-cell win, not a S 16-cell win.
+- **LLM-orchestrator wire-in jumps to top priority** — most "missing-candidate" fields are genuinely missing from adapters, so the LLM-supplement path is the only way to close them. CN already proved this works (600519 jumps from 39/56 → 44/56 with LLM supplement). HK 00001/01113 with 13-14 missing-candidate cells per company would benefit even more.
+- **HK-B (sample-verified conflict resolution) becomes more attractive in relative terms** — it can close 8 cells (4 fields × 2 companies) which is now the largest source-first-only delta available.
+- **HK-C (01113 SGA structural) still XS, still worth doing as a quick signal-quality win.**
+
+### Revised recommendation
+
+1. **HK-A-mini**: invest_income alias (XS, 2 cells, +1 hour to also do as a tiny standalone commit)
+2. **LLM-orchestrator wire-in**: highest source of new clean cells (up to +25 P3 per company); requires integrating the existing Phase I-A HK LLM runner into evaluate-company so its hits land in `llm_supplement_present` bucket like CN does
+3. **HK-C**: 01113 SGA → not_applicable_terminal (XS, signal quality)
+4. **HK-B**: defer until ≥3 HK issuer fixtures (already deferred per original recommendation; reasoning unchanged)
