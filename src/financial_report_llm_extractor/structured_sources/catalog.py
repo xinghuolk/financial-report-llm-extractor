@@ -110,6 +110,20 @@ class SourcePolicy:
 
 
 @dataclass(frozen=True)
+class IndustryNotApplicableSpec:
+    """Per-(market, ticker) declaration that a field is structurally NA for
+    that issuer (e.g., real-estate developers have no SGA single-line). Refines
+    `source_unavailable` reason without introducing a new bucket."""
+
+    market: str
+    ticker: str
+    reason: str
+
+    def matches(self, market: str | None, company_id: str | None) -> bool:
+        return self.market == market and self.ticker == company_id
+
+
+@dataclass(frozen=True)
 class SourceMappingEntry:
     field_id: str
     priority: str
@@ -131,6 +145,9 @@ class SourceMappingEntry:
     null_means_zero: bool = False
     by_market_aliases: dict[str, dict[str, tuple[str, ...]]] = field(
         default_factory=dict
+    )
+    industry_not_applicable: tuple[IndustryNotApplicableSpec, ...] = field(
+        default_factory=tuple
     )
 
     def validate(self) -> None:
@@ -280,6 +297,9 @@ def load_source_mapping_catalog(
             source_policy=_parse_source_policy(mapping.get("source_policy")),
             null_means_zero=bool(mapping.get("null_means_zero", False)),
             by_market_aliases=by_market_aliases,
+            industry_not_applicable=_parse_industry_not_applicable(
+                mapping.get("industry_not_applicable")
+            ),
         )
         entry.validate()
         entries[field_id] = entry
@@ -349,6 +369,32 @@ def _parse_source_policy(raw_policy: object) -> SourcePolicy | None:
         market_policies=market_policies,
         verification_requirement=str(raw_policy.get("verification_requirement", "none")),
     )
+
+
+def _parse_industry_not_applicable(
+    raw: object,
+) -> tuple[IndustryNotApplicableSpec, ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise ValueError("industry_not_applicable must be a list")
+    specs: list[IndustryNotApplicableSpec] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise ValueError("industry_not_applicable entry must be an object")
+        market = entry.get("market")
+        ticker = entry.get("ticker")
+        reason = entry.get("reason")
+        if not (isinstance(market, str) and isinstance(ticker, str)
+                and isinstance(reason, str) and market and ticker and reason):
+            raise ValueError(
+                "industry_not_applicable entry requires non-empty "
+                "market, ticker, reason strings"
+            )
+        specs.append(IndustryNotApplicableSpec(
+            market=market, ticker=ticker, reason=reason,
+        ))
+    return tuple(specs)
 
 
 def _parse_string_list(raw_values: object, message: str) -> tuple[str, ...]:

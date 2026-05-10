@@ -77,8 +77,19 @@ def classify_field(
     warning_item: WarningClassificationItem | None,
     mapping_entry: SourceMappingEntry,
     pdf_provided: bool,
+    market: str | None = None,
+    company_id: str | None = None,
 ) -> tuple[BucketName, str | None]:
-    """Bucket cascade. First match wins. See spec §桶分类."""
+    """Bucket cascade. First match wins. See spec §桶分类.
+
+    `market` and `company_id` (Phase HK-C): when both are provided and the
+    bucket cascade would land on `source_unavailable`, the
+    `mapping_entry.industry_not_applicable` spec is consulted; a matching
+    entry overrides the reason string with the catalog-supplied explanation
+    (e.g., "real-estate convention; no SGA single-line"). The bucket itself
+    stays `source_unavailable` — this is a reason-refinement only, not a new
+    bucket. Other buckets are unaffected.
+    """
     # Bucket 1: explicit conflict from policy report.
     if export_item.conflict_classifications:
         return ("unresolved_conflict", ",".join(export_item.conflict_classifications))
@@ -107,7 +118,12 @@ def classify_field(
         return ("not_in_scope", "pdf_only_without_pdf")
 
     # Bucket 6: source_unavailable (warning category or fallthrough).
-    reason = warning_item.category if warning_item is not None else "missing"
+    reason: str = warning_item.category if warning_item is not None else "missing"
+    # Phase HK-C: refine reason via industry_not_applicable catalog spec.
+    for spec in mapping_entry.industry_not_applicable:
+        if spec.matches(market, company_id):
+            reason = spec.reason
+            break
     return ("source_unavailable", reason)
 
 
@@ -187,6 +203,8 @@ def build_company_evaluation(
             warning_item=warning_item,
             mapping_entry=mapping_entry,
             pdf_provided=pdf_provided,
+            market=market,
+            company_id=company,
         )
 
         candidate_values = _collect_candidate_values(

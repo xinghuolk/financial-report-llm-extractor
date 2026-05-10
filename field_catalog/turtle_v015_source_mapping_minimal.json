@@ -1064,6 +1064,13 @@
           }
         }
       },
+      "industry_not_applicable": [
+        {
+          "market": "HK",
+          "ticker": "01113",
+          "reason": "real-estate convention: no SGA single-line in PDF or providers (CK Asset Holdings reports operating expenses by function without an aggregated SGA row); Yahoo HK SGA alias absent; AKShare HK has no MANAGE+SALE derivation analog."
+        }
+      ],
       "source_policy": {
         "semantic_concept": "selling general and administrative expenses",
         "notes": "Phase H2.1: CN SGA = AKShare MANAGE_EXPENSE + SALE_EXPENSE addition derivation, EXACT match PDF (销售费用+管理费用) for 600519/2024 = 14,954,950,119.87 CNY (see docs/phase_h2_1_sga_spot_check.md). Yahoo SGA scope unclear (10.36B vs PDF 14.95B; ~30% off); not used as candidate. Phase H2.2 Sub-B: HK Yahoo SGA alias restored under source_aliases.by_market.HK.yahoo (market-scoped). Spot-check on 00001/2025 + 01113/2025 confirmed Yahoo SGA scope ≠ PDF (00001 PDF reports 'Office and general administrative expenses' 9,466M HKD as one component vs Yahoo SGA 16,491M HKD; 01113 has no single SGA PDF line). HK Yahoo SGA rule stays provider_semantics_unverified — alias provides candidate matching but source_policy still classifies the bucket as terminal_unverified.",
