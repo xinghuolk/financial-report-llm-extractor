@@ -4,11 +4,11 @@
 > Date: 2026-05-07 (last validation: 2026-05-09 Phase EC live run)
 > Scope: Pivot the project from PDF-first LLM extraction to AKShare/Yahoo-first structured financial data extraction, with PDF/LLM retained as the final evidence supplement and ambiguity review layer.
 >
-> Implementation status (2026-05-10): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation), Phase H2 (CN/HK conflict surgical resolution), Phase H2.1 (CN SGA addition derivation), Phase H2.2 (multi-company sample-verification + market-scoped source_aliases + clean-row candidate audit display) — all complete. 540 tests + ruff + mypy clean.
+> Implementation status (2026-05-10): Phases A1–E (source-first foundation), Phase H0 (null_means_zero), Phase H1 (surgical conflict resolution; partially reverted post-review), Phases I-D/I-A/I-A.2 (LLM-assisted HK notes extraction with 6 follow-ups closed), Phases M2–M5 (HK terminal closure + provider semantics correction), Phases N0–N4 (catalog expansion 15 → 44 fields), Phase I-C (text-mode for 12 P3 pdf_only fields, total 56), Phase I-C.1 (whitespace-normalized retrieval), Phase EC (evaluate-company orchestrator for per-(company, period) regression validation), Phase H2 (CN/HK conflict surgical resolution), Phase H2.1 (CN SGA addition derivation), Phase H2.2 (multi-company sample-verification + market-scoped source_aliases + clean-row candidate audit display), Phase H2.3 #3 (persistent multi-company fixture + sample-vs-fixture regression), Phase HK-C (industry_not_applicable catalog override for 01113 SGA real-estate convention), Phase H2.4 (3 surgical fixes for cumulative review findings: market-scoped derivation + derivation-operand money normalization + selected_source for derived clean_present), Phase HK-LLM-2 (regression-locked LLM supplement merge for 3 companies) — all complete. 555 tests + ruff + mypy clean.
 >
-> **Coverage milestone**: CN 600519/2024 reaches **P0+P1 = 33/33 (100%) clean_present** after H2.2 — every core income-statement / balance-sheet / cash-flow Turtle field is source-first verified for the primary CN sample. Aggregate 39/56 (70%) clean across all 4 priorities. P2 4/9 (44%, 4 conflicts + 1 unavail). P3 2/14 (14%, mostly missing_source_candidate; LLM supplement adds +5 → 44/56 (79%) when run with PDF + DeepSeek per Phase EC live).
+> **Coverage milestone (post-H2.4 + HK-LLM-2 verified)**: CN 600519/2024 reaches **P0+P1 = 33/33 (100%) clean_present** after H2.2. Source-first 39/56 (70%) → **+LLM supplement 44/56 (79%)**, regression-locked by `tests/test_phase_hk_llm_2_supplement_merge.py`.
 >
-> **HK companies**: 00001/2025 = 28/56 (50%) clean + 1 terminal_unverified; 01113/2025 = 29/56 (52%) clean. HK lower coverage due to fixture/catalog alias mismatches (P0 68% / P1 ~50%) — independent from H2-stack work; tracked as Phase HK-coverage candidate.
+> **HK companies (regression-locked)**: 00001/2025 source-first 28/56 (50%) → **+LLM 33/56 (59%)**; 01113/2025 source-first 29/56 (52%) → **+LLM 33/56 (59%)**. HK Bucket-A "alias gap" hypothesis collapsed empirically to ~0 cells per `docs/phase_hk_coverage_discovery.md` reality-check — most missing-candidate fields are genuinely absent from Yahoo HK + AKShare HK adapters, not catalog gaps. The honest path forward is HK-B (sample-verified conflict resolution for fix_assets / accounts_receiv / acct_payable / gross_profit; needs ≥3 HK issuer fixtures to mitigate HKFRS sector variance per drift §177).
 >
 > **Sample-verification breadth**: 4 CN companies × 4 fields = 16 EXACT-match samples (revenue / operating_profit / capital_expenditures / SGA derivation) backing the H2/H2.1 promotions. interest_paid_cash still single-sample (non-financial issuers don't report PAY_INTEREST_COMMISSION).
 >
@@ -1516,10 +1516,72 @@ Three independent sub-modules:
 **533 → 540 unit tests**, ruff + mypy clean. New regression tests: `test_phase_h2_2_promoted_cn_rules_have_multi_company_samples`, `test_phase_h2_2_hk_sga_yahoo_unverified_rule_exists`, `test_phase_h2_2_sga_catalog_has_by_market_hk_yahoo_alias`, plus 3 by_market mapping tests + Sub-C clean-row test.
 
 **Phase H2.3 candidates** identified:
-- `interest_paid_cash` multi-sample: include a CN bank (e.g., 600036) where PAY_INTEREST_COMMISSION is non-null.
-- HK 01113 SGA: real-estate developer convention has no single SGA line; revisit as structurally non-applicable terminal vs `source_unavailable`.
-- Persist 300750 / 601919 / 688008 records to `tests/fixtures/provider_captures/` for offline regression testing.
-- `_resolve_derivation_operand` period-equality assertion (carried over from Phase H2.1).
+- ~~`interest_paid_cash` multi-sample: include a CN bank (e.g., 600036) where PAY_INTEREST_COMMISSION is non-null.~~ **Deferred — single-sample limitation persists; non-financial issuers structurally don't report PAY_INTEREST_COMMISSION. Low ROI without parallel financial-issuer onboarding.**
+- ~~HK 01113 SGA: real-estate developer convention has no single SGA line; revisit as structurally non-applicable terminal vs `source_unavailable`.~~ **DONE 2026-05-10 as Phase HK-C** — see Phase HK-C Implementation Result below.
+- ~~Persist 300750 / 601919 / 688008 records to `tests/fixtures/provider_captures/` for offline regression testing.~~ **DONE 2026-05-10 as Phase H2.3 #3** — see Phase H2.3 #3 Implementation Result below.
+- `_resolve_derivation_operand` period-equality assertion (carried over from Phase H2.1) — still open.
+
+### Phase H2.3 #3 Implementation Result
+
+Status: implemented on 2026-05-10. Commit `ea5bd7d`.
+
+Compressed `tmp/runs/h2_2_real_validation/source_inventory.jsonl` (2,238 records, 3 CN tickers: 300750/601919/688008) into `tests/fixtures/provider_captures/provider_field_baseline_h2_2_extension/source_inventory.jsonl.gz` (62KB). Backfilled `expected_provider_raw_value` + `period_end` on every CN sample-verified rule sample (4 companies × 3 fields = 12 cells across revenue/operating_profit/SGA). Added `derivation_legs: ["MANAGE_EXPENSE", "SALE_EXPENSE"]` marker to SGA rule so the regression test sums the right legs (`related_only_fields` carries negative examples like `TOTAL_OPERATE_INCOME` and must NOT be summed automatically).
+
+Regression test (`tests/test_phase_h2_3_fixture_persistence.py`, 3 cases): walks every CN AKShare sample with `expected_provider_raw_value`, looks up the corresponding fixture record by (ticker, period, raw_field_code), asserts exact match. SGA derivation sums MANAGE+SALE legs from fixture and compares. **543 tests** (was 540).
+
+H2.2 sample-verified evidence is now reproducible offline AND change-detectable.
+
+### Phase HK-C Implementation Result
+
+Status: implemented on 2026-05-10. Commit `087251e`. (Bucket impact: signal-quality only; no count change.)
+
+01113/HK SGA (CK Asset, real-estate) was landing in `source_unavailable` with reason `source_policy_resolvable` — misleading because the real cause is industry convention (real-estate reports operating expenses by function without an aggregated SGA row), not "we didn't try hard enough".
+
+Catalog mechanism: per-(field, market, ticker) `industry_not_applicable: [{market, ticker, reason}]` array. `IndustryNotApplicableSpec` frozen dataclass + JSON loader (fail-loud on malformed entries). `classify_field` gains optional `market` + `company_id` kwargs (non-breaking); after arriving at `source_unavailable`, walks the array for a (market, ticker) match and replaces the default reason with the catalog string. Reason override gated on `source_unavailable` bucket only — clean_present, llm_supplement_present, terminal_unverified are unaffected (otherwise we'd silently corrupt good data).
+
+Tests (5 new, 548 total): catalog presence, loader surfaces tuple, override fires for matching (market, ticker), no override for non-matching, no override for non-source_unavailable buckets.
+
+Deferred to a future phase (when ≥ 2 use cases accumulate): introduce a proper `not_applicable_terminal` bucket. Current XS approach reuses `source_unavailable` so we don't pay the bucket-expansion cost for one cell. Next likely use case: CN PAY_INTEREST_COMMISSION for non-financial issuers (would generalize the same mechanism).
+
+### Phase H2.4 Implementation Result
+
+Status: implemented on 2026-05-10. Commit `f760b31`. Cumulative review (`docs/2026-05-10-h2-hk-cumulative-review.md`) flagged 3 real issues, all empirically verified before fixing.
+
+**Finding 1 (Medium) — derivation must be market-scoped**. Pre-fix: catalog `derivation: "akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE"` was global; `map_source_inventory` attempted it for every market when no direct candidate matched. For HK 01113, AKShare HK lacks MANAGE_EXPENSE/SALE_EXPENSE → SGA returned `status=blocked` with derivation-input errors. HK-C only patched the user-facing reason; the underlying mapping audit trail still showed spurious "blocked".
+
+Fix: `derivation_markets: tuple[str, ...]` field on `SourceMappingEntry` (default empty = applies to all markets, back-compat). `map_source_inventory` derives current market from `records[0].market` and skips derivation when `entry.derivation_markets` is non-empty and current market not in it. SGA catalog gets `derivation_markets: ["CN"]`. HK 01113 SGA now `status=missing` cleanly → warning_classification → `source_unavailable` (the honest bucket, with HK-C real-estate reason still applied).
+
+**Finding 2 (Medium) — derivation operands respect unit_multiplier**. Pre-fix: `_resolve_derivation_operand` set `value=rec.parsed_numeric_value` AND `normalized_value=rec.parsed_numeric_value` (silently same). Worked for current CN AKShare (unit_multiplier=1) by coincidence; any future provider raw operand in 千元/million scales would emit a wrong normalized_value with no audit trail.
+
+Fix: route through `normalize_money(raw_value, unit_context)` like `_candidate_from_record` does. Now value, normalized_value, and canonical_unit derive correctly from the record's currency+unit. Regression test: synthetic 千元 records sum to 3000 千元 = 3,000,000 yuan normalized.
+
+**Finding 3 (Low-Medium) — derived clean_present surfaces selected_source**. Pre-fix: `source_policy` derived branch returns `selection_status=selected_single_source` without `selected_candidate`; `export.py` only sets `selected_source` from `candidate.source`. Result: CN 600519 SGA exported as `status=present + value=14,954,950,119.87 + selected_source=null`. Source-first reviewability gap.
+
+Fix: in `export.py _build_item`, after the selected-from-candidate block, fall back to deriving `selected_source` from `field.source_evidence` when (a) `selected_source` still None, (b) status==present, (c) all evidence shares a single provider. Multi-provider derivations are already rejected at `mapping.py:271-279`, so this stays deterministic. CN derived SGA now exports `selected_source="akshare"`.
+
+Tests: `tests/test_phase_h2_4_review_fixes.py` (4 cases: 3 findings + CN regression guard). `tests/test_provider_baseline_replay.py` updated 01113 SGA expectation `source_policy_resolvable → source_unavailable`. **552 tests** (was 548).
+
+### Phase HK-LLM-2 Implementation Result
+
+Status: implemented on 2026-05-10. Commits `bbd6668` (recon) + `a2fe9c2` (regression lock).
+
+**Recon finding** (`docs/phase_hk_llm_recon.md`): the LLM-orchestrator is **already wired** — `_run_llm_supplement_step` in `company_evaluation.py:448` runs Phase I-A's LLM runner when `--pdf` + `--llm-config` are passed; `provider_baseline_replay._merge_llm_evidence_supplement` merges results into export with `selected_source="llm"`; bucket cascade routes them to `llm_supplement_present`. The earlier "0 hits" observation was a misread of a single-field smoke test (`phase_i_c_alias_iter_1/01113/`, only attempting `receivables_aging`). Real HK runs under `phase_i_c_validation_v2/` show 33/84 = 39% present rate across 6 HK companies, matching the figure cited in CLAUDE.md.
+
+Why H2.2 evals showed `llm_supplement_present=0`: those runs were invoked without `--pdf` + `--llm-config`. The orchestrator gate is intentional (LLM is opt-in to avoid burning API credits on baseline runs).
+
+**Regression lock** (`tests/test_phase_hk_llm_2_supplement_merge.py`, 3 cases) replays existing supplement files against the current catalog and pins the per-company supplement delta:
+
+| Company | Source-first | +LLM | LLM-supplemented fields |
+|---------|---:|---:|---|
+| 600519/CN | 39/56 (70%) | **44/56 (79%)** | buyback_cancellation_progress, capitalized_rd, contingent_liabilities_commitments, dividend_plan, related_party_receivables_payables |
+| 00001/HK | 28/56 (50%) | **33/56 (59%)** | capitalized_interest, contingent_liabilities_commitments, dividend_plan, dps, segment_revenue_profit |
+| 01113/HK | 29/56 (52%) | **33/56 (59%)** | bad_debt_provision, contingent_liabilities_commitments, dividend_plan, dps |
+
+Test mechanism: monkey-patches `_run_llm_supplement_step` to a no-op so no live LLM calls happen; pre-places existing supplement file in `out_dir`; calls `run_company_evaluation` with non-None dummy `pdf_path` + `llm_config_path` so the supplement-merge gate fires. Asserts exact baseline clean count, exact with-LLM total, AND exact field set in `llm_supplement_present` bucket so a regression surfaces named (not just count drift).
+
+Guards against silent regressions in `_merge_llm_evidence_supplement`, the bucket cascade, and catalog changes that re-classify a previously-LLM-merged field as source-first clean. **555 tests** (was 552).
+
+**Phase HK-coverage** outcome: HK Bucket-A ("alias gap" closure) collapsed empirically to ~0 cells (`docs/phase_hk_coverage_discovery.md` reality-check). Most missing-candidate HK fields are genuinely absent from adapter outputs, not from catalog aliases. The honest path forward is **Phase HK-B** (sample-verified conflict resolution for `fix_assets`, `accounts_receiv`, `acct_payable`, `gross_profit`) — needs ≥3 HK issuer fixtures to mitigate HKFRS sector variance per drift §177. Deferred until a parallel HK fixture-extension effort lands.
 
 ## 6. Validation Commands
 
