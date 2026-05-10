@@ -122,12 +122,18 @@ EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
     }
 )
 # Phase H2.1: selling_general_administrative is now CN-derived
-# (akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE) with empty source_aliases;
-# HK akshare lacks MANAGE/SALE so HK SGA blocks → source_policy_resolvable bucket
-# (not source_unavailable, because the derivation is attempted but its operands
-# are not present rather than the source itself being unavailable).
+# (akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE) with empty source_aliases.
+# Phase H2.4 #1: derivation is now market-scoped to derivation_markets=["CN"]
+# so HK runs no longer attempt the CN derivation. For 01113 (no Yahoo SGA
+# inventory record, no AKShare HK SGA), the field cleanly lands in
+# source_unavailable instead of the previously-buggy source_policy_resolvable
+# (which came from the CN derivation spuriously running and blocking on HK
+# records). For 00001 (Yahoo SGA record matches by_market.HK.yahoo alias but
+# the Phase H2.2 unverified rule gates as scope-mismatched), SGA is in
+# pdf_required.
 # 00001 has repurchase_of_stock as source_unavailable (no Yahoo data for 00001).
 EXPECTED_00001_EXTRA_SOURCE_UNAVAILABLE = frozenset({"repurchase_of_stock"})
+EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE = frozenset({"selling_general_administrative"})
 
 
 CheckedInReplay = tuple[ProviderBaselineReplayResult, dict[str, Any]]
@@ -818,12 +824,15 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
         )
         assert warning_fields["mapping_expansion_required"] == expected_mapping_expansion
         assert set(warning_fields["source_unavailable"]) >= EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS
-        # Phase H2.2 Sub-B: HK Yahoo SGA alias restored under
-        # source_aliases.by_market.HK.yahoo. The provider_semantics_unverified
-        # rule (with 00001/01113 spot-check samples) gates the candidate when
-        # one matches: 00001 has a Yahoo SGA record → pdf_required (rule
-        # documents scope mismatch). 01113 has no Yahoo SGA inventory record;
-        # AKShare HK derivation still blocks → stays source_policy_resolvable.
+        # Phase H2.2 Sub-B + H2.4 #1: HK Yahoo SGA alias restored under
+        # source_aliases.by_market.HK.yahoo; the provider_semantics_unverified
+        # rule (with 00001/01113 spot-check samples) gates a Yahoo candidate
+        # when one matches. After H2.4 #1 the CN derivation is market-scoped
+        # to derivation_markets=["CN"] and no longer fires for HK runs.
+        # - 00001: Yahoo SGA record matches → pdf_required (scope mismatch
+        #   per the unverified rule).
+        # - 01113: no Yahoo SGA record, no AKShare HK SGA, derivation
+        #   doesn't run → source_unavailable (cleanly missing).
         if company_id == "00001":
             assert "selling_general_administrative" in warning_fields[
                 "pdf_required"
@@ -841,14 +850,15 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
                 f"but got: {warning_fields['source_unavailable']!r}"
             )
         else:
-            assert "selling_general_administrative" in warning_fields[
-                "source_policy_resolvable"
-            ], (
-                f"{company_id} expected selling_general_administrative in "
-                f"source_policy_resolvable (no Yahoo SGA inventory record; "
-                f"AKShare HK derivation blocked); got "
-                f"source_policy_resolvable="
-                f"{warning_fields['source_policy_resolvable']!r}"
+            assert (
+                EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE
+                <= set(warning_fields["source_unavailable"])
+            ), (
+                f"01113 expected {EXPECTED_01113_EXTRA_SOURCE_UNAVAILABLE} in "
+                f"source_unavailable (Phase H2.4 #1 market-scoped derivation: "
+                f"CN derivation no longer runs for HK records, so SGA is "
+                f"cleanly missing rather than blocked); got "
+                f"source_unavailable={warning_fields['source_unavailable']!r}"
             )
 
 

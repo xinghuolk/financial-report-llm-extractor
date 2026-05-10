@@ -127,8 +127,18 @@ def map_source_inventory(
     for field_id, entry in catalog.entries.items():
         mapped[field_id] = _map_direct_field(entry, records)
 
+    # Phase H2.4 #1: derivation may be market-scoped to avoid leaking a
+    # CN-specific derivation into HK runs (which would always emit a
+    # spurious "derivation input not present" blocked status). When records
+    # are present we use their market; if records is empty no derivation
+    # can fire anyway.
+    record_market = records[0].market if records else None
     for field_id, entry in catalog.entries.items():
         if not entry.derivation or mapped[field_id].status != "missing":
+            continue
+        if entry.derivation_markets and record_market not in entry.derivation_markets:
+            # Skip derivation: it doesn't apply to this market. Leave the
+            # field as missing so downstream policy can classify cleanly.
             continue
         mapped[field_id] = _derive_field(entry, mapped, records)
 
@@ -375,16 +385,26 @@ def _resolve_derivation_operand(
         return None, f"derivation input has multiple records: {operand}"
 
     rec = matches[0]
-    canonical = rec.currency if rec.currency not in {"unknown", "ambiguous"} else None
+    # Phase H2.4 #2: route through normalize_money so unit_multiplier is
+    # respected (千元/million/etc). Pre-fix we set value+normalized_value
+    # both to parsed_numeric_value, which silently dropped the multiplier.
+    try:
+        rec.validate()
+        money = normalize_money(
+            str(rec.raw_value),
+            unit_context=f"{rec.currency} {rec.unit}",
+        )
+    except (ValueError, MoneyNormalizationError) as exc:
+        return None, f"derivation input normalization failed: {operand} ({exc})"
     return (
         MappedTurtleField(
             field_id=operand,
             status="present",
-            value=rec.parsed_numeric_value,
-            normalized_value=rec.parsed_numeric_value,
+            value=money.value,
+            normalized_value=money.normalized_value,
             currency=rec.currency,
             unit=rec.unit,
-            canonical_unit=canonical,
+            canonical_unit=money.normalized_unit,
             period=rec.period,
             scope=rec.scope,
             source_evidence=rec.source_evidence,

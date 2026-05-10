@@ -1053,6 +1053,7 @@
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
       "derivation": "akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE",
+      "derivation_markets": ["CN"],
       "source_aliases": {
         "akshare": [],
         "yahoo": [],

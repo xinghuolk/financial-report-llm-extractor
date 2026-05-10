@@ -293,6 +293,23 @@ def _build_item(
         warnings = policy_item.warnings
         selected_source = candidate.source
 
+    # Phase H2.4 #3: derived clean_present rows (status="present" via the
+    # derived branch in source_policy) carry no selected_candidate, so the
+    # block above leaves selected_source=None. Fall back to the underlying
+    # source_evidence: when all evidence shares a single provider (the
+    # derivation's operand provider), surface that as selected_source so
+    # reviewers can audit the derivation source. Multi-provider derivations
+    # are rejected at the mapping layer (mapping.py:271-279), so this stays
+    # deterministic.
+    if (
+        selected_source is None
+        and status == "present"
+        and source_evidence
+    ):
+        evidence_sources = {ev.source for ev in source_evidence}
+        if len(evidence_sources) == 1:
+            selected_source = next(iter(evidence_sources))
+
     if status == "present" and profile == "pdf_required" and not pdf_evidence:
         status = "needs_pdf_evidence"
         warnings = warnings + ("pdf evidence is required by export profile",)

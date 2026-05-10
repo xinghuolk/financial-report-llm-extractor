@@ -140,6 +140,7 @@ class SourceMappingEntry:
     scope_expectation: str = "unknown"
     pdf_aliases: tuple[str, ...] = field(default_factory=tuple)
     derivation: str | None = None
+    derivation_markets: tuple[str, ...] = field(default_factory=tuple)
     fallback_policy: str = "pdf_allowed"
     source_policy: SourcePolicy | None = None
     null_means_zero: bool = False
@@ -293,6 +294,9 @@ def load_source_mapping_catalog(
             scope_expectation=mapping.get("scope_expectation", "unknown"),
             pdf_aliases=tuple(str(alias) for alias in mapping.get("pdf_aliases", [])),
             derivation=mapping.get("derivation"),
+            derivation_markets=tuple(
+                str(m) for m in mapping.get("derivation_markets", ()) or ()
+            ),
             fallback_policy=mapping.get("fallback_policy", "pdf_allowed"),
             source_policy=_parse_source_policy(mapping.get("source_policy")),
             null_means_zero=bool(mapping.get("null_means_zero", False)),
