@@ -87,12 +87,13 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 优先阅读 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）。
 
-**当前覆盖率（live evaluate-company）**：
-- **CN 600519/2024**: P0+P1 33/33 (100%) clean ✓；总 39/56 (70%)；P2 4/9, P3 2/14（+ LLM supplement 5 → 44/56=79%）
-- **HK 00001/2025**: 28/56 (50%) + 1 terminal；P0 15/22, P1 5/11
-- **HK 01113/2025**: 29/56 (52%)；P0 15/22, P1 6/11
+**当前覆盖率（live evaluate-company，post-H2.4 + Phase HK-LLM-2 verified）**：
+- **CN 600519/2024**: source-first 39/56 (70%) clean → **+LLM 44/56 (79%)** ✓ regression-locked
+- **HK 00001/2025**: source-first 28/56 (50%) + 1 terminal → **+LLM 33/56 (59%)** ✓ regression-locked
+- **HK 01113/2025**: source-first 29/56 (52%) → **+LLM 33/56 (59%)** ✓ regression-locked
 - **Sample-verified breadth**: 4 CN 公司 × 4 promotion 字段 = 16 EXACT match samples
-- **HK LLM**: 33/84 hits, 0 extraction_failed
+- **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
+- **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）
 
 下一步候选：Phase H2.3（CN bank interest_paid_cash + HK 01113 SGA + fixture 持久化）、Phase HK-coverage（HK fixture/catalog 50% clean 提升）、合并到 main、或新阶段。
 
