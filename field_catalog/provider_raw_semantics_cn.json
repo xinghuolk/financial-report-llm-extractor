@@ -23,6 +23,7 @@
           "expected_provider_raw_value": "170899152276.34",
           "pdf_page": "consolidated_income_statement",
           "pdf_value": "170,899,152,276.34",
+          "period_end": "2024-12-31",
           "provider_ticker": "600519",
           "reported_currency": "CNY",
           "reported_unit": "yuan",
@@ -33,6 +34,7 @@
         {
           "company_id": "300750",
           "currency": "CNY",
+          "expected_provider_raw_value": "423701834000.0",
           "matches_raw_value": true,
           "matches_raw_value_reason": "PDF reports 423,701,834 in 千元 = 423,701,834,000 yuan; matches AKShare OPERATE_INCOME EXACT",
           "pdf_page": "consolidated_income_statement",
@@ -42,6 +44,7 @@
         {
           "company_id": "601919",
           "currency": "CNY",
+          "expected_provider_raw_value": "219503805222.7",
           "matches_raw_value": true,
           "pdf_page": "consolidated_income_statement",
           "pdf_value": "219,503,805,222.70",
@@ -50,6 +53,7 @@
         {
           "company_id": "688008",
           "currency": "CNY",
+          "expected_provider_raw_value": "5456316783.63",
           "matches_raw_value": true,
           "pdf_page": "consolidated_income_statement",
           "pdf_value": "5,456,316,783.63",
@@ -79,6 +83,7 @@
           "expected_provider_raw_value": "119688579453.23",
           "pdf_page": "consolidated_income_statement",
           "pdf_value": "119,688,579,453.23",
+          "period_end": "2024-12-31",
           "provider_ticker": "600519",
           "reported_currency": "CNY",
           "reported_unit": "yuan",
@@ -89,6 +94,7 @@
         {
           "company_id": "300750",
           "currency": "CNY",
+          "expected_provider_raw_value": "89518636000.0",
           "matches_raw_value": true,
           "matches_raw_value_reason": "PDF in 千元 (89,518,636) = 89.5B yuan; AKShare OPERATE_PROFIT EXACT",
           "pdf_page": "consolidated_income_statement",
@@ -98,6 +104,7 @@
         {
           "company_id": "601919",
           "currency": "CNY",
+          "expected_provider_raw_value": "42039041074.21",
           "matches_raw_value": true,
           "pdf_page": "consolidated_income_statement",
           "pdf_value": "42,039,041,074.21",
@@ -106,6 +113,7 @@
         {
           "company_id": "688008",
           "currency": "CNY",
+          "expected_provider_raw_value": "2321777105.55",
           "matches_raw_value": true,
           "pdf_page": "consolidated_income_statement",
           "pdf_value": "2,321,777,105.55",
@@ -121,6 +129,10 @@
     {
       "allowed_as_primary": false,
       "classification": "provider_semantics_sample_verified",
+      "derivation_legs": [
+        "MANAGE_EXPENSE",
+        "SALE_EXPENSE"
+      ],
       "market": "CN",
       "negative_examples": [
         "MANAGE_EXPENSE alone (管理费用 only, missing 销售费用)",
@@ -154,6 +166,7 @@
         {
           "company_id": "300750",
           "currency": "CNY",
+          "expected_provider_raw_value": "15401859000.0",
           "matches_raw_value": true,
           "matches_raw_value_reason": "PDF 销售费用 3,735,118 + 管理费用 11,666,741 (千元) = 15,401,859,000 yuan; AKShare SALE_EXPENSE+MANAGE_EXPENSE EXACT",
           "pdf_page": "consolidated_income_statement_components",
@@ -163,6 +176,7 @@
         {
           "company_id": "601919",
           "currency": "CNY",
+          "expected_provider_raw_value": "9068892182.91",
           "matches_raw_value": true,
           "matches_raw_value_reason": "PDF 销售费用 825,422,692.68 + 管理费用 8,243,469,490.23 = 9,068,892,182.91; AKShare SALE+MANAGE EXACT",
           "pdf_page": "consolidated_income_statement_components",
@@ -172,6 +186,7 @@
         {
           "company_id": "688008",
           "currency": "CNY",
+          "expected_provider_raw_value": "646516503.40",
           "matches_raw_value": true,
           "matches_raw_value_reason": "PDF 销售费用 120,228,658.51 + 管理费用 526,287,844.89 = 646,516,503.40; AKShare SALE+MANAGE EXACT",
           "pdf_page": "consolidated_income_statement_components",
