@@ -122,6 +122,7 @@ def build_source_policy_report(
             entry,
             mapped_field,
             market=market,
+            company_id=company_id,
             reconciliation_status=reconciliation_status,
             fx_like=field_id in ratio_fields,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
@@ -151,6 +152,7 @@ def _resolve_field(
     field: MappedTurtleField,
     *,
     market: str | None,
+    company_id: str | None = None,
     reconciliation_status: ReconciliationStatus | None,
     fx_like: bool,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
@@ -174,6 +176,7 @@ def _resolve_field(
             entry,
             field,
             market,
+            company_id,
             reconciliation_status,
             hk_yahoo_trust_policy,
             provider_semantics_catalog,
@@ -213,6 +216,7 @@ def _resolve_field(
             field.field_id,
             candidate,
             market=market,
+            company_id=company_id,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
             provider_semantics_catalog=provider_semantics_catalog,
         ):
@@ -243,6 +247,7 @@ def _resolve_field(
                 reconciliation_status=reconciliation_status,
             ),
             market=market,
+            company_id=company_id,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
             provider_semantics_catalog=provider_semantics_catalog,
         )
@@ -255,6 +260,7 @@ def _resolve_field(
                 reconciliation_status=reconciliation_status,
             ),
             market=market,
+            company_id=company_id,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
             provider_semantics_catalog=provider_semantics_catalog,
         )
@@ -278,6 +284,7 @@ def _resolve_field(
                 reconciliation_status=reconciliation_status,
             ),
             market=market,
+            company_id=company_id,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
             provider_semantics_catalog=provider_semantics_catalog,
         )
@@ -294,6 +301,7 @@ def _resolve_single_source(
     entry: SourceMappingEntry,
     field: MappedTurtleField,
     market: str | None,
+    company_id: str | None,
     reconciliation_status: ReconciliationStatus | None,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
     provider_semantics_catalog: ProviderSemanticsCatalog | None,
@@ -309,6 +317,7 @@ def _resolve_single_source(
             field.field_id,
             candidate,
             market=market,
+            company_id=company_id,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
             provider_semantics_catalog=provider_semantics_catalog,
         ):
@@ -331,6 +340,7 @@ def _resolve_single_source(
                 reconciliation_status=reconciliation_status,
             ),
             market=market,
+            company_id=company_id,
             hk_yahoo_trust_policy=hk_yahoo_trust_policy,
             provider_semantics_catalog=provider_semantics_catalog,
         )
@@ -352,6 +362,7 @@ def _resolve_single_source(
             reconciliation_status=reconciliation_status,
         ),
         market=market,
+        company_id=company_id,
         hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         provider_semantics_catalog=provider_semantics_catalog,
     )
@@ -382,6 +393,7 @@ def _apply_hk_yahoo_trust_policy(
     item: SourcePolicyItem,
     *,
     market: str | None,
+    company_id: str | None = None,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
     provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> SourcePolicyItem:
@@ -390,6 +402,7 @@ def _apply_hk_yahoo_trust_policy(
         item.field_id,
         candidate,
         market=market,
+        company_id=company_id,
         hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         provider_semantics_catalog=provider_semantics_catalog,
     ):
@@ -443,6 +456,7 @@ def _can_apply_hk_yahoo_trust_policy(
     candidate: TurtleMappingCandidate | None,
     *,
     market: str | None,
+    company_id: str | None = None,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
     provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> bool:
@@ -460,6 +474,7 @@ def _can_apply_hk_yahoo_trust_policy(
         or candidate.unit != rule.trusted_unit
         or candidate.canonical_unit != rule.trusted_currency
         or candidate.unit_multiplier != rule.trusted_unit_multiplier
+        or not rule.applies_to_company(company_id)
     ):
         return False
     if provider_semantics_catalog is None:
@@ -492,6 +507,7 @@ def _apply_trust_policies(
     item: SourcePolicyItem,
     *,
     market: str | None,
+    company_id: str | None = None,
     hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
     provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> SourcePolicyItem:
@@ -501,16 +517,24 @@ def _apply_trust_policies(
     candidate; HK trust policy fires first (HK Yahoo specific), provider
     semantics promotion fires second (CN AKShare and any other market with a
     provider_semantics_sample_verified rule).
+
+    `company_id` propagates from `build_source_policy_report` so HK Yahoo
+    trust rules with `pdf_verified_company_ids` allowlists can gate promotion
+    per issuer (Phase HK-B.5 follow-up — avoids broad promotion when the
+    Yahoo HK adapter's hardcoded HKD currency label misrepresents a non-HKD
+    issuer's reporting currency).
     """
     item = _apply_hk_yahoo_trust_policy(
         item,
         market=market,
+        company_id=company_id,
         hk_yahoo_trust_policy=hk_yahoo_trust_policy,
         provider_semantics_catalog=provider_semantics_catalog,
     )
     item = _apply_provider_semantics_promotion(
         item,
         market=market,
+        company_id=company_id,
         provider_semantics_catalog=provider_semantics_catalog,
     )
     return _apply_provider_semantics_unverified_warning(
@@ -606,6 +630,7 @@ def _apply_provider_semantics_promotion(
     item: SourcePolicyItem,
     *,
     market: str | None,
+    company_id: str | None = None,
     provider_semantics_catalog: ProviderSemanticsCatalog | None,
 ) -> SourcePolicyItem:
     if provider_semantics_catalog is None or market is None:
@@ -625,6 +650,7 @@ def _apply_provider_semantics_promotion(
         semantics_rule is None
         or not semantics_rule.allowed_as_primary
         or semantics_rule.classification != "provider_semantics_sample_verified"
+        or not semantics_rule.applies_to_company(company_id)
     ):
         return item
 

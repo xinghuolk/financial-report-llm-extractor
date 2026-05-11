@@ -128,7 +128,8 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "09987" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "09987"
             / "llm_evidence_supplement.json",
-        30, 33,  # Phase HK-B.5: acct_payable now clean → baseline +1, total +1
+        29, 32,  # HK-B.5 follow-up: 09987 excluded from acct_payable promotion
+                  # (USD reporter, adapter currency-label mismatch); back to baseline.
         ("lease_liability_maturity", "segment_revenue_profit",
          "time_deposits_or_wealth_products"),
     ),

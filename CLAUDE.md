@@ -89,18 +89,18 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 随后查阅 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）。
 
-**当前覆盖率（live evaluate-company，post-H2.4 + Phase HK-LLM-2/C + Phase MX + Phase HK-B.5 verified）**：
+**当前覆盖率（live evaluate-company，post-H2.4 + HK-LLM-2/C + MX + HK-B.5 + currency-label follow-up verified）**：
 - **CN 600519/2024**: source-first 39/56 (70%) clean → **+LLM 44/56 (79%)** ✓ regression-locked
-- **HK 00001/2025**: source-first 29/56 (52%) + 1 terminal → **+LLM 34/56 (61%)** ✓ regression-locked (+1 from HK-B.5 acct_payable)
-- **HK 01113/2025**: source-first 30/56 (54%) → **+LLM 34/56 (61%)** ✓ regression-locked (+1 from HK-B.5)
-- **HK 01810/02498/06862**: source-first 32/32/33 clean (selected_source for acct_payable flipped akshare→yahoo) → **+LLM 39/37/38** ✓ regression-locked
-- **HK 09987/2024**: source-first 30/56 (54%) → **+LLM 33/56 (59%)** ✓ regression-locked (+1 from HK-B.5)
+- **HK 00001/2025**: source-first 29/56 (52%) + 1 terminal → **+LLM 34/56 (61%)** ✓ (+1 from HK-B.5 acct_payable，HKD reporter)
+- **HK 01113/2025**: source-first 30/56 (54%) → **+LLM 34/56 (61%)** ✓ (+1 from HK-B.5，HKD reporter)
+- **HK 01810/02498/06862**: source-first 32/32/33 clean (selected_source for acct_payable 由 akshare 翻到 yahoo；value 不变；HKD label 与实际 RMB reporting 不符是 pre-existing adapter debt) → **+LLM 39/37/38**
+- **HK 09987/2024**: source-first 29/56 (52%) → **+LLM 32/56 (57%)** ✓ — acct_payable 留在 unresolved_conflict（USD reporter + Yahoo HK adapter HKD hardcode 会输出错币种 claim；待 adapter 修复后 promote）
 - **Sample-verified breadth**: 4 CN 公司 × 4 promotion 字段 = 16 EXACT match samples
 - **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
 - **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）
 - **Catalog verification** (Phase MX + Phase HK-B.5, 2026-05-11): coverage_matrix verified 24/62 → **36/62** (+12)；详情见 roadmap Phase MX + HK-B.5 Implementation Result
 
-下一步候选：Phase HK-B 后续决策（四个字段形态均已锁住：`acct_payable` / `fix_assets` / `accounts_receiv` / `gross_profit`，见 `tests/test_phase_hk_b_*.py` 与 `docs/phase_hk_b_recon.md`）。下一步应决定是否对 `acct_payable` 或 `fix_assets` 做 sample-scoped provider policy；`accounts_receiv` 和 `gross_profit` 继续保守，除非补到更强 provider semantics proof。也可选择合并到 main。
+下一步候选：HK-B.5 已闭 `acct_payable`（5 HK promotion + 09987 deferred 待 Yahoo HK adapter 修币种 stamp）；同样配方可复用到 `fix_assets`（HK-B.2 形态已锁）。或者先做 Yahoo HK adapter currency-label adapter 修复（影响所有 HK Yahoo 字段的下游 currency claim 正确性），这是 §7 follow-up 优先级最高的一项。也可选择合并到 main。
 
 `docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 

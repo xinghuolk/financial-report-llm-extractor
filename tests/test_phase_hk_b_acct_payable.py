@@ -109,11 +109,22 @@ CASES = [
         Decimal("1796362000.0"),
         (("akshare", "1796362000.0"), ("yahoo", "1796362000.0")),
     ),
+    # 09987 deliberately stays unresolved_conflict despite Yahoo matching PDF
+    # ($801M USD). Yum China reports in USD but the Yahoo HK adapter hardcodes
+    # currency=HKD on the inventory record. Promoting 09987 would emit
+    # "801000000 HKD" as clean which is a wrong-currency claim (actual value
+    # is $801M USD). The `pdf_verified_company_ids` allowlist on both the
+    # trust policy rule and the provider semantics rule excludes 09987 until
+    # the Yahoo HK adapter is fixed to detect issuer reporting currency (see
+    # roadmap §7 follow-up). The market_policy still selects Yahoo as primary
+    # candidate so the export records selected_source=yahoo + value, but the
+    # bucket stays unresolved_conflict — downstream consumers must gate on
+    # bucket.
     (
         "09987",
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "09987" / "source_inventory.jsonl.gz",
-        "clean_present",
+        "unresolved_conflict",
         "yahoo",
         Decimal("801000000.0"),
         (("akshare", "14951872000.0"), ("yahoo", "801000000.0")),

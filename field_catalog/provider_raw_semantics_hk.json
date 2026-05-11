@@ -509,7 +509,14 @@
       "trusted_currency": "HKD",
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
-      "turtle_field_id": "acct_payable"
+      "turtle_field_id": "acct_payable",
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862"
+      ]
     }
   ]
 }

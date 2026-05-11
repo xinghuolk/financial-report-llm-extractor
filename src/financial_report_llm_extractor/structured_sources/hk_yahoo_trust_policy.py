@@ -101,6 +101,13 @@ class HkYahooTrustRule:
     definition_status_reason: str | None = None
     required_proof: str | None = None
     samples: tuple[HkYahooTrustSample, ...] = field(default_factory=tuple)
+    # Phase HK-B.5 follow-up: when non-None, the trust rule only applies to
+    # the listed issuers. Used when adapter-stamped currency (HKD) does not
+    # match the issuer's actual reporting currency for some HK issuers but
+    # not others, so broad promotion would expose wrong-currency claims for
+    # the affected subset. Unlisted HK issuers fall back to unresolved_conflict
+    # rather than getting silently promoted.
+    pdf_verified_company_ids: tuple[str, ...] | None = None
 
     def validate(
         self,
@@ -141,6 +148,20 @@ class HkYahooTrustRule:
 
     def is_pdf_verified(self) -> bool:
         return self.classification == "yahoo_pdf_verified"
+
+    def applies_to_company(self, company_id: str | None) -> bool:
+        """Phase HK-B.5 follow-up: gate field-level rules by per-issuer allowlist.
+
+        When ``pdf_verified_company_ids`` is None the rule applies to every HK
+        issuer (legacy broad behavior). When set, the rule applies only to
+        listed issuers — unlisted issuers fall through to the field's normal
+        conflict path. ``company_id=None`` is treated as not in any allowlist.
+        """
+        if self.pdf_verified_company_ids is None:
+            return True
+        if company_id is None:
+            return False
+        return company_id in self.pdf_verified_company_ids
 
     def build_policy_evidence(self) -> dict[str, object]:
         self.validate()
@@ -244,6 +265,9 @@ def _parse_rule(payload: object) -> HkYahooTrustRule:
         samples=tuple(
             _parse_sample(sample) for sample in _optional_list(rule, "samples")
         ),
+        pdf_verified_company_ids=_optional_string_tuple(
+            rule, "pdf_verified_company_ids"
+        ),
     )
 
 
@@ -300,3 +324,14 @@ def _optional_str(payload: dict[str, object], key: str) -> str | None:
     if not isinstance(value, str):
         raise ValueError(f"{key} must be a string")
     return value
+
+
+def _optional_string_tuple(
+    payload: dict[str, object], key: str
+) -> tuple[str, ...] | None:
+    if key not in payload or payload[key] is None:
+        return None
+    value = payload[key]
+    if not isinstance(value, list):
+        raise ValueError(f"{key} must be a list or null")
+    return tuple(str(item) for item in value)

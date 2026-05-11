@@ -31,8 +31,9 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
     ]
 
     # Phase H1: +2 samples from inventories (00001, 01113).
-    # Phase HK-B.5: +6 samples from acct_payable (all 6 HK companies).
-    assert len(verified_samples) == 20
+    # Phase HK-B.5: +5 acct_payable samples (5 issuers; 09987 USD reporter
+    # is excluded from promotion via pdf_verified_company_ids allowlist).
+    assert len(verified_samples) == 19
     assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
     assert policy.rule_for_field("revenue") is not None
     assert policy.is_pdf_verified("revenue") is True

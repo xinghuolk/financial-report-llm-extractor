@@ -53,16 +53,47 @@ AKShare `应付帐款` for the 3 conflict cases:
 In all 3 conflict cases, AKShare returns a broader/different scope than PDF
 pure trade payables. Yahoo's scope is correct.
 
-## Yahoo HK Currency Label Quirk (noted, not fixed)
+## Yahoo HK Currency Label Quirk + Allowlist Mitigation
 
-Yahoo HK adapter hardcodes `currency=HKD` for all HK issuers in the inventory
-record, regardless of the issuer's actual reporting currency. The raw values
-themselves are the issuer's reported figures (98M RMB raw stays labeled HKD,
-$801M USD raw stays labeled HKD). The trust policy mechanism keys off the
-inventory label so this works architecturally, but future readers should know
-the currency stamp is provider-adapter-driven, not issuer-reporting-driven.
-The HK-B.5 trust policy samples document the actual `reported_currency`
-per issuer (`HKD` / `RMB` / `USD`) so the underlying truth is preserved.
+Yahoo HK adapter hardcodes `currency=HKD` for every HK issuer in the inventory
+record (`source_inventory_fetch.py`), regardless of the issuer's actual
+reporting currency. Raw values themselves are the issuer's reported figures —
+e.g. 98,280,585,000 RMB stays labeled HKD, $801M USD stays labeled HKD.
+Cumulative review (2026-05-11) flagged this as a High-severity data-quality
+risk: promoting via the trust policy makes the inventory's HKD label the
+exported currency, so for the non-HKD issuers a clean_present claim would
+emit a wrong-currency value downstream.
+
+For 09987 (Yum China, USD reporter) the wrong-currency claim would be a NEW
+regression introduced by HK-B.5 — the field was previously `unresolved_conflict`
+(no claim made). For 01810/02498/06862 (RMB issuers), the wrong HKD label
+is pre-existing: those records were already clean_present via AKShare with
+the same HKD hardcode in `PandasAkshareClient`, so HK-B.5 doesn't worsen
+them. For 00001/01113 (HKD issuers), the label is correct.
+
+**Mitigation (Phase HK-B.5 follow-up)**: per-issuer allowlist on both the
+trust policy rule and the provider semantics rule:
+
+- `HkYahooTrustRule.pdf_verified_company_ids: tuple[str, ...] | None`
+  (`hk_yahoo_trust_policy.py`) — when set, the rule only fires for listed
+  issuers.
+- `ProviderSemanticsRule.pdf_verified_company_ids: tuple[str, ...] | None`
+  (`provider_semantics.py`) — parallel check; both must allow the issuer
+  before promotion fires.
+- `_can_apply_hk_yahoo_trust_policy` + `_apply_provider_semantics_promotion`
+  now thread `company_id` and call `rule.applies_to_company(company_id)`
+  before promoting.
+
+The `acct_payable` rule sets
+`pdf_verified_company_ids = ("00001", "01113", "01810", "02498", "06862")`,
+excluding 09987. The 09987 PDF match is documented in recon (this file)
+but doesn't appear in the trust policy `samples` since samples reflect
+active promotion scope.
+
+The architectural Yahoo HK adapter fix (detect issuer reporting currency
+and stamp inventory accordingly) is recorded as a §7 roadmap follow-up.
+Once the adapter is fixed, 09987 can be added to the allowlist and
+01810/02498/06862 will have correct RMB labels.
 
 ## Implementation
 
@@ -99,16 +130,20 @@ The promotion mechanism is the existing source_policy chain:
 | `test_provider_baseline_replay.py` | Added `acct_payable` to `EXPECTED_HK_YAHOO_VERIFIED_FIELDS` (8→9) and to `expected_clean_by_company` for 00001 (26→27) and 01113 (28→29). |
 | `test_hk_yahoo_trust_policy.py` | Verified samples count 14→20 (+6 from acct_payable). |
 
-## Coverage Impact
+## Coverage Impact (after currency-label allowlist mitigation)
 
 - Matrix verification: 35/62 → **36/62** verified (acct_payable promoted).
-- HK 00001/2025 source-first: 28/56 → **29/56** clean (50% → 52%).
-- HK 01113/2025 source-first: 29/56 → **30/56** clean (52% → 54%).
-- HK 09987/2024 source-first: 29/56 → **30/56** clean (52% → 54%).
+- HK 00001/2025 source-first: 28/56 → **29/56** clean (50% → 52%). HKD reporter.
+- HK 01113/2025 source-first: 29/56 → **30/56** clean (52% → 54%). HKD reporter.
+- HK 09987/2024 source-first: 29/56 **unchanged** — acct_payable held in
+  `unresolved_conflict` despite PDF match (USD reporter; Yahoo HK adapter
+  HKD hardcode would produce wrong-currency claim).
 - HK 01810/02498/06862 source-first: unchanged (already clean, just
-  selected_source flipped akshare → yahoo).
+  selected_source flipped akshare → yahoo; HKD label on RMB raw value
+  is pre-existing adapter debt unchanged by HK-B.5).
 - CN 600519/2024: unchanged (no CN market_policy — AKShare path preserved).
-- Total: **+3 HK clean cells**.
+- Total: **+2 HK clean cells** (down from naive +3 once 09987 was excluded
+  via per-issuer allowlist to prevent wrong-currency clean claim).
 
 ## What This Replicates
 

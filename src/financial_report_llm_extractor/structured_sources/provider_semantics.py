@@ -26,6 +26,19 @@ class ProviderSemanticsRule:
     proof_origin: str
     samples: tuple[dict[str, Any], ...]
     required_proof: tuple[str, ...]
+    # Phase HK-B.5 follow-up: optional per-issuer allowlist. When non-None,
+    # the rule's `allowed_as_primary` promotion only applies to listed
+    # issuers. Mirrors `HkYahooTrustRule.pdf_verified_company_ids` so trust
+    # policy + semantics promotion stay in lockstep when one issuer has
+    # adapter currency-label divergence that excludes it from clean promotion.
+    pdf_verified_company_ids: tuple[str, ...] | None = None
+
+    def applies_to_company(self, company_id: str | None) -> bool:
+        if self.pdf_verified_company_ids is None:
+            return True
+        if company_id is None:
+            return False
+        return company_id in self.pdf_verified_company_ids
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any], index: int) -> ProviderSemanticsRule:
@@ -71,6 +84,9 @@ class ProviderSemanticsRule:
             proof_origin=_required_str(raw, "proof_origin", index),
             samples=_dict_tuple(raw, "samples", index),
             required_proof=_str_tuple(raw, "required_proof", index),
+            pdf_verified_company_ids=_optional_string_tuple(
+                raw, "pdf_verified_company_ids", index
+            ),
         )
         rule.validate()
         return rule
@@ -202,5 +218,21 @@ def _dict_tuple(raw: dict[str, Any], key: str, index: int) -> tuple[dict[str, An
     if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
         raise ValueError(
             f"provider semantics rule {index} key {key} must be a list of objects"
+        )
+    return tuple(value)
+
+
+def _optional_string_tuple(
+    raw: dict[str, Any], key: str, index: int
+) -> tuple[str, ...] | None:
+    if key not in raw or raw[key] is None:
+        return None
+    value = raw[key]
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and item for item in value
+    ):
+        raise ValueError(
+            f"provider semantics rule {index} key {key} "
+            "must be null or a list of non-empty strings"
         )
     return tuple(value)
