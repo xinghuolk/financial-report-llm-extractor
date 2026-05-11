@@ -42,6 +42,13 @@ CATALOG = REPO / "field_catalog" / "turtle_v015_source_mapping_minimal.json"
 TAXONOMY = REPO / "field_catalog" / "turtle_v015_field_taxonomy.json"
 DUMMY_PDF = REPO / "downloads" / "hk_stocks" / "01113" / "annual" / "2024_annual_en.pdf"
 DUMMY_LLM_CONFIG = REPO / "tmp" / "llm_configs" / "deepseek.json"
+HK_LLM_6_EXTENSION_FIXTURE = (
+    REPO
+    / "tests"
+    / "fixtures"
+    / "provider_captures"
+    / "provider_field_baseline_hk_llm_6_extension"
+)
 
 
 @pytest.fixture
@@ -84,6 +91,46 @@ CASES = [
         29, 33,
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "dps"),
+    ),
+    (
+        "01810", "HK", date(2024, 12, 31),
+        HK_LLM_6_EXTENSION_FIXTURE / "01810" / "source_inventory.jsonl.gz",
+        REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "01810"
+            / "llm_evidence_supplement.json",
+        32, 39,
+        ("bad_debt_provision", "buyback_cancellation_progress",
+         "contingent_liabilities_commitments", "dividend_plan",
+         "lease_liability_maturity", "receivables_aging",
+         "segment_revenue_profit"),
+    ),
+    (
+        "02498", "HK", date(2024, 12, 31),
+        HK_LLM_6_EXTENSION_FIXTURE / "02498" / "source_inventory.jsonl.gz",
+        REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "02498"
+            / "llm_evidence_supplement.json",
+        32, 37,
+        ("bad_debt_provision", "contingent_liabilities_commitments",
+         "dividend_plan", "related_party_receivables_payables",
+         "time_deposits_or_wealth_products"),
+    ),
+    (
+        "06862", "HK", date(2024, 12, 31),
+        HK_LLM_6_EXTENSION_FIXTURE / "06862" / "source_inventory.jsonl.gz",
+        REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "06862"
+            / "llm_evidence_supplement.json",
+        33, 38,
+        ("bad_debt_provision", "contingent_liabilities_commitments",
+         "dividend_plan", "related_party_receivables_payables",
+         "time_deposits_or_wealth_products"),
+    ),
+    (
+        "09987", "HK", date(2024, 12, 31),
+        HK_LLM_6_EXTENSION_FIXTURE / "09987" / "source_inventory.jsonl.gz",
+        REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "09987"
+            / "llm_evidence_supplement.json",
+        29, 32,
+        ("lease_liability_maturity", "segment_revenue_profit",
+         "time_deposits_or_wealth_products"),
     ),
 ]
 
