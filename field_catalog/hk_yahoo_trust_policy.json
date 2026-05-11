@@ -44,7 +44,79 @@
           "expected_yahoo_raw_value": "57935000000",
           "yahoo_raw_field": "Total Revenue",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value"
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 244,
+          "statement_name": "Consolidated Statement of Comprehensive Income",
+          "statement_line": "Revenue",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "365906350",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "365906350000",
+          "yahoo_raw_field": "Total Revenue",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated income statement total Revenue line; Xiaomi reports in RMB '000."
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 130,
+          "statement_name": "Consolidated Statement of Profit or Loss",
+          "statement_line": "Revenue",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "1648902",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "1648902000",
+          "yahoo_raw_field": "Total Revenue",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated P&L Revenue line; RMB '000 reporter (RoboSense)."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 165,
+          "statement_name": "Consolidated Statement of Profit or Loss",
+          "statement_line": "Revenue / 收入",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "42754687",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "42754687000",
+          "yahoo_raw_field": "Total Revenue",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated P&L Revenue line (Note 5); RMB '000 reporter."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 110,
+          "statement_name": "Consolidated Statement of Income / Operating Segments",
+          "statement_line": "Total revenues",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "11303",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "11303000000",
+          "yahoo_raw_field": "Total Revenue",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yum China 2024 Total revenues line; US$ reporter."
         }
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
       ]
     },
     {
@@ -329,7 +401,79 @@
           "expected_yahoo_raw_value": "10847000000",
           "yahoo_raw_field": "Net Income Common Stockholders",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; excludes non-controlling interests and perpetual capital securities where disclosed"
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 286,
+          "statement_name": "Notes — Earnings per share / Equity attributable",
+          "statement_line": "Net profit attributable to the owners of the Company",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "23658126",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "23658126000",
+          "yahoo_raw_field": "Net Income Common Stockholders",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yahoo NICS matches PDF 'attributable to owners' (excludes minority interest); RMB '000 reporter."
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 130,
+          "statement_name": "Consolidated Statement of Profit or Loss",
+          "statement_line": "(Loss)/profit attributable to Owners of the Company",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "-481827",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "-481827000",
+          "yahoo_raw_field": "Net Income Common Stockholders",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yahoo NICS matches PDF 'attributable to Owners' (-481,827 K RMB; PDF top-line 'Net loss' is -481,805 K RMB, differs by RMB 22 K non-controlling interest which Yahoo excludes)."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 174,
+          "statement_name": "Consolidated Statement of Profit or Loss / 本公司擁有人",
+          "statement_line": "Owners of the Company",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "4708084",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "4708084000",
+          "yahoo_raw_field": "Net Income Common Stockholders",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; PDF 'Owners of the Company' line in P&L appropriation note; RMB '000 reporter."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 110,
+          "statement_name": "Consolidated Statement of Income",
+          "statement_line": "Net income (excluding noncontrolling interests)",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "911",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "911000000",
+          "yahoo_raw_field": "Net Income Common Stockholders",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yum China 2024 Net income = $980M total - $69M NCI = $911M attributable."
         }
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
       ]
     },
     {

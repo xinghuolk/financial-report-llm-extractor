@@ -92,19 +92,18 @@ CASES = [
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "dps"),
     ),
-    # Phase HK-B.5.2: fixture currency-label backfill removed pre-existing
-    # wrong-HKD promotions for non-HKD issuers (revenue/net_profit etc. were
-    # accidentally clean via HKD trust policy; now correctly unresolved
-    # because trust rules for those fields are HKD-only). acct_payable was
-    # added to the multi-currency trust rule so it stays clean for all 6
-    # HK issuers including 09987 (post-USD label). Net baseline drop of
-    # ~2 per non-HKD issuer; total = baseline + LLM supplement count.
+    # Phase HK-B.5.3: revenue + net_profit trust rules extended to
+    # multi-currency (HKD + CNY + USD) with PDF spot-check across all 6
+    # HK issuers — recovers the 8 mirage cells that HK-B.5.2 backfill
+    # legitimately removed. Net baseline restored to pre-mirage-correction
+    # levels (32/32/33/30) but now backed by honest currency labels +
+    # explicit PDF-verified samples.
     (
         "01810", "HK", date(2024, 12, 31),
         HK_LLM_6_EXTENSION_FIXTURE / "01810" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "01810"
             / "llm_evidence_supplement.json",
-        30, 37,
+        32, 39,
         ("bad_debt_provision", "buyback_cancellation_progress",
          "contingent_liabilities_commitments", "dividend_plan",
          "lease_liability_maturity", "receivables_aging",
@@ -115,7 +114,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "02498" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "02498"
             / "llm_evidence_supplement.json",
-        30, 35,
+        32, 37,
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "related_party_receivables_payables",
          "time_deposits_or_wealth_products"),
@@ -125,7 +124,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "06862" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "06862"
             / "llm_evidence_supplement.json",
-        31, 36,
+        33, 38,
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "related_party_receivables_payables",
          "time_deposits_or_wealth_products"),
@@ -135,7 +134,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "09987" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "09987"
             / "llm_evidence_supplement.json",
-        28, 31,
+        30, 33,
         ("lease_liability_maturity", "segment_revenue_profit",
          "time_deposits_or_wealth_products"),
     ),

@@ -89,21 +89,21 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 随后查阅 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）。
 
-**当前覆盖率（live evaluate-company，post-H2.4 + HK-LLM-2/C + MX + HK-B.5 + HK-B.5.1/.5.2 currency-label fix verified）**：
+**当前覆盖率（live evaluate-company，post-HK-B.5.3 multi-currency revenue+net_profit verified）**：
 - **CN 600519/2024**: source-first 39/56 (70%) clean → **+LLM 44/56 (79%)** ✓ regression-locked
-- **HK 00001/2025**: source-first 29/56 (52%) + 1 terminal → **+LLM 34/56 (61%)** ✓（HKD reporter，无 currency-label 漂移）
-- **HK 01113/2025**: source-first 30/56 (54%) → **+LLM 34/56 (61%)** ✓ (HKD reporter)
-- **HK 01810/2024 (CNY)**: source-first 30/56 (54%) → **+LLM 37/56 (66%)** ✓（acct_payable clean via multi-currency trust rule；revenue/net_profit 等回到 unresolved 因为 HKD-only rules 不再误触）
-- **HK 02498/2024 (CNY)**: source-first 30/56 (54%) → **+LLM 35/56 (63%)** ✓
-- **HK 06862/2024 (CNY)**: source-first 31/56 (55%) → **+LLM 36/56 (64%)** ✓
-- **HK 09987/2024 (USD)**: source-first 28/56 (50%) → **+LLM 31/56 (55%)** ✓ (acct_payable now clean via multi-currency)
+- **HK 00001/2025 (HKD)**: source-first 29/56 (52%) + 1 terminal → **+LLM 34/56 (61%)** ✓
+- **HK 01113/2025 (HKD)**: source-first 30/56 (54%) → **+LLM 34/56 (61%)** ✓
+- **HK 01810/2024 (CNY)**: source-first 32/56 (57%) → **+LLM 39/56 (70%)** ✓（revenue+net_profit+acct_payable 全 multi-currency PDF-verified）
+- **HK 02498/2024 (CNY)**: source-first 32/56 (57%) → **+LLM 37/56 (66%)** ✓
+- **HK 06862/2024 (CNY)**: source-first 33/56 (59%) → **+LLM 38/56 (68%)** ✓
+- **HK 09987/2024 (USD)**: source-first 30/56 (54%) → **+LLM 33/56 (59%)** ✓
 - **Sample-verified breadth**: 4 CN 公司 × 4 promotion 字段 = 16 EXACT match samples
 - **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
 - **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）
 - **Catalog verification** (Phase MX + Phase HK-B.5, 2026-05-11): coverage_matrix verified 24/62 → **36/62** (+12)；详情见 roadmap Phase MX + HK-B.5 Implementation Result
 - **HK issuer financial-currency 闭环** (Phase HK-B.5.1 + .5.2, 2026-05-11): `HK_ISSUER_FINANCIAL_CURRENCY` map（PDF spot-checked 6 HK）+ fixture backfill (1616 records) + `HkYahooTrustRule.additional_trusted_currencies` schema → 全部 HK 字段现在用 issuer reporting currency stamp；09987 acct_payable promote 到 clean。注意：revenue/net_profit/total_assets 等 HKD-only trust rules 未做 multi-currency 扩展，非 HKD reporter 的这些字段现在正确 unresolved（之前是 wrong-label-trust-policy 误触发的 mirage clean）
 
-下一步候选：HK-B.5.1 + HK-B.5.2 currency-label fix 闭环完成。可选：HK-B.6 `fix_assets` PDF spot-check（同 HK-B.5 套路）；或扩展 revenue/net_profit/total_assets/total_liabilities 等 trust rule 加 multi-currency 支持以恢复非 HKD reporter 的 baseline coverage（需 PDF spot-check 每个 issuer × 字段）；或合并 main。
+下一步候选：HK-B.5.3 已恢复 revenue+net_profit 的 8 cells（multi-currency PDF-verified）。剩余可选：HK-B.6 `fix_assets` PDF spot-check（同 HK-B.5 套路）；或扩展 total_assets/total_liabilities/inventories 等其它 HKD-only trust rule 加 multi-currency（这些字段实际未受 mirage 影响，扩展主要为 explicit traceability）；或合并 main。
 
 `docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 

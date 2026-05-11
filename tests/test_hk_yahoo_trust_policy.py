@@ -31,10 +31,10 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
     ]
 
     # Phase H1: +2 samples from inventories (00001, 01113).
-    # Phase HK-B.5/B.5.2: +6 acct_payable samples (all 6 HK issuers, with
-    # 09987 re-added after Phase HK-B.5.2 fixture backfill + multi-currency
-    # trust rule extension).
-    assert len(verified_samples) == 20
+    # Phase HK-B.5/B.5.2: +6 acct_payable samples (all 6 HK issuers).
+    # Phase HK-B.5.3: +4 revenue + 4 net_profit samples for non-HKD issuers
+    # (01810/02498/06862/09987) — recovered mirage coverage with PDF spot-check.
+    assert len(verified_samples) == 28
     assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
     assert policy.rule_for_field("revenue") is not None
     assert policy.is_pdf_verified("revenue") is True
@@ -90,8 +90,12 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
         "HK issuer with standard gross profit row, or verified "
         "revenue-minus-COGS derivation formula"
     )
-    assert net_evidence["sample_companies"] == ["00001", "01113"]
-    assert net_evidence["sample_count"] == 2
+    # Phase HK-B.5.3: net_profit extended with 4 non-HKD samples
+    # (01810/02498/06862/09987) to recover honest coverage post-HK-B.5.2.
+    assert net_evidence["sample_companies"] == [
+        "00001", "01113", "01810", "02498", "06862", "09987"
+    ]
+    assert net_evidence["sample_count"] == 6
 
 
 def test_hk_yahoo_trust_policy_validates_sample_page_text() -> None:

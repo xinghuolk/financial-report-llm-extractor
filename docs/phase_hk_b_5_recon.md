@@ -135,6 +135,36 @@ inflated by a known adapter bug. Future work to extend revenue,
 net_profit, etc. trust rules with PDF-verified multi-currency support
 can claw the coverage back honestly per drift §177.
 
+### Phase HK-B.5.3: revenue + net_profit multi-currency PDF verification (implemented 2026-05-11)
+
+PDF spot-check across all 4 non-HKD HK issuers (01810/02498/06862/09987)
+for both `revenue` and `net_profit`. All 8 spot-checks verified exact
+match between Yahoo HK raw value and the corresponding PDF disclosure
+line (Revenue / Total revenues / 收入 for revenue; "attributable to
+Owners of the Company" / Net Income — excluding NCI for net_profit).
+
+Trust rule extensions:
+
+- `revenue`: added `additional_trusted_currencies = ["CNY", "USD"]`
+  + 4 new samples (01810/02498/06862 with RMB '000;
+  09987 with USD millions) + `pdf_verified_company_ids` allowlist
+  of all 6 HK issuers for explicit traceability.
+- `net_profit`: same pattern. All 6 HK issuers in allowlist; 4 new
+  CNY/USD samples added; HKD samples for 00001/01113 preserved.
+
+Coverage recovery (vs post-HK-B.5.2 baseline):
+
+  - 01810: 30 → 32 (+2: revenue + net_profit promoted)
+  - 02498: 30 → 32 (+2)
+  - 06862: 31 → 33 (+2)
+  - 09987: 28 → 30 (+2)
+  - Total: +8 cells recovered with honest, PDF-verified provenance.
+
+Trust policy verified-sample count: 14 (pre-HK-B.5) → 20 (post-HK-B.5
+acct_payable) → 28 (post-HK-B.5.3 revenue + net_profit). Each new
+sample includes pdf_value, pdf_unit_multiplier, reported_currency,
+reported_unit, statement_line and match_basis for downstream audit.
+
 ### Phase HK-B.5 short-term mitigation: per-issuer allowlist
 
 Pending Phase HK-B.5.2, the per-issuer allowlist on both the trust
