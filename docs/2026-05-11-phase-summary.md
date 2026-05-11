@@ -1,92 +1,90 @@
-# Phase Summary — Source-First Financial Report Extractor
+# 阶段性总结 — Source-First 财报抽取器
 
-> Date: 2026-05-11
-> Branch: `feature/source-first-roadmap-requirements` @ `856a1a7`
-> Scope: snapshot of the project at the natural inflection point after
-> Phases HK-LLM-2/C + HK-B.1-.4 locked. Intended as a TOC into the
-> authoritative roadmap (`docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`),
-> not a replacement.
+> 日期: 2026-05-11
+> 分支: `feature/source-first-roadmap-requirements` @ `856a1a7`
+> 范围: Phase HK-LLM-2/C + HK-B.1-.4 锁定后的项目快照，处于自然 inflection
+> point。作为 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
+> 的 TOC 入口，不替代它。
 
 ## TL;DR
 
-- **Pivot complete**: PDF-first LLM extractor → source-first
-  (AKShare/Yahoo → reconciliation → source policy → PDF/LLM supplement).
-- **Catalog**: 15 → **56 fields** (P0:22 + P1:11 + P2:9 + P3:14).
-- **Coverage**: CN 600519/2024 **79%** (44/56 with LLM); 6 HK companies
-  **57–70%** with LLM, all regression-locked.
-- **Discipline**: 587 tests, ruff + mypy clean, drift §177 followed
-  (no silent promotions, sample-verified rules require PDF spot-check).
-- **§7 branch completion criteria**: 5/5 met. Branch is mergeable.
+- **架构转向已完成**: PDF-first LLM 抽取器 → source-first
+  （AKShare/Yahoo → reconciliation → source policy → PDF/LLM supplement）。
+- **Catalog**: 15 → **56 字段** (P0:22 + P1:11 + P2:9 + P3:14)。
+- **覆盖率**: CN 600519/2024 **79%** (44/56 含 LLM)；6 家 HK 公司
+  **57–70%** 含 LLM，全部 regression-locked。
+- **纪律**: 587 tests 通过，ruff + mypy clean，drift §177 严格执行
+  （无 silent promotion，sample-verified 规则强制 PDF spot-check）。
+- **§7 5 项 branch completion criteria**: 5/5 ✅ 满足，分支处于可合并状态。
 
-## 1. Timeline By Wave
+## 1. 阶段时间线（按 wave 分组）
 
-The repo went from bootstrap to current state in **12 calendar days** (2026-04-30
-→ 2026-05-11, 317 commits, ~26/day average). Phases collapsed into 6 waves:
+仓库从 bootstrap 到当前状态共 **12 个日历日**（2026-04-30 → 2026-05-11，
+317 commits，日均 ~26 个）。30+ phases 收敛为 6 个 wave：
 
-| Wave | Dates | Phases | Outcome |
-|------|-------|--------|---------|
-| **1. Foundation** | 04-30 → 05-02 | bootstrap, Phase A (mapping artifacts), Phase B (artifact hardening), Phase C (AKShare contract) | Frozen dataclass core; PDF ingestion/chunking/retrieval; provider artifact store; AKShare/Yahoo adapter skeletons. |
-| **2. HK Provider Semantics** | 05-07 → 05-08 | Phase M2–M5 (HK 15-field terminal closure, Yahoo trust policy, defer_tax_liab proof, gross_profit terminal) | HK Yahoo trust scope established via sample-verified rule; gross_profit + defer_tax_liab terminal. Architecturally honest "unverified" buckets accepted over forced promotion. |
-| **3. Catalog Expansion** | 05-08 → 05-09 | Phase N0–N4 (consistency gate + 15 → 33 → 44 fields), Phase I-C/I-C.1 (12 P3 text-mode + whitespace fix → 56 fields) | Catalog reached 56 fields; cross-file JSON consistency gate (`test_catalog_consistency.py`); P3 LLM hit rate 33/84 (39%) across 6 HK companies. |
-| **4. LLM & PDF Buckets** | 05-08 → 05-09 | Phase H0 (null_means_zero), Phase H1 (surgical conflict, partial revert), Phase I-D/I-A/I-A.2 (HK notes LLM + 6 follow-ups) | LLM framework wired with confidence calibration scaffold; invest_income alias expansion 0/6 → 5/6 (83%); H1 partial revert preserved architectural honesty over a 33/33 mirage. |
-| **5. Orchestrator & CN Surgical** | 05-09 → 05-10 | Phase EC (evaluate-company), Phase H2/H2.1/H2.2/H2.3#3/H2.4 (CN/HK conflict resolution, addition derivation, multi-sample verification, fixture persistence, cumulative review fixes) | 6-bucket evaluation taxonomy; period normalization cleared 41% spurious conflicts; 16 EXACT samples across 4 CN issuers × 4 fields back the H2 promotions; 600519 P0+P1 hit **33/33 (100%) clean**. |
-| **6. HK Cohort Locks** | 05-10 → 05-11 | Phase HK-coverage discovery (HK-A scope collapse), Phase HK-C (industry_not_applicable), Phase HK-LLM-2/C (6 HK supplement merge), Phase HK-B.1-.4 (4 fields × 6 companies conflict shape locks) | HK-A "alias gap" hypothesis empirically collapsed to ~0 cells (adapters genuinely lack fields). 4 new HK fixtures live-fetched (01810/02498/06862/09987). 24 named shape-lock assertions guard against silent promotion of HK-B candidates. |
+| Wave | 日期 | Phases | 产出 |
+|------|------|--------|------|
+| **1. 基础设施** | 04-30 → 05-02 | bootstrap, Phase A (mapping artifacts), Phase B (artifact hardening), Phase C (AKShare contract) | Frozen dataclass 核心；PDF ingestion/chunking/retrieval；provider artifact store；AKShare/Yahoo adapter 骨架。 |
+| **2. HK Provider 语义** | 05-07 → 05-08 | Phase M2–M5 (HK 15-field terminal closure, Yahoo trust policy, defer_tax_liab proof, gross_profit terminal) | HK Yahoo trust scope 通过 sample-verified 规则确立；gross_profit + defer_tax_liab 终态化。架构上诚实的"unverified"桶优先于强行 promotion。 |
+| **3. Catalog 扩展** | 05-08 → 05-09 | Phase N0–N4 (consistency gate + 15 → 33 → 44 字段), Phase I-C/I-C.1 (12 P3 text-mode + whitespace fix → 56 字段) | Catalog 达到 56 字段；跨文件 JSON 一致性 gate (`test_catalog_consistency.py`)；6 家 HK 公司 P3 LLM 命中率 33/84 (39%)。 |
+| **4. LLM 与 PDF 桶** | 05-08 → 05-09 | Phase H0 (null_means_zero), Phase H1 (surgical conflict, 部分回滚), Phase I-D/I-A/I-A.2 (HK notes LLM + 6 follow-ups) | LLM 框架接入并支持 confidence 校准；invest_income alias 扩展 0/6 → 5/6 (83%)；H1 部分回滚保留架构诚实性，拒绝伪 33/33 覆盖率。 |
+| **5. Orchestrator 与 CN 精修** | 05-09 → 05-10 | Phase EC (evaluate-company), Phase H2/H2.1/H2.2/H2.3#3/H2.4 (CN/HK conflict 解决, 加法 derivation, 多公司验证, fixture 持久化, 累计 review 修复) | 6-bucket 评估分类；period 归一化清除 41% 假冲突；4 家 CN 公司 × 4 字段 = 16 EXACT samples 背书 H2 promotions；600519 P0+P1 达到 **33/33 (100%) clean**。 |
+| **6. HK 集群锁** | 05-10 → 05-11 | Phase HK-coverage discovery (HK-A scope 崩塌), Phase HK-C (industry_not_applicable), Phase HK-LLM-2/C (6 HK supplement merge), Phase HK-B.1-.4 (4 字段 × 6 公司 conflict shape 锁) | HK-A "alias gap"假说经实证崩塌为 ~0 cells（adapter 实际缺字段）。4 家新 HK fixture 实时拉取（01810/02498/06862/09987）。24 条 named shape-lock 断言防止 HK-B 候选字段被静默提升。 |
 
-**Key reversals along the way**
+**过程中的关键反转**
 
-- **H1 partial revert**: revenue/operating_profit/SGA alias swaps undone before merge
-  — they would have moved 600519 to 33/33 via silent semantics change, violating
-  source-first principle. Recovered by H2/H2.1/H2.2 with explicit PDF + multi-sample proof.
-- **HK-A scope collapse**: pre-recon estimate was "16 cells fixable via alias
-  expansion". Empirical recon showed adapters structurally lack the fields
-  → revised to ~0 cells. Documented in `docs/phase_hk_coverage_discovery.md`.
-- **HK-LLM "wiring missing" misread**: B-recon (`docs/phase_hk_llm_recon.md`)
-  found the orchestrator was already wired; the apparent "0 supplement" was
-  a UX/process gap (runs invoked without `--pdf --llm-config`), not engineering.
+- **H1 部分回滚**：revenue/operating_profit/SGA 的 alias 替换在合并前撤销
+  —— 那本会通过静默的语义改动让 600519 看起来达到 33/33，违反 source-first
+  原则。由 H2/H2.1/H2.2 通过显式 PDF + 多样本证明重新建立。
+- **HK-A scope 崩塌**：recon 前预估"alias 扩展能修 16 cells"。实证 recon
+  发现 adapter 结构性缺失这些字段 → 修正为 ~0 cells。记录在
+  `docs/phase_hk_coverage_discovery.md`。
+- **"LLM wiring 缺失"误读**：B-recon (`docs/phase_hk_llm_recon.md`) 发现
+  orchestrator 已经接好；表面上的"0 supplement"是 UX/流程问题
+  （未传 `--pdf --llm-config`），不是工程缺陷。
 
-## 2. Architecture State
+## 2. 架构现状
 
-**Current source-first chain** (every arrow is enforced at the code level):
+**当前 source-first 链路**（每一步箭头都在代码层强制执行）：
 
 ```
 AKShare HK/CN + Yahoo HK/CN
-   ↓  (source_inventory_fetch.py — live fetch or fixture replay)
+   ↓  (source_inventory_fetch.py — 实时拉取或 fixture replay)
 SourceInventoryRecord  (ticker, period, raw_field_code, raw_value, source, currency, unit)
-   ↓  (mapping.py — catalog-driven, market-scoped, derivation-aware)
-MappedTurtleField  (per turtle field, all candidates with provenance)
+   ↓  (mapping.py — catalog 驱动、market-scoped、derivation-aware)
+MappedTurtleField  (每个 turtle 字段，全部候选带 provenance)
    ↓  (reconciliation, source_policy.py — sign_normalize, provider_semantics, period norm)
 SourceFirstExportItem  (selected_source + candidates + warnings)
    ↓  (company_evaluation.py classify_field — 6-bucket cascade)
 6-bucket: clean_present / llm_supplement_present / unresolved_conflict
         / terminal_unverified / not_in_scope / source_unavailable
-   ↓  (optional, gated by --pdf + --llm-config)
-LLM evidence supplement merge  (selected_source="llm" for missing-candidate cells)
+   ↓  (可选，由 --pdf + --llm-config 启用)
+LLM evidence supplement 合并  (selected_source="llm" 用于 missing-candidate 单元)
    ↓
 final_export.json + evaluation.md
 ```
 
-**Original PDF/LLM pipeline retained as fallback infrastructure**:
-`ingestion.py` (pdftotext), `chunking.py` (BlockRecords + statement maps),
-`retrieval.py` (field-first alias-scored top-k), `extraction.py`
-(FakeLlmClient + real transport), `llm_field_extraction.py`,
-`llm_extraction_runner.py`, `llm_extraction_batch.py`. The LLM path is now
-**bounded, field-scoped, and opt-in** — never broad-PDF retrieval.
+**原 PDF/LLM 管线保留为 fallback 基础设施**：`ingestion.py` (pdftotext)、
+`chunking.py` (BlockRecords + statement maps)、`retrieval.py` (field-first
+alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
+`llm_field_extraction.py`、`llm_extraction_runner.py`、
+`llm_extraction_batch.py`。LLM 路径现在是**有界、field-scoped、opt-in**——
+不再是宽泛的 PDF 检索。
 
-**Module boundary discipline**
+**模块边界纪律**
 
-- `evaluate-company` (orchestrator, per-(company, period), optional LLM)
-  vs `replay-provider-baseline` (fixture-only batch)
-- `MarketSourcePolicy.sign_normalize` is market-scoped (raw vs absolute)
-- `SourceMappingEntry.by_market_aliases` and `derivation_markets` enforce
-  CN/HK separation without code duplication
-- `IndustryNotApplicableSpec` lets a single field carry per-(market, ticker)
-  not_in_scope reasons (e.g., 01113 real-estate SGA convention) without
-  global catalog forks
+- `evaluate-company`（orchestrator，per-(company, period)，可选 LLM）
+  对比 `replay-provider-baseline`（fixture-only 批量）
+- `MarketSourcePolicy.sign_normalize` 是 market-scoped 的（raw vs absolute）
+- `SourceMappingEntry.by_market_aliases` 和 `derivation_markets` 在不重复
+  代码的前提下强制 CN/HK 分离
+- `IndustryNotApplicableSpec` 让单一字段携带 per-(market, ticker) 的
+  not_in_scope 原因（如 01113 地产 SGA 习惯），无需在 catalog 中分叉
 
-## 3. Coverage Milestones
+## 3. 覆盖率里程碑
 
-| Ticker / Period | Source-first clean | +LLM | Locked by |
-|-----------------|-------------------:|-----:|-----------|
+| 公司 / 期间 | source-first clean | +LLM | 锁定在 |
+|------------|------------------:|-----:|--------|
 | CN 600519 / 2024 | 39/56 (70%) | **44/56 (79%)** | `test_phase_hk_llm_2_supplement_merge.py::[600519]` |
 | HK 00001 / 2025 | 28/56 (50%) | 33/56 (59%) | `test_phase_hk_llm_2_supplement_merge.py::[00001]` |
 | HK 01113 / 2025 | 29/56 (52%) | 33/56 (59%) | `test_phase_hk_llm_2_supplement_merge.py::[01113]` |
@@ -95,178 +93,173 @@ final_export.json + evaluation.md
 | HK 06862 / 2024 | 33/56 (59%) | 38/56 (68%) | `test_phase_hk_llm_2_supplement_merge.py::[06862]` |
 | HK 09987 / 2024 | 29/56 (52%) | 32/56 (57%) | `test_phase_hk_llm_2_supplement_merge.py::[09987]` |
 
-**Catalog growth**
+**Catalog 增长**
 
-| When | Field count | Driver |
-|------|-------------|--------|
-| Wave 1 baseline | 15 | legacy Turtle minimum |
-| Post-N1–N3 (05-08) | 33 | P0:22 + P1:11 expansion |
+| 时点 | 字段数 | 驱动 |
+|------|-------|------|
+| Wave 1 baseline | 15 | 传统 Turtle 最小集 |
+| Post-N1–N3 (05-08) | 33 | P0:22 + P1:11 扩展 |
 | Post-N4.A–.C (05-09) | 44 | + 8 P2 source-first + 1 P2 LLM + 2 P3 |
 | Post-I-C (05-09) | **56** | + 12 P3 text-mode pdf_only |
 
-6 P3/P4 fields remain unmapped (terminal or weak retrieval; see §6).
+剩 6 个 P3/P4 字段未映射（终态或检索信号弱；详见 §6）。
 
-**Sample-verification breadth**
+**Sample-verification 广度**
 
-- 4 CN companies × 4 promoted fields = **16 EXACT samples**
-  (`provider_raw_semantics_cn.json` + `provider_field_baseline_h2_2_extension/`)
-- 6 HK companies × 14 P3 fields = **84 LLM attempts, 33 present (39%)**
-  (`tmp/runs/phase_i_c_validation_v2/`)
-- 6 HK companies × 4 HK-B fields = **24 named shape-lock assertions**
-  (`tests/test_phase_hk_b_*.py`)
-- HK fixtures: 2 (baseline) + 4 (HK 6 extension) = **6 HK issuers persisted**
+- 4 家 CN 公司 × 4 个被提升字段 = **16 EXACT samples**
+  （`provider_raw_semantics_cn.json` + `provider_field_baseline_h2_2_extension/`）
+- 6 家 HK 公司 × 14 个 P3 字段 = **84 次 LLM 尝试，33 present (39%)**
+  （`tmp/runs/phase_i_c_validation_v2/`）
+- 6 家 HK 公司 × 4 个 HK-B 字段 = **24 条 named shape-lock 断言**
+  （`tests/test_phase_hk_b_*.py`）
+- HK fixtures: 2 (baseline) + 4 (HK 6 extension) = **6 家 HK 公司持久化**
 
-**Test count progression**: ~50 (bootstrap) → 450 (H0) → 524 (H2) → 552
-(HK-LLM-2 initial 3-co) → **587 (post HK-B.1-.4 + HK-LLM-2/C)**.
+**测试数增长**：~50 (bootstrap) → 450 (H0) → 524 (H2) → 552
+(HK-LLM-2 initial 3-co) → **587 (post HK-B.1-.4 + HK-LLM-2/C)**。
 
-## 4. Methodology Snapshot
+## 4. 方法论快照
 
-These patterns are now the operating norm — both written into specs and
-enforced by tests:
+以下模式已成为项目运作的标准——既写入 spec 文档，也由测试强制执行：
 
-- **Drift §177 sample verification**: a `provider_raw_semantics` rule
-  promoting a candidate needs ≥2 issuers + PDF spot-check before catalog
-  promotion. H2.2 backed 4 CN promotions with 4-issuer × 4-field matrix.
-  HK-B recon explicitly invokes this rule to reject provider-provider
-  agreement as sufficient proof for `gross_profit`.
-- **TDD RED → GREEN → commit cadence**: every phase has a spec doc + plan
-  doc + implementation commits + validation report + roadmap update.
-  Recent examples in `git log --oneline`.
-- **Regression-lock pattern**: shape locks (e.g., HK-B `3 clean / 3 conflict`)
-  are preferred over count thresholds (`≥2 clean`). HK-LLM-2 locks the
-  exact `llm_supplement_present` field set so a catalog change that
-  silently re-classifies surfaces named.
-- **"Honest path" over tolerance gating**: H1 revert, HK-A collapse,
-  HK SGA → terminal_unverified are all examples where architectural
-  truth beat numeric coverage.
-- **Fail-loud parsing**: `IndustryNotApplicableSpec` JSON loader rejects
-  malformed entries with `ValueError`; `provider_semantics` catalog merge
-  fails on alias collisions; `MoneyNormalizationError` is never silently
-  swallowed.
-- **Field-first retrieval** (never broad-PDF LLM): alias scoring +
-  statement-map hints feed top-k bounded evidence; whitespace normalization
-  (I-C.1) fixed a quiet 30 → 33 hit-rate bump caused by PDF-layout newlines.
-- **Subagent-driven research / single-prompt synthesis**: complex audits
-  (HK-B recon, this summary, cumulative review) delegated to Explore agents
-  for data gathering; main agent synthesizes.
+- **Drift §177 sample verification**：要提升一个候选值的
+  `provider_raw_semantics` 规则，必须有 ≥2 家公司 + PDF spot-check 才能
+  写入 catalog。H2.2 用 4 公司 × 4 字段的矩阵背书 4 条 CN 提升规则。
+  HK-B recon 显式引用该规则，拒绝把 provider-provider 一致性当作
+  `gross_profit` 的充分证据。
+- **TDD RED → GREEN → commit 节奏**：每个 phase 都有 spec doc + plan doc
+  + 实现 commits + 验证报告 + roadmap 更新。`git log --oneline` 可查最近示例。
+- **Regression-lock 模式**：偏好形态锁（如 HK-B `3 clean / 3 conflict`），
+  避免计数阈值（如 `≥2 clean`）。HK-LLM-2 锁定确切的
+  `llm_supplement_present` 字段集，确保 catalog 改动若静默重分类会以
+  named 形式暴露。
+- **"诚实路径"优于宽容门控**：H1 revert、HK-A 崩塌、HK SGA → terminal_unverified
+  都是架构真相优先于数字覆盖率的例子。
+- **Fail-loud 解析**：`IndustryNotApplicableSpec` JSON loader 对畸形条目
+  抛 `ValueError`；`provider_semantics` catalog 合并在 alias 冲突时失败；
+  `MoneyNormalizationError` 绝不静默吞噬。
+- **Field-first 检索**（不做宽泛 PDF LLM）：alias 评分 + statement-map 提示
+  给出 top-k 有界 evidence；whitespace 归一化（I-C.1）通过解决 PDF 排版换行
+  问题悄然提升命中率 30 → 33。
+- **Subagent 驱动研究 / 单 prompt 综合**：复杂审计（HK-B recon、本总结、累计
+  review）委托给 Explore agent 收集数据；主 agent 负责综合。
 
-**Notable violation-and-correction moments**
+**违反-纠正的典型时刻**
 
-- H0 review: `null_means_zero` lacked audit trail → added `review_notes` field.
-- H2 review: derivation not market-scoped → H2.4 added `derivation_markets`.
-- H2.4 Finding #2: derivation operand skipped `unit_multiplier` → fixed to
-  route through `normalize_money()`.
-- EC Tier 1: 41% spurious conflicts from period-string mismatches → period
-  normalization before reconciliation.
+- H0 review：`null_means_zero` 缺审计 trail → 添加 `review_notes` 字段。
+- H2 review：derivation 未做 market 分离 → H2.4 添加 `derivation_markets`。
+- H2.4 Finding #2：derivation operand 跳过 `unit_multiplier` → 修复为经过
+  `normalize_money()`。
+- EC Tier 1：period 字符串不匹配导致 41% 假冲突 → reconciliation 前先做
+  period 归一化。
 
-## 5. Current State
+## 5. 当前状态
 
-**§7 branch completion criteria** (verified 2026-05-11):
+**§7 branch completion criteria**（2026-05-11 验证）：
 
-1. ✅ Source-first as main direction (codified in design docs)
-2. ✅ Phase ordering Taxonomy → Coverage Matrix → Minimal Mapping → Adapters
-3. ✅ PDF/LLM as bounded selected-field fallback
-4. ✅ Prior PDF/LLM phases preserved as fallback infrastructure
-5. ✅ Source priority chain expressed consistently across design / requirements / roadmap
+1. ✅ Source-first 作为主方向（codified in design docs）
+2. ✅ Phase ordering: Taxonomy → Coverage Matrix → Minimal Mapping → Adapters
+3. ✅ PDF/LLM 作为有界 selected-field fallback
+4. ✅ 既有 PDF/LLM phases 保留为 fallback 基础设施
+5. ✅ Source priority chain 在 design / requirements / roadmap 之间表述一致
 
-**Branch state**
+**分支状态**
 - `feature/source-first-roadmap-requirements` @ `856a1a7`
-- 317 commits since bootstrap (`c4fcbd6`, 2026-04-30)
-- **309 commits ahead of `main`** (main remains near bootstrap)
-- 0 commits behind origin/feature-branch (all local work pushed)
-- **587 passing tests, 1 skipped (real-LLM smoke), 0 failing**
-- `uv run ruff check .` clean (line-length 88, py311)
-- `uv run mypy src tests` clean (`disallow_untyped_defs = true`)
+- 自 bootstrap（`c4fcbd6`，2026-04-30）共 317 commits
+- **比 `main` 领先 309 commits**（main 仍在 bootstrap 附近）
+- 与 origin/feature 同步（无未推送提交）
+- **587 tests passing，1 skipped (real-LLM smoke)，0 failing**
+- `uv run ruff check .` clean（line-length 88，py311）
+- `uv run mypy src tests` clean（`disallow_untyped_defs = true`）
 
-**56-field catalog distribution**
-- P0: 22 (income statement + balance sheet core)
-- P1: 11 (cash flow, dividends, D&A, interest, tax, SBC)
-- P2: 9 (Δ receiv/payable/inventory, capex, repurchase, tax refund)
-- P3: 14 (5 money: cap_rd/interest, restricted_cash, time_deposits, dps;
-  9 text: dividend_plan, receivables_aging, related_party, contingent_liabilities,
-  lease_liability_maturity, segment_revenue_profit, buyback_cancellation_progress,
-  bad_debt_provision, …)
+**56 字段 catalog 分布**
+- P0: 22（利润表 + 资产负债表核心）
+- P1: 11（现金流、股息、D&A、利息、税、SBC）
+- P2: 9（应收应付存货变动、capex、回购、税返）
+- P3: 14（5 money 型：cap_rd/interest、restricted_cash、time_deposits、dps；
+  9 text 型：dividend_plan、receivables_aging、related_party、
+  contingent_liabilities、lease_liability_maturity、segment_revenue_profit、
+  buyback_cancellation_progress、bad_debt_provision、…）
 
-**6-bucket evaluation taxonomy** (`company_evaluation.classify_field`):
-`clean_present`, `llm_supplement_present`, `unresolved_conflict`,
-`terminal_unverified`, `not_in_scope`, `source_unavailable`.
+**6-bucket 评估分类**（`company_evaluation.classify_field`）：
+`clean_present`、`llm_supplement_present`、`unresolved_conflict`、
+`terminal_unverified`、`not_in_scope`、`source_unavailable`。
 
-## 6. Open Decisions
+## 6. 未决项
 
-Items flagged in the roadmap or recon docs as deferred / requires-decision:
+roadmap 或 recon 文档中明确标记为 deferred / requires-decision 的事项：
 
-| Item | Status | Source | Next required action |
-|------|--------|--------|----------------------|
-| HK-B `acct_payable` promotion | shape-locked (3 clean / 3 conflict) | `docs/phase_hk_b_recon.md` | PDF spot-check 01810/02498/06862 to validate AKShare 应付帐款 = Yahoo Accounts Payable = PDF Trade payables. If yes → sample-scoped HK rule; if no → terminal. |
-| HK-B `fix_assets` promotion | shape-locked (3 clean / 3 conflict) | same | Yahoo Net PPE scope verification (ROU asset inclusion) per HKFRS 16. |
-| HK-B `accounts_receiv` | shape-locked (6 conflict) | same | Keep conservative; AKShare 应收帐款 vs Yahoo Accounts Receivable scope mismatch needs ≥3-issuer proof. |
-| HK-B `gross_profit` | shape-locked (4 conflict + 2 terminal) | same | Keep non-clean; provider-provider agreement alone insufficient per drift §177. |
-| 6 P3/P4 fields with weak retrieval | unmapped | roadmap §7 follow-up | Either Phase I-D iteration with curated aliases per disclosure pattern, or accept terminal `not_in_scope`. |
-| Confidence threshold calibration value | framework deployed, value deferred | Phase I-A.2 follow-up #2 | Collect ~50+ labeled (company, field) pairs; set threshold. |
-| Bulk re-validation breadth | 6 HK + 4 CN issuers currently | roadmap §7 follow-up | Sector diversification (financials / tech / energy) before any HK-B promotion. |
-| `_resolve_derivation_operand` period-equality assertion | deferred | H2.1 carryover | Add explicit period-end equality check on operand sums; low immediate risk. |
-| Merge branch to `main` | not yet | — | 309 commits ahead; coherent shippable state. |
+| 项目 | 状态 | 来源 | 下一步动作 |
+|------|------|------|-----------|
+| HK-B `acct_payable` 提升 | 形态已锁（3 clean / 3 conflict） | `docs/phase_hk_b_recon.md` | 对 01810/02498/06862 做 PDF spot-check，验证 AKShare 应付帐款 = Yahoo Accounts Payable = PDF Trade payables。若一致 → sample-scoped HK 规则；不一致 → 终态。 |
+| HK-B `fix_assets` 提升 | 形态已锁（3 clean / 3 conflict） | 同上 | 验证 Yahoo Net PPE 的 scope（HKFRS 16 下 ROU asset 是否纳入）。 |
+| HK-B `accounts_receiv` | 形态已锁（6 conflict） | 同上 | 保持保守；AKShare 应收帐款与 Yahoo Accounts Receivable scope 不一致，需 ≥3 公司证明。 |
+| HK-B `gross_profit` | 形态已锁（4 conflict + 2 terminal） | 同上 | 保持非 clean；provider-provider 一致性按 drift §177 不够。 |
+| 6 个检索信号弱的 P3/P4 字段 | 未映射 | roadmap §7 follow-up | 要么走 Phase I-D 用按 disclosure pattern 精修的 alias，要么接受终态 `not_in_scope`。 |
+| Confidence threshold 校准值 | 框架已就位、值待定 | Phase I-A.2 follow-up #2 | 收集 ~50+ 人工标注的 (company, field) 对后定阈值。 |
+| 跨更多 issuer 批量重验证 | 当前 6 HK + 4 CN | roadmap §7 follow-up | 在做 HK-B 提升前先扩到不同行业（金融 / 科技 / 能源）。 |
+| `_resolve_derivation_operand` period 等值断言 | deferred | H2.1 carryover | 添加显式 period-end 等值检查，防多期 operand 被静默累加；当前风险低。 |
+| 合并分支到 `main` | 暂未 | — | 已领先 309 commits；处于可交付状态。 |
 
-## 7. Onboarding Artifact Map
+## 7. Onboarding 文档地图
 
-Future Claude / human readers should know these paths:
+未来 Claude / 人类读者应知晓的路径：
 
-**Authoritative docs**
+**权威文档**
 - `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
-  (1657 lines, §1–§7, Phase Implementation Results indexed in §5)
-- `CLAUDE.md` (project instructions, coverage table, phase index)
-- `AGENTS.md` (partial — superseded by 33/56-field expansion in places)
-- `docs/2026-05-11-phase-summary.md` (this file)
+  （1657 行，§1–§7，Phase Implementation Results 见 §5）
+- `CLAUDE.md`（项目说明、覆盖率表、phase 索引）
+- `AGENTS.md`（部分内容已被 33/56-field 扩展取代）
+- `docs/2026-05-11-phase-summary.md`（本文件）
 
-**Design + drift analysis**
+**设计 + drift 分析**
 - `docs/design/2026-05-01-structured-data-source-first-financial-extraction-design.md`
 - `docs/design/2026-05-07-source-first-architecture-drift-analysis.zh.md`
-  (drift §177, sampling bias, terminal states — still the load-bearing reference)
+  （drift §177、sampling bias、terminal states——仍是关键参考）
 
-**Phase-specific recon / reality-check docs**
-- `docs/phase_hk_b_recon.md` (HK-B 4-field conflict shape across 6 issuers)
-- `docs/phase_hk_coverage_discovery.md` (HK-A → ~0 cells evidence)
-- `docs/phase_hk_llm_recon.md` (LLM orchestrator wiring already complete)
-- `docs/2026-05-10-h2-hk-cumulative-review.md` (3 H2 findings closed in H2.4)
-- `docs/2026-05-08-roadmap-evaluation.zh.md` (pre-H2 framework, dated numbers)
+**Phase 专属 recon / reality-check 文档**
+- `docs/phase_hk_b_recon.md`（HK-B 4 字段在 6 公司的 conflict 形态）
+- `docs/phase_hk_coverage_discovery.md`（HK-A → ~0 cells 的实证）
+- `docs/phase_hk_llm_recon.md`（LLM orchestrator 已 wired）
+- `docs/2026-05-10-h2-hk-cumulative-review.md`（H2.4 已闭 3 项 H2 findings）
+- `docs/2026-05-08-roadmap-evaluation.zh.md`（pre-H2 框架，数字已过期但分析仍有效）
 
-**Field catalog JSONs**
-- `field_catalog/turtle_v015_source_mapping_minimal.json` (56 fields, by_market, derivation)
-- `field_catalog/turtle_v015_field_taxonomy.json` (full taxonomy, value_type, statement_type)
-- `field_catalog/turtle_v015_coverage_matrix.json` (expected coverage routes)
-- `field_catalog/provider_raw_semantics_cn.json` (5 CN promotion + 3 CN unverified rules; multi-sample backed)
-- `field_catalog/provider_raw_semantics_hk.json` (HK terminal rules + HK SGA unverified)
-- `field_catalog/hk_yahoo_trust_policy.json` (Yahoo HK trust scope)
-- Cross-file gate: `tests/test_catalog_consistency.py`
+**字段 catalog JSON**
+- `field_catalog/turtle_v015_source_mapping_minimal.json`（56 字段，by_market，derivation）
+- `field_catalog/turtle_v015_field_taxonomy.json`（完整 taxonomy，value_type，statement_type）
+- `field_catalog/turtle_v015_coverage_matrix.json`（预期覆盖路径）
+- `field_catalog/provider_raw_semantics_cn.json`（5 CN 提升 + 3 CN unverified 规则；多公司背书）
+- `field_catalog/provider_raw_semantics_hk.json`（HK 终态规则 + HK SGA unverified）
+- `field_catalog/hk_yahoo_trust_policy.json`（Yahoo HK 信任范围）
+- 跨文件 gate: `tests/test_catalog_consistency.py`
 
-**Regression-lock tests** (what guards what)
-- HK-B shape locks: `tests/test_phase_hk_b_{acct_payable,fix_assets,accounts_receiv,gross_profit}.py`
-- Multi-company sample regression: `tests/test_phase_h2_3_fixture_persistence.py`
-- H2.4 cumulative review fixes: `tests/test_phase_h2_4_review_fixes.py`
-- HK LLM supplement merge (7 companies): `tests/test_phase_hk_llm_2_supplement_merge.py`
-- Catalog consistency: `tests/test_catalog_consistency.py`
+**Regression-lock 测试**（谁守护谁）
+- HK-B 形态锁: `tests/test_phase_hk_b_{acct_payable,fix_assets,accounts_receiv,gross_profit}.py`
+- 多公司 sample 回归: `tests/test_phase_h2_3_fixture_persistence.py`
+- H2.4 累计 review 修复: `tests/test_phase_h2_4_review_fixes.py`
+- HK LLM supplement 合并（7 公司）: `tests/test_phase_hk_llm_2_supplement_merge.py`
+- Catalog 一致性: `tests/test_catalog_consistency.py`
 - HK-C industry not-applicable: `tests/test_phase_hk_c_industry_not_applicable.py`
 
-**Fixture directories**
-- `tests/fixtures/provider_captures/provider_field_baseline/` (00001, 01113, 600519 base)
-- `tests/fixtures/provider_captures/provider_field_baseline_h2_2_extension/` (300750, 601919, 688008 CN multi-sample)
-- `tests/fixtures/provider_captures/provider_field_baseline_hk_llm_6_extension/` (01810, 02498, 06862, 09987 HK)
-- `tmp/runs/phase_i_c_validation_v2/{00001,01113,01810,02498,06862,09987}/llm_evidence_supplement.json` (LLM baselines, pre-placed for regression)
-- `tmp/llm_configs/deepseek.json` (local LLM config), `n4b_manifest.json` (HK 6-company batch manifest)
+**Fixture 目录**
+- `tests/fixtures/provider_captures/provider_field_baseline/`（00001、01113、600519 baseline）
+- `tests/fixtures/provider_captures/provider_field_baseline_h2_2_extension/`（300750、601919、688008 CN 多公司）
+- `tests/fixtures/provider_captures/provider_field_baseline_hk_llm_6_extension/`（01810、02498、06862、09987 HK）
+- `tmp/runs/phase_i_c_validation_v2/{00001,01113,01810,02498,06862,09987}/llm_evidence_supplement.json`（LLM baseline，已为回归测试预放）
+- `tmp/llm_configs/deepseek.json`（本地 LLM config）、`n4b_manifest.json`（HK 6 公司批量 manifest）
 
-**CLI entry points** (subcommands of `python -m financial_report_llm_extractor`)
-- `fetch-source-inventory` — live AKShare + Yahoo fetch + persist
-- `evaluate-company` — per-(company, period) orchestrator (optional LLM via `--pdf --llm-config`)
-- `extract-llm` / `extract-llm-batch` — field-scoped LLM extraction
-- `replay-provider-baseline` — fixture-only batch replay
+**CLI 入口**（`python -m financial_report_llm_extractor` 子命令）
+- `fetch-source-inventory` — 实时拉取 AKShare + Yahoo 并持久化
+- `evaluate-company` — per-(company, period) orchestrator（`--pdf --llm-config` 启用 LLM）
+- `extract-llm` / `extract-llm-batch` — field-scoped LLM 抽取
+- `replay-provider-baseline` — fixture-only 批量复演
 
-**Validation commands**
+**验证命令**
 
 ```bash
 uv run pytest -v && uv run ruff check . && uv run mypy src tests
 ```
 
-Per-(company, period) live workflow:
+Per-(company, period) 实时工作流：
 
 ```bash
 COMPANY=600519 YEAR=2024 MARKET=CN PROVIDERS=akshare \
