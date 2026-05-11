@@ -92,19 +92,48 @@ This is a forward-going fix only. Existing fixtures still carry the
 pre-Phase-HK-B.5.1 HKD labels for 01810/02498/06862/09987; Phase HK-B.5.2
 (below) is required to backfill them and re-promote 09987.
 
-### Phase HK-B.5.2 (deferred): fixture backfill + trust policy multi-currency + 09987 re-promote
+### Phase HK-B.5.2: fixture backfill + trust policy multi-currency + 09987 re-promote (implemented 2026-05-11)
 
-Once the adapter outputs correct currencies for new fetches, the existing
-fixtures need a one-time backfill to align labels with reality. Trust
-policy schema needs to support multi-currency for the `acct_payable`
-rule (so a Yahoo HK Accounts Payable record can have currency CNY/USD
-instead of HKD and still trigger promotion). After backfill + schema
-update, 09987 can be added to `pdf_verified_company_ids` and its
-Accounts Payable promote to clean_present at the correct USD label.
+Three coordinated changes close the currency-label loop:
 
-Estimated work: fixture rewrite via PDF-verified map (small), trust
-policy schema extension (small), tests catalog-wide currency-assertion
-audit (medium — many existing tests assume HKD for HK records).
+1. **Fixture backfill**: 1616 records in the HK 6-extension fixtures
+   (`provider_field_baseline_hk_llm_6_extension/{01810,02498,06862,09987}/source_inventory.jsonl.gz`
+   plus aggregated) rewritten to stamp the issuer's actual reporting
+   currency on every record. Source-of-truth is the same
+   `HK_ISSUER_FINANCIAL_CURRENCY` map used by the adapter (Phase HK-B.5.1).
+
+2. **Trust policy multi-currency schema**: `HkYahooTrustRule` gains an
+   optional `additional_trusted_currencies: tuple[str, ...] | None`
+   (default None preserves single-currency behavior). `accepted_currencies()`
+   returns `(trusted_currency, *additional_trusted_currencies)`.
+   `_can_apply_hk_yahoo_trust_policy` switches from `==` to `in`
+   membership check.
+
+3. **acct_payable rule extended**: `additional_trusted_currencies =
+   ["CNY", "USD"]` + 09987 added to `pdf_verified_company_ids` + 09987
+   sample restored. All 6 HK issuers now promote acct_payable to
+   `clean_present`.
+
+**Honest coverage adjustment**: backfill exposed that pre-Phase-HK-B.5.2
+"clean" status for several other fields on non-HKD issuers (revenue,
+net_profit, etc.) relied on the wrong-HKD-label accidentally triggering
+HKD-scoped trust policies. With currency now correct, those fields
+revert to `unresolved_conflict` until separately PDF-verified for CNY/USD
+reporters and extended to multi-currency. Net baseline shifts:
+
+  - 01810: 32 → 30 (acct_payable kept clean via multi-currency rule;
+    revenue + net_profit lost accidental HKD promotion)
+  - 02498: 32 → 30 (same pattern)
+  - 06862: 33 → 31 (same pattern)
+  - 09987: 29 → 28 (acct_payable gained via promotion; net loss of 1
+    accidentally-promoted field via HKD trust policy)
+  - 00001 / 01113 / 600519: unchanged (HKD or CN reporters; no
+    currency-label mismatch existed)
+
+This is the "coverage mirage" correction — the previous numbers were
+inflated by a known adapter bug. Future work to extend revenue,
+net_profit, etc. trust rules with PDF-verified multi-currency support
+can claw the coverage back honestly per drift §177.
 
 ### Phase HK-B.5 short-term mitigation: per-issuer allowlist
 

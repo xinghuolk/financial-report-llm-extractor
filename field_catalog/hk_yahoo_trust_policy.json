@@ -417,6 +417,21 @@
           "expected_yahoo_raw_value": "1796362000",
           "yahoo_raw_field": "Accounts Payable",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yahoo HK adapter labels currency=HKD but raw value is the issuer's reported RMB figure."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 175,
+          "statement_name": "Notes — Accounts Payable and Other Current Liabilities",
+          "statement_line": "Accounts payable",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "801",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "801000000",
+          "yahoo_raw_field": "Accounts Payable",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; after Phase HK-B.5.2 fixture backfill the Yahoo HK candidate is correctly stamped as USD; trust rule's additional_trusted_currencies=['CNY','USD'] accepts it."
         }
       ],
       "pdf_verified_company_ids": [
@@ -424,7 +439,12 @@
         "01113",
         "01810",
         "02498",
-        "06862"
+        "06862",
+        "09987"
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
       ]
     }
   ]

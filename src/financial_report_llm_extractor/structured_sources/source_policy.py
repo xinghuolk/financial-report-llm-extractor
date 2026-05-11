@@ -465,14 +465,15 @@ def _can_apply_hk_yahoo_trust_policy(
     if candidate.source != "yahoo":
         return False
     rule = hk_yahoo_trust_policy.rule_for_field(field_id)
+    if rule is None or rule.classification != "yahoo_pdf_verified":
+        return False
+    accepted_currencies = rule.accepted_currencies()
     if (
-        rule is None
-        or rule.classification != "yahoo_pdf_verified"
-        or not candidate.raw_field_name
+        not candidate.raw_field_name
         or candidate.raw_field_name not in rule.allowed_yahoo_raw_fields
-        or candidate.currency != rule.trusted_currency
+        or candidate.currency not in accepted_currencies
         or candidate.unit != rule.trusted_unit
-        or candidate.canonical_unit != rule.trusted_currency
+        or candidate.canonical_unit not in accepted_currencies
         or candidate.unit_multiplier != rule.trusted_unit_multiplier
         or not rule.applies_to_company(company_id)
     ):

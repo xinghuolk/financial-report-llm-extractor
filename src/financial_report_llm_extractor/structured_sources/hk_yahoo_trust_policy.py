@@ -108,6 +108,12 @@ class HkYahooTrustRule:
     # the affected subset. Unlisted HK issuers fall back to unresolved_conflict
     # rather than getting silently promoted.
     pdf_verified_company_ids: tuple[str, ...] | None = None
+    # Phase HK-B.5.2: when set, the trust rule also accepts candidates whose
+    # `currency` matches any of these in addition to `trusted_currency`. Used
+    # when the field is verified to mean the same semantic concept across
+    # issuers reporting in different currencies (e.g. `acct_payable` covers
+    # Trade payables in HKD/CNY/USD reporters per PDF spot-check).
+    additional_trusted_currencies: tuple[str, ...] | None = None
 
     def validate(
         self,
@@ -162,6 +168,18 @@ class HkYahooTrustRule:
         if company_id is None:
             return False
         return company_id in self.pdf_verified_company_ids
+
+    def accepted_currencies(self) -> tuple[str, ...]:
+        """Phase HK-B.5.2: tuple of all currencies this rule accepts.
+
+        Always includes `trusted_currency`; extends with
+        `additional_trusted_currencies` when the rule semantics are
+        currency-agnostic across multiple issuer reporting currencies (e.g.
+        acct_payable verified across HKD/CNY/USD issuers).
+        """
+        if self.additional_trusted_currencies is None:
+            return (self.trusted_currency,)
+        return (self.trusted_currency, *self.additional_trusted_currencies)
 
     def build_policy_evidence(self) -> dict[str, object]:
         self.validate()
@@ -267,6 +285,9 @@ def _parse_rule(payload: object) -> HkYahooTrustRule:
         ),
         pdf_verified_company_ids=_optional_string_tuple(
             rule, "pdf_verified_company_ids"
+        ),
+        additional_trusted_currencies=_optional_string_tuple(
+            rule, "additional_trusted_currencies"
         ),
     )
 
