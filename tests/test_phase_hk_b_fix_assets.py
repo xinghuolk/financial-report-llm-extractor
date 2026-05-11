@@ -52,24 +52,28 @@ HK_LLM_6_FIXTURE = (
 
 
 CASES = [
-    # company, period_end, inventory fixture, expected bucket, selected source,
-    # expected value, candidate normalized values.
+    # Phase HK-B.6: fix_assets multi-currency trust rule promotes 4 of 6 HK
+    # issuers (00001/01113/06862/09987) where Yahoo Net PPE = PDF PP&E +
+    # Right-of-use assets within rounding. 01810/02498 stay clean via the
+    # single-source path (AKShare returns None for 固定资产 on these issuers)
+    # but are explicitly excluded from the trust-policy allowlist due to
+    # material PDF-vs-Yahoo discrepancies (01810: -22%, 02498: 2.9%).
     (
         "00001",
         date(2025, 12, 31),
         BASELINE_FIXTURE,
-        "unresolved_conflict",
-        None,
-        None,
+        "clean_present",
+        "yahoo",
+        Decimal("159240000000.0"),
         (("akshare", "90394257600.0"), ("yahoo", "159240000000.0")),
     ),
     (
         "01113",
         date(2025, 12, 31),
         BASELINE_FIXTURE,
-        "unresolved_conflict",
-        None,
-        None,
+        "clean_present",
+        "yahoo",
+        Decimal("72868000000.0"),
         (("akshare", "65815834960.0"), ("yahoo", "72868000000.0")),
     ),
     (
@@ -103,9 +107,9 @@ CASES = [
         "09987",
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "09987" / "source_inventory.jsonl.gz",
-        "unresolved_conflict",
-        None,
-        None,
+        "clean_present",
+        "yahoo",
+        Decimal("4580000000.0"),
         (("akshare", "17302478800.0"), ("yahoo", "4580000000.0")),
     ),
 ]

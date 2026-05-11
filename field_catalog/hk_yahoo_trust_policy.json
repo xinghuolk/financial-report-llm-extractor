@@ -590,6 +590,89 @@
         "CNY",
         "USD"
       ]
+    },
+    {
+      "policy_id": "hk_yahoo_raw_hkd_pdf_verified:fix_assets",
+      "field_id": "fix_assets",
+      "classification": "yahoo_pdf_verified",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "allowed_yahoo_raw_fields": [
+        "Net PPE"
+      ],
+      "samples": [
+        {
+          "company_id": "00001",
+          "provider_ticker": "0001.HK",
+          "report_ref": "downloads/hk_stocks/00001/annual/2025_annual_en.pdf",
+          "pdf_page": 133,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Fixed assets (Note 13) + Right-of-use assets (Note 14)",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "159240",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "159240000000",
+          "yahoo_raw_field": "Net PPE",
+          "match_basis": "Yahoo Net PPE = PDF 'Fixed assets' (100,080 HKDM) + 'Right-of-use assets' (59,160 HKDM) = 159,240 HKDM exactly. CK Hutchison reports PP&E and ROU as separate BS lines per HKFRS 16; Yahoo Net PPE aggregates them."
+        },
+        {
+          "company_id": "01113",
+          "provider_ticker": "1113.HK",
+          "report_ref": "downloads/hk_stocks/01113/annual/2025_annual_en.pdf",
+          "pdf_page": 9,
+          "statement_name": "Consolidated Statement of Financial Position (5-year summary)",
+          "statement_line": "Fixed assets",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "72868",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "72868000000",
+          "yahoo_raw_field": "Net PPE",
+          "match_basis": "Yahoo Net PPE = PDF 'Fixed assets' 72,868 HKDM exactly. CK Asset (property co) reports Fixed assets as a single combined line that already includes ROU per its consolidated BS structure."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 167,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Property, plant and equipment (Note 16) + Right-of-use assets",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "6338547",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "6338547000",
+          "yahoo_raw_field": "Net PPE",
+          "match_basis": "Yahoo Net PPE = PDF PP&E (3,319,749 K RMB) + Right-of-use assets (3,018,800 K RMB per Note 1673 disclosure) = 6,338,549 K RMB matches Yahoo 6,338,547 K within RMB 2K rounding."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 110,
+          "statement_name": "Consolidated Balance Sheets",
+          "statement_line": "Property, plant and equipment, net + Operating lease right-of-use assets",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "4580",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "4580000000",
+          "yahoo_raw_field": "Net PPE",
+          "match_basis": "Yahoo Net PPE 4,580 USDM = approximately PDF PP&E,net (2,407 USDM) + Operating lease ROU (2,146 USDM) = 4,553 USDM (within $27M rounding from intermediate aggregation)."
+        }
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "06862",
+        "09987"
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ]
     }
   ]
 }

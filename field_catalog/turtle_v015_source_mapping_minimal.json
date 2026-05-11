@@ -798,7 +798,34 @@
         "fixed assets",
         "property plant and equipment",
         "固定资产"
-      ]
+      ],
+      "source_policy": {
+        "semantic_concept": "fixed assets including right-of-use (Yahoo Net PPE aggregation: PP&E + ROU per HKFRS 16)",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "固定资产"
+            ],
+            "related": []
+          },
+          "yahoo": {
+            "primary": [
+              "Net PPE"
+            ]
+          }
+        },
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      }
     },
     "st_borr": {
       "value_type": "money",

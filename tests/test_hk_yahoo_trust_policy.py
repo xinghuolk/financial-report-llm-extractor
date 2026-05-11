@@ -32,9 +32,10 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
 
     # Phase H1: +2 samples from inventories (00001, 01113).
     # Phase HK-B.5/B.5.2: +6 acct_payable samples (all 6 HK issuers).
-    # Phase HK-B.5.3: +4 revenue + 4 net_profit samples for non-HKD issuers
-    # (01810/02498/06862/09987) — recovered mirage coverage with PDF spot-check.
-    assert len(verified_samples) == 28
+    # Phase HK-B.5.3: +4 revenue + 4 net_profit samples for non-HKD issuers.
+    # Phase HK-B.6: +4 fix_assets samples (00001/01113/06862/09987 — 4 of 6;
+    # 01810/02498 excluded due to material PDF-vs-Yahoo Net PPE discrepancies).
+    assert len(verified_samples) == 32
     assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
     assert policy.rule_for_field("revenue") is not None
     assert policy.is_pdf_verified("revenue") is True

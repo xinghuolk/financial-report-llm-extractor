@@ -81,6 +81,7 @@ EXPECTED_HK_YAHOO_VERIFIED_FIELDS = frozenset(
     {
         "acct_payable",  # Phase HK-B.5: 6-HK PDF spot-check confirmed Yahoo HK = pure Trade payables
         "defer_tax_liab",
+        "fix_assets",  # Phase HK-B.6: Yahoo Net PPE = PP&E + ROU per HKFRS 16; 4 of 6 HK PDF-verified
         "inventories",
         "net_profit",
         "revenue",
@@ -764,6 +765,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "dividends_paid",
             "equity_attributable_to_owners",
             "financing_cash_flow",
+            "fix_assets",
             "inventories",
             "investing_cash_flow",
             "lt_borr",
@@ -793,6 +795,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "dividends_paid",
             "equity_attributable_to_owners",
             "financing_cash_flow",
+            "fix_assets",
             "inventories",
             "investing_cash_flow",
             "lt_borr",
@@ -812,7 +815,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 27, "01113": 29}
+    expected_clean_count_by_company = {"00001": 28, "01113": 30}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]

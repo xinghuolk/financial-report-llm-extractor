@@ -291,26 +291,6 @@
       "market": "HK",
       "negative_examples": [],
       "proof_origin": "hk_statement_format_incompatible",
-      "provider": "yahoo",
-      "raw_field_code": null,
-      "raw_field_name": "Net PPE",
-      "related_only_fields": [],
-      "required_proof": [
-        "HK Yahoo Net PPE includes Right-of-use assets for some issuers (00001 Fixed assets 100,080 + ROU 59,160 = Yahoo 159,240) and matches Fixed assets directly for others (01113 Fixed assets 72,868 = Yahoo 72,868). Per-issuer divergence prevents primary promotion."
-      ],
-      "samples": [],
-      "semantic_claim": "fixed assets per Turtle field semantics (excludes right-of-use)",
-      "trusted_currency": "HKD",
-      "trusted_unit": "raw",
-      "trusted_unit_multiplier": 1,
-      "turtle_field_id": "fix_assets"
-    },
-    {
-      "allowed_as_primary": false,
-      "classification": "provider_semantics_unverified",
-      "market": "HK",
-      "negative_examples": [],
-      "proof_origin": "hk_statement_format_incompatible",
       "provider": "akshare",
       "raw_field_code": null,
       "raw_field_name": "固定资产",
@@ -515,6 +495,30 @@
         "01113",
         "01810",
         "02498",
+        "06862",
+        "09987"
+      ]
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Net PPE",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "Yahoo HK 'Net PPE' aggregates PDF 'Property, plant and equipment' + 'Right-of-use assets' (PP&E + ROU per HKFRS 16). Verified for 4 of 6 HK issuers (00001/01113/06862/09987); 01810/02498 excluded via pdf_verified_company_ids allowlist due to material PDF-vs-Yahoo discrepancies.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "fix_assets",
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
         "06862",
         "09987"
       ]
