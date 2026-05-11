@@ -33,9 +33,12 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
     # Phase H1: +2 samples from inventories (00001, 01113).
     # Phase HK-B.5/B.5.2: +6 acct_payable samples (all 6 HK issuers).
     # Phase HK-B.5.3: +4 revenue + 4 net_profit samples for non-HKD issuers.
-    # Phase HK-B.6: +4 fix_assets samples (00001/01113/06862/09987 — 4 of 6;
-    # 01810/02498 excluded due to material PDF-vs-Yahoo Net PPE discrepancies).
-    assert len(verified_samples) == 32
+    # Phase HK-B.6: +4 fix_assets samples (00001/01113/06862/09987 — 4 of 6).
+    # Phase HK-B.7: +4 each for total_assets / total_liabilities /
+    # total_cur_assets / total_cur_liab / inventories (5 BS aggregates ×
+    # 4 non-HKD issuers = 20 new samples; explicit traceability for fields
+    # that previously survived backfill via deterministic-candidate path).
+    assert len(verified_samples) == 52
     assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
     assert policy.rule_for_field("revenue") is not None
     assert policy.is_pdf_verified("revenue") is True
@@ -44,8 +47,11 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
 
     assert evidence["policy_id"] == "hk_yahoo_raw_hkd_pdf_verified:total_assets"
     assert evidence["classification"] == "yahoo_pdf_verified"
-    assert evidence["sample_companies"] == ["01113"]
-    assert evidence["sample_count"] == 1
+    # Phase HK-B.7: total_assets extended with 4 non-HKD samples
+    assert evidence["sample_companies"] == [
+        "01113", "01810", "02498", "06862", "09987"
+    ]
+    assert evidence["sample_count"] == 5
 
 
 def test_hk_yahoo_trust_policy_rejects_bad_multiplier_match(tmp_path: Path) -> None:

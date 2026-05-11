@@ -159,7 +159,79 @@
           "expected_yahoo_raw_value": "174106000000",
           "yahoo_raw_field": "Current Assets",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value"
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 244,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Current assets",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "225708766",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "225708766000",
+          "yahoo_raw_field": "Current Assets",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Current assets line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 135,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total current assets",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "3644015",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "3644015000",
+          "yahoo_raw_field": "Current Assets",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total current assets line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 167,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Current assets / 流動資產",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "13024158",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "13024158000",
+          "yahoo_raw_field": "Current Assets",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Current assets / 流動資產 line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 110,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total Current Assets",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "2694",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "2694000000",
+          "yahoo_raw_field": "Current Assets",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total Current Assets line; USD 'million' reporter."
         }
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
       ]
     },
     {
@@ -202,7 +274,79 @@
           "expected_yahoo_raw_value": "39072000000",
           "yahoo_raw_field": "Current Liabilities",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value"
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 244,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Current liabilities",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "175384990",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "175384990000",
+          "yahoo_raw_field": "Current Liabilities",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Current liabilities line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 135,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total current liabilities",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "911187",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "911187000",
+          "yahoo_raw_field": "Current Liabilities",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total current liabilities line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 167,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Current liabilities / 流動負債",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "7103821",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "7103821000",
+          "yahoo_raw_field": "Current Liabilities",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Current liabilities / 流動負債 line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 110,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total Current Liabilities",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "2283",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "2283000000",
+          "yahoo_raw_field": "Current Liabilities",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total Current Liabilities line; USD 'million' reporter."
         }
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
       ]
     },
     {
@@ -230,7 +374,79 @@
           "expected_yahoo_raw_value": "509498000000",
           "yahoo_raw_field": "Total Assets",
           "match_basis": "335392 + 174106 HKD million subtotal; pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value"
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 244,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total assets",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "403155289",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "403155289000",
+          "yahoo_raw_field": "Total Assets",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total assets line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 135,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total assets",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "4139138",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "4139138000",
+          "yahoo_raw_field": "Total Assets",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total assets line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 167,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total Assets / 資產總額",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "22781257",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "22781257000",
+          "yahoo_raw_field": "Total Assets",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total Assets / 資產總額 line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 110,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total Assets",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "11121",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "11121000000",
+          "yahoo_raw_field": "Total Assets",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total Assets line; USD 'million' reporter."
         }
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
       ]
     },
     {
@@ -258,7 +474,79 @@
           "expected_yahoo_raw_value": "100817000000",
           "yahoo_raw_field": "Total Liabilities Net Minority Interest",
           "match_basis": "39072 + 61745 HKD million subtotal; pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value"
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 244,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total liabilities",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "213950170",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "213950170000",
+          "yahoo_raw_field": "Total Liabilities Net Minority Interest",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total liabilities line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 135,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total liabilities",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "1065959",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "1065959000",
+          "yahoo_raw_field": "Total Liabilities Net Minority Interest",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total liabilities line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 167,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total Liabilities / 負債總額",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "12363761",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "12363761000",
+          "yahoo_raw_field": "Total Liabilities Net Minority Interest",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total Liabilities / 負債總額 line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 110,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Total Liabilities",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "4694",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "4694000000",
+          "yahoo_raw_field": "Total Liabilities Net Minority Interest",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Total Liabilities line; USD 'million' reporter."
         }
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
       ]
     },
     {
@@ -344,7 +632,79 @@
           "expected_yahoo_raw_value": "122799000000",
           "yahoo_raw_field": "Inventory",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Properties for sale is inventory under IAS 2 for real estate developers"
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 244,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Inventories (Note 23)",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "62509682",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "62509682000",
+          "yahoo_raw_field": "Inventory",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Inventories (Note 23) line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 140,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Inventories (Note 18)",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "202863",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "202863000",
+          "yahoo_raw_field": "Inventory",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Inventories (Note 18) line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 167,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Inventories / 存貨 (Note 23)",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "1060641",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "1060641000",
+          "yahoo_raw_field": "Inventory",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Inventories / 存貨 (Note 23) line; RMB 'thousand' reporter."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 110,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Inventories, net",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "405",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "405000000",
+          "yahoo_raw_field": "Inventory",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; consolidated BS Inventories, net line; USD 'million' reporter."
         }
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
       ]
     },
     {

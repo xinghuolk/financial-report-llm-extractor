@@ -103,7 +103,7 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 - **Catalog verification** (Phase MX + Phase HK-B.5, 2026-05-11): coverage_matrix verified 24/62 → **36/62** (+12)；详情见 roadmap Phase MX + HK-B.5 Implementation Result
 - **HK issuer financial-currency 闭环** (Phase HK-B.5.1 + .5.2, 2026-05-11): `HK_ISSUER_FINANCIAL_CURRENCY` map（PDF spot-checked 6 HK）+ fixture backfill (1616 records) + `HkYahooTrustRule.additional_trusted_currencies` schema → 全部 HK 字段现在用 issuer reporting currency stamp；09987 acct_payable promote 到 clean。注意：revenue/net_profit/total_assets 等 HKD-only trust rules 未做 multi-currency 扩展，非 HKD reporter 的这些字段现在正确 unresolved（之前是 wrong-label-trust-policy 误触发的 mirage clean）
 
-下一步候选：HK-B.6 fix_assets 已 promote 4 issuers（+3 cells；01810/02498 因 PDF-Yahoo 实质偏差未入 allowlist）。剩余可选：扩展剩余 HKD-only trust rule（total_assets/total_liabilities/inventories/defer_tax_liab/total_cur_assets/total_cur_liab —— 主要是 explicit traceability，0-2 cells gain）；或 HK-B.7/.8（accounts_receiv/gross_profit recon 已建议保守，不 promote）；或合并到 main（branch 已 314+ commits ahead）。
+下一步候选：HK-B.7 已扩展 5 个 HKD-only trust rule（total_assets/total_liabilities/total_cur_assets/total_cur_liab/inventories）到 multi-currency，20 PDF samples 全 EXACT match，traceability 完整。所有 verified HK fields 现在都有 PDF-evidenced per-issuer 多币种 trust rules（trust policy samples: 14 → 52，4 倍增长）。剩余可选：HK-B.8 (accounts_receiv/gross_profit 保守不 promote per recon)；defer_tax_liab Yahoo HK 无数据可扩展；或合并到 main（branch 已 ~16 commits ahead，处于可交付状态）。
 
 `docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 
