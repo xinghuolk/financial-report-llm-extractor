@@ -1604,6 +1604,35 @@ Audit cross-referenced each `expected` field against: `provider_raw_semantics_cn
 
 **Result**: coverage matrix verification 24/62 → **35/62** (+11). Both `turtle_v015_coverage_matrix.json` and `turtle_v015_source_mapping_minimal.json` updated to keep `test_catalog_consistency.py::test_source_mapping_aligns_with_coverage_matrix` aligned. All 587 tests still pass.
 
+### Phase HK-B.5 Implementation Result
+
+Status: implemented 2026-05-11. Recon doc: `docs/phase_hk_b_5_recon.md`.
+
+PDF spot-check across all 6 HK issuers confirmed Yahoo HK `Accounts Payable` = PDF pure trade payables (using each issuer's preferred terminology: `Trade payables` for Xiaomi/Anta/06862/HSBC, `Creditors` for CK Asset property co, `Accounts payable` for Yum China USD reporter). All 6 PDF values exactly match the corresponding Yahoo raw candidate.
+
+**Critical discovery**: HK-B recon had assumed 01113 (CK Asset) was a likely terminal because the PDF didn't surface a "Trade payables" line in text extraction. The correct line is **"Creditors"** (Note 18, page 164) — a property-co HK/UK GAAP convention. Yahoo's value 3,607,000,000 HKD matches PDF Creditors 3,607 HKDM exactly, with formal aging analysis disclosed.
+
+**Three catalog changes** wire the promotion:
+1. `provider_raw_semantics_hk.json` — added Yahoo `acct_payable` `provider_semantics_sample_verified` rule.
+2. `hk_yahoo_trust_policy.json` — added `acct_payable` rule with 6 PDF samples.
+3. `turtle_v015_source_mapping_minimal.json` — added `source_policy.market_policies.HK` (`primary_route: yahoo_direct`, `on_conflict: select_primary_require_pdf`). CN behavior unchanged (no CN market_policy entry).
+
+The existing source_policy chain handles the promotion:
+- `_primary_candidate` picks Yahoo for HK
+- `_can_apply_hk_yahoo_trust_policy` validates the trust policy + provider_semantics rule alignment
+- `_apply_hk_yahoo_trust_policy` clears the conflict_classifications
+- All 6 HK issuers → `clean_present` with `selected_source=yahoo`.
+
+**Coverage impact**: +3 HK clean cells (00001/01113/09987 acct_payable moved from `unresolved_conflict` → `clean_present`). 01810/02498/06862 already clean — `selected_source` flipped akshare → yahoo (same value, more correct source). Matrix verification: 35/62 → 36/62 (+1, acct_payable now `verified`).
+
+**Test updates** (5 files):
+- `test_phase_hk_b_acct_payable.py`: locks new post-promotion shape (6 clean / 0 conflict, selected_source=yahoo).
+- `test_phase_hk_llm_2_supplement_merge.py`: baseline counts bumped for 00001 (28→29), 01113 (29→30), 09987 (29→30); total counts also +1.
+- `test_provider_baseline_replay.py`: `acct_payable` added to `EXPECTED_HK_YAHOO_VERIFIED_FIELDS` + per-company clean sets + counts 26→27 / 28→29.
+- `test_hk_yahoo_trust_policy.py`: verified samples count 14→20.
+
+Same methodology as H2.1/H2.2 CN promotions: multi-issuer (6 HK + CN baseline) sample verification, PDF spot-check per issuer with explicit page + statement_line cite, catalog rule with named samples (not silent broad promotion). Drift §177 satisfied. All 587 tests pass.
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:

@@ -1,10 +1,18 @@
-"""Phase HK-B.1: lock HK acct_payable conflict shape.
+"""Phase HK-B.1 / HK-B.5: lock HK acct_payable post-promotion shape.
 
-The 6-HK recon shows `acct_payable` is not a broad alias problem:
-three issuers have exact AKShare/Yahoo agreement and three have material
-normalized-value conflicts. This test locks that shape from persisted
-provider fixtures so later source-policy work cannot silently promote the
-conflict cases or regress the exact-match cases.
+HK-B.1 initially locked acct_payable at 3 clean / 3 conflict (recon in
+`docs/phase_hk_b_recon.md`). HK-B.5 then did the per-issuer PDF spot-check
+across all 6 HK companies and confirmed that Yahoo HK `Accounts Payable` =
+PDF pure Trade payables (or its property-co equivalent `Creditors` for CK
+Asset / property issuers, or `Accounts payable` for Yum-style US-domiciled
+issuers). All 6 PDF samples are recorded in `hk_yahoo_trust_policy.json`
+under `acct_payable`, and the source mapping now carries an HK market
+policy (`primary_route: yahoo_direct`) so the Yahoo candidate is selected
+and trust-policy-cleared into `clean_present` for every HK issuer.
+
+This test locks the post-promotion shape: 6 clean / 0 conflict, all with
+selected_source=yahoo and value matching the Yahoo `Accounts Payable`
+raw candidate (which itself matches PDF Trade payables per spot-check).
 """
 
 from __future__ import annotations
@@ -53,23 +61,25 @@ HK_LLM_6_FIXTURE = (
 
 CASES = [
     # company, period_end, inventory fixture, expected bucket, selected source,
-    # expected value, candidate normalized values for conflict cases.
+    # expected value, candidate normalized values.
+    # All HK issuers land clean_present with selected_source=yahoo after the
+    # HK-B.5 PDF spot-check + market_policy promotion.
     (
         "00001",
         date(2025, 12, 31),
         BASELINE_FIXTURE,
-        "unresolved_conflict",
-        None,
-        None,
+        "clean_present",
+        "yahoo",
+        Decimal("22632000000.0"),
         (("akshare", "73227658280.0"), ("yahoo", "22632000000.0")),
     ),
     (
         "01113",
         date(2025, 12, 31),
         BASELINE_FIXTURE,
-        "unresolved_conflict",
-        None,
-        None,
+        "clean_present",
+        "yahoo",
+        Decimal("3607000000.0"),
         (("akshare", "17079890200.0"), ("yahoo", "3607000000.0")),
     ),
     (
@@ -77,7 +87,7 @@ CASES = [
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "01810" / "source_inventory.jsonl.gz",
         "clean_present",
-        "akshare",
+        "yahoo",
         Decimal("98280585000.0"),
         (("akshare", "98280585000.0"), ("yahoo", "98280585000.0")),
     ),
@@ -86,7 +96,7 @@ CASES = [
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "02498" / "source_inventory.jsonl.gz",
         "clean_present",
-        "akshare",
+        "yahoo",
         Decimal("475825000.0"),
         (("akshare", "475825000.0"), ("yahoo", "475825000.0")),
     ),
@@ -95,7 +105,7 @@ CASES = [
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "06862" / "source_inventory.jsonl.gz",
         "clean_present",
-        "akshare",
+        "yahoo",
         Decimal("1796362000.0"),
         (("akshare", "1796362000.0"), ("yahoo", "1796362000.0")),
     ),
@@ -103,9 +113,9 @@ CASES = [
         "09987",
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "09987" / "source_inventory.jsonl.gz",
-        "unresolved_conflict",
-        None,
-        None,
+        "clean_present",
+        "yahoo",
+        Decimal("801000000.0"),
         (("akshare", "14951872000.0"), ("yahoo", "801000000.0")),
     ),
 ]

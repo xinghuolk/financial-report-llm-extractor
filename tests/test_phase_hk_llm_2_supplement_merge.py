@@ -79,7 +79,7 @@ CASES = [
         REPO / "tmp" / "runs" / "h2_2_after" / "00001" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "00001"
             / "llm_evidence_supplement.json",
-        28, 33,
+        29, 34,  # Phase HK-B.5: acct_payable now clean → baseline +1, total +1
         ("capitalized_interest", "contingent_liabilities_commitments",
          "dividend_plan", "dps", "segment_revenue_profit"),
     ),
@@ -88,7 +88,7 @@ CASES = [
         REPO / "tmp" / "runs" / "h2_2_after" / "01113" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "01113"
             / "llm_evidence_supplement.json",
-        29, 33,
+        30, 34,  # Phase HK-B.5: acct_payable now clean → baseline +1, total +1
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "dps"),
     ),
@@ -128,7 +128,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "09987" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "09987"
             / "llm_evidence_supplement.json",
-        29, 32,
+        30, 33,  # Phase HK-B.5: acct_payable now clean → baseline +1, total +1
         ("lease_liability_maturity", "segment_revenue_profit",
          "time_deposits_or_wealth_products"),
     ),

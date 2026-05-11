@@ -340,24 +340,24 @@
       "domain": "balance_sheet",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         },
         {
           "source": "yahoo",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "HK-B.1 (test_phase_hk_b_acct_payable.py) locks 3 clean (01810/02498/06862 AKShare/Yahoo exact match) + 3 unresolved_conflict (00001/01113/09987). Provider-provider agreement alone insufficient for promotion per drift §177 — needs PDF spot-check to validate semantics. CN 600519 lands clean_present via AKShare PAYABLE."
+      "notes": "Verified by HK-B.5 PDF spot-check across all 6 HK companies + CN baseline. Yahoo HK Accounts Payable matches PDF pure trade payables for: 00001 (HSBC Note 27a, 22,632 HKDM), 01113 (CK Asset Note 18 'Creditors', 3,607 HKDM — property-co convention), 01810 (Xiaomi Note 30, 98,280,585 K RMB), 02498 (Note 32, 475,825 K RMB), 06862 (Note 27 貿易應付款項, 1,796,362 K RMB), 09987 (Yum China Note - Accounts Payable, $801M USD). Source mapping carries HK market_policy primary_route=yahoo_direct; AKShare cross-check for CN baseline 600519. Locked by test_phase_hk_b_acct_payable.py."
     },
     "inventories": {
       "domain": "balance_sheet",

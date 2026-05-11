@@ -487,6 +487,29 @@
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
       "turtle_field_id": "dividends_paid"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [
+        "Payables",
+        "Other Payable",
+        "Total Tax Payable",
+        "Tradeand Other Payables Non Current"
+      ],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Accounts Payable",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "pure trade payables — disclosed as 'Trade payables' (Xiaomi/Anta/06862/HSBC), 'Creditors' (CK Asset property co), or 'Accounts payable' (Yum China USD reporter). Does NOT include accruals or other payables.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "acct_payable"
     }
   ]
 }

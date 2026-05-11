@@ -79,6 +79,7 @@ EXPECTED_HK_METADATA_BLOCKER_FIELDS = frozenset(
 )
 EXPECTED_HK_YAHOO_VERIFIED_FIELDS = frozenset(
     {
+        "acct_payable",  # Phase HK-B.5: 6-HK PDF spot-check confirmed Yahoo HK = pure Trade payables
         "defer_tax_liab",
         "inventories",
         "net_profit",
@@ -746,8 +747,12 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
     #         depreciation_amortization/dividends_paid → 26 clean.
     # 01113: additionally gained change_in_inventory/repurchase_of_stock → 28 clean.
     # H1: inventories clean_present for both 00001 and 01113 (Yahoo Inventory proven against PDF).
+    # Phase HK-B.5: acct_payable now lands clean_present for both companies
+    # via Yahoo trust policy + market_policy promotion (PDF spot-check confirmed
+    # Yahoo HK Accounts Payable = PDF pure Trade payables / Creditors).
     expected_clean_by_company = {
         "00001": {
+            "acct_payable",
             "capital_expenditures",
             "cash",
             "change_in_inventory",
@@ -776,6 +781,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "total_liabilities",
         },
         "01113": {
+            "acct_payable",
             "capital_expenditures",
             "cash",
             "change_in_inventory",
@@ -806,7 +812,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 26, "01113": 28}
+    expected_clean_count_by_company = {"00001": 27, "01113": 29}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]

@@ -885,7 +885,7 @@
       "domain": "balance_sheet",
       "source_mode": "direct",
       "primary_route": "akshare_direct",
-      "verification_status": "expected",
+      "verification_status": "verified",
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
@@ -904,7 +904,36 @@
         "trade payables",
         "creditors",
         "应付账款"
-      ]
+      ],
+      "source_policy": {
+        "semantic_concept": "trade payables (pure trade scope; excludes accruals/other payables)",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "ACCOUNTS_PAYABLE",
+              "应付帐款",
+              "应付账款"
+            ],
+            "related": []
+          },
+          "yahoo": {
+            "primary": [
+              "Accounts Payable"
+            ]
+          }
+        },
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": true
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      }
     },
     "other_cur_assets": {
       "value_type": "money",

@@ -331,6 +331,109 @@
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; excludes non-controlling interests and perpetual capital securities where disclosed"
         }
       ]
+    },
+    {
+      "policy_id": "hk_yahoo_raw_hkd_pdf_verified:acct_payable",
+      "field_id": "acct_payable",
+      "classification": "yahoo_pdf_verified",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "allowed_yahoo_raw_fields": [
+        "Accounts Payable"
+      ],
+      "samples": [
+        {
+          "company_id": "00001",
+          "provider_ticker": "0001.HK",
+          "report_ref": "downloads/hk_stocks/00001/annual/2025_annual_en.pdf",
+          "pdf_page": 244,
+          "statement_name": "Notes — Trade payables and other current liabilities (Note 27)",
+          "statement_line": "Trade payables (a)",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "22632",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "22632000000",
+          "yahoo_raw_field": "Accounts Payable",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value"
+        },
+        {
+          "company_id": "01113",
+          "provider_ticker": "1113.HK",
+          "report_ref": "downloads/hk_stocks/01113/annual/2025_annual_en.pdf",
+          "pdf_page": 164,
+          "statement_name": "Notes — Creditors, Accruals and Others (Note 18)",
+          "statement_line": "Creditors",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "3607",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "3607000000",
+          "yahoo_raw_field": "Accounts Payable",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; HK property-co convention names this line 'Creditors' instead of 'Trade payables'."
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 273,
+          "statement_name": "Notes — Trade payables (Note 30)",
+          "statement_line": "Trade payables",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "98280585",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "98280585000",
+          "yahoo_raw_field": "Accounts Payable",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yahoo HK adapter labels currency=HKD but raw value is the issuer's reported RMB figure."
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 200,
+          "statement_name": "Notes — Trade payables (Note 32)",
+          "statement_line": "Trade payables",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "475825",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "475825000",
+          "yahoo_raw_field": "Accounts Payable",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yahoo HK adapter labels currency=HKD but raw value is the issuer's reported RMB figure."
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 227,
+          "statement_name": "Notes — Trade payables / 貿易應付款項 (Note 27)",
+          "statement_line": "Trade payables / 貿易應付款項",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "1796362",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "1796362000",
+          "yahoo_raw_field": "Accounts Payable",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yahoo HK adapter labels currency=HKD but raw value is the issuer's reported RMB figure."
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 175,
+          "statement_name": "Notes — Accounts Payable and Other Current Liabilities",
+          "statement_line": "Accounts payable",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "801",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "801000000",
+          "yahoo_raw_field": "Accounts Payable",
+          "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yahoo HK adapter labels currency=HKD but raw value is the issuer's reported USD figure."
+        }
+      ]
     }
   ]
 }
