@@ -38,7 +38,9 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
     # total_cur_assets / total_cur_liab / inventories (5 BS aggregates ×
     # 4 non-HKD issuers = 20 new samples; explicit traceability for fields
     # that previously survived backfill via deterministic-candidate path).
-    assert len(verified_samples) == 52
+    # Phase HK-B.8: +6 accounts_receiv samples (all 6 HK issuers; Yahoo
+    # Accounts Receivable = PDF Trade receivables / Debtors / AR net).
+    assert len(verified_samples) == 58
     assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
     assert policy.rule_for_field("revenue") is not None
     assert policy.is_pdf_verified("revenue") is True

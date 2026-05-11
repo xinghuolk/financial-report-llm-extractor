@@ -1033,6 +1033,121 @@
         "CNY",
         "USD"
       ]
+    },
+    {
+      "policy_id": "hk_yahoo_raw_hkd_pdf_verified:accounts_receiv",
+      "field_id": "accounts_receiv",
+      "classification": "yahoo_pdf_verified",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "allowed_yahoo_raw_fields": [
+        "Accounts Receivable"
+      ],
+      "samples": [
+        {
+          "company_id": "00001",
+          "provider_ticker": "0001.HK",
+          "report_ref": "downloads/hk_stocks/00001/annual/2025_annual_en.pdf",
+          "pdf_page": 198,
+          "statement_name": "Notes — Trade receivables and other current assets (Note 25)",
+          "statement_line": "Trade receivables",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "14952",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "14952000000",
+          "yahoo_raw_field": "Accounts Receivable",
+          "match_basis": "PDF Note 25 'Trade receivables' = 14,952 HKDM exactly equals Yahoo Accounts Receivable; CK Hutchison BS combines Trade + other under 'Trade receivables and other current assets' but Note 25 breaks out pure Trade."
+        },
+        {
+          "company_id": "01113",
+          "provider_ticker": "1113.HK",
+          "report_ref": "downloads/hk_stocks/01113/annual/2025_annual_en.pdf",
+          "pdf_page": 191,
+          "statement_name": "Notes — Debtors, Prepayments and Others (Note 17)",
+          "statement_line": "Debtors",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "pdf_value": "2028",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "2028000000",
+          "yahoo_raw_field": "Accounts Receivable",
+          "match_basis": "PDF Note 17 'Debtors' = 2,028 HKDM exactly equals Yahoo Accounts Receivable. CK Asset (property co) uses 'Debtors' line for trade receivables per HK/UK GAAP convention."
+        },
+        {
+          "company_id": "01810",
+          "provider_ticker": "1810.HK",
+          "report_ref": "downloads/hk_stocks/01810/annual/2024_annual_en.pdf",
+          "pdf_page": 285,
+          "statement_name": "Notes — Trade receivables (Note 22)",
+          "statement_line": "Trade receivables",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "12662060",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "12662060000",
+          "yahoo_raw_field": "Accounts Receivable",
+          "match_basis": "PDF Note 22 Trade receivables 12,662,060 K RMB = Yahoo 12,662,060,000 CNY ✓"
+        },
+        {
+          "company_id": "02498",
+          "provider_ticker": "2498.HK",
+          "report_ref": "downloads/hk_stocks/02498/annual/2024_annual_en.pdf",
+          "pdf_page": 145,
+          "statement_name": "Notes — Trade receivables",
+          "statement_line": "Trade receivables",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "410611",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "410611000",
+          "yahoo_raw_field": "Accounts Receivable",
+          "match_basis": "PDF Trade receivables 410,611 K RMB = Yahoo 410,611,000 CNY ✓"
+        },
+        {
+          "company_id": "06862",
+          "provider_ticker": "6862.HK",
+          "report_ref": "downloads/hk_stocks/06862/annual/2024_annual_en.pdf",
+          "pdf_page": 252,
+          "statement_name": "Notes — Trade receivables / 貿易應收款項 (Note 24)",
+          "statement_line": "Trade receivables / 貿易應收款項",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "346347",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "346347000",
+          "yahoo_raw_field": "Accounts Receivable",
+          "match_basis": "PDF 貿易應收款項 346,347 K RMB = Yahoo 346,347,000 CNY ✓"
+        },
+        {
+          "company_id": "09987",
+          "provider_ticker": "9987.HK",
+          "report_ref": "downloads/hk_stocks/09987/annual/2024_annual_en.pdf",
+          "pdf_page": 175,
+          "statement_name": "Consolidated Balance Sheets / Notes — Accounts Receivable",
+          "statement_line": "Accounts receivable, net",
+          "reported_currency": "USD",
+          "reported_unit": "million",
+          "pdf_value": "79",
+          "pdf_unit_multiplier": 1000000,
+          "expected_yahoo_raw_value": "79000000",
+          "yahoo_raw_field": "Accounts Receivable",
+          "match_basis": "PDF 'Accounts receivable, net' = $79M USD exactly equals Yahoo 'Accounts Receivable' 79,000,000. Yum China also reports a broader 'Receivables' aggregate ($316M including payment-processor receivables) — the source mapping correctly picks 'Accounts Receivable' as the AR alias match."
+        }
+      ],
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
+      ],
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ]
     }
   ]
 }

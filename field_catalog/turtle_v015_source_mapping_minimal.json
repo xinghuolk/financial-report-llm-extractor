@@ -904,7 +904,36 @@
         "trade receivables",
         "debtors",
         "应收账款"
-      ]
+      ],
+      "source_policy": {
+        "semantic_concept": "trade receivables (pure trade scope; for HK property cos 'Debtors' is the equivalent line)",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "ACCOUNTS_RECEIVABLE",
+              "应收帐款",
+              "应收账款"
+            ],
+            "related": []
+          },
+          "yahoo": {
+            "primary": [
+              "Accounts Receivable"
+            ]
+          }
+        },
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      }
     },
     "acct_payable": {
       "value_type": "money",

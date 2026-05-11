@@ -522,6 +522,37 @@
         "06862",
         "09987"
       ]
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [
+        "Receivables",
+        "Non Current Accounts Receivable",
+        "Other Receivables",
+        "Gross Accounts Receivable"
+      ],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Accounts Receivable",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "Yahoo HK 'Accounts Receivable' = PDF pure 'Trade receivables' (or HK property-co 'Debtors'; Yum China 'Accounts receivable, net'). Verified for all 6 HK issuers. Note: Yum China Yahoo also has a broader 'Receivables' raw_field for $316M which includes payment-processor receivables; the source mapping's alias list ['Accounts Receivable'] correctly excludes it.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "accounts_receiv",
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
+      ]
     }
   ]
 }
