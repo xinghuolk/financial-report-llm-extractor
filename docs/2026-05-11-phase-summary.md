@@ -1,26 +1,31 @@
 # 阶段性总结 — Source-First 财报抽取器
 
-> 日期: 2026-05-11
-> 分支: `feature/source-first-roadmap-requirements` @ `856a1a7`
-> 范围: Phase HK-LLM-2/C + HK-B.1-.4 锁定后的项目快照，处于自然 inflection
-> point。作为 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
+> 日期: 2026-05-11（首发；含 Wave 7 catalog verification + HK currency-label fix 后续）
+> 分支: `feature/source-first-roadmap-requirements` @ `d05bf7f`
+> 范围: Phase HK-B.8 + 全 HK trust policy multi-currency 落地后的项目快照，
+> 处于自然 inflection point。作为
+> `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
 > 的 TOC 入口，不替代它。
 
 ## TL;DR
 
 - **架构转向已完成**: PDF-first LLM 抽取器 → source-first
   （AKShare/Yahoo → reconciliation → source policy → PDF/LLM supplement）。
-- **Catalog**: 15 → **56 字段** (P0:22 + P1:11 + P2:9 + P3:14)。
-- **覆盖率**: CN 600519/2024 **79%** (44/56 含 LLM)；6 家 HK 公司
-  **57–70%** 含 LLM，全部 regression-locked。
-- **纪律**: 587 tests 通过，ruff + mypy clean，drift §177 严格执行
+- **Catalog**: 15 → **56 字段** (P0:22 + P1:11 + P2:9 + P3:14)；
+  coverage matrix **36/62 verified**（Phase MX +11 + HK-B.5 +1）。
+- **覆盖率**（post-HK-B.8）: CN 600519/2024 **79%** (44/56 含 LLM)；
+  6 家 HK 公司 **63–71%** 含 LLM，全部 PDF-verified + regression-locked。
+- **HK trust policy 多币种闭环**: trust 验证 sample 数 14 → **58**（4x 增长）；
+  9 HK 字段全 PDF-verified per-issuer（HKD/CNY/USD）。
+- **纪律**: **594 tests** 通过，ruff + mypy clean，drift §177 严格执行
   （无 silent promotion，sample-verified 规则强制 PDF spot-check）。
-- **§7 5 项 branch completion criteria**: 5/5 ✅ 满足，分支处于可合并状态。
+- **§7 5 项 branch completion criteria**: 5/5 ✅ 满足，分支处于可合并状态
+  （328 commits，比 main 领先 320）。
 
 ## 1. 阶段时间线（按 wave 分组）
 
 仓库从 bootstrap 到当前状态共 **12 个日历日**（2026-04-30 → 2026-05-11，
-317 commits，日均 ~26 个）。30+ phases 收敛为 6 个 wave：
+328 commits，日均 ~27 个）。30+ phases 收敛为 7 个 wave：
 
 | Wave | 日期 | Phases | 产出 |
 |------|------|--------|------|
@@ -30,6 +35,7 @@
 | **4. LLM 与 PDF 桶** | 05-08 → 05-09 | Phase H0 (null_means_zero), Phase H1 (surgical conflict, 部分回滚), Phase I-D/I-A/I-A.2 (HK notes LLM + 6 follow-ups) | LLM 框架接入并支持 confidence 校准；invest_income alias 扩展 0/6 → 5/6 (83%)；H1 部分回滚保留架构诚实性，拒绝伪 33/33 覆盖率。 |
 | **5. Orchestrator 与 CN 精修** | 05-09 → 05-10 | Phase EC (evaluate-company), Phase H2/H2.1/H2.2/H2.3#3/H2.4 (CN/HK conflict 解决, 加法 derivation, 多公司验证, fixture 持久化, 累计 review 修复) | 6-bucket 评估分类；period 归一化清除 41% 假冲突；4 家 CN 公司 × 4 字段 = 16 EXACT samples 背书 H2 promotions；600519 P0+P1 达到 **33/33 (100%) clean**。 |
 | **6. HK 集群锁** | 05-10 → 05-11 | Phase HK-coverage discovery (HK-A scope 崩塌), Phase HK-C (industry_not_applicable), Phase HK-LLM-2/C (6 HK supplement merge), Phase HK-B.1-.4 (4 字段 × 6 公司 conflict shape 锁) | HK-A "alias gap"假说经实证崩塌为 ~0 cells（adapter 实际缺字段）。4 家新 HK fixture 实时拉取（01810/02498/06862/09987）。24 条 named shape-lock 断言防止 HK-B 候选字段被静默提升。 |
+| **7. Catalog Verification + HK Trust Policy 多币种闭环** | 05-11 | Phase MX (matrix audit 24/62→35/62), Phase HK-B.5 (acct_payable 6 HK) + .5 review fix (per-issuer allowlist 机制), Phase HK-B.5.1/.5.2/.5.3 (adapter currency map → fixture backfill + multi-currency schema → revenue/net_profit recovery), Phase HK-B.6 (fix_assets), Phase HK-B.7 (5 BS 字段 traceability), Phase HK-B.8 (accounts_receiv) | HK 6 公司 currency-label 由 hardcoded HKD 修复为 issuer reporting currency（CNY/USD）。Trust 规则架构升级支持 `additional_trusted_currencies` + `pdf_verified_company_ids` allowlist。**9 HK 字段** (acct_payable / revenue / net_profit / fix_assets / accounts_receiv / total_assets / total_liabilities / total_cur_assets / total_cur_liab / inventories) 全 PDF-verified per-issuer。Trust samples 14 → 58。HK-B.4 `gross_profit` 保持 terminal_unverified（无 PDF anchor）；HK-B.6 `fix_assets` 01810/02498 仍 single-source clean（非 allowlist 内，避免 wrong-currency claim）。 |
 
 **过程中的关键反转**
 
@@ -42,6 +48,19 @@
 - **"LLM wiring 缺失"误读**：B-recon (`docs/phase_hk_llm_recon.md`) 发现
   orchestrator 已经接好；表面上的"0 supplement"是 UX/流程问题
   （未传 `--pdf --llm-config`），不是工程缺陷。
+- **HK currency-label "mirage" 修正（Phase HK-B.5.2）**：Yahoo HK adapter
+  把所有 HK 公司 currency hardcode 为 HKD，掩盖了非 HKD reporter (Xiaomi/Anta/
+  Yum 等) 的实际报告币种。HK-B.5 PDF spot-check 引出 currency-label review，
+  揭示之前部分 baseline clean cells 是 wrong-HKD-label 误触发 HKD trust policy
+  造成的"mirage"。HK-B.5.2 backfill 修正诚实状态（-8 cells），HK-B.5.3 用
+  PDF-verified multi-currency support 恢复（+8 cells，但 provenance 更
+  honest）。最终架构：trust 规则多币种 + per-issuer allowlist，drift §177 严格。
+- **HK-B 实际 promotion 范围**：recon 原本建议 acct_payable/fix_assets 谨慎、
+  accounts_receiv/gross_profit 保守。后续 PDF spot-check 实证发现 5 of 6
+  HK 字段全可 promote（acct_payable 6, revenue 6, net_profit 6, fix_assets
+  4, accounts_receiv 6）；只有 gross_profit 经 recon 确认保守（HK 利润表无
+  GP 行）。01113 "Creditors" / "Debtors" 是物业公司 HK/UK GAAP 命名约定，
+  并非数据缺失。 |
 
 ## 2. 架构现状
 
@@ -83,15 +102,31 @@ alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
 
 ## 3. 覆盖率里程碑
 
-| 公司 / 期间 | source-first clean | +LLM | 锁定在 |
-|------------|------------------:|-----:|--------|
-| CN 600519 / 2024 | 39/56 (70%) | **44/56 (79%)** | `test_phase_hk_llm_2_supplement_merge.py::[600519]` |
-| HK 00001 / 2025 | 28/56 (50%) | 33/56 (59%) | `test_phase_hk_llm_2_supplement_merge.py::[00001]` |
-| HK 01113 / 2025 | 29/56 (52%) | 33/56 (59%) | `test_phase_hk_llm_2_supplement_merge.py::[01113]` |
-| HK 01810 / 2024 | 32/56 (57%) | **39/56 (70%)** | `test_phase_hk_llm_2_supplement_merge.py::[01810]` |
-| HK 02498 / 2024 | 32/56 (57%) | 37/56 (66%) | `test_phase_hk_llm_2_supplement_merge.py::[02498]` |
-| HK 06862 / 2024 | 33/56 (59%) | 38/56 (68%) | `test_phase_hk_llm_2_supplement_merge.py::[06862]` |
-| HK 09987 / 2024 | 29/56 (52%) | 32/56 (57%) | `test_phase_hk_llm_2_supplement_merge.py::[09987]` |
+| 公司 / 期间 | Reporter | source-first clean | +LLM | 锁定在 |
+|------------|----------|------------------:|-----:|--------|
+| CN 600519 / 2024 | CNY | 39/56 (70%) | **44/56 (79%)** | `test_phase_hk_llm_2_supplement_merge.py::[600519]` |
+| HK 00001 / 2025 | HKD | 31/56 (55%) | **36/56 (64%)** | `test_phase_hk_llm_2_supplement_merge.py::[00001]` |
+| HK 01113 / 2025 | HKD | 32/56 (57%) | **36/56 (64%)** | `test_phase_hk_llm_2_supplement_merge.py::[01113]` |
+| HK 01810 / 2024 | CNY | 33/56 (59%) | **40/56 (71%)** | `test_phase_hk_llm_2_supplement_merge.py::[01810]` |
+| HK 02498 / 2024 | CNY | 33/56 (59%) | **38/56 (68%)** | `test_phase_hk_llm_2_supplement_merge.py::[02498]` |
+| HK 06862 / 2024 | CNY | 34/56 (61%) | **39/56 (70%)** | `test_phase_hk_llm_2_supplement_merge.py::[06862]` |
+| HK 09987 / 2024 | USD | 32/56 (57%) | **35/56 (63%)** | `test_phase_hk_llm_2_supplement_merge.py::[09987]` |
+
+**HK Yahoo Trust Policy 多币种规则覆盖（post-HK-B.8）**：
+
+| 字段 | Allowlist | Samples | 备注 |
+|---|---|---:|---|
+| revenue | 6 HK | 6 | HKD/CNY/USD reporter 全 PDF-verified |
+| net_profit | 6 HK | 6 | 用"attributable to owners"行，正确排除 NCI |
+| acct_payable | 6 HK | 6 | 01113 "Creditors" / Yum "Accounts payable" 均匹配 |
+| accounts_receiv | 6 HK | 6 | 09987 用 Yahoo "Accounts Receivable" $79M, 非 "Receivables" $316M |
+| fix_assets | 4 HK | 4 | 01810/02498 因 PDF-Yahoo 实质偏差排除，仍 single-source clean |
+| total_assets | 6 HK | 5 | BS aggregate，traceability |
+| total_liabilities | 6 HK | 5 | 同上 |
+| total_cur_assets | 6 HK | 6 | 同上 |
+| total_cur_liab | 6 HK | 6 | 同上 |
+| inventories | 6 HK | 6 | 同上 |
+| **合计** | — | **58 PDF-verified samples** | 14 → 58 = 4x 增长 vs Phase H1 baseline |
 
 **Catalog 增长**
 
@@ -108,14 +143,17 @@ alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
 
 - 4 家 CN 公司 × 4 个被提升字段 = **16 EXACT samples**
   （`provider_raw_semantics_cn.json` + `provider_field_baseline_h2_2_extension/`）
+- 6 家 HK 公司 × 10 个 trust-promoted 字段 = **58 PDF-verified Yahoo HK samples**
+  （`hk_yahoo_trust_policy.json`，post-HK-B.8）
 - 6 家 HK 公司 × 14 个 P3 字段 = **84 次 LLM 尝试，33 present (39%)**
   （`tmp/runs/phase_i_c_validation_v2/`）
 - 6 家 HK 公司 × 4 个 HK-B 字段 = **24 条 named shape-lock 断言**
-  （`tests/test_phase_hk_b_*.py`）
+  （`tests/test_phase_hk_b_*.py`；post-HK-B.6/.8 部分形态已变 promoted）
 - HK fixtures: 2 (baseline) + 4 (HK 6 extension) = **6 家 HK 公司持久化**
 
 **测试数增长**：~50 (bootstrap) → 450 (H0) → 524 (H2) → 552
-(HK-LLM-2 initial 3-co) → **587 (post HK-B.1-.4 + HK-LLM-2/C)**。
+(HK-LLM-2 initial 3-co) → 587 (post HK-B.1-.4 + HK-LLM-2/C) → **594
+(post HK-B.5 → .8 multi-currency closure)**。
 
 ## 4. 方法论快照
 
@@ -151,6 +189,21 @@ alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
   `normalize_money()`。
 - EC Tier 1：period 字符串不匹配导致 41% 假冲突 → reconciliation 前先做
   period 归一化。
+- **HK-B.5 review (currency-label)**：HK trust policy 在 Yahoo HK adapter
+  hardcoded HKD label 下广播 promote，对 RMB/USD reporter 产出 wrong-currency
+  clean claim。修复链：HK-B.5 加 `pdf_verified_company_ids` 排除 09987 →
+  HK-B.5.1 加 `HK_ISSUER_FINANCIAL_CURRENCY` map → HK-B.5.2 fixture backfill
+  + `additional_trusted_currencies` schema → HK-B.5.3/.6/.8 用 PDF-verified
+  per-issuer samples 覆盖 9 字段。
+- **HK-B.6 fix_assets ROU semantic ambiguity**：Yahoo Net PPE conflate
+  PP&E + Right-of-use assets per HKFRS 16。4 of 6 HK 公司 PDF 显示
+  Yahoo = PP&E + ROU within rounding；01810/02498 实质偏差不入 allowlist。
+  保留 single-source clean，避免引入未 verified 的语义。
+- **Phase MX coverage matrix audit**：发现 catalog `verification` 字段
+  漂移（24/62 verified vs 实际 PDF-evidenced 多），36/62 提升至 verified
+  无 runtime 改动，仅 catalog hygiene。期间 `bad_debt_provision` 因
+  primary_route invariant 卡住（仅 LLM 证据但 route 标 yahoo_direct），
+  保留 expected 状态等待后续修正。
 
 ## 5. 当前状态
 
@@ -163,13 +216,14 @@ alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
 5. ✅ Source priority chain 在 design / requirements / roadmap 之间表述一致
 
 **分支状态**
-- `feature/source-first-roadmap-requirements` @ `856a1a7`
-- 自 bootstrap（`c4fcbd6`，2026-04-30）共 317 commits
-- **比 `main` 领先 309 commits**（main 仍在 bootstrap 附近）
-- 与 origin/feature 同步（无未推送提交）
-- **587 tests passing，1 skipped (real-LLM smoke)，0 failing**
+- `feature/source-first-roadmap-requirements` @ `d05bf7f`
+- 自 bootstrap（`c4fcbd6`，2026-04-30）共 **328 commits**
+- **比 `main` 领先 320 commits**（main 仍在 bootstrap 附近）
+- 本地领先 origin/feature ~9 commits（自 Phase MX 起未 push）
+- **594 tests passing，1 skipped (real-LLM smoke)，0 failing**
 - `uv run ruff check .` clean（line-length 88，py311）
 - `uv run mypy src tests` clean（`disallow_untyped_defs = true`）
+- coverage matrix verified: **36/62**（Phase MX +11，HK-B.5 +1；其余 expected 多为 P3/P4 LLM/notes-only 字段）
 
 **56 字段 catalog 分布**
 - P0: 22（利润表 + 资产负债表核心）
@@ -186,19 +240,23 @@ alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
 
 ## 6. 未决项
 
-roadmap 或 recon 文档中明确标记为 deferred / requires-decision 的事项：
+roadmap 或 recon 文档中明确标记为 deferred / requires-decision 的事项
+（已更新反映 Phase HK-B.5 → .8 完成后状态）：
 
 | 项目 | 状态 | 来源 | 下一步动作 |
 |------|------|------|-----------|
-| HK-B `acct_payable` 提升 | 形态已锁（3 clean / 3 conflict） | `docs/phase_hk_b_recon.md` | 对 01810/02498/06862 做 PDF spot-check，验证 AKShare 应付帐款 = Yahoo Accounts Payable = PDF Trade payables。若一致 → sample-scoped HK 规则；不一致 → 终态。 |
-| HK-B `fix_assets` 提升 | 形态已锁（3 clean / 3 conflict） | 同上 | 验证 Yahoo Net PPE 的 scope（HKFRS 16 下 ROU asset 是否纳入）。 |
-| HK-B `accounts_receiv` | 形态已锁（6 conflict） | 同上 | 保持保守；AKShare 应收帐款与 Yahoo Accounts Receivable scope 不一致，需 ≥3 公司证明。 |
-| HK-B `gross_profit` | 形态已锁（4 conflict + 2 terminal） | 同上 | 保持非 clean；provider-provider 一致性按 drift §177 不够。 |
+| HK-B `acct_payable` | **HK-B.5 已 promote 6 HK** ✓ | `docs/phase_hk_b_5_recon.md` | 完成（multi-currency trust rule + per-issuer allowlist）。 |
+| HK-B `fix_assets` | **HK-B.6 已 promote 4 HK**；01810/02498 仍 single-source | `docs/phase_hk_b_5_recon.md` Phase HK-B.6 section | 01810/02498 PDF-Yahoo Net PPE 实质偏差（-22% / 2.9%）— 需要更深入 issuer-specific 分析才能判断是否扩展 allowlist。 |
+| HK-B `accounts_receiv` | **HK-B.8 已 promote 6 HK** ✓ | 同上 | 完成。注意 Yum China 用 Yahoo "Accounts Receivable"（$79M）而非 "Receivables"（$316M broader）—— source mapping alias 选对了。 |
+| HK-B `gross_profit` | 仍 terminal_unverified（HK-B.4 锁） | `docs/phase_hk_b_recon.md` | recon 明确不 promote：HK 利润表无 GP 行，provider-provider agreement alone 按 drift §177 不够。 |
+| `defer_tax_liab` Yahoo HK 多币种 | HKD 1 sample，非 HKD issuer 无 Yahoo 数据 | HK-B.7 中标记 | Yahoo Deferred Tax Liabilities Non Current 在 4 非 HKD issuer 全无数据；无法多币种扩展。 |
+| `bad_debt_provision` matrix verified | HK-LLM-2 lock 中 4 HK 命中，但 primary_route=yahoo_direct invariant 阻碍 promote 到 verified | Phase MX section | 需要把 primary_route 重构为 pdf_evidence 以反映实际 LLM 路径。 |
+| Yahoo HK adapter live-detect financialCurrency | Phase HK-B.5.1 用 hardcoded map (6 公司)；未知 HK 公司仍 fallback HKD | HK-B.5.1 section | 用 `yfinance.Ticker.info.financialCurrency` 替代 hardcoded map，扩展到任意 HK ticker。 |
 | 6 个检索信号弱的 P3/P4 字段 | 未映射 | roadmap §7 follow-up | 要么走 Phase I-D 用按 disclosure pattern 精修的 alias，要么接受终态 `not_in_scope`。 |
 | Confidence threshold 校准值 | 框架已就位、值待定 | Phase I-A.2 follow-up #2 | 收集 ~50+ 人工标注的 (company, field) 对后定阈值。 |
-| 跨更多 issuer 批量重验证 | 当前 6 HK + 4 CN | roadmap §7 follow-up | 在做 HK-B 提升前先扩到不同行业（金融 / 科技 / 能源）。 |
-| `_resolve_derivation_operand` period 等值断言 | deferred | H2.1 carryover | 添加显式 period-end 等值检查，防多期 operand 被静默累加；当前风险低。 |
-| 合并分支到 `main` | 暂未 | — | 已领先 309 commits；处于可交付状态。 |
+| 跨更多 issuer 批量重验证 | 当前 6 HK + 4 CN | roadmap §7 follow-up | 在金融 / 科技 / 能源等行业扩展验证 cohort。 |
+| `_resolve_derivation_operand` period 等值断言 | deferred | H2.1 carryover | 添加显式 period-end 等值检查，防多期 operand 被静默累加。 |
+| 合并分支到 `main` | 暂未 | — | 已领先 320 commits；分支处于可交付状态，所有 trust policy promotion 均 PDF-evidenced。 |
 
 ## 7. Onboarding 文档地图
 
@@ -217,7 +275,9 @@ roadmap 或 recon 文档中明确标记为 deferred / requires-decision 的事�
   （drift §177、sampling bias、terminal states——仍是关键参考）
 
 **Phase 专属 recon / reality-check 文档**
-- `docs/phase_hk_b_recon.md`（HK-B 4 字段在 6 公司的 conflict 形态）
+- `docs/phase_hk_b_recon.md`（HK-B 4 字段在 6 公司的 conflict 形态；初版）
+- `docs/phase_hk_b_5_recon.md`（HK-B.5/.5.1/.5.2/.5.3/.6 串联的 PDF spot-check
+  + currency-label fix + multi-currency 扩展全程，是 Wave 7 的主 reality-check）
 - `docs/phase_hk_coverage_discovery.md`（HK-A → ~0 cells 的实证）
 - `docs/phase_hk_llm_recon.md`（LLM orchestrator 已 wired）
 - `docs/2026-05-10-h2-hk-cumulative-review.md`（H2.4 已闭 3 项 H2 findings）
@@ -233,12 +293,18 @@ roadmap 或 recon 文档中明确标记为 deferred / requires-decision 的事�
 - 跨文件 gate: `tests/test_catalog_consistency.py`
 
 **Regression-lock 测试**（谁守护谁）
-- HK-B 形态锁: `tests/test_phase_hk_b_{acct_payable,fix_assets,accounts_receiv,gross_profit}.py`
+- HK-B 形态锁（post-promotion）: `tests/test_phase_hk_b_{acct_payable,fix_assets,accounts_receiv,gross_profit}.py`
+  （前 3 已从 conflict 形态升级为 multi-currency clean 形态；gross_profit 保留 conflict + terminal lock）
 - 多公司 sample 回归: `tests/test_phase_h2_3_fixture_persistence.py`
 - H2.4 累计 review 修复: `tests/test_phase_h2_4_review_fixes.py`
 - HK LLM supplement 合并（7 公司）: `tests/test_phase_hk_llm_2_supplement_merge.py`
+  （baseline counts 反映 HK-B.5 → .8 promotions）
 - Catalog 一致性: `tests/test_catalog_consistency.py`
+  （Phase MX 用 36/62 verification 状态过 gate）
 - HK-C industry not-applicable: `tests/test_phase_hk_c_industry_not_applicable.py`
+- HK Yahoo trust policy schema + 58 sample 数: `tests/test_hk_yahoo_trust_policy.py`
+- HK issuer financial-currency map: `tests/test_source_inventory_fetch.py::test_hk_issuer_financial_currency_maps_known_reporters`
+  + `tests/test_cli.py::test_fetch_source_inventory_hk_akshare_stamps_issuer_financial_currency`（parametrized 7 cases）
 
 **Fixture 目录**
 - `tests/fixtures/provider_captures/provider_field_baseline/`（00001、01113、600519 baseline）
