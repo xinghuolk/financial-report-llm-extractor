@@ -1587,6 +1587,23 @@ Guards against silent regressions in `_merge_llm_evidence_supplement`, the bucke
 
 **Phase HK-coverage** outcome: HK Bucket-A ("alias gap" closure) collapsed empirically to ~0 cells (`docs/phase_hk_coverage_discovery.md` reality-check). Most missing-candidate HK fields are genuinely absent from adapter outputs, not from catalog aliases. The honest path forward is **Phase HK-B** (sample-verified conflict resolution for `fix_assets`, `accounts_receiv`, `acct_payable`, `gross_profit`). The fixture prerequisite has now landed via `tests/fixtures/provider_captures/provider_field_baseline_hk_llm_6_extension/`; HK-B recon is recorded in `docs/phase_hk_b_recon.md`.
 
+### Phase MX Implementation Result
+
+Status: implemented 2026-05-11. Documentation-hygiene audit triggered by the observation that the `coverage_matrix.json` `verification` field had drifted from runtime evidence — 38 of 62 fields were still flagged `expected` despite many having accumulated multi-issuer regression locks or `provider_raw_semantics` sample proofs.
+
+Audit cross-referenced each `expected` field against: `provider_raw_semantics_cn.json` (CN sample rules), `provider_raw_semantics_hk.json` (HK terminal/unverified rules), `tests/test_provider_baseline_replay.py` clean-set expectations, `tests/test_phase_hk_llm_2_supplement_merge.py` LLM supplement field sets, and `tests/test_phase_hk_b_*.py` shape locks. Promotion threshold: ≥2 multi-issuer samples for source-first routes or ≥3 companies for LLM supplement evidence.
+
+**11 fields promoted to `verified`** (matches drift §177 standard):
+
+- P0 (6): `operating_profit`, `operating_cost`, `financing_cash_flow`, `investing_cash_flow`, `lt_borr`, `st_borr` — all backed by multi-company `clean_present` in `test_provider_baseline_replay.py` or by Phase H0 / Phase H2 promotions with audit trails.
+- P3 (5): `contingent_liabilities_commitments`, `dividend_plan` (6 of 7 companies in HK-LLM-2 lock), `time_deposits_or_wealth_products`, `segment_revenue_profit`, `related_party_receivables_payables` (3 companies each, cross-market).
+
+**Catalog invariant enforcement**: `field_metadata.py:215` requires a `verified` field's primary_route to also be `verified`. `bad_debt_provision` has 4 HK companies in HK-LLM-2 lock but its primary_route is `yahoo_direct` (Yahoo has no direct data; LLM is the actual evidence path) — kept `expected` with documented reason. A future MX iteration could restructure its primary_route to `pdf_evidence`.
+
+**3 HK-B locked fields kept `expected` with enriched notes** documenting the lock state for future readers: `accounts_receiv` (HK-B.3), `acct_payable` (HK-B.1), `gross_profit` (HK-B.4).
+
+**Result**: coverage matrix verification 24/62 → **35/62** (+11). Both `turtle_v015_coverage_matrix.json` and `turtle_v015_source_mapping_minimal.json` updated to keep `test_catalog_consistency.py::test_source_mapping_aligns_with_coverage_matrix` aligned. All 587 tests still pass.
+
 ## 6. Validation Commands
 
 Expected commands after implementation begins:

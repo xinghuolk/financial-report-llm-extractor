@@ -30,12 +30,12 @@
       "domain": "income_statement",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "income_statement",
           "evidence_requirement": "source_only_allowed"
         },
@@ -47,18 +47,18 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "AKShare OPERATE_COST is preferred alias (cost of goods only); TOTAL_OPERATE_COST is related. HK format may diverge from Yahoo Cost Of Revenue aggregation — format-incompatibility warnings are expected and acceptable."
+      "notes": "Verified by provider_field_baseline regression (test_provider_baseline_replay.py): AKShare OPERATE_COST observed clean_present for 600519/00001/01113. Yahoo Cost Of Revenue aggregation may diverge on HK; yahoo route stays expected."
     },
     "operating_profit": {
       "domain": "income_statement",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "income_statement",
           "evidence_requirement": "source_only_allowed"
         },
@@ -70,7 +70,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "HK format may diverge from Yahoo Operating Income aggregation — format-incompatibility warnings are expected and acceptable."
+      "notes": "Verified by provider_raw_semantics_cn.json (4 CN samples: 600519, 300750, 601919, 688008 with PDF spot-check) and Phase H2 Module B promotion to clean_present. HK side remains terminal_unverified per EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS lock."
     },
     "net_profit": {
       "domain": "income_statement",
@@ -184,33 +184,33 @@
       "domain": "cash_flow",
       "priority": "P0",
       "primary_route": "yahoo_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "yahoo",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "cash_flow",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+      "notes": "Verified by provider_field_baseline regression: Yahoo Investing Cash Flow observed clean_present for all 3 companies (600519, 00001, 01113) per test_provider_baseline_replay.py."
     },
     "financing_cash_flow": {
       "domain": "cash_flow",
       "priority": "P0",
       "primary_route": "yahoo_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "yahoo",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "cash_flow",
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+      "notes": "Verified by provider_field_baseline regression: Yahoo Financing Cash Flow observed clean_present for all 3 companies (600519, 00001, 01113) per test_provider_baseline_replay.py."
     },
     "cash": {
       "domain": "balance_sheet",
@@ -255,12 +255,12 @@
       "domain": "balance_sheet",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         },
@@ -272,18 +272,18 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "Partial coverage: 600519 (Maotai) returns None for SHORT_LOAN (no short-term debt). Yahoo Current Debt included as cross-check route."
+      "notes": "Verified by provider_field_baseline regression: 00001/01113 clean via AKShare SHORT_LOAN; 600519 promoted via Phase H0 null_means_zero. Yahoo Current Debt cross-check route."
     },
     "lt_borr": {
       "domain": "balance_sheet",
       "priority": "P0",
       "primary_route": "akshare_direct",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "akshare",
           "mode": "direct",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "balance_sheet",
           "evidence_requirement": "source_only_allowed"
         },
@@ -295,7 +295,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "Partial coverage: 600519 (Maotai) returns None for LONG_LOAN (no long-term debt). Yahoo Long Term Debt included as cross-check route."
+      "notes": "Verified by provider_field_baseline regression: 00001/01113 clean via AKShare LONG_LOAN; 600519 promoted to clean_present via Phase H0 null_means_zero (Maotai reports None, audit-trailed). Yahoo Long Term Debt cross-check route."
     },
     "bond_payable": {
       "domain": "balance_sheet",
@@ -334,7 +334,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "HK AKShare 应收帐款 may be a subset of PDF combined trade receivables line. Yahoo may not return this for HK. Conflicts/warnings are expected and acceptable."
+      "notes": "HK-B.3 (test_phase_hk_b_accounts_receiv.py) locks 6/6 unresolved_conflict across all HK issuers (00001, 01113, 01810, 02498, 06862, 09987): AKShare 应收帐款 vs Yahoo Accounts Receivable scope mismatch. No promotion path without >=3 PDF semantics proof per drift §177. CN 600519 lands clean_present via AKShare ACCOUNTS_RECE."
     },
     "acct_payable": {
       "domain": "balance_sheet",
@@ -357,7 +357,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "Yahoo Accounts Payable included as cross-check route. HK conflicts/warnings are expected and acceptable."
+      "notes": "HK-B.1 (test_phase_hk_b_acct_payable.py) locks 3 clean (01810/02498/06862 AKShare/Yahoo exact match) + 3 unresolved_conflict (00001/01113/09987). Provider-provider agreement alone insufficient for promotion per drift §177 — needs PDF spot-check to validate semantics. CN 600519 lands clean_present via AKShare PAYABLE."
     },
     "inventories": {
       "domain": "balance_sheet",
@@ -474,7 +474,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "Captured Yahoo and AKShare HK gross-profit candidates exist, but provider raw field semantics are not proven; keep non-clean until provider semantics proof or selected PDF/derived review is added."
+      "notes": "HK-B.4 (test_phase_hk_b_gross_profit.py) locks 4 unresolved_conflict + 2 terminal_unverified across 6 HK issuers. Yahoo Gross Profit + AKShare 毛利 semantics unproven; even exact provider-provider matches (01810, 02498) do not constitute HK annual-report gross-profit semantics proof per drift §177."
     },
     "selling_general_administrative": {
       "domain": "income_statement",
@@ -898,17 +898,17 @@
       "domain": "shareholder_return",
       "priority": "P3",
       "primary_route": "pdf_evidence",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "pdf",
           "mode": "evidence",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "announcement",
           "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+      "notes": "Verified by HK-LLM-2 regression lock: 6 of 7 companies hit (600519, 00001, 01113, 01810, 02498, 06862); only 09987 misses. LLM supplement merged into llm_supplement_present."
     },
     "buyback_cancellation_progress": {
       "domain": "shareholder_return",
@@ -988,39 +988,39 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+      "notes": "HK-LLM-2 regression lock observes 4 HK companies hit (01113, 01810, 02498, 06862) via LLM supplement — but matrix primary_route is yahoo_direct and Yahoo has no direct bad_debt_provision data, so per-field invariant (verified primary_route required) keeps this expected. Future MX iteration could restructure primary_route to pdf_evidence."
     },
     "related_party_receivables_payables": {
       "domain": "notes_and_mda",
       "priority": "P3",
       "primary_route": "pdf_evidence",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "pdf",
           "mode": "evidence",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "notes",
           "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+      "notes": "Verified by HK-LLM-2 regression lock: 3 companies hit (600519 CN, 02498 HK, 06862 HK); cross-market evidence. LLM supplement merged into llm_supplement_present."
     },
     "contingent_liabilities_commitments": {
       "domain": "notes_and_mda",
       "priority": "P3",
       "primary_route": "pdf_evidence",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "pdf",
           "mode": "evidence",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "notes",
           "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+      "notes": "Verified by HK-LLM-2 regression lock (test_phase_hk_llm_2_supplement_merge.py): 6 of 7 companies hit (600519, 00001, 01113, 01810, 02498, 06862); only 09987 misses. LLM supplement merged into llm_supplement_present bucket."
     },
     "lease_liability_maturity": {
       "domain": "notes_and_mda",
@@ -1042,17 +1042,17 @@
       "domain": "notes_and_mda",
       "priority": "P3",
       "primary_route": "pdf_evidence",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "pdf",
           "mode": "evidence",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "notes",
           "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+      "notes": "Verified by HK-LLM-2 regression lock: 3 HK companies hit (00001, 01810, 09987). LLM supplement merged into llm_supplement_present."
     },
     "restricted_cash": {
       "domain": "notes_and_mda",
@@ -1074,17 +1074,17 @@
       "domain": "notes_and_mda",
       "priority": "P3",
       "primary_route": "pdf_evidence",
-      "verification": "expected",
+      "verification": "verified",
       "routes": [
         {
           "source": "pdf",
           "mode": "evidence",
-          "status": "expected",
+          "status": "verified",
           "statement_type": "notes",
           "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+      "notes": "Verified by HK-LLM-2 regression lock: 3 HK companies hit (02498, 06862, 09987). LLM supplement merged into llm_supplement_present."
     },
     "interest_paid_cash": {
       "domain": "cash_flow",
