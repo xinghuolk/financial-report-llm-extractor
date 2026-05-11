@@ -212,9 +212,10 @@ def _fetch_yahoo_for_company(
 ) -> tuple[SourceInventoryRecord, ...]:
     adapter = YahooAdapter(client=client, artifact_store=store)
     ticker: str
-    currency: Literal["CNY", "HKD"]
+    currency: Literal["CNY", "HKD", "USD"]
     if market == "HK":
-        ticker, currency = f"{_yahoo_hk_ticker(company)}.HK", "HKD"
+        ticker = f"{_yahoo_hk_ticker(company)}.HK"
+        currency = hk_issuer_financial_currency(company)
     elif company.startswith("6"):
         ticker, currency = f"{company}.SS", "CNY"
     else:
@@ -236,3 +237,37 @@ def _fetch_yahoo_for_company(
 def _yahoo_hk_ticker(company: str) -> str:
     stripped = company.lstrip("0") or "0"
     return stripped.zfill(4)
+
+
+# Phase HK-B.5.1: HK issuer-to-financial-currency map. Yahoo HK + AKShare HK
+# historically hardcoded currency=HKD on every HK record (the trading-market
+# currency for the listed share), but issuers report financials in their
+# functional reporting currency which often differs (Xiaomi → CNY,
+# Yum China → USD). This map stamps inventory records with the issuer's
+# reporting currency so downstream consumers get correct-currency claims.
+#
+# Source of truth: PDF spot-check from each issuer's most recent annual
+# report (see docs/phase_hk_b_5_recon.md).
+#
+# Unknown issuers fall back to "HKD" — the historical default. This matches
+# pre-Phase-HK-B.5.1 behavior for any HK ticker not in the map and avoids
+# silently changing currency for cohorts that haven't been spot-checked.
+# Future work: live-detect via yfinance.Ticker.info.financialCurrency
+# instead of relying on a manual map; tracked as a §7 follow-up.
+HK_ISSUER_FINANCIAL_CURRENCY: dict[str, Literal["CNY", "HKD", "USD"]] = {
+    "00001": "HKD",  # HSBC Holdings / CK Hutchison — HK$ reporter
+    "01113": "HKD",  # CK Asset Holdings — HK$ reporter (property)
+    "01810": "CNY",  # Xiaomi — RMB reporter
+    "02498": "CNY",  # RMB reporter
+    "06862": "CNY",  # RMB reporter
+    "09987": "USD",  # Yum China — US$ reporter (US-domiciled, HK-listed)
+}
+
+
+def hk_issuer_financial_currency(company: str) -> Literal["CNY", "HKD", "USD"]:
+    """Return the issuer's financial-statement reporting currency.
+
+    See `HK_ISSUER_FINANCIAL_CURRENCY` for the spot-checked map. Unknown
+    issuers default to HKD (preserves pre-Phase-HK-B.5.1 behavior).
+    """
+    return HK_ISSUER_FINANCIAL_CURRENCY.get(company, "HKD")

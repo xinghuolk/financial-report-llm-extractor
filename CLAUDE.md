@@ -99,8 +99,9 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 - **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
 - **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）
 - **Catalog verification** (Phase MX + Phase HK-B.5, 2026-05-11): coverage_matrix verified 24/62 → **36/62** (+12)；详情见 roadmap Phase MX + HK-B.5 Implementation Result
+- **HK issuer financial-currency map** (Phase HK-B.5.1, 2026-05-11): `source_inventory_fetch.HK_ISSUER_FINANCIAL_CURRENCY` 用 PDF spot-check 确定的 6 HK 公司 reporting currency 替代 hardcoded HKD（00001/01113→HKD, 01810/02498/06862→CNY, 09987→USD）。新 live fetch 即用正确 currency；HK-B.5.2 fixture backfill + trust policy multi-currency deferred
 
-下一步候选：HK-B.5 已闭 `acct_payable`（5 HK promotion + 09987 deferred 待 Yahoo HK adapter 修币种 stamp）；同样配方可复用到 `fix_assets`（HK-B.2 形态已锁）。或者先做 Yahoo HK adapter currency-label adapter 修复（影响所有 HK Yahoo 字段的下游 currency claim 正确性），这是 §7 follow-up 优先级最高的一项。也可选择合并到 main。
+下一步候选：HK-B.5.1 adapter 修复已落地（forward-going fetch 用 issuer reporting currency）。下一步可做 HK-B.5.2（fixture backfill + trust policy multi-currency schema + 09987 re-promote），或者 HK-B.6 `fix_assets` PDF spot-check + 同样的 5-allowlist 套路（HK-B.2 形态已锁）。也可选择合并到 main。
 
 `docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 

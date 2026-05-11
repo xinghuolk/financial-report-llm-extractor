@@ -291,10 +291,19 @@ def _run_fetch_source_inventory(
     )
     from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
         fetch_source_inventory,
+        hk_issuer_financial_currency,
     )
 
+    # Phase HK-B.5.1: HK AKShare records get stamped with the issuer's
+    # financial-reporting currency (not the HK trading-market currency).
+    # CN companies stay "unknown" — `_fetch_akshare_for_company` uses the
+    # explicit "yuan" unit for CN, so currency stamping for CN AKShare comes
+    # from a different code path.
+    akshare_hk_currency = (
+        hk_issuer_financial_currency(company) if market == "HK" else "unknown"
+    )
     akshare_client = (
-        PandasAkshareClient(hk_default_currency="HKD" if market == "HK" else "unknown")
+        PandasAkshareClient(hk_default_currency=akshare_hk_currency)
         if "akshare" in providers
         else None
     )

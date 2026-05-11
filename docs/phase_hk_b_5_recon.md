@@ -71,8 +71,45 @@ is pre-existing: those records were already clean_present via AKShare with
 the same HKD hardcode in `PandasAkshareClient`, so HK-B.5 doesn't worsen
 them. For 00001/01113 (HKD issuers), the label is correct.
 
-**Mitigation (Phase HK-B.5 follow-up)**: per-issuer allowlist on both the
-trust policy rule and the provider semantics rule:
+### Phase HK-B.5.1: adapter-level currency detection (forward-going)
+
+Phase HK-B.5.1 lands the architectural fix at the adapter layer:
+`source_inventory_fetch.HK_ISSUER_FINANCIAL_CURRENCY` maps each known HK
+issuer to its financial-statement reporting currency (PDF spot-check is
+the source of truth). `_fetch_yahoo_for_company` and `_run_fetch_source_inventory`
+(CLI) both consult this map so new live fetches stamp inventory records
+with the issuer's actual reporting currency — not the trading-market HKD
+default.
+
+The map is intentionally explicit for the 6 spot-checked issuers (PDF
+verified); unknown HK issuers fall back to HKD (pre-fix behavior, no
+silent regression for cohorts that haven't been audited yet). A future
+sub-phase can replace the hardcoded map with live detection via
+`yfinance.Ticker.info.financialCurrency` once the live-fetch path is
+robustly tested.
+
+This is a forward-going fix only. Existing fixtures still carry the
+pre-Phase-HK-B.5.1 HKD labels for 01810/02498/06862/09987; Phase HK-B.5.2
+(below) is required to backfill them and re-promote 09987.
+
+### Phase HK-B.5.2 (deferred): fixture backfill + trust policy multi-currency + 09987 re-promote
+
+Once the adapter outputs correct currencies for new fetches, the existing
+fixtures need a one-time backfill to align labels with reality. Trust
+policy schema needs to support multi-currency for the `acct_payable`
+rule (so a Yahoo HK Accounts Payable record can have currency CNY/USD
+instead of HKD and still trigger promotion). After backfill + schema
+update, 09987 can be added to `pdf_verified_company_ids` and its
+Accounts Payable promote to clean_present at the correct USD label.
+
+Estimated work: fixture rewrite via PDF-verified map (small), trust
+policy schema extension (small), tests catalog-wide currency-assertion
+audit (medium — many existing tests assume HKD for HK records).
+
+### Phase HK-B.5 short-term mitigation: per-issuer allowlist
+
+Pending Phase HK-B.5.2, the per-issuer allowlist on both the trust
+policy rule and the provider semantics rule is the active mitigation:
 
 - `HkYahooTrustRule.pdf_verified_company_ids: tuple[str, ...] | None`
   (`hk_yahoo_trust_policy.py`) — when set, the rule only fires for listed

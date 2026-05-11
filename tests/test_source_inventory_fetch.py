@@ -179,3 +179,30 @@ def test_yahoo_hk_ticker_strips_leading_zeroes_and_keeps_four_digit_minimum() ->
     assert _yahoo_hk_ticker("00001") == "0001"
     assert _yahoo_hk_ticker("01113") == "1113"
     assert _yahoo_hk_ticker("01810") == "1810"
+
+
+def test_hk_issuer_financial_currency_maps_known_reporters() -> None:
+    """Phase HK-B.5.1: HK issuer → financial-statement reporting currency.
+
+    Source-of-truth is the PDF spot-check captured in
+    docs/phase_hk_b_5_recon.md. Known issuers map to their reporting
+    currency; unknown HK issuers fall back to HKD (pre-fix default).
+    """
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        hk_issuer_financial_currency,
+    )
+
+    # HKD reporters (HK locals)
+    assert hk_issuer_financial_currency("00001") == "HKD"
+    assert hk_issuer_financial_currency("01113") == "HKD"
+
+    # CNY (RMB) reporters
+    assert hk_issuer_financial_currency("01810") == "CNY"
+    assert hk_issuer_financial_currency("02498") == "CNY"
+    assert hk_issuer_financial_currency("06862") == "CNY"
+
+    # USD reporter
+    assert hk_issuer_financial_currency("09987") == "USD"
+
+    # Unknown HK ticker → HKD default (preserves pre-Phase-HK-B.5.1 behavior).
+    assert hk_issuer_financial_currency("99999") == "HKD"

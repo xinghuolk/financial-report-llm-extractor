@@ -896,9 +896,26 @@ def test_fetch_source_inventory_subcommand_rejects_year_and_period_end_together(
         ])
 
 
-def test_fetch_source_inventory_hk_akshare_defaults_currency_to_hkd(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "company, expected_currency",
+    [
+        ("01810", "CNY"),   # Xiaomi — RMB reporter
+        ("06862", "CNY"),   # RMB reporter
+        ("02498", "CNY"),   # RMB reporter
+        ("00001", "HKD"),   # HSBC / CK Hutchison — HK$ reporter
+        ("01113", "HKD"),   # CK Asset — HK$ reporter
+        ("09987", "USD"),   # Yum China — US$ reporter
+        ("99999", "HKD"),   # Unknown HK issuer → HKD default
+    ],
+)
+def test_fetch_source_inventory_hk_akshare_stamps_issuer_financial_currency(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    company: str,
+    expected_currency: str,
 ) -> None:
+    """Phase HK-B.5.1: AKShare HK records get stamped with the issuer's
+    financial reporting currency (not the HK trading market currency)."""
     from financial_report_llm_extractor.cli import _run_fetch_source_inventory
     from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
         PeriodSpec,
@@ -931,7 +948,7 @@ def test_fetch_source_inventory_hk_akshare_defaults_currency_to_hkd(
     )
 
     _run_fetch_source_inventory(
-        company="01810",
+        company=company,
         period=PeriodSpec.from_year(2024),
         market="HK",
         providers=("akshare",),
@@ -939,7 +956,7 @@ def test_fetch_source_inventory_hk_akshare_defaults_currency_to_hkd(
         catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
     )
 
-    assert captured["hk_default_currency"] == "HKD"
+    assert captured["hk_default_currency"] == expected_currency
     assert isinstance(captured["akshare_client"], FakeAkshareClient)
 
 
