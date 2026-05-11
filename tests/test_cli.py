@@ -896,6 +896,53 @@ def test_fetch_source_inventory_subcommand_rejects_year_and_period_end_together(
         ])
 
 
+def test_fetch_source_inventory_hk_akshare_defaults_currency_to_hkd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from financial_report_llm_extractor.cli import _run_fetch_source_inventory
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+        SourceInventoryArtifact,
+    )
+
+    captured: dict[str, object] = {}
+
+    class FakeAkshareClient:
+        def __init__(self, *, hk_default_currency: str) -> None:
+            captured["hk_default_currency"] = hk_default_currency
+
+    def fake_fetch_source_inventory(**kwargs: object) -> SourceInventoryArtifact:
+        captured["akshare_client"] = kwargs["akshare_client"]
+        return SourceInventoryArtifact(
+            inventory_path=tmp_path / "source_inventory.jsonl",
+            summary_path=tmp_path / "source_inventory_summary.json",
+            record_count=0,
+        )
+
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.structured_sources.real_source_validation."
+        "PandasAkshareClient",
+        FakeAkshareClient,
+    )
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.structured_sources.source_inventory_fetch."
+        "fetch_source_inventory",
+        fake_fetch_source_inventory,
+    )
+
+    _run_fetch_source_inventory(
+        company="01810",
+        period=PeriodSpec.from_year(2024),
+        market="HK",
+        providers=("akshare",),
+        out_dir=tmp_path,
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+    )
+
+    assert captured["hk_default_currency"] == "HKD"
+    assert isinstance(captured["akshare_client"], FakeAkshareClient)
+
+
 def test_evaluate_company_subcommand_dispatches_correctly(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

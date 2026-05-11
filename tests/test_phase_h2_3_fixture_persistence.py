@@ -44,6 +44,13 @@ FIXTURE_EXTENSION = (
     / "provider_field_baseline_h2_2_extension"
     / "source_inventory.jsonl.gz"
 )
+FIXTURE_HK_LLM_6_EXTENSION_ROOT = (
+    REPO_ROOT
+    / "tests"
+    / "fixtures"
+    / "provider_captures"
+    / "provider_field_baseline_hk_llm_6_extension"
+)
 
 
 def _load_fixture_records(*paths: Path) -> list[dict]:
@@ -184,3 +191,25 @@ def test_h2_3_extension_artifact_manifest_present() -> None:
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert "artifacts" in payload and isinstance(payload["artifacts"], list)
     assert payload["artifacts"], "manifest must list at least one artifact"
+
+
+def test_hk_llm_6_extension_fixture_covers_four_new_hk_companies() -> None:
+    expected = {"01810", "02498", "06862", "09987"}
+    for ticker in sorted(expected):
+        fixture = FIXTURE_HK_LLM_6_EXTENSION_ROOT / ticker / "source_inventory.jsonl.gz"
+        records = _load_fixture_records(fixture)
+        tickers = {r.get("ticker") for r in records}
+        sources = {r.get("source") for r in records}
+        assert ticker in tickers or f"{int(ticker)}.HK" in tickers
+        assert {"akshare", "yahoo"}.issubset(sources)
+
+
+def test_hk_llm_6_extension_artifact_manifest_present() -> None:
+    manifest_path = FIXTURE_HK_LLM_6_EXTENSION_ROOT / "source_artifact_manifest.json"
+    assert manifest_path.exists(), (
+        f"HK LLM 6 extension fixture must ship manifest at {manifest_path}"
+    )
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert payload.get("companies") == ["01810", "02498", "06862", "09987"]
+    assert "artifacts" in payload and isinstance(payload["artifacts"], list)
+    assert len(payload["artifacts"]) == 24

@@ -293,7 +293,11 @@ def _run_fetch_source_inventory(
         fetch_source_inventory,
     )
 
-    akshare_client = PandasAkshareClient() if "akshare" in providers else None
+    akshare_client = (
+        PandasAkshareClient(hk_default_currency="HKD" if market == "HK" else "unknown")
+        if "akshare" in providers
+        else None
+    )
     yahoo_client = YFinanceStatementClient() if "yahoo" in providers else None
 
     artifact = fetch_source_inventory(

@@ -214,7 +214,7 @@ def _fetch_yahoo_for_company(
     ticker: str
     currency: Literal["CNY", "HKD"]
     if market == "HK":
-        ticker, currency = f"{company}.HK", "HKD"
+        ticker, currency = f"{_yahoo_hk_ticker(company)}.HK", "HKD"
     elif company.startswith("6"):
         ticker, currency = f"{company}.SS", "CNY"
     else:
@@ -231,3 +231,8 @@ def _fetch_yahoo_for_company(
             )
         )
     return tuple(records)
+
+
+def _yahoo_hk_ticker(company: str) -> str:
+    stripped = company.lstrip("0") or "0"
+    return stripped.zfill(4)

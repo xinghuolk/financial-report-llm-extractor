@@ -169,3 +169,13 @@ def test_fetch_source_inventory_writes_period_filtered_artifacts(
     contents = inventory_path.read_text()
     assert "2024-12-31" in contents
     assert "2023-12-31" not in contents
+
+
+def test_yahoo_hk_ticker_strips_leading_zeroes_and_keeps_four_digit_minimum() -> None:
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        _yahoo_hk_ticker,
+    )
+
+    assert _yahoo_hk_ticker("00001") == "0001"
+    assert _yahoo_hk_ticker("01113") == "1113"
+    assert _yahoo_hk_ticker("01810") == "1810"

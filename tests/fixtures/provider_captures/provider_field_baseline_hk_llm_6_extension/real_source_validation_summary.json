@@ -1,0 +1,20 @@
+{
+  "companies": [
+    "01810",
+    "02498",
+    "06862",
+    "09987"
+  ],
+  "record_count": 1167,
+  "source_artifact_count": 24,
+  "source_counts": {
+    "akshare": 449,
+    "yahoo": 718
+  },
+  "status": "completed",
+  "status_counts": {
+    "akshare:present": 449,
+    "yahoo:present": 718
+  },
+  "validation_mode": "fetch_source_inventory_hk_llm_6_extension"
+}
