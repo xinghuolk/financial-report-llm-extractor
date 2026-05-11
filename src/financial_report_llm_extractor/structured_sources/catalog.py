@@ -1,0 +1,448 @@
+"""Turtle source mapping catalog loading."""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, get_args
+
+from financial_report_llm_extractor.field_metadata import (
+    FallbackPolicy,
+    FieldDomain,
+    PrimaryRoute,
+    Requirement,
+    SourceMode,
+    StatementType,
+    VerificationStatus,
+)
+from financial_report_llm_extractor.structured_sources.models import SourceValueType
+
+
+REFERENCED_REQUIRED_METADATA = (
+    "value_type",
+    "statement_type",
+    "domain",
+    "source_mode",
+    "primary_route",
+    "verification_status",
+    "currency_requirement",
+    "unit_requirement",
+    "fallback_policy",
+)
+
+SOURCE_POLICY_CONFLICT_POLICIES = ("preserve_conflict", "select_primary_require_pdf")
+SOURCE_POLICY_VERIFICATION_REQUIREMENTS = ("none", "pdf_required_on_conflict")
+
+
+@dataclass(frozen=True)
+class SourceSemanticVariants:
+    primary: tuple[str, ...] = field(default_factory=tuple)
+    related: tuple[str, ...] = field(default_factory=tuple)
+
+    def validate(self) -> None:
+        _validate_string_tuple(
+            "source_policy semantic variant primary",
+            self.primary,
+        )
+        _validate_string_tuple(
+            "source_policy semantic variant related",
+            self.related,
+        )
+
+
+@dataclass(frozen=True)
+class MarketSourcePolicy:
+    primary_route: str
+    cross_check_routes: tuple[str, ...] = field(default_factory=tuple)
+    on_conflict: str = "preserve_conflict"
+    single_source_requires_pdf: bool = False
+    sign_normalize: str = "raw"
+
+    def validate(self) -> None:
+        _validate_literal(
+            "source_policy primary_route",
+            self.primary_route,
+            PrimaryRoute,
+        )
+        _validate_string_tuple(
+            "source_policy market policy cross_check_routes",
+            self.cross_check_routes,
+        )
+        for route in self.cross_check_routes:
+            _validate_literal(
+                "source_policy cross_check_route",
+                route,
+                PrimaryRoute,
+            )
+        _validate_supported_value(
+            "source_policy on_conflict",
+            self.on_conflict,
+            SOURCE_POLICY_CONFLICT_POLICIES,
+        )
+        if not isinstance(self.single_source_requires_pdf, bool):
+            raise ValueError(
+                "source_policy market policy single_source_requires_pdf must be a bool"
+            )
+        if self.sign_normalize not in ("raw", "absolute"):
+            raise ValueError(
+                f"sign_normalize must be 'raw' or 'absolute' (got {self.sign_normalize!r})"
+            )
+
+
+@dataclass(frozen=True)
+class SourcePolicy:
+    semantic_concept: str
+    semantic_variants: dict[str, SourceSemanticVariants] = field(default_factory=dict)
+    market_policies: dict[str, MarketSourcePolicy] = field(default_factory=dict)
+    verification_requirement: str = "none"
+
+    def validate(self) -> None:
+        for variants in self.semantic_variants.values():
+            variants.validate()
+        for policy in self.market_policies.values():
+            policy.validate()
+        _validate_supported_value(
+            "source_policy verification_requirement",
+            self.verification_requirement,
+            SOURCE_POLICY_VERIFICATION_REQUIREMENTS,
+        )
+
+
+@dataclass(frozen=True)
+class IndustryNotApplicableSpec:
+    """Per-(market, ticker) declaration that a field is structurally NA for
+    that issuer (e.g., real-estate developers have no SGA single-line). Refines
+    `source_unavailable` reason without introducing a new bucket."""
+
+    market: str
+    ticker: str
+    reason: str
+
+    def matches(self, market: str | None, company_id: str | None) -> bool:
+        return self.market == market and self.ticker == company_id
+
+
+@dataclass(frozen=True)
+class SourceMappingEntry:
+    field_id: str
+    priority: str
+    value_type: SourceValueType
+    statement_type: str
+    currency_requirement: Requirement
+    unit_requirement: Requirement
+    source_aliases: dict[str, tuple[str, ...]]
+    domain: str = "unknown"
+    source_mode: str = "direct"
+    primary_route: str = "akshare_direct"
+    verification_status: str = "unknown"
+    period_expectation: str = "annual"
+    scope_expectation: str = "unknown"
+    pdf_aliases: tuple[str, ...] = field(default_factory=tuple)
+    derivation: str | None = None
+    derivation_markets: tuple[str, ...] = field(default_factory=tuple)
+    fallback_policy: str = "pdf_allowed"
+    source_policy: SourcePolicy | None = None
+    null_means_zero: bool = False
+    by_market_aliases: dict[str, dict[str, tuple[str, ...]]] = field(
+        default_factory=dict
+    )
+    industry_not_applicable: tuple[IndustryNotApplicableSpec, ...] = field(
+        default_factory=tuple
+    )
+
+    def validate(self) -> None:
+        if not self.field_id:
+            raise ValueError("field_id is required")
+        if not self.priority:
+            raise ValueError("priority is required")
+        if not self.statement_type:
+            raise ValueError("statement_type is required")
+        if not self.source_aliases and not self.by_market_aliases:
+            raise ValueError("source_aliases is required (or by_market_aliases)")
+        for market, market_dict in self.by_market_aliases.items():
+            if not isinstance(market_dict, dict):
+                raise ValueError(f"by_market_aliases[{market!r}] must be a dict")
+            for provider, aliases in market_dict.items():
+                if not isinstance(aliases, tuple):
+                    raise ValueError(
+                        f"by_market_aliases[{market!r}][{provider!r}] must be tuple"
+                    )
+        _validate_literal("invalid value_type", self.value_type, SourceValueType)
+        _validate_literal("invalid statement_type", self.statement_type, StatementType)
+        if self.domain != "unknown":
+            _validate_literal("domain", self.domain, FieldDomain)
+        _validate_literal("source_mode", self.source_mode, SourceMode)
+        _validate_literal("invalid primary_route", self.primary_route, PrimaryRoute)
+        _validate_literal(
+            "invalid verification_status",
+            self.verification_status,
+            VerificationStatus,
+        )
+        _validate_literal("currency_requirement", self.currency_requirement, Requirement)
+        _validate_literal("unit_requirement", self.unit_requirement, Requirement)
+        _validate_literal("invalid fallback_policy", self.fallback_policy, FallbackPolicy)
+        if self.null_means_zero and self.value_type != "money":
+            raise ValueError(
+                f"null_means_zero is only supported for value_type='money' "
+                f"(field {self.field_id} has value_type={self.value_type})"
+            )
+        if self.source_policy is not None:
+            self.source_policy.validate()
+
+
+@dataclass(frozen=True)
+class SourceMappingCatalog:
+    catalog_id: str
+    version: str
+    entries: dict[str, SourceMappingEntry]
+
+    def validate(self) -> None:
+        if not self.catalog_id:
+            raise ValueError("catalog_id is required")
+        if not self.version:
+            raise ValueError("version is required")
+        if not self.entries:
+            raise ValueError("entries is required")
+        for field_id, entry in self.entries.items():
+            if field_id != entry.field_id:
+                raise ValueError("entry key must match field_id")
+            entry.validate()
+
+
+def load_source_mapping_catalog(
+    catalog_path: Path,
+    *,
+    priorities: tuple[str, ...],
+) -> SourceMappingCatalog:
+    raw = json.loads(catalog_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("source mapping catalog must be an object")
+    has_referenced_metadata = bool(
+        raw.get("taxonomy_catalog") or raw.get("coverage_matrix")
+    )
+    selected_priorities = set(priorities)
+    priority_by_field: dict[str, str] = {}
+    raw_priorities = raw.get("priorities", [])
+    if not isinstance(raw_priorities, list):
+        raise ValueError("source mapping priorities must be a list")
+    for group in raw_priorities:
+        if not isinstance(group, dict):
+            raise ValueError("source mapping priority entry must be an object")
+        priority = str(group.get("priority", ""))
+        if priority not in selected_priorities:
+            continue
+        raw_priority_fields = group.get("fields", [])
+        if not isinstance(raw_priority_fields, list):
+            raise ValueError("source mapping priority fields must be a list")
+        for field_id in raw_priority_fields:
+            priority_by_field.setdefault(str(field_id), priority)
+
+    mappings: dict[str, Any] = raw.get("source_mappings", {})
+    if not isinstance(mappings, dict):
+        raise ValueError("source_mappings must be an object")
+    entries: dict[str, SourceMappingEntry] = {}
+    for field_id, priority in priority_by_field.items():
+        mapping = mappings.get(field_id, {})
+        if not isinstance(mapping, dict):
+            raise ValueError("source mapping entry must be an object")
+        if has_referenced_metadata:
+            _require_referenced_metadata(field_id, mapping)
+            _validate_referenced_metadata_values(mapping)
+        raw_aliases = mapping.get("source_aliases", {})
+        if not isinstance(raw_aliases, dict):
+            raise ValueError("source_aliases must be an object")
+        aliases: dict[str, tuple[str, ...]] = {}
+        by_market_aliases: dict[str, dict[str, tuple[str, ...]]] = {}
+        for source, values in raw_aliases.items():
+            if source == "by_market":
+                if not isinstance(values, dict):
+                    raise ValueError(
+                        "source_aliases.by_market must be an object"
+                    )
+                for market, market_dict in values.items():
+                    if not isinstance(market_dict, dict):
+                        raise ValueError(
+                            "source_aliases.by_market entries must be objects"
+                        )
+                    by_market_aliases[str(market)] = {
+                        str(provider): tuple(
+                            str(alias) for alias in alist
+                        )
+                        if isinstance(alist, list)
+                        else ()
+                        for provider, alist in market_dict.items()
+                    }
+                continue
+            if not isinstance(values, list):
+                raise ValueError("source alias values must be a list")
+            aliases[str(source)] = tuple(str(alias) for alias in values)
+        statement_type = str(mapping.get("statement_type", "unknown"))
+        entry = SourceMappingEntry(
+            field_id=field_id,
+            priority=priority,
+            value_type=mapping.get("value_type", "money"),
+            statement_type=statement_type,
+            currency_requirement=mapping.get("currency_requirement", "required"),
+            unit_requirement=mapping.get("unit_requirement", "required"),
+            source_aliases=aliases,
+            domain=mapping.get("domain", _default_domain(statement_type)),
+            source_mode=mapping.get("source_mode", "direct"),
+            primary_route=mapping.get("primary_route", "akshare_direct"),
+            verification_status=mapping.get("verification_status", "unknown"),
+            period_expectation=mapping.get("period_expectation", "annual"),
+            scope_expectation=mapping.get("scope_expectation", "unknown"),
+            pdf_aliases=tuple(str(alias) for alias in mapping.get("pdf_aliases", [])),
+            derivation=mapping.get("derivation"),
+            derivation_markets=tuple(
+                str(m) for m in mapping.get("derivation_markets", ()) or ()
+            ),
+            fallback_policy=mapping.get("fallback_policy", "pdf_allowed"),
+            source_policy=_parse_source_policy(mapping.get("source_policy")),
+            null_means_zero=bool(mapping.get("null_means_zero", False)),
+            by_market_aliases=by_market_aliases,
+            industry_not_applicable=_parse_industry_not_applicable(
+                mapping.get("industry_not_applicable")
+            ),
+        )
+        entry.validate()
+        entries[field_id] = entry
+
+    catalog = SourceMappingCatalog(
+        catalog_id=str(raw.get("catalog_id", "")),
+        version=str(raw.get("version", "")),
+        entries=entries,
+    )
+    catalog.validate()
+    return catalog
+
+
+def _parse_source_policy(raw_policy: object) -> SourcePolicy | None:
+    if raw_policy is None:
+        return None
+    if not isinstance(raw_policy, dict):
+        raise ValueError("source_policy must be an object")
+
+    raw_variants = raw_policy.get("semantic_variants", {})
+    if not isinstance(raw_variants, dict):
+        raise ValueError("source_policy semantic_variants must be an object")
+    variants: dict[str, SourceSemanticVariants] = {}
+    for source, value in raw_variants.items():
+        if not isinstance(value, dict):
+            raise ValueError("source_policy semantic variant must be an object")
+        variants[str(source)] = SourceSemanticVariants(
+            primary=_parse_string_list(
+                value.get("primary", []),
+                "source_policy semantic variant primary must be a list",
+            ),
+            related=_parse_string_list(
+                value.get("related", []),
+                "source_policy semantic variant related must be a list",
+            ),
+        )
+
+    raw_market_policies = raw_policy.get("market_policies", {})
+    if not isinstance(raw_market_policies, dict):
+        raise ValueError("source_policy market_policies must be an object")
+    market_policies: dict[str, MarketSourcePolicy] = {}
+    for market, value in raw_market_policies.items():
+        if not isinstance(value, dict):
+            raise ValueError("source_policy market policy must be an object")
+        single_source_requires_pdf = value.get("single_source_requires_pdf", False)
+        if not isinstance(single_source_requires_pdf, bool):
+            raise ValueError(
+                "source_policy market policy single_source_requires_pdf must be a bool"
+            )
+        sign_normalize = value.get("sign_normalize", "raw")
+        if not isinstance(sign_normalize, str):
+            raise ValueError("sign_normalize must be a string")
+        market_policies[str(market)] = MarketSourcePolicy(
+            primary_route=str(value.get("primary_route", "")),
+            cross_check_routes=_parse_string_list(
+                value.get("cross_check_routes", []),
+                "source_policy market policy cross_check_routes must be a list",
+            ),
+            on_conflict=str(value.get("on_conflict", "preserve_conflict")),
+            single_source_requires_pdf=single_source_requires_pdf,
+            sign_normalize=sign_normalize,
+        )
+
+    return SourcePolicy(
+        semantic_concept=str(raw_policy.get("semantic_concept", "")),
+        semantic_variants=variants,
+        market_policies=market_policies,
+        verification_requirement=str(raw_policy.get("verification_requirement", "none")),
+    )
+
+
+def _parse_industry_not_applicable(
+    raw: object,
+) -> tuple[IndustryNotApplicableSpec, ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise ValueError("industry_not_applicable must be a list")
+    specs: list[IndustryNotApplicableSpec] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise ValueError("industry_not_applicable entry must be an object")
+        market = entry.get("market")
+        ticker = entry.get("ticker")
+        reason = entry.get("reason")
+        if not (isinstance(market, str) and isinstance(ticker, str)
+                and isinstance(reason, str) and market and ticker and reason):
+            raise ValueError(
+                "industry_not_applicable entry requires non-empty "
+                "market, ticker, reason strings"
+            )
+        specs.append(IndustryNotApplicableSpec(
+            market=market, ticker=ticker, reason=reason,
+        ))
+    return tuple(specs)
+
+
+def _parse_string_list(raw_values: object, message: str) -> tuple[str, ...]:
+    if not isinstance(raw_values, list):
+        raise ValueError(message)
+    return tuple(str(item) for item in raw_values)
+
+
+def _require_referenced_metadata(field_id: str, mapping: dict[str, Any]) -> None:
+    for key in REFERENCED_REQUIRED_METADATA:
+        if key not in mapping:
+            raise ValueError(
+                f"{field_id}: {key} is required in referenced source mapping catalog"
+            )
+
+
+def _validate_referenced_metadata_values(mapping: dict[str, Any]) -> None:
+    _validate_literal("domain", str(mapping["domain"]), FieldDomain)
+
+
+def _default_domain(statement_type: str) -> str:
+    if statement_type in {"income_statement", "balance_sheet", "cash_flow"}:
+        return statement_type
+    if statement_type in {"notes", "mda"}:
+        return "notes_and_mda"
+    return "income_statement"
+
+
+def _validate_literal(name: str, value: str, literal: Any) -> None:
+    if value not in get_args(literal):
+        raise ValueError(f"{name} has unsupported value: {value}")
+
+
+def _validate_supported_value(
+    name: str,
+    value: str,
+    supported_values: tuple[str, ...],
+) -> None:
+    if value not in supported_values:
+        raise ValueError(f"{name} has unsupported value: {value}")
+
+
+def _validate_string_tuple(name: str, values: object) -> None:
+    if not isinstance(values, tuple) or not all(
+        isinstance(value, str) for value in values
+    ):
+        raise ValueError(f"{name} must be a tuple of strings")

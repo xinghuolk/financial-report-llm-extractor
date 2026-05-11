@@ -1,0 +1,558 @@
+{
+  "rules": [
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [
+        "Net Income",
+        "Net Income From Continuing Operation Net Minority Interest"
+      ],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Net Income Common Stockholders",
+      "related_only_fields": [
+        "Net Income",
+        "Net Income From Continuing Operation Net Minority Interest"
+      ],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "00001",
+          "expected_provider_raw_value": "11841000000",
+          "pdf_page": 134,
+          "pdf_value": "11841",
+          "provider_ticker": "0001.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Profit attributable to ordinary shareholders",
+          "statement_name": "Consolidated Income Statement"
+        },
+        {
+          "company_id": "01113",
+          "expected_provider_raw_value": "10847000000",
+          "pdf_page": 70,
+          "pdf_value": "10847",
+          "provider_ticker": "1113.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Profit attributable to shareholders",
+          "statement_name": "Consolidated Statement of Profit or Loss"
+        }
+      ],
+      "semantic_claim": "profit attributable to ordinary/common shareholders",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "net_profit"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Total Revenue",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "reported total revenue in HK annual report",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "revenue"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Operating Revenue",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "reported operating revenue in HK annual report",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "revenue"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Current Assets",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "reported current assets in HK annual report",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "total_cur_assets"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Current Liabilities",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "reported current liabilities in HK annual report",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "total_cur_liab"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Total Assets",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "reported total assets in HK annual report",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "total_assets"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Total Liabilities Net Minority Interest",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "reported total liabilities in HK annual report",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "total_liabilities"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Gross Profit",
+      "related_only_fields": [],
+      "required_proof": [
+        "HK formal income statements examined (00001 page 134, 01113 page 70) do not contain a gross profit row. Revenue-minus-COGS derivation is unreliable due to multi-line cost breakdown (00001) or bundled operating costs (01113). Proof requires either a different HK issuer with standard gross profit row, or a verified derivation formula."
+      ],
+      "samples": [],
+      "semantic_claim": "gross profit as defined by Turtle field semantics",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "gross_profit"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "akshare",
+      "raw_field_code": "GROSS_PROFIT",
+      "raw_field_name": "毛利",
+      "related_only_fields": [],
+      "required_proof": [
+        "HK formal income statements examined (00001 page 134, 01113 page 70) do not contain a gross profit row. AKShare HK gross profit raw field semantics cannot be verified against formal annual-report statement lines. Proof requires either a different HK issuer with standard gross profit row, or a verified derivation formula."
+      ],
+      "samples": [],
+      "semantic_claim": "gross profit as defined by Turtle field semantics",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "gross_profit"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [
+        "Current Deferred Taxes Liabilities"
+      ],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Non Current Deferred Taxes Liabilities",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "00001",
+          "expected_provider_raw_value": "17275000000",
+          "pdf_page": 136,
+          "pdf_value": "17275",
+          "provider_ticker": "0001.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Deferred tax liabilities",
+          "statement_name": "Consolidated Statement of Financial Position"
+        },
+        {
+          "company_id": "01113",
+          "expected_provider_raw_value": "14889000000",
+          "pdf_page": 71,
+          "pdf_value": "14889",
+          "provider_ticker": "1113.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Deferred tax liabilities",
+          "statement_name": "Consolidated Statement of Financial Position"
+        }
+      ],
+      "semantic_claim": "non-current deferred tax liabilities as reported on balance sheet",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "defer_tax_liab"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Inventory",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [
+        {
+          "company_id": "00001",
+          "expected_provider_raw_value": "26688000000",
+          "pdf_page": 136,
+          "pdf_value": "26688",
+          "provider_ticker": "0001.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Inventories",
+          "statement_name": "Consolidated Statement of Financial Position"
+        },
+        {
+          "company_id": "01113",
+          "expected_provider_raw_value": "122799000000",
+          "pdf_page": 71,
+          "pdf_value": "122799",
+          "provider_ticker": "1113.HK",
+          "reported_currency": "HKD",
+          "reported_unit": "million",
+          "reported_unit_multiplier": 1000000,
+          "statement_line": "Properties for sale",
+          "statement_name": "Consolidated Statement of Financial Position"
+        }
+      ],
+      "semantic_claim": "inventory under IAS 2 (includes properties for sale for real estate developers)",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "inventories"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "固定资产",
+      "related_only_fields": [],
+      "required_proof": [
+        "AKShare HK 固定资产 returns values that do not match PDF Fixed assets line for sampled issuers (00001: AKShare 90,394 vs PDF 100,080; 01113: AKShare 65,816 vs PDF 72,868). Provider semantics unverified."
+      ],
+      "samples": [],
+      "semantic_claim": "fixed assets per Turtle field semantics",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "fix_assets"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "营运收入",
+      "related_only_fields": [],
+      "required_proof": [
+        "AKShare HK 营运收入 reports listed-company-only revenue (00001 2025: 252,934M HKD), whereas HK Total Revenue per HKFRS Note 1 (00001 2025 Annual Report) includes proportionate share of associates and joint ventures (PDF Total Revenue 507,297M HKD). Different reporting scopes — not equivalent. Provider semantics unverified for the listed-company-only definition vs Turtle revenue intent."
+      ],
+      "samples": [
+        {
+          "company_id": "00001",
+          "period_end": "2025-12-31",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "507297000000",
+          "expected_provider_raw_value": "252934115920",
+          "reported_currency": "HKD",
+          "reported_unit": "raw",
+          "reported_unit_multiplier": 1,
+          "statement_line": "Total revenue (incl. share of associates per Note 1)",
+          "statement_name": "Consolidated Income Statement",
+          "matches_raw_value": false,
+          "matches_raw_value_reason": "PDF Total Revenue 507,297M includes share of associates; AKShare 营运收入 252,934M is listed-company-only"
+        }
+      ],
+      "semantic_claim": "AKShare 营运收入 measures listed-company-only revenue; HK Total Revenue per HKFRS includes proportionate share of associates and joint ventures (per 00001 2025 Annual Report Note 1). Different reporting scopes prevent primary promotion.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "revenue"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "akshare",
+      "raw_field_code": null,
+      "raw_field_name": "除税前溢利",
+      "related_only_fields": [],
+      "required_proof": [
+        "HK conglomerates report 除税前溢利(业务利润) (AKShare) at a different scope than Yahoo Operating Income — without a per-issuer PDF spot-check confirming 除税前溢利 maps to Turtle operating_profit semantics across issuers, this rule cannot be promoted. Different reporting scopes (listed-company-only vs consolidated incl. associates) suspected."
+      ],
+      "samples": [],
+      "semantic_claim": "AKShare 除税前溢利 (HK conglomerate operating profit) — scope diverges from Turtle operating_profit definition; not provable without per-issuer PDF reconciliation.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "operating_profit"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "hk_statement_format_incompatible",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Operating Income",
+      "related_only_fields": [],
+      "required_proof": [
+        "Yahoo HK Operating Income has not been PDF-proven equivalent to the Turtle operating_profit definition for HK issuers. HK conglomerates often report 除税前溢利(业务利润) at a scope (listed-company-only vs incl. associates) that differs from Yahoo's normalization. Provider semantics unverified."
+      ],
+      "samples": [],
+      "semantic_claim": "Yahoo HK Operating Income — scope diverges from Turtle operating_profit definition for HK conglomerates; requires per-issuer PDF proof.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "operating_profit"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Selling General And Administration",
+      "related_only_fields": [
+        "General And Administrative Expense",
+        "Selling And Marketing Expense"
+      ],
+      "required_proof": [
+        "per-issuer PDF reconciliation against HK conglomerate operating expense breakdowns"
+      ],
+      "samples": [
+        {
+          "company_id": "00001",
+          "period_end": "2025-12-31",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "9,466,000,000",
+          "currency": "HKD",
+          "matches_raw_value": false,
+          "matches_raw_value_reason": "PDF reports 'Office and general administrative expenses' 9,466M HKD (one component); Yahoo SGA 16,491M aggregates Selling+Marketing+G&A — different scopes"
+        },
+        {
+          "company_id": "01113",
+          "period_end": "2025-12-31",
+          "pdf_page": "consolidated_income_statement",
+          "pdf_value": "n/a",
+          "currency": "HKD",
+          "matches_raw_value": false,
+          "matches_raw_value_reason": "PDF has no single SGA line (real-estate developer convention; expenses split across segments)"
+        }
+      ],
+      "semantic_claim": "Yahoo HK Selling General And Administration aggregates 'Selling And Marketing Expense' + 'General And Administrative Expense'; for HK conglomerates the consolidated PDF reports these costs across multiple operational segments rather than one SGA line. Spot-check on 00001/2025 found PDF 'Office and general administrative expenses' 9,466M HKD vs Yahoo SGA 16,491M HKD — different scope. 01113/2025 has no single SGA PDF line (real-estate convention). HK SGA stays terminal_unverified pending per-issuer PDF reconciliation.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "selling_general_administrative"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Depreciation And Amortization",
+      "related_only_fields": [
+        "Reconciled Depreciation",
+        "Depreciation",
+        "Amortization"
+      ],
+      "required_proof": [
+        "per-issuer PDF reconciliation confirming D+A scope (depreciation of PPE + amortization of intangibles + ROU depreciation handling)"
+      ],
+      "samples": [],
+      "semantic_claim": "Yahoo HK Depreciation And Amortization scope (PPE depreciation + intangibles amortization, with inconsistent treatment of right-of-use asset depreciation across HK issuers per fix_assets analysis) has not been PDF-proven equivalent to the Turtle depreciation_amortization definition. Same provider semantics issue as CN; HK D&A stays terminal_unverified.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "depreciation_amortization"
+    },
+    {
+      "allowed_as_primary": false,
+      "classification": "provider_semantics_unverified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Cash Dividends Paid",
+      "related_only_fields": [
+        "Common Stock Dividend Paid"
+      ],
+      "required_proof": [
+        "per-issuer reconciliation between AKShare 已付股息(融资) and Yahoo Cash Dividends Paid timing semantics (paid vs declared)"
+      ],
+      "samples": [],
+      "semantic_claim": "Yahoo HK Cash Dividends Paid vs AKShare 已付股息(融资) suspected to have the same timing-semantics divergence (已付 vs 宣告) observed for CN dividends_paid. Without per-issuer PDF reconciliation, HK dividends_paid stays terminal_unverified.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "dividends_paid"
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [
+        "Payables",
+        "Other Payable",
+        "Total Tax Payable",
+        "Tradeand Other Payables Non Current"
+      ],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Accounts Payable",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "pure trade payables — disclosed as 'Trade payables' (Xiaomi/Anta/06862/HSBC), 'Creditors' (CK Asset property co), or 'Accounts payable' (Yum China USD reporter). Does NOT include accruals or other payables.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "acct_payable",
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
+      ]
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Net PPE",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "Yahoo HK 'Net PPE' aggregates PDF 'Property, plant and equipment' + 'Right-of-use assets' (PP&E + ROU per HKFRS 16). Verified for 4 of 6 HK issuers (00001/01113/06862/09987); 01810/02498 excluded via pdf_verified_company_ids allowlist due to material PDF-vs-Yahoo discrepancies.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "fix_assets",
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "06862",
+        "09987"
+      ]
+    },
+    {
+      "allowed_as_primary": true,
+      "classification": "provider_semantics_sample_verified",
+      "market": "HK",
+      "negative_examples": [
+        "Receivables",
+        "Non Current Accounts Receivable",
+        "Other Receivables",
+        "Gross Accounts Receivable"
+      ],
+      "proof_origin": "sampled_pdf_policy_proof",
+      "provider": "yahoo",
+      "raw_field_code": null,
+      "raw_field_name": "Accounts Receivable",
+      "related_only_fields": [],
+      "required_proof": [],
+      "samples": [],
+      "semantic_claim": "Yahoo HK 'Accounts Receivable' = PDF pure 'Trade receivables' (or HK property-co 'Debtors'; Yum China 'Accounts receivable, net'). Verified for all 6 HK issuers. Note: Yum China Yahoo also has a broader 'Receivables' raw_field for $316M which includes payment-processor receivables; the source mapping's alias list ['Accounts Receivable'] correctly excludes it.",
+      "trusted_currency": "HKD",
+      "trusted_unit": "raw",
+      "trusted_unit_multiplier": 1,
+      "turtle_field_id": "accounts_receiv",
+      "pdf_verified_company_ids": [
+        "00001",
+        "01113",
+        "01810",
+        "02498",
+        "06862",
+        "09987"
+      ]
+    }
+  ]
+}

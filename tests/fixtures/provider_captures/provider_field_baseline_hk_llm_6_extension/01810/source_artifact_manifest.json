@@ -1,0 +1,85 @@
+{
+  "artifact_root": "tmp/runs/hk_llm_6_fetch/01810/source_artifacts",
+  "artifacts": [
+    {
+      "artifact_id": "akshare_hk_01810_balance_sheet",
+      "content_type": "application/json",
+      "created_by": null,
+      "function": null,
+      "market": null,
+      "path": "akshare/akshare_hk_01810_balance_sheet.json",
+      "schema_version": null,
+      "sha256": "cd41e35fda81329627cd5c8c5ebe9a96020c072b7e1aca01285bede4d459a6a5",
+      "source": "akshare",
+      "statement_type": null,
+      "ticker": null
+    },
+    {
+      "artifact_id": "akshare_hk_01810_cash_flow",
+      "content_type": "application/json",
+      "created_by": null,
+      "function": null,
+      "market": null,
+      "path": "akshare/akshare_hk_01810_cash_flow.json",
+      "schema_version": null,
+      "sha256": "de8e4042fdb95286bb6513f34d4cca39a11c51f3ed73ad11491b6251107a79a1",
+      "source": "akshare",
+      "statement_type": null,
+      "ticker": null
+    },
+    {
+      "artifact_id": "akshare_hk_01810_income_statement",
+      "content_type": "application/json",
+      "created_by": null,
+      "function": null,
+      "market": null,
+      "path": "akshare/akshare_hk_01810_income_statement.json",
+      "schema_version": null,
+      "sha256": "060c97487a08b59892b9521ca3705d6ddfa49dc89344034adef53250634d11f2",
+      "source": "akshare",
+      "statement_type": null,
+      "ticker": null
+    },
+    {
+      "artifact_id": "yahoo_hk_1810_hk_balance_sheet",
+      "content_type": "application/json",
+      "created_by": null,
+      "function": null,
+      "market": null,
+      "path": "yahoo/yahoo_hk_1810_hk_balance_sheet.json",
+      "schema_version": null,
+      "sha256": "f471c25bcd67bb9b4b50006dbbf10c1b625699afa072a4180a65d9afed7aae5a",
+      "source": "yahoo",
+      "statement_type": null,
+      "ticker": null
+    },
+    {
+      "artifact_id": "yahoo_hk_1810_hk_cash_flow",
+      "content_type": "application/json",
+      "created_by": null,
+      "function": null,
+      "market": null,
+      "path": "yahoo/yahoo_hk_1810_hk_cash_flow.json",
+      "schema_version": null,
+      "sha256": "493bbce8e8df5f0254142977e6a68407e7104a5e78fc87b33c4c559fedbcaaff",
+      "source": "yahoo",
+      "statement_type": null,
+      "ticker": null
+    },
+    {
+      "artifact_id": "yahoo_hk_1810_hk_income_statement",
+      "content_type": "application/json",
+      "created_by": null,
+      "function": null,
+      "market": null,
+      "path": "yahoo/yahoo_hk_1810_hk_income_statement.json",
+      "schema_version": null,
+      "sha256": "3db3599c76b150856638dbdf3e720e3b7c60c9fbd3bf475d660ca3dd20563bec",
+      "source": "yahoo",
+      "statement_type": null,
+      "ticker": null
+    }
+  ],
+  "manifest_id": "source_artifact_manifest",
+  "version": "1"
+}

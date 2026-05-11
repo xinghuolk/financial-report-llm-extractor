@@ -1,0 +1,1209 @@
+{
+  "matrix_id": "turtle_v015_coverage_matrix",
+  "version": "2026-05-02",
+  "taxonomy_catalog": "turtle_v015_field_taxonomy",
+  "fields": {
+    "revenue": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route; yahoo_direct is advertised as an expected source_policy cross-check route."
+    },
+    "operating_cost": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline regression (test_provider_baseline_replay.py): AKShare OPERATE_COST observed clean_present for 600519/00001/01113. Yahoo Cost Of Revenue aggregation may diverge on HK; yahoo route stays expected."
+    },
+    "operating_profit": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_raw_semantics_cn.json (4 CN samples: 600519, 300750, 601919, 688008 with PDF spot-check) and Phase H2 Module B promotion to clean_present. HK side remains terminal_unverified per EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS lock."
+    },
+    "net_profit": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route; yahoo_direct is advertised as an expected source_policy cross-check route."
+    },
+    "total_assets": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route; yahoo_direct is advertised as an expected source_policy cross-check route."
+    },
+    "total_liabilities": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route; yahoo_direct is advertised as an expected source_policy cross-check route."
+    },
+    "equity_attributable_to_owners": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by 00001 PDF page 137 'Total ordinary shareholders' funds' = 562,772 matching Yahoo Stockholders Equity 562,772,000,000 HKD."
+    },
+    "operating_cash_flow": {
+      "domain": "cash_flow",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "investing_cash_flow": {
+      "domain": "cash_flow",
+      "priority": "P0",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline regression: Yahoo Investing Cash Flow observed clean_present for all 3 companies (600519, 00001, 01113) per test_provider_baseline_replay.py."
+    },
+    "financing_cash_flow": {
+      "domain": "cash_flow",
+      "priority": "P0",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline regression: Yahoo Financing Cash Flow observed clean_present for all 3 companies (600519, 00001, 01113) per test_provider_baseline_replay.py."
+    },
+    "cash": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route."
+    },
+    "money_cap": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by 600519 AKShare and 00001/01113 Yahoo captured baseline."
+    },
+    "st_borr": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline regression: 00001/01113 clean via AKShare SHORT_LOAN; 600519 promoted via Phase H0 null_means_zero. Yahoo Current Debt cross-check route."
+    },
+    "lt_borr": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline regression: 00001/01113 clean via AKShare LONG_LOAN; 600519 promoted to clean_present via Phase H0 null_means_zero (Maotai reports None, audit-trailed). Yahoo Long Term Debt cross-check route."
+    },
+    "bond_payable": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "accounts_receiv": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "HK-B.3 (test_phase_hk_b_accounts_receiv.py) locks 6/6 unresolved_conflict across all HK issuers (00001, 01113, 01810, 02498, 06862, 09987): AKShare 应收帐款 vs Yahoo Accounts Receivable scope mismatch. No promotion path without >=3 PDF semantics proof per drift §177. CN 600519 lands clean_present via AKShare ACCOUNTS_RECE."
+    },
+    "acct_payable": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by HK-B.5 PDF spot-check across all 6 HK companies + CN baseline. Yahoo HK Accounts Payable matches PDF pure trade payables for: 00001 (HSBC Note 27a, 22,632 HKDM), 01113 (CK Asset Note 18 'Creditors', 3,607 HKDM — property-co convention), 01810 (Xiaomi Note 30, 98,280,585 K RMB), 02498 (Note 32, 475,825 K RMB), 06862 (Note 27 貿易應付款項, 1,796,362 K RMB), 09987 (Yum China Note - Accounts Payable, $801M USD). Source mapping carries HK market_policy primary_route=yahoo_direct; AKShare cross-check for CN baseline 600519. Locked by test_phase_hk_b_acct_payable.py."
+    },
+    "inventories": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by 600519 AKShare and 00001/01113 Yahoo captured baseline."
+    },
+    "fix_assets": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Phase H1: HK fix_assets locked as terminal non-clean. Yahoo Net PPE includes Right-of-use assets for some HK issuers (00001) but matches Fixed assets for others (01113) — per-issuer divergence prevents primary promotion. AKShare HK 固定资产 also does not match PDF Fixed assets line for sampled issuers. Both providers marked provider_semantics_unverified in provider_raw_semantics_hk.json."
+    },
+    "cip": {
+      "domain": "balance_sheet",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "rd_exp": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "invest_income": {
+      "domain": "income_statement",
+      "priority": "P0",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "gross_profit": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "HK-B.4 (test_phase_hk_b_gross_profit.py) locks 4 unresolved_conflict + 2 terminal_unverified across 6 HK issuers. Yahoo Gross Profit + AKShare 毛利 semantics unproven; even exact provider-provider matches (01810, 02498) do not constitute HK annual-report gross-profit semantics proof per drift §177."
+    },
+    "selling_general_administrative": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "income_statement",
+          "evidence_requirement": "pdf_required"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Phase H2.1: CN SGA = AKShare MANAGE_EXPENSE + SALE_EXPENSE addition derivation, EXACT match PDF (销售费用+管理费用) for 600519/2024 = 14,954,950,119.87 CNY (see docs/phase_h2_1_sga_spot_check.md). source_mapping has source_aliases.akshare=[] so direct match misses, then derivation fires (mapping.py:130). Yahoo SGA scope unclear (10.36B vs PDF 14.95B; ~30% off); not used. HK still terminal_unverified per H2 (akshare HK has no MANAGE/SALE raw fields)."
+    },
+    "fv_value_chg_gain": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Yahoo HK does not expose this field; CN-only akshare route by design. No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "non_oper_income": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Yahoo HK does not expose this field; CN-only akshare route by design. No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "non_oper_exp": {
+      "domain": "income_statement",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "income_statement",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Yahoo HK does not expose this field; CN-only akshare route by design. No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "total_cur_assets": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route; yahoo_direct is advertised as an expected source_policy cross-check route."
+    },
+    "other_cur_assets": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "00001 Yahoo only returns Change In Other Current Assets — Other Current Assets unavailable; 00001 will show source_unavailable for this field."
+    },
+    "total_cur_liab": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by captured AKShare 600519 fixture for the akshare_direct route; yahoo_direct is advertised as an expected source_policy cross-check route."
+    },
+    "defer_tax_assets": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by 600519 AKShare (DEFER_TAX_ASSET) and 00001/01113 Yahoo (Non Current Deferred Taxes Assets) captured baseline. 600519 AKShare and Yahoo agree at 6,602,469,151.22 CNY. 00001 Yahoo 7,102,000,000 HKD matches PDF page 136. 01113 Yahoo 3,132,000,000 HKD from tax note disclosure."
+    },
+    "defer_tax_liab": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Yahoo direct is primary for HK market; akshare cross-check route added."
+    },
+    "minority_int": {
+      "domain": "balance_sheet",
+      "priority": "P1",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by 600519 AKShare and 00001/01113 Yahoo captured baseline."
+    },
+    "stock_based_compensation": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned yahoo_direct route via yahoo direct remains expected."
+    },
+    "change_in_receivables": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline: Yahoo Change In Receivables observed for 0001.HK, 1113.HK, 600519.SS. AKShare RECEIVE_RECE_DECREASE added as CN cross-check."
+    },
+    "change_in_payables": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline: Yahoo Change In Payable observed for 0001.HK, 1113.HK, 600519.SS. AKShare PAYABLE_INCREASE added as CN cross-check."
+    },
+    "change_in_inventory": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline: Yahoo Change In Inventory observed for 0001.HK, 1113.HK, 600519.SS. AKShare INVENTORY_REDUCE added as CN cross-check."
+    },
+    "receiv_tax_refund": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline: AKShare RECEIVE_TAX_REFUND observed for 600519.SS (CN-only field). HK companies do not expose this field."
+    },
+    "repurchase_of_stock": {
+      "domain": "shareholder_return",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline: Yahoo Repurchase Of Capital Stock observed for HK companies. AKShare BUYBACK_OF_STOCK added as CN cross-check."
+    },
+    "dividends_paid": {
+      "domain": "shareholder_return",
+      "priority": "P2",
+      "primary_route": "akshare_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline: AKShare ASSIGN_CASH_DIVIDEND and Yahoo Cash Dividends Paid / Common Stock Dividend Paid observed across all three companies."
+    },
+    "capital_expenditures": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline: Yahoo Capital Expenditure observed for all three companies (0001.HK, 1113.HK, 600519.SS). AKShare CONSTRUCT_LONG_ASSET added as CN cross-check."
+    },
+    "depreciation_amortization": {
+      "domain": "accounting_adjustments",
+      "priority": "P2",
+      "primary_route": "yahoo_direct",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "verified",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Verified by provider_field_baseline: Yahoo Depreciation And Amortization (1113.HK), Amortization Cash Flow (0001.HK, 600519.SS) observed. AKShare FA_IR_DEPR/DA added as CN cross-check."
+    },
+    "dps": {
+      "domain": "shareholder_return",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "announcement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "dividend_plan": {
+      "domain": "shareholder_return",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "verified",
+          "statement_type": "announcement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Verified by HK-LLM-2 regression lock: 6 of 7 companies hit (600519, 00001, 01113, 01810, 02498, 06862); only 09987 misses. LLM supplement merged into llm_supplement_present."
+    },
+    "buyback_cancellation_progress": {
+      "domain": "shareholder_return",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "announcement",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "capitalized_rd": {
+      "domain": "accounting_adjustments",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "capitalized_interest": {
+      "domain": "accounting_adjustments",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "receivables_aging": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "bad_debt_provision": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "HK-LLM-2 regression lock observes 4 HK companies hit (01113, 01810, 02498, 06862) via LLM supplement — but matrix primary_route is yahoo_direct and Yahoo has no direct bad_debt_provision data, so per-field invariant (verified primary_route required) keeps this expected. Future MX iteration could restructure primary_route to pdf_evidence."
+    },
+    "related_party_receivables_payables": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "verified",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Verified by HK-LLM-2 regression lock: 3 companies hit (600519 CN, 02498 HK, 06862 HK); cross-market evidence. LLM supplement merged into llm_supplement_present."
+    },
+    "contingent_liabilities_commitments": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "verified",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Verified by HK-LLM-2 regression lock (test_phase_hk_llm_2_supplement_merge.py): 6 of 7 companies hit (600519, 00001, 01113, 01810, 02498, 06862); only 09987 misses. LLM supplement merged into llm_supplement_present bucket."
+    },
+    "lease_liability_maturity": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "segment_revenue_profit": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "verified",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Verified by HK-LLM-2 regression lock: 3 HK companies hit (00001, 01810, 09987). LLM supplement merged into llm_supplement_present."
+    },
+    "restricted_cash": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned pdf_evidence route via pdf evidence remains expected."
+    },
+    "time_deposits_or_wealth_products": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "verified",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "verified",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Verified by HK-LLM-2 regression lock: 3 HK companies hit (02498, 06862, 09987). LLM supplement merged into llm_supplement_present."
+    },
+    "interest_paid_cash": {
+      "domain": "cash_flow",
+      "priority": "P3",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "No captured proof yet; planned akshare_direct route via akshare direct remains expected."
+    },
+    "mda_business_review": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "mda",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "mda_forward_guidance": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "mda",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "mda_risk_factors": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "mda",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "dividend_policy_text": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "audit_opinion": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "auditor_change_history": {
+      "domain": "notes_and_mda",
+      "priority": "P4",
+      "primary_route": "llm_review",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "llm",
+          "mode": "review",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "llm_review_required"
+        }
+      ],
+      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    }
+  }
+}

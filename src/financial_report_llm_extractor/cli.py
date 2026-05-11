@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from financial_report_llm_extractor.chunking import build_chunk_store
+from financial_report_llm_extractor.coverage_budget import (
+    build_coverage_metrics,
+    evaluate_coverage_gate,
+    load_catalog_field_ids,
+    write_coverage_budget_report,
+)
 from financial_report_llm_extractor.document_map import (
     write_document_map,
     write_parser_capability_probe,
@@ -13,12 +20,26 @@ from financial_report_llm_extractor.document_map import (
 from financial_report_llm_extractor.evaluation import write_review_summary
 from financial_report_llm_extractor.extraction import run_fake_extraction
 from financial_report_llm_extractor.ingestion import ingest_pdf
+from financial_report_llm_extractor.llm_row_discovery import write_llm_row_inventory
 from financial_report_llm_extractor.llm_transport import run_real_transport_probe
+from financial_report_llm_extractor.quick_validation_runner import run_quick_validation
 from financial_report_llm_extractor.retrieval import write_retrieval_probe
 from financial_report_llm_extractor.statement_discovery import (
     write_catalog_mapping,
     write_row_inventory,
     write_statement_map,
+)
+from financial_report_llm_extractor.structured_sources.field_candidate_discovery import (
+    write_provider_field_candidate_report,
+)
+from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+    write_provider_baseline_period_replay,
+)
+from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+    PeriodSpec,
+)
+from financial_report_llm_extractor.structured_sources.source_mapping_expansion import (
+    write_source_mapping_expansion_review,
 )
 
 
@@ -69,6 +90,88 @@ def build_parser() -> argparse.ArgumentParser:
     extract_fake_parser.add_argument("--retrieval-probe", required=True, type=Path)
     extract_fake_parser.add_argument("--out", type=Path)
 
+    extract_llm_parser = subparsers.add_parser(
+        "extract-llm",
+        help="LLM-assisted field extraction from a PDF",
+    )
+    extract_llm_parser.add_argument("--pdf", required=True, type=Path)
+    extract_llm_parser.add_argument("--company-id", required=True)
+    extract_llm_parser.add_argument(
+        "--catalog", required=True, type=Path,
+        help="source mapping catalog JSON",
+    )
+    extract_llm_parser.add_argument(
+        "--taxonomy", required=True, type=Path,
+        help="field taxonomy catalog JSON",
+    )
+    extract_llm_parser.add_argument(
+        "--llm-config", required=True, type=Path,
+        help="LLM transport config JSON",
+    )
+    extract_llm_parser.add_argument(
+        "--out", required=True, type=Path,
+        help="output directory for chunks + evidence supplement",
+    )
+    extract_llm_parser.add_argument(
+        "--fields", default=None,
+        help="comma-separated subset of field IDs (default: all)",
+    )
+    extract_llm_parser.add_argument(
+        "--priorities", default="P0,P1",
+        help="comma-separated priorities (default: P0,P1)",
+    )
+    extract_llm_parser.add_argument(
+        "--confidence-threshold", type=float, default=None,
+        help=(
+            "Demote `present` results below this LLM-reported confidence to "
+            "extraction_failed with a low_confidence error. Default: no gating."
+        ),
+    )
+
+    extract_llm_batch_parser = subparsers.add_parser(
+        "extract-llm-batch",
+        help="LLM-assisted field extraction across multiple PDFs concurrently",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--manifest", required=True, type=Path,
+        help="JSON manifest: list of {company_id, pdf_path}",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--catalog", required=True, type=Path,
+        help="source mapping catalog JSON",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--taxonomy", required=True, type=Path,
+        help="field taxonomy catalog JSON",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--llm-config", required=True, type=Path,
+        help="LLM transport config JSON",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--out", required=True, type=Path,
+        help="root output directory; per-company subdirectories under it",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--fields", default=None,
+        help="comma-separated subset of field IDs (default: all)",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--priorities", default="P0,P1",
+        help="comma-separated priorities (default: P0,P1)",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--workers", type=int, default=3,
+        help="concurrent worker threads (default: 3)",
+    )
+    extract_llm_batch_parser.add_argument(
+        "--confidence-threshold", type=float, default=None,
+        help=(
+            "Demote `present` results below this LLM-reported confidence to "
+            "extraction_failed. Default: no gating."
+        ),
+    )
+
     extract_parser = subparsers.add_parser("extract")
     extract_parser.add_argument("--retrieval-probe", required=True, type=Path)
     extract_parser.add_argument("--config", required=True, type=Path)
@@ -79,11 +182,164 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument("--root", required=True, type=Path)
     evaluate_parser.add_argument("--out", type=Path)
 
+    quick_validate_parser = subparsers.add_parser("quick-validate")
+    quick_validate_parser.add_argument("--pdf", required=True, type=Path)
+    quick_validate_parser.add_argument("--report-id", required=True)
+    quick_validate_parser.add_argument("--root", required=True, type=Path)
+
+    coverage_budget_parser = subparsers.add_parser("coverage-budget")
+    coverage_budget_parser.add_argument("--chunks", required=True, type=Path)
+    coverage_budget_parser.add_argument("--catalog", required=True, type=Path)
+    coverage_budget_parser.add_argument("--report-id", required=True)
+    coverage_budget_parser.add_argument("--priorities", default="P0,P1")
+    coverage_budget_parser.add_argument("--fields", default="")
+    coverage_budget_parser.add_argument("--top-k-values", default="1,3,5,8")
+    coverage_budget_parser.add_argument("--required-top-k", default=3, type=int)
+    coverage_budget_parser.add_argument("--max-total-chars", default=40_000, type=int)
+    coverage_budget_parser.add_argument("--max-field-chars", default=8_000, type=int)
+    coverage_budget_parser.add_argument("--out-dir", required=True, type=Path)
+
+    discover_rows_llm_parser = subparsers.add_parser("discover-rows-llm")
+    discover_rows_llm_parser.add_argument("--chunks", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--statement-map", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--config", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--out", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--prompt-dir", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--raw-response-dir", required=True, type=Path)
+    discover_rows_llm_parser.add_argument("--parsed-response-dir", required=True, type=Path)
+
+    provider_fields_parser = subparsers.add_parser("discover-provider-fields")
+    provider_fields_parser.add_argument("--taxonomy", required=True, type=Path)
+    provider_fields_parser.add_argument("--mapping-catalog", required=True, type=Path)
+    provider_fields_parser.add_argument("--inventory", required=True, type=Path)
+    provider_fields_parser.add_argument("--summary", required=True, type=Path)
+    provider_fields_parser.add_argument("--out", required=True, type=Path)
+    provider_fields_parser.add_argument("--priorities", default="P0,P1")
+
+    expansion_review_parser = subparsers.add_parser("review-source-mapping-expansion")
+    expansion_review_parser.add_argument("--candidate-report", required=True, type=Path)
+    expansion_review_parser.add_argument("--mapping-catalog", required=True, type=Path)
+    expansion_review_parser.add_argument("--out", required=True, type=Path)
+
+    baseline_replay_parser = subparsers.add_parser("replay-provider-baseline")
+    baseline_replay_parser.add_argument("--inventory", required=True, type=Path)
+    baseline_replay_parser.add_argument("--inventory-summary", required=True, type=Path)
+    baseline_replay_parser.add_argument("--catalog", required=True, type=Path)
+    baseline_replay_parser.add_argument(
+        "--taxonomy",
+        default=Path("field_catalog/turtle_v015_field_taxonomy.json"),
+        type=Path,
+    )
+    baseline_replay_parser.add_argument("--out", required=True, type=Path)
+    baseline_replay_parser.add_argument("--hk-yahoo-trust-policy", type=Path)
+
+    fetch_source_parser = subparsers.add_parser(
+        "fetch-source-inventory",
+        help="Live fetch AKShare/Yahoo data for a single (company, period).",
+    )
+    fetch_source_parser.add_argument("--company", required=True)
+    fetch_source_parser.add_argument("--year", type=int)
+    fetch_source_parser.add_argument("--period-end")
+    fetch_source_parser.add_argument("--report-type", default="annual")
+    fetch_source_parser.add_argument(
+        "--market", required=True, choices=["CN", "HK"]
+    )
+    fetch_source_parser.add_argument("--providers", default="akshare,yahoo")
+    fetch_source_parser.add_argument("--out", type=Path, required=True)
+    fetch_source_parser.add_argument(
+        "--catalog", type=Path, required=True,
+        help="Source mapping catalog JSON path.",
+    )
+
+    evaluate_parser = subparsers.add_parser(
+        "evaluate-company",
+        help="Per-(company, period) source-first + optional LLM evaluation.",
+    )
+    evaluate_parser.add_argument("--company", required=True)
+    evaluate_parser.add_argument("--year", type=int)
+    evaluate_parser.add_argument("--period-end")
+    evaluate_parser.add_argument("--report-type", default="annual")
+    evaluate_parser.add_argument(
+        "--market", required=True, choices=["CN", "HK"]
+    )
+    evaluate_parser.add_argument("--inventory", type=Path, required=True)
+    # Informational: not consumed by the orchestrator. Kept optional so users
+    # can pass the path produced by fetch-source-inventory for parity.
+    evaluate_parser.add_argument("--inventory-summary", type=Path)
+    evaluate_parser.add_argument("--catalog", type=Path, required=True)
+    evaluate_parser.add_argument("--taxonomy", type=Path, required=True)
+    evaluate_parser.add_argument("--pdf", type=Path)
+    evaluate_parser.add_argument("--llm-config", type=Path)
+    evaluate_parser.add_argument("--priorities", default="P0,P1,P2,P3")
+    evaluate_parser.add_argument("--out", type=Path, required=True)
+
     return parser
 
 
+def _run_fetch_source_inventory(
+    *,
+    company: str,
+    period: PeriodSpec,
+    market: str,
+    providers: tuple[str, ...],
+    out_dir: Path,
+    catalog_path: Path,
+) -> None:
+    from financial_report_llm_extractor.structured_sources.real_source_validation import (
+        PandasAkshareClient,
+        YFinanceStatementClient,
+    )
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        fetch_source_inventory,
+        hk_issuer_financial_currency,
+    )
+
+    # Phase HK-B.5.1: HK AKShare records get stamped with the issuer's
+    # financial-reporting currency (not the HK trading-market currency).
+    # CN companies stay "unknown" — `_fetch_akshare_for_company` uses the
+    # explicit "yuan" unit for CN, so currency stamping for CN AKShare comes
+    # from a different code path.
+    akshare_hk_currency = (
+        hk_issuer_financial_currency(company) if market == "HK" else "unknown"
+    )
+    akshare_client = (
+        PandasAkshareClient(hk_default_currency=akshare_hk_currency)
+        if "akshare" in providers
+        else None
+    )
+    yahoo_client = YFinanceStatementClient() if "yahoo" in providers else None
+
+    artifact = fetch_source_inventory(
+        company=company,
+        period=period,
+        market=market,  # type: ignore[arg-type]
+        providers=providers,  # type: ignore[arg-type]
+        akshare_client=akshare_client,
+        yahoo_client=yahoo_client,
+        out_dir=out_dir,
+        catalog_path=catalog_path,
+    )
+    print(json.dumps({
+        "inventory_path": str(artifact.inventory_path),
+        "summary_path": str(artifact.summary_path),
+        "record_count": artifact.record_count,
+    }, indent=2))
+
+
+def _run_evaluate_company(**kwargs: object) -> None:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        run_company_evaluation,
+    )
+    evaluation = run_company_evaluation(**kwargs)  # type: ignore[arg-type]
+    print(json.dumps({
+        "company": evaluation.company,
+        "summary": dict(evaluation.by_bucket),
+    }, indent=2))
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     if args.command == "ingest":
         ingest_result = ingest_pdf(args.pdf, args.out)
@@ -190,6 +446,114 @@ def main(argv: list[str] | None = None) -> int:
         print(f"extraction_result_path={real_result.output_path}")
         return 0
 
+    if args.command == "extract-llm":
+        from financial_report_llm_extractor.field_metadata import load_field_taxonomy
+        from financial_report_llm_extractor.llm_transport import (
+            LlmTransportConfig,
+            create_llm_client,
+        )
+        from financial_report_llm_extractor.structured_sources.catalog import (
+            load_source_mapping_catalog,
+        )
+        from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+            extract_for_chunks,
+            load_chunks_jsonl,
+            write_llm_evidence_supplement,
+        )
+
+        out_dir = args.out
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ingest_dir = out_dir / "ingest"
+
+        priorities = tuple(p.strip() for p in args.priorities.split(",") if p.strip())
+        fields_filter = (
+            tuple(f.strip() for f in args.fields.split(",") if f.strip())
+            if args.fields else None
+        )
+
+        chunks_path = ingest_dir / "chunks.jsonl"
+        if not chunks_path.exists():
+            ingest_dir.mkdir(parents=True, exist_ok=True)
+            ingest_result = ingest_pdf(args.pdf, ingest_dir)
+            build_chunk_store(
+                ingest_result.pages_path,
+                ingest_result.metadata_path,
+                chunks_path=chunks_path,
+            )
+
+        chunks = load_chunks_jsonl(chunks_path)
+        catalog = load_source_mapping_catalog(args.catalog, priorities=priorities)
+        taxonomy = load_field_taxonomy(args.taxonomy)
+        config = LlmTransportConfig.from_json(args.llm_config)
+        client = create_llm_client(config)
+
+        result = extract_for_chunks(
+            chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+            client=client, company_id=args.company_id,
+            pdf_path=args.pdf, out_dir=out_dir,
+            priorities=priorities, fields=fields_filter,
+            confidence_threshold=args.confidence_threshold,
+        )
+        write_llm_evidence_supplement(result)
+
+        print(f"company_id={result.company_id}")
+        print(f"chunk_count={result.chunk_count}")
+        print(f"attempted={list(result.fields_attempted)}")
+        print(f"present={list(result.fields_present)}")
+        print(f"not_found={list(result.fields_not_found)}")
+        print(f"failed={list(result.fields_failed)}")
+        print(f"artifact={result.artifact_path}")
+        return 0
+
+    if args.command == "extract-llm-batch":
+        from financial_report_llm_extractor.field_metadata import load_field_taxonomy
+        from financial_report_llm_extractor.llm_transport import (
+            LlmTransportConfig,
+            create_llm_client,
+        )
+        from financial_report_llm_extractor.structured_sources.catalog import (
+            load_source_mapping_catalog,
+        )
+        from financial_report_llm_extractor.structured_sources.llm_extraction_batch import (
+            load_manifest,
+            run_batch,
+        )
+
+        priorities = tuple(p.strip() for p in args.priorities.split(",") if p.strip())
+        fields_filter = (
+            tuple(f.strip() for f in args.fields.split(",") if f.strip())
+            if args.fields else None
+        )
+        companies = load_manifest(args.manifest)
+        catalog = load_source_mapping_catalog(args.catalog, priorities=priorities)
+        taxonomy = load_field_taxonomy(args.taxonomy)
+        config = LlmTransportConfig.from_json(args.llm_config)
+        client = create_llm_client(config)
+
+        summary = run_batch(
+            companies=companies,
+            out_dir=args.out,
+            catalog=catalog,
+            taxonomy=taxonomy,
+            client=client,
+            priorities=priorities,
+            fields=fields_filter,
+            workers=args.workers,
+            confidence_threshold=args.confidence_threshold,
+        )
+        print(f"total_companies={summary.total_companies}")
+        print(f"succeeded={summary.succeeded}")
+        print(f"failed={summary.failed}")
+        print(f"summary_path={summary.summary_path}")
+        for entry in summary.companies:
+            print(
+                f"  {entry.company_id}: {entry.status} "
+                f"present={list(entry.fields_present)} "
+                f"not_found={list(entry.fields_not_found)} "
+                f"failed={list(entry.fields_failed)}"
+            )
+        return 0
+
     if args.command == "evaluate":
         evaluation_result = write_review_summary(
             args.root,
@@ -197,6 +561,183 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"reports={evaluation_result.report_count}")
         print(f"evaluation_summary_path={evaluation_result.output_path}")
+        return 0
+
+    if args.command == "quick-validate":
+        quick_validation_result = run_quick_validation(
+            pdf_path=args.pdf,
+            report_id=args.report_id,
+            root_dir=args.root,
+        )
+        print(f"run_dir={quick_validation_result.run_dir}")
+        print(f"summary_path={quick_validation_result.artifacts['summary']}")
+        return 0
+
+    if args.command == "coverage-budget":
+        priorities = tuple(
+            priority.strip() for priority in args.priorities.split(",") if priority.strip()
+        )
+        explicit_fields = tuple(
+            field.strip() for field in args.fields.split(",") if field.strip()
+        )
+        top_k_values = tuple(
+            int(value.strip()) for value in args.top_k_values.split(",") if value.strip()
+        )
+        selected_fields = load_catalog_field_ids(
+            args.catalog,
+            priorities=priorities,
+            explicit_fields=explicit_fields,
+        )
+        records = [
+            json.loads(line)
+            for line in args.chunks.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        metrics = build_coverage_metrics(
+            records,
+            selected_fields=selected_fields,
+            top_k_values=top_k_values,
+        )
+        gate = evaluate_coverage_gate(
+            metrics,
+            required_top_k=args.required_top_k,
+            max_total_chars=args.max_total_chars,
+            max_field_chars=args.max_field_chars,
+        )
+        report = write_coverage_budget_report(
+            output_dir=args.out_dir,
+            report_id=args.report_id,
+            catalog_id=args.catalog.stem,
+            priorities=priorities,
+            selected_fields=selected_fields,
+            top_k_values=top_k_values,
+            metrics=metrics,
+            gate=gate,
+        )
+        selected_metric = next(
+            metric for metric in metrics if metric["top_k"] == args.required_top_k
+        )
+        print(f"fields={selected_metric['total_fields']}")
+        print(f"covered={selected_metric['covered_fields']}")
+        print(f"gate={gate['status']}")
+        print(f"coverage_budget_json={report['json']}")
+        print(f"coverage_budget_markdown={report['markdown']}")
+        return 0
+
+    if args.command == "discover-rows-llm":
+        llm_row_result = write_llm_row_inventory(
+            args.chunks,
+            args.statement_map,
+            config_path=args.config,
+            output_path=args.out,
+            prompt_dir=args.prompt_dir,
+            raw_response_dir=args.raw_response_dir,
+            parsed_response_dir=args.parsed_response_dir,
+        )
+        print(f"rows={llm_row_result.row_count}")
+        print(f"prompts={llm_row_result.prompt_count}")
+        print(f"raw_responses={llm_row_result.raw_response_count}")
+        print(f"row_inventory_llm_path={llm_row_result.output_path}")
+        return 0
+
+    if args.command == "discover-provider-fields":
+        priorities = tuple(
+            priority.strip()
+            for priority in args.priorities.split(",")
+            if priority.strip()
+        )
+        candidate_result = write_provider_field_candidate_report(
+            taxonomy_path=args.taxonomy,
+            mapping_catalog_path=args.mapping_catalog,
+            inventory_path=args.inventory,
+            summary_path=args.summary,
+            output_dir=args.out,
+            priorities=priorities,
+        )
+        print(f"fields={candidate_result.field_count}")
+        print(f"candidate_report_path={candidate_result.json_path}")
+        print(f"candidate_markdown_path={candidate_result.markdown_path}")
+        return 0
+
+    if args.command == "review-source-mapping-expansion":
+        expansion_review_result = write_source_mapping_expansion_review(
+            candidate_report_path=args.candidate_report,
+            mapping_catalog_path=args.mapping_catalog,
+            output_dir=args.out,
+        )
+        print(f"promoted={expansion_review_result.promoted_count}")
+        print(f"deferred={expansion_review_result.deferred_count}")
+        print(f"blocked={expansion_review_result.blocked_count}")
+        print(f"source_mapping_expansion_json={expansion_review_result.json_path}")
+        print(
+            "source_mapping_expansion_markdown="
+            f"{expansion_review_result.markdown_path}"
+        )
+        return 0
+
+    if args.command == "replay-provider-baseline":
+        replay_kwargs = {
+            "inventory_path": args.inventory,
+            "inventory_summary_path": args.inventory_summary,
+            "catalog_path": args.catalog,
+            "taxonomy_path": args.taxonomy,
+            "output_dir": args.out,
+        }
+        if args.hk_yahoo_trust_policy is not None:
+            replay_kwargs["hk_yahoo_trust_policy_path"] = args.hk_yahoo_trust_policy
+        replay_result = write_provider_baseline_period_replay(**replay_kwargs)
+        print(f"companies={replay_result.company_count}")
+        print(f"provider_baseline_replay_summary={replay_result.summary_path}")
+        print(f"provider_baseline_replay_markdown={replay_result.markdown_path}")
+        return 0
+
+    if args.command == "fetch-source-inventory":
+        if args.year is not None and args.period_end is not None:
+            parser.error("--year and --period-end are mutually exclusive")
+        if args.year is not None:
+            period = PeriodSpec.from_year(args.year)
+        elif args.period_end is not None:
+            period = PeriodSpec.from_period_end(args.period_end, args.report_type)
+        else:
+            parser.error("one of --year or --period-end is required")
+        providers = tuple(
+            p.strip() for p in args.providers.split(",") if p.strip()
+        )
+        _run_fetch_source_inventory(
+            company=args.company,
+            period=period,
+            market=args.market,
+            providers=providers,
+            out_dir=args.out,
+            catalog_path=args.catalog,
+        )
+        return 0
+
+    if args.command == "evaluate-company":
+        if args.year is not None and args.period_end is not None:
+            parser.error("--year and --period-end are mutually exclusive")
+        if args.year is not None:
+            period = PeriodSpec.from_year(args.year)
+        elif args.period_end is not None:
+            period = PeriodSpec.from_period_end(args.period_end, args.report_type)
+        else:
+            parser.error("one of --year or --period-end is required")
+        priorities = tuple(
+            p.strip() for p in args.priorities.split(",") if p.strip()
+        )
+        _run_evaluate_company(
+            company=args.company,
+            period=period,
+            market=args.market,
+            inventory_path=args.inventory,
+            inventory_summary_path=args.inventory_summary,
+            catalog_path=args.catalog,
+            taxonomy_path=args.taxonomy,
+            pdf_path=args.pdf,
+            llm_config_path=args.llm_config,
+            priorities=priorities,
+            out_dir=args.out,
+        )
         return 0
 
     raise ValueError(f"unknown command: {args.command}")

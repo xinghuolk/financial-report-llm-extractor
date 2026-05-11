@@ -16,7 +16,16 @@ FIELD_HINTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "revenue": (("revenue", "营业收入", "收入"), ("income_statement",)),
     "operating_cost": (("operating cost", "营业成本", "成本"), ("income_statement",)),
     "operating_profit": (("operating profit", "营业利润"), ("income_statement",)),
-    "net_profit": (("net profit", "profit for the year", "净利润"), ("income_statement",)),
+    "net_profit": (
+        (
+            "net profit",
+            "profit for the year",
+            "profit attributable to shareholders",
+            "profit attributable to owners",
+            "净利润",
+        ),
+        ("income_statement",),
+    ),
     "gross_profit": (("gross profit", "毛利"), ("income_statement",)),
     "total_assets": (("total assets", "资产总计", "总资产"), ("balance_sheet",)),
     "total_liabilities": (("total liabilities", "负债合计", "总负债"), ("balance_sheet",)),

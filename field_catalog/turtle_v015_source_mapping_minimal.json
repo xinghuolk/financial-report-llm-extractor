@@ -1,0 +1,1930 @@
+{
+  "catalog_id": "turtle_v015_source_mapping_minimal",
+  "version": "2026-05-01",
+  "taxonomy_catalog": "turtle_v015_field_taxonomy",
+  "coverage_matrix": "turtle_v015_coverage_matrix",
+  "priorities": [
+    {
+      "priority": "P0",
+      "name": "Source-first Turtle core fields",
+      "fields": [
+        "revenue",
+        "net_profit",
+        "total_assets",
+        "total_liabilities",
+        "cash",
+        "operating_cash_flow",
+        "investing_cash_flow",
+        "financing_cash_flow",
+        "bond_payable",
+        "cip",
+        "invest_income",
+        "inventories",
+        "money_cap",
+        "fix_assets",
+        "st_borr",
+        "lt_borr",
+        "accounts_receiv",
+        "acct_payable",
+        "equity_attributable_to_owners",
+        "operating_cost",
+        "operating_profit",
+        "rd_exp"
+      ]
+    },
+    {
+      "priority": "P1",
+      "name": "Source-first high-value enhancements",
+      "fields": [
+        "gross_profit",
+        "total_cur_assets",
+        "total_cur_liab",
+        "defer_tax_liab",
+        "defer_tax_assets",
+        "minority_int",
+        "other_cur_assets",
+        "selling_general_administrative",
+        "fv_value_chg_gain",
+        "non_oper_income",
+        "non_oper_exp"
+      ]
+    },
+    {
+      "priority": "P2",
+      "name": "Cash flow and shareholder return fields",
+      "fields": [
+        "change_in_receivables",
+        "change_in_payables",
+        "change_in_inventory",
+        "receiv_tax_refund",
+        "repurchase_of_stock",
+        "dividends_paid",
+        "capital_expenditures",
+        "depreciation_amortization",
+        "stock_based_compensation"
+      ]
+    },
+    {
+      "priority": "P3",
+      "fields": [
+        "bad_debt_provision",
+        "buyback_cancellation_progress",
+        "capitalized_interest",
+        "capitalized_rd",
+        "contingent_liabilities_commitments",
+        "dividend_plan",
+        "dps",
+        "interest_paid_cash",
+        "lease_liability_maturity",
+        "receivables_aging",
+        "related_party_receivables_payables",
+        "restricted_cash",
+        "segment_revenue_profit",
+        "time_deposits_or_wealth_products"
+      ]
+    }
+  ],
+  "source_mappings": {
+    "revenue": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "OPERATE_INCOME",
+          "营业收入",
+          "TOTAL_OPERATE_INCOME",
+          "营业总收入"
+        ],
+        "yahoo": [
+          "Total Revenue",
+          "Operating Revenue"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "operating revenue",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "OPERATE_INCOME",
+              "营业收入"
+            ],
+            "related": [
+              "TOTAL_OPERATE_INCOME",
+              "营业总收入"
+            ]
+          },
+          "yahoo": {
+            "primary": [
+              "Total Revenue",
+              "Operating Revenue"
+            ]
+          }
+        },
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": true
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "revenue",
+        "营业收入"
+      ]
+    },
+    "net_profit": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "PARENT_NETPROFIT",
+          "归属于母公司股东的净利润",
+          "NETPROFIT",
+          "净利润"
+        ],
+        "yahoo": [
+          "Net Income Common Stockholders",
+          "Net Income",
+          "Net Income From Continuing Operation Net Minority Interest"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "profit attributable to parent-company shareholders",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "PARENT_NETPROFIT",
+              "归属于母公司股东的净利润"
+            ],
+            "related": [
+              "NETPROFIT",
+              "净利润"
+            ]
+          },
+          "yahoo": {
+            "primary": [
+              "Net Income Common Stockholders"
+            ],
+            "related": [
+              "Net Income",
+              "Net Income From Continuing Operation Net Minority Interest"
+            ]
+          }
+        },
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": true
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "net profit",
+        "profit attributable",
+        "净利润"
+      ]
+    },
+    "total_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "资产总计",
+          "总资产",
+          "TOTAL_ASSETS"
+        ],
+        "yahoo": [
+          "Total Assets"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "total assets",
+        "资产总计"
+      ]
+    },
+    "total_liabilities": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "负债合计",
+          "总负债",
+          "TOTAL_LIABILITIES"
+        ],
+        "yahoo": [
+          "Total Liabilities Net Minority Interest",
+          "Total Liabilities"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "total liabilities",
+        "负债合计"
+      ]
+    },
+    "cash": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "货币资金",
+          "MONETARYFUNDS"
+        ],
+        "yahoo": [
+          "Cash And Cash Equivalents",
+          "Cash Cash Equivalents And Short Term Investments"
+        ]
+      },
+      "pdf_aliases": [
+        "cash and cash equivalents",
+        "货币资金"
+      ]
+    },
+    "operating_cash_flow": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "经营活动产生的现金流量净额",
+          "经营活动现金流量净额",
+          "NETCASH_OPERATE"
+        ],
+        "yahoo": [
+          "Operating Cash Flow",
+          "Total Cash From Operating Activities"
+        ]
+      },
+      "pdf_aliases": [
+        "operating cash flow",
+        "经营活动产生的现金流量净额"
+      ]
+    },
+    "investing_cash_flow": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Investing Cash Flow"
+        ]
+      },
+      "pdf_aliases": [
+        "investing cash flow"
+      ]
+    },
+    "financing_cash_flow": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Financing Cash Flow"
+        ]
+      },
+      "pdf_aliases": [
+        "financing cash flow"
+      ]
+    },
+    "bond_payable": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "null_means_zero": true,
+      "source_aliases": {
+        "akshare": [
+          "BOND_PAYABLE"
+        ]
+      },
+      "pdf_aliases": [
+        "bonds payable"
+      ]
+    },
+    "cip": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "CIP"
+        ]
+      },
+      "pdf_aliases": [
+        "construction in progress"
+      ]
+    },
+    "invest_income": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "INVEST_INCOME"
+        ]
+      },
+      "pdf_aliases": [
+        "share of profits of joint ventures",
+        "share of profits less losses",
+        "share of profits of associated companies",
+        "share of net profits of investments",
+        "share of net profit",
+        "equity in net earnings",
+        "investment and others"
+      ]
+    },
+    "gross_profit": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "毛利"
+        ],
+        "yahoo": [
+          "Gross Profit"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": true
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "gross profit",
+        "毛利"
+      ]
+    },
+    "total_cur_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "流动资产合计",
+          "TOTAL_CURRENT_ASSETS"
+        ],
+        "yahoo": [
+          "Current Assets",
+          "Total Current Assets"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "current assets",
+        "流动资产合计"
+      ]
+    },
+    "total_cur_liab": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "流动负债合计",
+          "TOTAL_CURRENT_LIAB"
+        ],
+        "yahoo": [
+          "Current Liabilities",
+          "Total Current Liabilities"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "current liabilities",
+        "流动负债合计"
+      ]
+    },
+    "defer_tax_liab": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "DEFER_TAX_LIAB"
+        ],
+        "yahoo": [
+          "Non Current Deferred Taxes Liabilities"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "reported statement line",
+        "semantic_variants": {},
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "deferred tax liabilities"
+      ]
+    },
+    "inventories": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "INVENTORY",
+          "存货"
+        ],
+        "yahoo": [
+          "Inventory"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "inventories under IAS 2",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "INVENTORY",
+              "存货"
+            ]
+          },
+          "yahoo": {
+            "primary": [
+              "Inventory"
+            ]
+          }
+        },
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "inventories",
+        "存货",
+        "properties for sale"
+      ]
+    },
+    "money_cap": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "MONETARYFUNDS",
+          "货币资金"
+        ],
+        "yahoo": [
+          "Cash And Cash Equivalents"
+        ]
+      },
+      "pdf_aliases": [
+        "cash and cash equivalents",
+        "bank balances and deposits",
+        "货币资金"
+      ]
+    },
+    "defer_tax_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "DEFER_TAX_ASSET"
+        ],
+        "yahoo": [
+          "Non Current Deferred Taxes Assets"
+        ]
+      },
+      "pdf_aliases": [
+        "deferred tax assets"
+      ]
+    },
+    "minority_int": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "MINORITY_EQUITY"
+        ],
+        "yahoo": [
+          "Minority Interest"
+        ]
+      },
+      "pdf_aliases": [
+        "non-controlling interests",
+        "minority interest",
+        "少数股东权益"
+      ]
+    },
+    "fix_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "固定资产"
+        ],
+        "yahoo": [
+          "Net PPE"
+        ]
+      },
+      "pdf_aliases": [
+        "fixed assets",
+        "property plant and equipment",
+        "固定资产"
+      ],
+      "source_policy": {
+        "semantic_concept": "fixed assets including right-of-use (Yahoo Net PPE aggregation: PP&E + ROU per HKFRS 16)",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "固定资产"
+            ],
+            "related": []
+          },
+          "yahoo": {
+            "primary": [
+              "Net PPE"
+            ]
+          }
+        },
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      }
+    },
+    "st_borr": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "null_means_zero": true,
+      "source_aliases": {
+        "akshare": [
+          "SHORT_LOAN",
+          "短期借款"
+        ],
+        "yahoo": [
+          "Current Debt"
+        ]
+      },
+      "pdf_aliases": [
+        "short-term borrowings",
+        "bank and other debts current",
+        "短期借款"
+      ]
+    },
+    "lt_borr": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "null_means_zero": true,
+      "source_aliases": {
+        "akshare": [
+          "LONG_LOAN",
+          "长期借款"
+        ],
+        "yahoo": [
+          "Long Term Debt"
+        ]
+      },
+      "pdf_aliases": [
+        "long-term borrowings",
+        "bank and other debts non-current",
+        "长期借款"
+      ]
+    },
+    "accounts_receiv": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "ACCOUNTS_RECE",
+          "应收帐款",
+          "应收账款"
+        ],
+        "yahoo": [
+          "Accounts Receivable"
+        ]
+      },
+      "pdf_aliases": [
+        "accounts receivable",
+        "trade receivables",
+        "debtors",
+        "应收账款"
+      ],
+      "source_policy": {
+        "semantic_concept": "trade receivables (pure trade scope; for HK property cos 'Debtors' is the equivalent line)",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "ACCOUNTS_RECEIVABLE",
+              "应收帐款",
+              "应收账款"
+            ],
+            "related": []
+          },
+          "yahoo": {
+            "primary": [
+              "Accounts Receivable"
+            ]
+          }
+        },
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      }
+    },
+    "acct_payable": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "ACCOUNTS_PAYABLE",
+          "应付帐款",
+          "应付账款"
+        ],
+        "yahoo": [
+          "Accounts Payable"
+        ]
+      },
+      "pdf_aliases": [
+        "accounts payable",
+        "trade payables",
+        "creditors",
+        "应付账款"
+      ],
+      "source_policy": {
+        "semantic_concept": "trade payables (pure trade scope; excludes accruals/other payables)",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "ACCOUNTS_PAYABLE",
+              "应付帐款",
+              "应付账款"
+            ],
+            "related": []
+          },
+          "yahoo": {
+            "primary": [
+              "Accounts Payable"
+            ]
+          }
+        },
+        "market_policies": {
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": true
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      }
+    },
+    "other_cur_assets": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "其他流动资产"
+        ],
+        "yahoo": [
+          "Other Current Assets"
+        ]
+      },
+      "pdf_aliases": [
+        "other current assets",
+        "其他流动资产"
+      ]
+    },
+    "equity_attributable_to_owners": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "归属于母公司股东权益"
+        ],
+        "yahoo": [
+          "Stockholders Equity",
+          "Common Stock Equity"
+        ]
+      },
+      "pdf_aliases": [
+        "total ordinary shareholders' funds",
+        "stockholders equity",
+        "归属于母公司股东权益"
+      ]
+    },
+    "operating_cost": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "OPERATE_COST",
+          "TOTAL_OPERATE_COST",
+          "营业成本",
+          "营业总成本"
+        ],
+        "yahoo": [
+          "Cost Of Revenue",
+          "Reconciled Cost Of Revenue"
+        ]
+      },
+      "pdf_aliases": [
+        "operating costs",
+        "cost of revenue",
+        "营业成本"
+      ]
+    },
+    "operating_profit": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "OPERATE_PROFIT",
+          "营业利润"
+        ],
+        "yahoo": [
+          "Operating Income"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "operating profit",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "OPERATE_PROFIT",
+              "营业利润"
+            ]
+          },
+          "yahoo": {
+            "primary": [
+              "Operating Income"
+            ]
+          }
+        },
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "operating profit",
+        "operating income",
+        "营业利润"
+      ]
+    },
+    "selling_general_administrative": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "derived",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "derivation": "akshare:MANAGE_EXPENSE + akshare:SALE_EXPENSE",
+      "derivation_markets": [
+        "CN"
+      ],
+      "source_aliases": {
+        "akshare": [],
+        "yahoo": [],
+        "by_market": {
+          "HK": {
+            "yahoo": [
+              "Selling General And Administration"
+            ]
+          }
+        }
+      },
+      "industry_not_applicable": [
+        {
+          "market": "HK",
+          "ticker": "01113",
+          "reason": "real-estate convention: no SGA single-line in PDF or providers (CK Asset Holdings reports operating expenses by function without an aggregated SGA row); Yahoo HK SGA alias absent; AKShare HK has no MANAGE+SALE derivation analog."
+        }
+      ],
+      "source_policy": {
+        "semantic_concept": "selling general and administrative expenses",
+        "notes": "Phase H2.1: CN SGA = AKShare MANAGE_EXPENSE + SALE_EXPENSE addition derivation, EXACT match PDF (销售费用+管理费用) for 600519/2024 = 14,954,950,119.87 CNY (see docs/phase_h2_1_sga_spot_check.md). Yahoo SGA scope unclear (10.36B vs PDF 14.95B; ~30% off); not used as candidate. Phase H2.2 Sub-B: HK Yahoo SGA alias restored under source_aliases.by_market.HK.yahoo (market-scoped). Spot-check on 00001/2025 + 01113/2025 confirmed Yahoo SGA scope ≠ PDF (00001 PDF reports 'Office and general administrative expenses' 9,466M HKD as one component vs Yahoo SGA 16,491M HKD; 01113 has no single SGA PDF line). HK Yahoo SGA rule stays provider_semantics_unverified — alias provides candidate matching but source_policy still classifies the bucket as terminal_unverified.",
+        "semantic_variants": {
+          "akshare": {
+            "primary": [
+              "MANAGE_EXPENSE+SALE_EXPENSE (derived)"
+            ]
+          },
+          "yahoo": {
+            "related": [
+              "Selling General And Administration"
+            ]
+          }
+        },
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "none"
+      },
+      "pdf_aliases": [
+        "selling general and administrative",
+        "management expenses",
+        "销售费用",
+        "管理费用"
+      ]
+    },
+    "rd_exp": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "RESEARCH_EXPENSE",
+          "研发费用"
+        ],
+        "yahoo": [
+          "Research And Development"
+        ]
+      },
+      "pdf_aliases": [
+        "research and development",
+        "research expense",
+        "研发费用"
+      ]
+    },
+    "fv_value_chg_gain": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "FAIRVALUE_CHANGE_INCOME",
+          "公允价值变动收益"
+        ]
+      },
+      "pdf_aliases": [
+        "fair value change",
+        "公允价值变动收益"
+      ]
+    },
+    "non_oper_income": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "NONBUSINESS_INCOME",
+          "营业外收入"
+        ]
+      },
+      "pdf_aliases": [
+        "non-operating income",
+        "营业外收入"
+      ]
+    },
+    "non_oper_exp": {
+      "value_type": "money",
+      "statement_type": "income_statement",
+      "domain": "income_statement",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "NONBUSINESS_EXPENSE",
+          "营业外支出"
+        ]
+      },
+      "pdf_aliases": [
+        "non-operating expense",
+        "营业外支出"
+      ]
+    },
+    "change_in_receivables": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Change In Receivables",
+          "Change In Account Receivable"
+        ],
+        "akshare": [
+          "OPERATE_RECE_REDUCE"
+        ]
+      },
+      "pdf_aliases": [
+        "change in receivables",
+        "decrease in receivables",
+        "应收账款减少"
+      ]
+    },
+    "change_in_payables": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Change In Payable",
+          "Change In Account Payable",
+          "Change In Payables And Accrued Expense"
+        ],
+        "akshare": [
+          "OPERATE_PAYABLE_ADD"
+        ]
+      },
+      "pdf_aliases": [
+        "change in payables",
+        "increase in payables",
+        "应付账款增加"
+      ]
+    },
+    "change_in_inventory": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Change In Inventory"
+        ],
+        "akshare": [
+          "INVENTORY_REDUCE"
+        ]
+      },
+      "pdf_aliases": [
+        "change in inventory",
+        "decrease in inventory",
+        "存货减少"
+      ]
+    },
+    "receiv_tax_refund": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "RECEIVE_TAX_REFUND"
+        ]
+      },
+      "pdf_aliases": [
+        "receipts of tax refunds",
+        "tax refund received",
+        "收到的税费返还"
+      ]
+    },
+    "repurchase_of_stock": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "shareholder_return",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Repurchase Of Capital Stock"
+        ]
+      },
+      "pdf_aliases": [
+        "repurchase of capital stock",
+        "share buyback",
+        "stock repurchase",
+        "回购股票"
+      ]
+    },
+    "dividends_paid": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "shareholder_return",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "ASSIGN_DIVIDEND_PORFIT"
+        ],
+        "yahoo": [
+          "Cash Dividends Paid",
+          "Common Stock Dividend Paid"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "cash dividends paid to ordinary shareholders",
+        "notes": "AKShare ASSIGN_DIVIDEND_PORFIT and Yahoo Cash Dividends Paid both report dividends but with timing-semantics divergence (已付 vs 宣告). After Phase H2 sign-normalization analysis (Module A), residual gap (~2.9% on 600519/2024) reflects timing rather than scope; no primary promotion warranted. Locked as terminal_unverified across CN+HK.",
+        "semantic_variants": {},
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "dividends paid",
+        "cash dividends paid",
+        "分配股利"
+      ]
+    },
+    "capital_expenditures": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "CONSTRUCT_LONG_ASSET"
+        ],
+        "yahoo": [
+          "Capital Expenditure"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "cash outflow for capital expenditures",
+        "semantic_variants": {},
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false,
+            "sign_normalize": "absolute"
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false,
+            "sign_normalize": "absolute"
+          }
+        },
+        "verification_requirement": "none"
+      },
+      "pdf_aliases": [
+        "capital expenditures",
+        "purchase of property plant and equipment",
+        "购建固定资产"
+      ]
+    },
+    "depreciation_amortization": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "accounting_adjustments",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "FA_IR_DEPR",
+          "IR_DEPR"
+        ],
+        "yahoo": [
+          "Depreciation And Amortization",
+          "Depreciation Amortization Depletion",
+          "Reconciled Depreciation"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "depreciation of PPE plus amortization of intangibles (cash flow add-back)",
+        "notes": "AKShare FA_IR_DEPR is fixed-asset depreciation only (excludes intangibles amortization); Yahoo Depreciation And Amortization includes intangibles amortization. Not semantically equivalent at the raw-alias level. HK side has additional ROU-asset depreciation handling divergence per fix_assets analysis. Locked as terminal_unverified across CN+HK pending derivation/proof.",
+        "semantic_variants": {},
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "preserve_conflict",
+            "single_source_requires_pdf": false
+          }
+        },
+        "verification_requirement": "pdf_required_on_conflict"
+      },
+      "pdf_aliases": [
+        "depreciation and amortization",
+        "depreciation",
+        "amortization",
+        "折旧及摊销"
+      ]
+    },
+    "stock_based_compensation": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Stock Based Compensation",
+          "Share Based Compensation"
+        ]
+      },
+      "pdf_aliases": [
+        "share-based payment",
+        "share-based compensation",
+        "stock-based compensation",
+        "equity-settled share-based",
+        "股权激励",
+        "股份支付"
+      ]
+    },
+    "interest_paid_cash": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "PAY_INTEREST_COMMISSION"
+        ],
+        "yahoo": [
+          "Interest Paid Cfo",
+          "Interest Paid Cff",
+          "Interest Paid Direct"
+        ]
+      },
+      "source_policy": {
+        "semantic_concept": "cash outflow for interest paid",
+        "semantic_variants": {},
+        "market_policies": {
+          "CN": {
+            "primary_route": "akshare_direct",
+            "cross_check_routes": [
+              "yahoo_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false,
+            "sign_normalize": "absolute"
+          },
+          "HK": {
+            "primary_route": "yahoo_direct",
+            "cross_check_routes": [
+              "akshare_direct"
+            ],
+            "on_conflict": "select_primary_require_pdf",
+            "single_source_requires_pdf": false,
+            "sign_normalize": "absolute"
+          }
+        },
+        "verification_requirement": "none"
+      },
+      "pdf_aliases": [
+        "interest paid",
+        "支付的利息"
+      ]
+    },
+    "bad_debt_provision": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "source_optional",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Allowance For Doubtful Accounts Receivable"
+        ]
+      },
+      "pdf_aliases": [
+        "allowance for doubtful accounts",
+        "loss allowance",
+        "expected credit loss",
+        "bad debt provision",
+        "坏账准备"
+      ]
+    },
+    "dividend_plan": {
+      "value_type": "text",
+      "statement_type": "announcement",
+      "domain": "shareholder_return",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "verified",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Dividend Plan"
+        ]
+      },
+      "pdf_aliases": [
+        "dividend plan",
+        "dividend policy",
+        "proposed dividend",
+        "final dividend",
+        "派息",
+        "股息政策"
+      ]
+    },
+    "buyback_cancellation_progress": {
+      "value_type": "text",
+      "statement_type": "announcement",
+      "domain": "shareholder_return",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Buyback Progress"
+        ]
+      },
+      "pdf_aliases": [
+        "share buyback",
+        "share repurchase progress",
+        "cancellation of shares",
+        "回购进展",
+        "注销"
+      ]
+    },
+    "receivables_aging": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Receivables Aging"
+        ]
+      },
+      "pdf_aliases": [
+        "ageing analysis of trade receivables",
+        "aging analysis of trade receivables",
+        "ageing analysis of trade and notes receivables",
+        "aging analysis of trade and notes receivables",
+        "ageing analysis of receivables",
+        "aging analysis of receivables",
+        "trade receivables aging",
+        "trade receivables ageing",
+        "应收账款账龄"
+      ]
+    },
+    "related_party_receivables_payables": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "verified",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Related Party Receivables Payables"
+        ]
+      },
+      "pdf_aliases": [
+        "related party transactions",
+        "amounts due from related parties",
+        "amounts due to related parties",
+        "关联方"
+      ]
+    },
+    "contingent_liabilities_commitments": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "verified",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Contingent Liabilities"
+        ]
+      },
+      "pdf_aliases": [
+        "contingent liabilities",
+        "commitments",
+        "guarantees",
+        "或有负债",
+        "承诺"
+      ]
+    },
+    "lease_liability_maturity": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Lease Liability Maturity"
+        ]
+      },
+      "pdf_aliases": [
+        "lease liabilities maturity",
+        "lease liability analysis",
+        "minimum lease payments",
+        "租赁负债到期"
+      ]
+    },
+    "segment_revenue_profit": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "verified",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Segment Revenue Profit"
+        ]
+      },
+      "pdf_aliases": [
+        "operating segment information",
+        "segment revenue",
+        "segment profit",
+        "operating segments",
+        "分部信息"
+      ]
+    },
+    "capitalized_rd": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Capitalized Research"
+        ]
+      },
+      "pdf_aliases": [
+        "capitalized research and development",
+        "development costs capitalized",
+        "research costs capitalized",
+        "资本化研发"
+      ]
+    },
+    "capitalized_interest": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Capitalized Interest"
+        ]
+      },
+      "pdf_aliases": [
+        "capitalized borrowing costs",
+        "capitalized interest",
+        "interest capitalised",
+        "资本化利息"
+      ]
+    },
+    "restricted_cash": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Restricted Cash"
+        ]
+      },
+      "pdf_aliases": [
+        "restricted cash",
+        "pledged deposits",
+        "cash held as collateral",
+        "受限制现金",
+        "受限制存款"
+      ]
+    },
+    "time_deposits_or_wealth_products": {
+      "value_type": "money",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "verified",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Time Deposits"
+        ]
+      },
+      "pdf_aliases": [
+        "time deposits",
+        "wealth management products",
+        "structured deposits",
+        "理财产品",
+        "定期存款"
+      ]
+    },
+    "dps": {
+      "value_type": "money",
+      "statement_type": "announcement",
+      "domain": "shareholder_return",
+      "source_mode": "source_optional",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Dividends Per Share"
+        ]
+      },
+      "pdf_aliases": [
+        "dividends per share",
+        "dividend per share",
+        "每股股息"
+      ]
+    }
+  }
+}

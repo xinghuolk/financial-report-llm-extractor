@@ -7,6 +7,8 @@ from financial_report_llm_extractor.extraction import PromptRequest
 from financial_report_llm_extractor.llm_transport import (
     LlmTransportConfig,
     OpenAiCompatibleClient,
+    create_llm_client,
+    resolve_provider_kind,
     run_real_transport_probe,
 )
 
@@ -56,6 +58,51 @@ def test_load_llm_config_from_json(tmp_path: Path) -> None:
     assert config.max_retries == 2
 
 
+def test_load_deepseek_config_uses_provider_defaults(tmp_path: Path) -> None:
+    config_path = tmp_path / "llm_config.json"
+    config_path.write_text(
+        json.dumps({"provider": "deepseek", "model": "deepseek-chat"}),
+        encoding="utf-8",
+    )
+
+    config = LlmTransportConfig.from_json(config_path)
+
+    assert config.provider == "deepseek"
+    assert config.base_url == "https://api.deepseek.com/v1"
+    assert config.api_key_env == "DEEPSEEK_API_KEY"
+    assert resolve_provider_kind(config) == "openai-compatible"
+
+
+def test_load_ollama_config_uses_provider_defaults(tmp_path: Path) -> None:
+    config_path = tmp_path / "llm_config.json"
+    config_path.write_text(
+        json.dumps({"provider": "ollama", "model": "qwen2.5:7b"}),
+        encoding="utf-8",
+    )
+
+    config = LlmTransportConfig.from_json(config_path)
+
+    assert config.provider == "ollama"
+    assert config.base_url == "http://localhost:11434/v1"
+    assert config.api_key_env == "OLLAMA_API_KEY"
+    assert resolve_provider_kind(config) == "openai-compatible"
+
+
+def test_load_gemini_config_uses_provider_defaults(tmp_path: Path) -> None:
+    config_path = tmp_path / "llm_config.json"
+    config_path.write_text(
+        json.dumps({"provider": "gemini", "model": "gemini-1.5-flash"}),
+        encoding="utf-8",
+    )
+
+    config = LlmTransportConfig.from_json(config_path)
+
+    assert config.provider == "gemini"
+    assert config.base_url == "https://generativelanguage.googleapis.com/v1beta"
+    assert config.api_key_env == "GEMINI_API_KEY"
+    assert resolve_provider_kind(config) == "gemini"
+
+
 def test_openai_compatible_client_builds_chat_completions_request(
     monkeypatch: Any,
 ) -> None:
@@ -102,6 +149,128 @@ def test_openai_compatible_client_builds_chat_completions_request(
     assert transport.calls[0][1]["Authorization"] == "Bearer secret-key"
     assert transport.calls[0][2]["model"] == "test-model"
     assert transport.calls[0][3] == 12
+
+
+def test_deepseek_client_uses_openai_compatible_defaults(monkeypatch: Any) -> None:
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-key")
+    transport = FakeHttpTransport(
+        [
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {"fields": [{"field_id": "cash", "status": "missing"}]}
+                            )
+                        }
+                    }
+                ]
+            }
+        ]
+    )
+    client = create_llm_client(
+        LlmTransportConfig(
+            provider="deepseek",
+            model="deepseek-chat",
+            base_url="https://api.deepseek.com/v1",
+            api_key_env="DEEPSEEK_API_KEY",
+        ),
+        transport=transport,
+    )
+
+    response = client.extract(PromptRequest(field_id="cash", candidates=()))
+
+    assert response.fields[0].status == "missing"
+    assert transport.calls[0][0] == "https://api.deepseek.com/v1/chat/completions"
+    assert transport.calls[0][1]["Authorization"] == "Bearer deepseek-key"
+
+
+def test_ollama_client_omits_authorization_when_key_missing(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+    transport = FakeHttpTransport(
+        [
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {"fields": [{"field_id": "cash", "status": "missing"}]}
+                            )
+                        }
+                    }
+                ]
+            }
+        ]
+    )
+    client = create_llm_client(
+        LlmTransportConfig(
+            provider="ollama",
+            model="qwen2.5:7b",
+            base_url="http://localhost:11434/v1",
+            api_key_env="OLLAMA_API_KEY",
+        ),
+        transport=transport,
+    )
+
+    response = client.extract(PromptRequest(field_id="cash", candidates=()))
+
+    assert response.fields[0].status == "missing"
+    assert transport.calls[0][0] == "http://localhost:11434/v1/chat/completions"
+    assert "Authorization" not in transport.calls[0][1]
+
+
+def test_gemini_client_builds_generate_content_request(monkeypatch: Any) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-key")
+    transport = FakeHttpTransport(
+        [
+            {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "text": json.dumps(
+                                        {
+                                            "fields": [
+                                                {
+                                                    "field_id": "cash",
+                                                    "status": "missing",
+                                                }
+                                            ]
+                                        }
+                                    )
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    )
+    client = create_llm_client(
+        LlmTransportConfig(
+            provider="gemini",
+            model="gemini-1.5-flash",
+            base_url="https://generativelanguage.googleapis.com/v1beta",
+            api_key_env="GEMINI_API_KEY",
+        ),
+        transport=transport,
+    )
+
+    response = client.extract(PromptRequest(field_id="cash", candidates=()))
+
+    assert response.fields[0].status == "missing"
+    assert (
+        transport.calls[0][0]
+        == "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    )
+    assert transport.calls[0][1]["x-goog-api-key"] == "gemini-key"
+    assert "gemini-key" not in json.dumps(transport.calls[0][2])
+    assert transport.calls[0][2]["generationConfig"] == {
+        "responseMimeType": "application/json"
+    }
 
 
 def test_openai_compatible_client_retries_timeout_errors(monkeypatch: Any) -> None:

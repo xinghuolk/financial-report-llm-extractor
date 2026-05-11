@@ -75,6 +75,43 @@ class FakeCatalogMappingResult:
     mapping_count: int
 
 
+@dataclass(frozen=True)
+class FakeQuickValidationResult:
+    run_dir: Path
+    artifacts: dict[str, Path]
+
+
+@dataclass(frozen=True)
+class FakeLlmRowDiscoveryResult:
+    output_path: Path
+    row_count: int
+    prompt_count: int
+    raw_response_count: int
+
+
+@dataclass(frozen=True)
+class FakeProviderFieldCandidateResult:
+    json_path: Path
+    markdown_path: Path
+    field_count: int
+
+
+@dataclass(frozen=True)
+class FakeSourceMappingExpansionReviewResult:
+    json_path: Path
+    markdown_path: Path
+    promoted_count: int
+    deferred_count: int
+    blocked_count: int
+
+
+@dataclass(frozen=True)
+class FakeProviderBaselineReplayResult:
+    summary_path: Path
+    markdown_path: Path
+    company_count: int
+
+
 def test_ingest_command_calls_ingestion_layer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -214,6 +251,203 @@ def test_extract_fake_command_calls_extraction_layer(
 
     assert exit_code == 0
     assert calls == [(retrieval_probe_path, output_path)]
+
+
+def test_discover_provider_fields_command_calls_candidate_discovery_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    taxonomy_path = tmp_path / "taxonomy.json"
+    mapping_path = tmp_path / "mapping.json"
+    inventory_path = tmp_path / "source_inventory.jsonl.gz"
+    summary_path = tmp_path / "provider_field_inventory_summary.json"
+    output_dir = tmp_path / "candidate_report"
+    calls: list[tuple[Path, Path, Path, Path, Path, tuple[str, ...]]] = []
+
+    def fake_write_provider_field_candidate_report(
+        *,
+        taxonomy_path: Path,
+        mapping_catalog_path: Path,
+        inventory_path: Path,
+        summary_path: Path,
+        output_dir: Path,
+        priorities: tuple[str, ...] = ("P0", "P1"),
+    ) -> FakeProviderFieldCandidateResult:
+        calls.append(
+            (
+                taxonomy_path,
+                mapping_catalog_path,
+                inventory_path,
+                summary_path,
+                output_dir,
+                priorities,
+            )
+        )
+        return FakeProviderFieldCandidateResult(
+            json_path=output_dir / "provider_field_candidate_report.json",
+            markdown_path=output_dir / "provider_field_candidate_report.md",
+            field_count=33,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "write_provider_field_candidate_report",
+        fake_write_provider_field_candidate_report,
+    )
+
+    exit_code = cli.main(
+        [
+            "discover-provider-fields",
+            "--taxonomy",
+            str(taxonomy_path),
+            "--mapping-catalog",
+            str(mapping_path),
+            "--inventory",
+            str(inventory_path),
+            "--summary",
+            str(summary_path),
+            "--out",
+            str(output_dir),
+            "--priorities",
+            "P0,P1",
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [
+        (
+            taxonomy_path,
+            mapping_path,
+            inventory_path,
+            summary_path,
+            output_dir,
+            ("P0", "P1"),
+        )
+    ]
+
+
+def test_review_source_mapping_expansion_command_calls_review_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    candidate_report = tmp_path / "provider_field_candidate_report.json"
+    mapping_catalog = tmp_path / "mapping.json"
+    output_dir = tmp_path / "review"
+    calls: list[tuple[Path, Path, Path]] = []
+
+    def fake_write_source_mapping_expansion_review(
+        *,
+        candidate_report_path: Path,
+        mapping_catalog_path: Path,
+        output_dir: Path,
+    ) -> FakeSourceMappingExpansionReviewResult:
+        calls.append((candidate_report_path, mapping_catalog_path, output_dir))
+        return FakeSourceMappingExpansionReviewResult(
+            json_path=output_dir / "source_mapping_expansion_review.json",
+            markdown_path=output_dir / "source_mapping_expansion_review.md",
+            promoted_count=6,
+            deferred_count=10,
+            blocked_count=0,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "write_source_mapping_expansion_review",
+        fake_write_source_mapping_expansion_review,
+    )
+
+    exit_code = cli.main(
+        [
+            "review-source-mapping-expansion",
+            "--candidate-report",
+            str(candidate_report),
+            "--mapping-catalog",
+            str(mapping_catalog),
+            "--out",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(candidate_report, mapping_catalog, output_dir)]
+
+
+def test_replay_provider_baseline_command_calls_replay_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    inventory_path = tmp_path / "source_inventory.jsonl.gz"
+    inventory_summary_path = tmp_path / "provider_field_inventory_summary.json"
+    catalog_path = tmp_path / "catalog.json"
+    taxonomy_path = tmp_path / "taxonomy.json"
+    output_dir = tmp_path / "replay"
+    trust_policy_path = tmp_path / "hk_yahoo_trust_policy.json"
+    calls: list[tuple[Path, Path, Path, Path, Path, Path | None]] = []
+
+    def fake_write_provider_baseline_period_replay(
+        *,
+        inventory_path: Path,
+        inventory_summary_path: Path,
+        catalog_path: Path,
+        taxonomy_path: Path,
+        output_dir: Path,
+        output_summary_path: Path | None = None,
+        company_ids: tuple[str, ...] | None = None,
+        hk_yahoo_trust_policy_path: Path | None = None,
+    ) -> FakeProviderBaselineReplayResult:
+        assert output_summary_path is None
+        assert company_ids is None
+        calls.append(
+            (
+                inventory_path,
+                inventory_summary_path,
+                catalog_path,
+                taxonomy_path,
+                output_dir,
+                hk_yahoo_trust_policy_path,
+            )
+        )
+        return FakeProviderBaselineReplayResult(
+            summary_path=output_dir / "provider_baseline_period_replay_summary.json",
+            markdown_path=output_dir / "provider_baseline_period_replay_summary.md",
+            company_count=3,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "write_provider_baseline_period_replay",
+        fake_write_provider_baseline_period_replay,
+    )
+
+    exit_code = cli.main(
+        [
+            "replay-provider-baseline",
+            "--inventory",
+            str(inventory_path),
+            "--inventory-summary",
+            str(inventory_summary_path),
+            "--catalog",
+            str(catalog_path),
+            "--taxonomy",
+            str(taxonomy_path),
+            "--out",
+            str(output_dir),
+            "--hk-yahoo-trust-policy",
+            str(trust_policy_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [
+        (
+            inventory_path,
+            inventory_summary_path,
+            catalog_path,
+            taxonomy_path,
+            output_dir,
+            trust_policy_path,
+        )
+    ]
 
 
 def test_extract_command_calls_real_transport_layer(
@@ -486,3 +720,299 @@ def test_map_fields_command_calls_statement_discovery_layer(
 
     assert exit_code == 0
     assert calls == [(row_inventory_path, ("revenue", "total_assets"), output_path)]
+
+
+def test_quick_validate_command_calls_runner(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    pdf_path = tmp_path / "report.pdf"
+    calls: list[tuple[Path, str, Path]] = []
+
+    def fake_run_quick_validation(
+        *,
+        pdf_path: Path,
+        report_id: str,
+        root_dir: Path,
+    ) -> FakeQuickValidationResult:
+        calls.append((pdf_path, report_id, root_dir))
+        run_dir = root_dir / "tmp" / "runs" / "quick_validation" / report_id
+        return FakeQuickValidationResult(
+            run_dir=run_dir,
+            artifacts={"summary": run_dir / "quick_validation_summary.json"},
+        )
+
+    monkeypatch.setattr(cli, "run_quick_validation", fake_run_quick_validation)
+
+    exit_code = cli.main(
+        [
+            "quick-validate",
+            "--pdf",
+            str(pdf_path),
+            "--report-id",
+            "00001_2025_en",
+            "--root",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [(pdf_path, "00001_2025_en", tmp_path)]
+
+
+def test_discover_rows_llm_command_calls_row_discovery_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chunks_path = tmp_path / "chunks.jsonl"
+    statement_map_path = tmp_path / "statement_map.json"
+    config_path = tmp_path / "llm_config.json"
+    output_path = tmp_path / "row_inventory_llm.json"
+    prompt_dir = tmp_path / "prompt_payloads"
+    raw_dir = tmp_path / "raw_llm_responses"
+    parsed_dir = tmp_path / "parsed_llm_responses"
+    calls: list[tuple[Path, Path, Path, Path, Path, Path, Path]] = []
+
+    def fake_write_llm_row_inventory(
+        chunks: Path,
+        statement_map: Path,
+        *,
+        config_path: Path,
+        output_path: Path,
+        prompt_dir: Path,
+        raw_response_dir: Path,
+        parsed_response_dir: Path,
+    ) -> FakeLlmRowDiscoveryResult:
+        calls.append(
+            (
+                chunks,
+                statement_map,
+                config_path,
+                output_path,
+                prompt_dir,
+                raw_response_dir,
+                parsed_response_dir,
+            )
+        )
+        return FakeLlmRowDiscoveryResult(
+            output_path=output_path,
+            row_count=2,
+            prompt_count=1,
+            raw_response_count=1,
+        )
+
+    monkeypatch.setattr(cli, "write_llm_row_inventory", fake_write_llm_row_inventory)
+
+    exit_code = cli.main(
+        [
+            "discover-rows-llm",
+            "--chunks",
+            str(chunks_path),
+            "--statement-map",
+            str(statement_map_path),
+            "--config",
+            str(config_path),
+            "--out",
+            str(output_path),
+            "--prompt-dir",
+            str(prompt_dir),
+            "--raw-response-dir",
+            str(raw_dir),
+            "--parsed-response-dir",
+            str(parsed_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls == [
+        (
+            chunks_path,
+            statement_map_path,
+            config_path,
+            output_path,
+            prompt_dir,
+            raw_dir,
+            parsed_dir,
+        )
+    ]
+
+
+def test_fetch_source_inventory_subcommand_dispatches_correctly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """argv → run_fetch wiring 测，主体逻辑 mock 掉。"""
+    from financial_report_llm_extractor.cli import main
+
+    captured: dict[str, object] = {}
+
+    def fake_runner(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.cli._run_fetch_source_inventory",
+        fake_runner,
+    )
+
+    main([
+        "fetch-source-inventory",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--providers", "akshare",
+        "--out", str(tmp_path),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+    ])
+
+    assert captured["company"] == "600519"
+    assert captured["market"] == "CN"
+    # YEAR shortcut expanded
+    from datetime import date
+
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+    )
+
+    period = captured["period"]
+    assert isinstance(period, PeriodSpec)
+    assert period.period_end == date(2024, 12, 31)
+
+
+def test_fetch_source_inventory_subcommand_rejects_year_and_period_end_together(
+    tmp_path: Path,
+) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    with pytest.raises(SystemExit):
+        main([
+            "fetch-source-inventory",
+            "--company", "600519",
+            "--year", "2024",
+            "--period-end", "2024-12-31",
+            "--market", "CN",
+            "--providers", "akshare",
+            "--out", str(tmp_path),
+            "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        ])
+
+
+@pytest.mark.parametrize(
+    "company, expected_currency",
+    [
+        ("01810", "CNY"),   # Xiaomi — RMB reporter
+        ("06862", "CNY"),   # RMB reporter
+        ("02498", "CNY"),   # RMB reporter
+        ("00001", "HKD"),   # HSBC / CK Hutchison — HK$ reporter
+        ("01113", "HKD"),   # CK Asset — HK$ reporter
+        ("09987", "USD"),   # Yum China — US$ reporter
+        ("99999", "HKD"),   # Unknown HK issuer → HKD default
+    ],
+)
+def test_fetch_source_inventory_hk_akshare_stamps_issuer_financial_currency(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    company: str,
+    expected_currency: str,
+) -> None:
+    """Phase HK-B.5.1: AKShare HK records get stamped with the issuer's
+    financial reporting currency (not the HK trading market currency)."""
+    from financial_report_llm_extractor.cli import _run_fetch_source_inventory
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+        SourceInventoryArtifact,
+    )
+
+    captured: dict[str, object] = {}
+
+    class FakeAkshareClient:
+        def __init__(self, *, hk_default_currency: str) -> None:
+            captured["hk_default_currency"] = hk_default_currency
+
+    def fake_fetch_source_inventory(**kwargs: object) -> SourceInventoryArtifact:
+        captured["akshare_client"] = kwargs["akshare_client"]
+        return SourceInventoryArtifact(
+            inventory_path=tmp_path / "source_inventory.jsonl",
+            summary_path=tmp_path / "source_inventory_summary.json",
+            record_count=0,
+        )
+
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.structured_sources.real_source_validation."
+        "PandasAkshareClient",
+        FakeAkshareClient,
+    )
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.structured_sources.source_inventory_fetch."
+        "fetch_source_inventory",
+        fake_fetch_source_inventory,
+    )
+
+    _run_fetch_source_inventory(
+        company=company,
+        period=PeriodSpec.from_year(2024),
+        market="HK",
+        providers=("akshare",),
+        out_dir=tmp_path,
+        catalog_path=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+    )
+
+    assert captured["hk_default_currency"] == expected_currency
+    assert isinstance(captured["akshare_client"], FakeAkshareClient)
+
+
+def test_evaluate_company_subcommand_dispatches_correctly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    captured: dict[str, object] = {}
+
+    def fake_runner(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.cli._run_evaluate_company",
+        fake_runner,
+    )
+
+    inv = tmp_path / "source_inventory.jsonl"
+    inv.write_text("")
+    inv_summary = tmp_path / "source_inventory_summary.json"
+    inv_summary.write_text("{}")
+
+    main([
+        "evaluate-company",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--inventory", str(inv),
+        "--inventory-summary", str(inv_summary),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--taxonomy", "field_catalog/turtle_v015_field_taxonomy.json",
+        "--out", str(tmp_path),
+    ])
+
+    assert captured["company"] == "600519"
+    assert captured["market"] == "CN"
+    assert captured["pdf_path"] is None
+
+
+def test_extract_llm_help_lists_required_args() -> None:
+    """Verify the extract-llm subcommand is registered."""
+    import argparse
+    from financial_report_llm_extractor.cli import build_parser
+    parser = build_parser()
+    sub = next(
+        a for a in parser._actions
+        if a.__class__.__name__ == "_SubParsersAction"
+    )
+    choices: dict[str, argparse.ArgumentParser] = dict(sub.choices or {})
+    assert "extract-llm" in choices
+    extract_llm = choices["extract-llm"]
+    args_required = {
+        action.dest for action in extract_llm._actions
+        if action.required
+    }
+    assert {"pdf", "company_id", "catalog", "taxonomy",
+            "llm_config", "out"} <= args_required

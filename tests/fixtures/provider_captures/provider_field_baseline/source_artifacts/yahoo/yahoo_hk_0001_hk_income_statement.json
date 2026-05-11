@@ -1,0 +1,1038 @@
+{
+  "metadata": {
+    "currency": "HKD",
+    "report_type": "annual"
+  },
+  "rows": [
+    {
+      "field": "Tax Effect Of Unusual Items",
+      "period": "2025-12-31",
+      "value": "-2381053782.839102"
+    },
+    {
+      "field": "Tax Effect Of Unusual Items",
+      "period": "2024-12-31",
+      "value": "-249140812.040602"
+    },
+    {
+      "field": "Tax Effect Of Unusual Items",
+      "period": "2023-12-31",
+      "value": "157058021.197158"
+    },
+    {
+      "field": "Tax Effect Of Unusual Items",
+      "period": "2022-12-31",
+      "value": "2535747674.888799"
+    },
+    {
+      "field": "Tax Rate For Calcs",
+      "period": "2025-12-31",
+      "value": "0.271996"
+    },
+    {
+      "field": "Tax Rate For Calcs",
+      "period": "2024-12-31",
+      "value": "0.165103"
+    },
+    {
+      "field": "Tax Rate For Calcs",
+      "period": "2023-12-31",
+      "value": "0.090419"
+    },
+    {
+      "field": "Tax Rate For Calcs",
+      "period": "2022-12-31",
+      "value": "0.159321"
+    },
+    {
+      "field": "Normalized EBITDA",
+      "period": "2025-12-31",
+      "value": "85889000000.0"
+    },
+    {
+      "field": "Normalized EBITDA",
+      "period": "2024-12-31",
+      "value": "83706000000.0"
+    },
+    {
+      "field": "Normalized EBITDA",
+      "period": "2023-12-31",
+      "value": "83407000000.0"
+    },
+    {
+      "field": "Normalized EBITDA",
+      "period": "2022-12-31",
+      "value": "72668000000.0"
+    },
+    {
+      "field": "Total Unusual Items",
+      "period": "2025-12-31",
+      "value": "-8754000000.0"
+    },
+    {
+      "field": "Total Unusual Items",
+      "period": "2024-12-31",
+      "value": "-1509000000.0"
+    },
+    {
+      "field": "Total Unusual Items",
+      "period": "2023-12-31",
+      "value": "1737000000.0"
+    },
+    {
+      "field": "Total Unusual Items",
+      "period": "2022-12-31",
+      "value": "27955000000.0"
+    },
+    {
+      "field": "Total Unusual Items Excluding Goodwill",
+      "period": "2025-12-31",
+      "value": "-8754000000.0"
+    },
+    {
+      "field": "Total Unusual Items Excluding Goodwill",
+      "period": "2024-12-31",
+      "value": "-1509000000.0"
+    },
+    {
+      "field": "Total Unusual Items Excluding Goodwill",
+      "period": "2023-12-31",
+      "value": "1737000000.0"
+    },
+    {
+      "field": "Total Unusual Items Excluding Goodwill",
+      "period": "2022-12-31",
+      "value": "15916000000.0"
+    },
+    {
+      "field": "Net Income From Continuing Operation Net Minority Interest",
+      "period": "2025-12-31",
+      "value": "11841000000.0"
+    },
+    {
+      "field": "Net Income From Continuing Operation Net Minority Interest",
+      "period": "2024-12-31",
+      "value": "17088000000.0"
+    },
+    {
+      "field": "Net Income From Continuing Operation Net Minority Interest",
+      "period": "2023-12-31",
+      "value": "23500000000.0"
+    },
+    {
+      "field": "Net Income From Continuing Operation Net Minority Interest",
+      "period": "2022-12-31",
+      "value": "36680000000.0"
+    },
+    {
+      "field": "Reconciled Depreciation",
+      "period": "2025-12-31",
+      "value": "38391000000.0"
+    },
+    {
+      "field": "Reconciled Depreciation",
+      "period": "2024-12-31",
+      "value": "40460000000.0"
+    },
+    {
+      "field": "Reconciled Depreciation",
+      "period": "2023-12-31",
+      "value": "40083000000.0"
+    },
+    {
+      "field": "Reconciled Depreciation",
+      "period": "2022-12-31",
+      "value": "39788000000.0"
+    },
+    {
+      "field": "Reconciled Cost Of Revenue",
+      "period": "2025-12-31",
+      "value": "140832000000.0"
+    },
+    {
+      "field": "Reconciled Cost Of Revenue",
+      "period": "2024-12-31",
+      "value": "136579000000.0"
+    },
+    {
+      "field": "Reconciled Cost Of Revenue",
+      "period": "2023-12-31",
+      "value": "135174000000.0"
+    },
+    {
+      "field": "Reconciled Cost Of Revenue",
+      "period": "2022-12-31",
+      "value": "131402000000.0"
+    },
+    {
+      "field": "EBITDA",
+      "period": "2025-12-31",
+      "value": "77135000000.0"
+    },
+    {
+      "field": "EBITDA",
+      "period": "2024-12-31",
+      "value": "82197000000.0"
+    },
+    {
+      "field": "EBITDA",
+      "period": "2023-12-31",
+      "value": "85144000000.0"
+    },
+    {
+      "field": "EBITDA",
+      "period": "2022-12-31",
+      "value": "100623000000.0"
+    },
+    {
+      "field": "EBIT",
+      "period": "2025-12-31",
+      "value": "38744000000.0"
+    },
+    {
+      "field": "EBIT",
+      "period": "2024-12-31",
+      "value": "41737000000.0"
+    },
+    {
+      "field": "EBIT",
+      "period": "2023-12-31",
+      "value": "45061000000.0"
+    },
+    {
+      "field": "EBIT",
+      "period": "2022-12-31",
+      "value": "60835000000.0"
+    },
+    {
+      "field": "Net Interest Income",
+      "period": "2025-12-31",
+      "value": "-12327000000.0"
+    },
+    {
+      "field": "Net Interest Income",
+      "period": "2024-12-31",
+      "value": "-13392000000.0"
+    },
+    {
+      "field": "Net Interest Income",
+      "period": "2023-12-31",
+      "value": "-12227000000.0"
+    },
+    {
+      "field": "Net Interest Income",
+      "period": "2022-12-31",
+      "value": "-9052000000.0"
+    },
+    {
+      "field": "Interest Expense",
+      "period": "2025-12-31",
+      "value": "12137000000.0"
+    },
+    {
+      "field": "Interest Expense",
+      "period": "2024-12-31",
+      "value": "13167000000.0"
+    },
+    {
+      "field": "Interest Expense",
+      "period": "2023-12-31",
+      "value": "11849000000.0"
+    },
+    {
+      "field": "Interest Expense",
+      "period": "2022-12-31",
+      "value": "8902000000.0"
+    },
+    {
+      "field": "Interest Income",
+      "period": "2025-12-31",
+      "value": "132000000.0"
+    },
+    {
+      "field": "Interest Income",
+      "period": "2024-12-31",
+      "value": "123000000.0"
+    },
+    {
+      "field": "Interest Income",
+      "period": "2023-12-31",
+      "value": "93000000.0"
+    },
+    {
+      "field": "Interest Income",
+      "period": "2022-12-31",
+      "value": "242000000.0"
+    },
+    {
+      "field": "Normalized Income",
+      "period": "2025-12-31",
+      "value": "18213946217.160896"
+    },
+    {
+      "field": "Normalized Income",
+      "period": "2024-12-31",
+      "value": "18347859187.959396"
+    },
+    {
+      "field": "Normalized Income",
+      "period": "2023-12-31",
+      "value": "21920058021.19716"
+    },
+    {
+      "field": "Normalized Income",
+      "period": "2022-12-31",
+      "value": "35338747674.8888"
+    },
+    {
+      "field": "Net Income From Continuing And Discontinued Operation",
+      "period": "2025-12-31",
+      "value": "11841000000.0"
+    },
+    {
+      "field": "Net Income From Continuing And Discontinued Operation",
+      "period": "2024-12-31",
+      "value": "17088000000.0"
+    },
+    {
+      "field": "Net Income From Continuing And Discontinued Operation",
+      "period": "2023-12-31",
+      "value": "23500000000.0"
+    },
+    {
+      "field": "Net Income From Continuing And Discontinued Operation",
+      "period": "2022-12-31",
+      "value": "36680000000.0"
+    },
+    {
+      "field": "Total Expenses",
+      "period": "2025-12-31",
+      "value": "242751000000.0"
+    },
+    {
+      "field": "Total Expenses",
+      "period": "2024-12-31",
+      "value": "239267000000.0"
+    },
+    {
+      "field": "Total Expenses",
+      "period": "2023-12-31",
+      "value": "232823000000.0"
+    },
+    {
+      "field": "Total Expenses",
+      "period": "2022-12-31",
+      "value": "222333000000.0"
+    },
+    {
+      "field": "Rent Expense Supplemental",
+      "period": "2025-12-31",
+      "value": "3349000000.0"
+    },
+    {
+      "field": "Rent Expense Supplemental",
+      "period": "2024-12-31",
+      "value": "3509000000.0"
+    },
+    {
+      "field": "Rent Expense Supplemental",
+      "period": "2023-12-31",
+      "value": "3319000000.0"
+    },
+    {
+      "field": "Rent Expense Supplemental",
+      "period": "2022-12-31",
+      "value": "3802000000.0"
+    },
+    {
+      "field": "Diluted Average Shares",
+      "period": "2025-12-31",
+      "value": "3830044500.0"
+    },
+    {
+      "field": "Diluted Average Shares",
+      "period": "2024-12-31",
+      "value": "3830044500.0"
+    },
+    {
+      "field": "Diluted Average Shares",
+      "period": "2023-12-31",
+      "value": "3830044500.0"
+    },
+    {
+      "field": "Diluted Average Shares",
+      "period": "2022-12-31",
+      "value": "3834106390.0"
+    },
+    {
+      "field": "Basic Average Shares",
+      "period": "2025-12-31",
+      "value": "3830044500.0"
+    },
+    {
+      "field": "Basic Average Shares",
+      "period": "2024-12-31",
+      "value": "3830044500.0"
+    },
+    {
+      "field": "Basic Average Shares",
+      "period": "2023-12-31",
+      "value": "3830044500.0"
+    },
+    {
+      "field": "Basic Average Shares",
+      "period": "2022-12-31",
+      "value": "3834106390.0"
+    },
+    {
+      "field": "Diluted EPS",
+      "period": "2025-12-31",
+      "value": "3.09"
+    },
+    {
+      "field": "Diluted EPS",
+      "period": "2024-12-31",
+      "value": "4.46"
+    },
+    {
+      "field": "Diluted EPS",
+      "period": "2023-12-31",
+      "value": "6.14"
+    },
+    {
+      "field": "Diluted EPS",
+      "period": "2022-12-31",
+      "value": "9.57"
+    },
+    {
+      "field": "Basic EPS",
+      "period": "2025-12-31",
+      "value": "3.09"
+    },
+    {
+      "field": "Basic EPS",
+      "period": "2024-12-31",
+      "value": "4.46"
+    },
+    {
+      "field": "Basic EPS",
+      "period": "2023-12-31",
+      "value": "6.14"
+    },
+    {
+      "field": "Basic EPS",
+      "period": "2022-12-31",
+      "value": "9.57"
+    },
+    {
+      "field": "Diluted NI Availto Com Stockholders",
+      "period": "2025-12-31",
+      "value": "11841000000.0"
+    },
+    {
+      "field": "Diluted NI Availto Com Stockholders",
+      "period": "2024-12-31",
+      "value": "17088000000.0"
+    },
+    {
+      "field": "Diluted NI Availto Com Stockholders",
+      "period": "2023-12-31",
+      "value": "23500000000.0"
+    },
+    {
+      "field": "Diluted NI Availto Com Stockholders",
+      "period": "2022-12-31",
+      "value": "36680000000.0"
+    },
+    {
+      "field": "Net Income Common Stockholders",
+      "period": "2025-12-31",
+      "value": "11841000000.0"
+    },
+    {
+      "field": "Net Income Common Stockholders",
+      "period": "2024-12-31",
+      "value": "17088000000.0"
+    },
+    {
+      "field": "Net Income Common Stockholders",
+      "period": "2023-12-31",
+      "value": "23500000000.0"
+    },
+    {
+      "field": "Net Income Common Stockholders",
+      "period": "2022-12-31",
+      "value": "36680000000.0"
+    },
+    {
+      "field": "Otherunder Preferred Stock Dividend",
+      "period": "2025-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Otherunder Preferred Stock Dividend",
+      "period": "2024-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Otherunder Preferred Stock Dividend",
+      "period": "2023-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Otherunder Preferred Stock Dividend",
+      "period": "2022-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Net Income",
+      "period": "2025-12-31",
+      "value": "11841000000.0"
+    },
+    {
+      "field": "Net Income",
+      "period": "2024-12-31",
+      "value": "17088000000.0"
+    },
+    {
+      "field": "Net Income",
+      "period": "2023-12-31",
+      "value": "23500000000.0"
+    },
+    {
+      "field": "Net Income",
+      "period": "2022-12-31",
+      "value": "36680000000.0"
+    },
+    {
+      "field": "Minority Interests",
+      "period": "2025-12-31",
+      "value": "-7529000000.0"
+    },
+    {
+      "field": "Minority Interests",
+      "period": "2024-12-31",
+      "value": "-6765000000.0"
+    },
+    {
+      "field": "Minority Interests",
+      "period": "2023-12-31",
+      "value": "-6709000000.0"
+    },
+    {
+      "field": "Minority Interests",
+      "period": "2022-12-31",
+      "value": "-6979000000.0"
+    },
+    {
+      "field": "Net Income Including Noncontrolling Interests",
+      "period": "2025-12-31",
+      "value": "19370000000.0"
+    },
+    {
+      "field": "Net Income Including Noncontrolling Interests",
+      "period": "2024-12-31",
+      "value": "23853000000.0"
+    },
+    {
+      "field": "Net Income Including Noncontrolling Interests",
+      "period": "2023-12-31",
+      "value": "30209000000.0"
+    },
+    {
+      "field": "Net Income Including Noncontrolling Interests",
+      "period": "2022-12-31",
+      "value": "43659000000.0"
+    },
+    {
+      "field": "Net Income Continuous Operations",
+      "period": "2025-12-31",
+      "value": "19370000000.0"
+    },
+    {
+      "field": "Net Income Continuous Operations",
+      "period": "2024-12-31",
+      "value": "23853000000.0"
+    },
+    {
+      "field": "Net Income Continuous Operations",
+      "period": "2023-12-31",
+      "value": "30209000000.0"
+    },
+    {
+      "field": "Net Income Continuous Operations",
+      "period": "2022-12-31",
+      "value": "43659000000.0"
+    },
+    {
+      "field": "Tax Provision",
+      "period": "2025-12-31",
+      "value": "7237000000.0"
+    },
+    {
+      "field": "Tax Provision",
+      "period": "2024-12-31",
+      "value": "4717000000.0"
+    },
+    {
+      "field": "Tax Provision",
+      "period": "2023-12-31",
+      "value": "3003000000.0"
+    },
+    {
+      "field": "Tax Provision",
+      "period": "2022-12-31",
+      "value": "8274000000.0"
+    },
+    {
+      "field": "Pretax Income",
+      "period": "2025-12-31",
+      "value": "26607000000.0"
+    },
+    {
+      "field": "Pretax Income",
+      "period": "2024-12-31",
+      "value": "28570000000.0"
+    },
+    {
+      "field": "Pretax Income",
+      "period": "2023-12-31",
+      "value": "33212000000.0"
+    },
+    {
+      "field": "Pretax Income",
+      "period": "2022-12-31",
+      "value": "51933000000.0"
+    },
+    {
+      "field": "Other Non Operating Income Expenses",
+      "period": "2025-12-31",
+      "value": "-9571000000.0"
+    },
+    {
+      "field": "Other Non Operating Income Expenses",
+      "period": "2024-12-31",
+      "value": "-15273000000.0"
+    },
+    {
+      "field": "Other Non Operating Income Expenses",
+      "period": "2023-12-31",
+      "value": "-15178000000.0"
+    },
+    {
+      "field": "Other Non Operating Income Expenses",
+      "period": "2022-12-31",
+      "value": "-14339000000.0"
+    },
+    {
+      "field": "Special Income Charges",
+      "period": "2025-12-31",
+      "value": "-8754000000.0"
+    },
+    {
+      "field": "Special Income Charges",
+      "period": "2024-12-31",
+      "value": "-1509000000.0"
+    },
+    {
+      "field": "Special Income Charges",
+      "period": "2023-12-31",
+      "value": "-92000000.0"
+    },
+    {
+      "field": "Special Income Charges",
+      "period": "2022-12-31",
+      "value": "15401000000.0"
+    },
+    {
+      "field": "Other Special Charges",
+      "period": "2025-12-31",
+      "value": "8754000000.0"
+    },
+    {
+      "field": "Other Special Charges",
+      "period": "2024-12-31",
+      "value": "-350000000.0"
+    },
+    {
+      "field": "Other Special Charges",
+      "period": "2023-12-31",
+      "value": "92000000.0"
+    },
+    {
+      "field": "Other Special Charges",
+      "period": "2022-12-31",
+      "value": "-27440000000.0"
+    },
+    {
+      "field": "Impairment Of Capital Assets",
+      "period": "2025-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Impairment Of Capital Assets",
+      "period": "2024-12-31",
+      "value": "1859000000.0"
+    },
+    {
+      "field": "Impairment Of Capital Assets",
+      "period": "2023-12-31",
+      "value": "0.0"
+    },
+    {
+      "field": "Restructuring And Mergern Acquisition",
+      "period": "2023-12-31",
+      "value": "3667000000.0"
+    },
+    {
+      "field": "Restructuring And Mergern Acquisition",
+      "period": "2022-12-31",
+      "value": "3464000000.0"
+    },
+    {
+      "field": "Restructuring And Mergern Acquisition",
+      "period": "2021-12-31",
+      "value": "3800000000.0"
+    },
+    {
+      "field": "Net Non Operating Interest Income Expense",
+      "period": "2025-12-31",
+      "value": "-12327000000.0"
+    },
+    {
+      "field": "Net Non Operating Interest Income Expense",
+      "period": "2024-12-31",
+      "value": "-13392000000.0"
+    },
+    {
+      "field": "Net Non Operating Interest Income Expense",
+      "period": "2023-12-31",
+      "value": "-12227000000.0"
+    },
+    {
+      "field": "Net Non Operating Interest Income Expense",
+      "period": "2022-12-31",
+      "value": "-9052000000.0"
+    },
+    {
+      "field": "Total Other Finance Cost",
+      "period": "2025-12-31",
+      "value": "322000000.0"
+    },
+    {
+      "field": "Total Other Finance Cost",
+      "period": "2024-12-31",
+      "value": "348000000.0"
+    },
+    {
+      "field": "Total Other Finance Cost",
+      "period": "2023-12-31",
+      "value": "471000000.0"
+    },
+    {
+      "field": "Total Other Finance Cost",
+      "period": "2022-12-31",
+      "value": "392000000.0"
+    },
+    {
+      "field": "Interest Expense Non Operating",
+      "period": "2025-12-31",
+      "value": "12137000000.0"
+    },
+    {
+      "field": "Interest Expense Non Operating",
+      "period": "2024-12-31",
+      "value": "13167000000.0"
+    },
+    {
+      "field": "Interest Expense Non Operating",
+      "period": "2023-12-31",
+      "value": "11849000000.0"
+    },
+    {
+      "field": "Interest Expense Non Operating",
+      "period": "2022-12-31",
+      "value": "8902000000.0"
+    },
+    {
+      "field": "Interest Income Non Operating",
+      "period": "2025-12-31",
+      "value": "132000000.0"
+    },
+    {
+      "field": "Interest Income Non Operating",
+      "period": "2024-12-31",
+      "value": "123000000.0"
+    },
+    {
+      "field": "Interest Income Non Operating",
+      "period": "2023-12-31",
+      "value": "93000000.0"
+    },
+    {
+      "field": "Interest Income Non Operating",
+      "period": "2022-12-31",
+      "value": "242000000.0"
+    },
+    {
+      "field": "Operating Income",
+      "period": "2025-12-31",
+      "value": "37285000000.0"
+    },
+    {
+      "field": "Operating Income",
+      "period": "2024-12-31",
+      "value": "42084000000.0"
+    },
+    {
+      "field": "Operating Income",
+      "period": "2023-12-31",
+      "value": "42752000000.0"
+    },
+    {
+      "field": "Operating Income",
+      "period": "2022-12-31",
+      "value": "40164000000.0"
+    },
+    {
+      "field": "Operating Expense",
+      "period": "2025-12-31",
+      "value": "101919000000.0"
+    },
+    {
+      "field": "Operating Expense",
+      "period": "2024-12-31",
+      "value": "102688000000.0"
+    },
+    {
+      "field": "Operating Expense",
+      "period": "2023-12-31",
+      "value": "97649000000.0"
+    },
+    {
+      "field": "Operating Expense",
+      "period": "2022-12-31",
+      "value": "90931000000.0"
+    },
+    {
+      "field": "Depreciation And Amortization In Income Statement",
+      "period": "2025-12-31",
+      "value": "38391000000.0"
+    },
+    {
+      "field": "Depreciation And Amortization In Income Statement",
+      "period": "2024-12-31",
+      "value": "40460000000.0"
+    },
+    {
+      "field": "Depreciation And Amortization In Income Statement",
+      "period": "2023-12-31",
+      "value": "40083000000.0"
+    },
+    {
+      "field": "Depreciation And Amortization In Income Statement",
+      "period": "2022-12-31",
+      "value": "39788000000.0"
+    },
+    {
+      "field": "Amortization",
+      "period": "2025-12-31",
+      "value": "8087000000.0"
+    },
+    {
+      "field": "Amortization",
+      "period": "2024-12-31",
+      "value": "7967000000.0"
+    },
+    {
+      "field": "Amortization",
+      "period": "2023-12-31",
+      "value": "7882000000.0"
+    },
+    {
+      "field": "Amortization",
+      "period": "2022-12-31",
+      "value": "7691000000.0"
+    },
+    {
+      "field": "Depreciation Income Statement",
+      "period": "2025-12-31",
+      "value": "30304000000.0"
+    },
+    {
+      "field": "Depreciation Income Statement",
+      "period": "2024-12-31",
+      "value": "32493000000.0"
+    },
+    {
+      "field": "Depreciation Income Statement",
+      "period": "2023-12-31",
+      "value": "32201000000.0"
+    },
+    {
+      "field": "Depreciation Income Statement",
+      "period": "2022-12-31",
+      "value": "32097000000.0"
+    },
+    {
+      "field": "Selling General And Administration",
+      "period": "2025-12-31",
+      "value": "16491000000.0"
+    },
+    {
+      "field": "Selling General And Administration",
+      "period": "2024-12-31",
+      "value": "17128000000.0"
+    },
+    {
+      "field": "Selling General And Administration",
+      "period": "2023-12-31",
+      "value": "15021000000.0"
+    },
+    {
+      "field": "Selling General And Administration",
+      "period": "2022-12-31",
+      "value": "10171000000.0"
+    },
+    {
+      "field": "Selling And Marketing Expense",
+      "period": "2025-12-31",
+      "value": "4157000000.0"
+    },
+    {
+      "field": "Selling And Marketing Expense",
+      "period": "2024-12-31",
+      "value": "4717000000.0"
+    },
+    {
+      "field": "Selling And Marketing Expense",
+      "period": "2023-12-31",
+      "value": "4783000000.0"
+    },
+    {
+      "field": "Selling And Marketing Expense",
+      "period": "2022-12-31",
+      "value": "4677000000.0"
+    },
+    {
+      "field": "General And Administrative Expense",
+      "period": "2025-12-31",
+      "value": "12334000000.0"
+    },
+    {
+      "field": "General And Administrative Expense",
+      "period": "2024-12-31",
+      "value": "12411000000.0"
+    },
+    {
+      "field": "General And Administrative Expense",
+      "period": "2023-12-31",
+      "value": "10238000000.0"
+    },
+    {
+      "field": "General And Administrative Expense",
+      "period": "2022-12-31",
+      "value": "5494000000.0"
+    },
+    {
+      "field": "Rent And Landing Fees",
+      "period": "2025-12-31",
+      "value": "3349000000.0"
+    },
+    {
+      "field": "Rent And Landing Fees",
+      "period": "2024-12-31",
+      "value": "3509000000.0"
+    },
+    {
+      "field": "Rent And Landing Fees",
+      "period": "2023-12-31",
+      "value": "3319000000.0"
+    },
+    {
+      "field": "Rent And Landing Fees",
+      "period": "2022-12-31",
+      "value": "3802000000.0"
+    },
+    {
+      "field": "Gross Profit",
+      "period": "2025-12-31",
+      "value": "139204000000.0"
+    },
+    {
+      "field": "Gross Profit",
+      "period": "2024-12-31",
+      "value": "144772000000.0"
+    },
+    {
+      "field": "Gross Profit",
+      "period": "2023-12-31",
+      "value": "140401000000.0"
+    },
+    {
+      "field": "Gross Profit",
+      "period": "2022-12-31",
+      "value": "131095000000.0"
+    },
+    {
+      "field": "Cost Of Revenue",
+      "period": "2025-12-31",
+      "value": "140832000000.0"
+    },
+    {
+      "field": "Cost Of Revenue",
+      "period": "2024-12-31",
+      "value": "136579000000.0"
+    },
+    {
+      "field": "Cost Of Revenue",
+      "period": "2023-12-31",
+      "value": "135174000000.0"
+    },
+    {
+      "field": "Cost Of Revenue",
+      "period": "2022-12-31",
+      "value": "131402000000.0"
+    },
+    {
+      "field": "Total Revenue",
+      "period": "2025-12-31",
+      "value": "280036000000.0"
+    },
+    {
+      "field": "Total Revenue",
+      "period": "2024-12-31",
+      "value": "281351000000.0"
+    },
+    {
+      "field": "Total Revenue",
+      "period": "2023-12-31",
+      "value": "275575000000.0"
+    },
+    {
+      "field": "Total Revenue",
+      "period": "2022-12-31",
+      "value": "262497000000.0"
+    },
+    {
+      "field": "Operating Revenue",
+      "period": "2025-12-31",
+      "value": "280036000000.0"
+    },
+    {
+      "field": "Operating Revenue",
+      "period": "2024-12-31",
+      "value": "281351000000.0"
+    },
+    {
+      "field": "Operating Revenue",
+      "period": "2023-12-31",
+      "value": "275575000000.0"
+    },
+    {
+      "field": "Operating Revenue",
+      "period": "2022-12-31",
+      "value": "262497000000.0"
+    }
+  ]
+}

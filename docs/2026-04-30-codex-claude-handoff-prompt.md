@@ -6,15 +6,18 @@
 你正在接手仓库：financial-report-llm-extractor。
 
 项目定位：
-- 这是一个独立的 LLM-first 财报抽取器，不依赖 deterministic financial-report-analysis 架构。
-- 目标是从年报 PDF 中抽取 Turtle v0.15 风格财务字段，输出带证据、可 review 的 JSON。
-- 第一可用切片：单份年报 PDF -> 文档页/块索引 -> P0/P1 字段抽取 -> 每个 present 值必须带 page/chunk/block/snippet 证据。
+- 这是一个独立的财报字段抽取器，不依赖 deterministic financial-report-analysis 架构。
+- 当前产品方向已经从 broad PDF-first 调整为 source-first：优先 AKShare，其次 Yahoo/yfinance，再用 PDF/LLM 做缺失、冲突、歧义和年报证据补充。
+- 目标仍然是输出 Turtle v0.15 风格字段和可 review JSON，但 source evidence 与 PDF evidence 要分开建模。
+- PDF/LLM 能力保留为 fallback，不应重新扩大为默认 broad P0/P1 PDF 抽取路径。
 
 请先阅读这些文档：
 - README.md
 - docs/requirements/2026-04-30-llm-first-financial-report-extractor-requirements.md
 - docs/design/2026-04-30-llm-first-turtle-financial-extraction-design.md
+- docs/design/2026-05-01-structured-data-source-first-financial-extraction-design.md
 - docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md
+- docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md
 - docs/superpowers/plans/2026-04-30-phase-0-contracts.md
 - docs/superpowers/plans/2026-04-30-phase-1-pdf-probe-page-store.md
 
@@ -57,6 +60,29 @@
   - docs/skills/financial-report-extractor/SKILL.md 提供 repo-contained optional skill wrapper。
   - docs/skills/financial-report-extractor/references/review-checklist.md 提供 extraction output review checklist。
   - tests/test_skill_wrapper.py 覆盖 frontmatter、CLI command usage、guardrails、checklist link。
+- Source-first foundation 已开始并已有可运行代码。
+  - `src/financial_report_llm_extractor/structured_sources/` 包含 source contracts、artifact store、AKShare adapter、Yahoo adapter、mapping、coverage、reconciliation、review export、PDF supplement、LLM review、source-first evaluation。
+  - `field_catalog/turtle_v015_field_taxonomy.json` classifies every Turtle field by domain and source mode.
+  - `field_catalog/turtle_v015_coverage_matrix.json` records planned coverage routes and verification status.
+  - `field_catalog/turtle_v015_source_mapping_minimal.json` 是当前 source-first 最小字段映射目录。
+  - `docs/superpowers/specs/2026-05-02-turtle-field-taxonomy-design.md` 定义了后续完整 Turtle 字段应按利润表、资产负债表、现金流量表、股东回报、会计调整、附注/MD&A 分类，再叠加 P0-P4 priority。
+  - `scripts/run-source-first-e2e-evaluation.sh` 是 synthetic no-network source-first E2E。
+  - `scripts/run-real-source-validation.sh` 是 opt-in 真实/捕获来源验证入口。
+  - `tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl` 是从真实 AKShare 600519 income statement 返回固化出来的 captured source inventory。
+  - `tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl` 是从真实 AKShare 600519 income statement、balance sheet、cash flow 一次性验证输出固化出来的 captured source inventory。
+  - `tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl` 是从真实 Yahoo/yfinance `0001.HK` income statement 输出固化出来的 captured source inventory。
+  - captured replay 已验证 source inventory -> Turtle mapping -> reconciliation -> source-only export；AKShare combined fixture 当前覆盖 8/9 minimal source-mapping fields，Yahoo income fixture 当前覆盖 3/9。
+  - `tests/fixtures/provider_captures/provider_field_baseline/` 保存了更广的 AKShare/Yahoo provider field baseline，`source_inventory.jsonl.gz` 当前包含 6,771 条 latest-five-annual-period inventory records。
+  - `src/financial_report_llm_extractor/structured_sources/field_candidate_discovery.py` 已实现离线 provider raw field candidate discovery。
+  - `financial-report-llm-extractor discover-provider-fields` 可从压缩 fixture 生成 `provider_field_candidate_report.json` 和 Markdown review report。
+  - `src/financial_report_llm_extractor/structured_sources/provider_baseline_replay.py` 已实现 period-scoped baseline replay。
+  - `financial-report-llm-extractor replay-provider-baseline` / `scripts/run-provider-baseline-period-replay.sh` 会按 company/source 选择最新年度 date part，并把 AKShare/Yahoo period 归一化后再做 combined replay。
+  - Phase L 已实现 HK warning classification：每个 replay slice 写出 `warning_classification.json` / `.md`，并把 HK non-clean fields 分成 `pdf_verification_required`、`mapping_expansion_required`、`source_unavailable`。
+  - 当前 latest replay 口径：`600519` clean present 13/15；`00001` 和 `01113` clean present 4/15。
+  - HK `00001` / `01113` 当前队列：
+    - `pdf_verification_required`: `gross_profit`, `net_profit`, `revenue`, `total_assets`, `total_cur_assets`, `total_cur_liab`, `total_liabilities`
+    - `mapping_expansion_required`: `defer_tax_liab`
+    - `source_unavailable`: `bond_payable`, `cip`, `invest_income`
 - field_catalog/turtle_v015_priority_fields.json 已包含 P0-P4 字段优先级。
 - tests/ 下已有 test_models.py、test_ingestion.py、test_cli.py、test_field_catalog.py。
 
@@ -66,9 +92,27 @@
 - 不依赖现有 P5/Turtle export pipeline。
 - LLM 输出必须 evidence-grounded；present 值无证据应被拒绝或标为 ambiguous/missing。
 - 金额、币种、单位倍率要显式建模，不能把 “HKD million” 这类单位丢成裸数字。
+- Source-first present money 必须有明确 currency/unit；匹配到字段但单位或归一化失败时应是 blocked，不应伪装成 missing。
+- 同一 source 内的多个候选可按 catalog alias 顺序作为确定性优先级；跨 source 分歧必须保留给 reconciliation/review。
 - 缺失、歧义、不可用、抽取失败必须显式状态化，不要静默填 0 或 None 当成成功。
 
-推荐下一步：继续 Phase 7/8 follow-up，对三份真实 PDF 跑 artifacts，并决定是否把 repo-contained skill 安装到 $CODEX_HOME/skills。
+如何找到下一步工作：
+- 先看 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` 的 Phase J 当前验证状态。
+- 再看最近的 captured validation 输出，例如 `tmp/runs/captured_source_validation_akshare/review_summary.json` 和 `real_source_validation_summary.json`。
+- 根据 missing fields 选择下一个 source/statement family，而不是从头跑 broad PDF 或重复请求 provider。
+- 如果要调 AKShare/Yahoo 映射，优先从 captured source inventory 开始；只有需要新增或刷新 captured fixture 时才 opt-in 调真实 provider。
+
+当前推荐方向：
+- Do not map the full 6,771-row provider baseline directly; it intentionally contains 5 annual periods and will produce period conflicts.
+- Use `scripts/run-provider-baseline-period-replay.sh` to inspect latest-period source-first coverage by company and provider; it normalizes AKShare/Yahoo period strings before combined replay.
+- 下一步是 Phase M: HK Yahoo Trust Policy And PDF Spot-Check，不是直接扩完整 33 字段。
+- 已从 `downloads/hk_stocks/00001/annual/2025_annual_en.pdf` 和 `downloads/hk_stocks/01113/annual/2025_annual_en.pdf` 的 quick-validation artifacts 初步确认：
+  - Yahoo HK `currency=HKD`, `unit=raw`, `unit_multiplier=1` 返回完整 HKD raw value。
+  - `00001` / `01113` 的 `revenue`、`current assets`、`current liabilities` 等字段能与年报 `$ Million` / `HK$ million` 值乘以 1,000,000 对齐。
+  - `01113` 的 `total_assets` 和 `total_liabilities` 能由年报 subtotals 推导并匹配 Yahoo raw HKD。
+- Phase M 应把这些 sample proof 固化为 deterministic HK Yahoo trust-policy fixture，并只对已验证字段放行 market-specific Yahoo primary policy。
+- `gross_profit` 仍需 PDF verification；`defer_tax_liab` 先做 mapping expansion 再 spot-check；`bond_payable`、`cip`、`invest_income` 当前 source unavailable。
+- 最后才对仍缺失、冲突、歧义或需要页码证据的字段进入 PDF/LLM fallback。
 
 Phase 2 已完成的基础能力：
 - 在现有 page-level artifacts 之上建立 statement/evidence-block logical chunks。
@@ -77,16 +121,19 @@ Phase 2 已完成的基础能力：
 
 建议实施顺序：
 1. 先写测试，再实现。
-2. 明确真实评估输出目录，例如 runs/evaluation/<report_id>/。
-3. 对 600519、00001、01113 运行 ingest/chunk/retrieve/extract。
-4. 用 evaluate 汇总 extraction_result.json，生成 JSON 和后续 Markdown review summary。
-5. 如需安装 skill，再把 docs/skills/financial-report-extractor 复制/安装到 $CODEX_HOME/skills 并补 agents/openai.yaml。
-6. 每个新 artifact 都要带 source_pdf_hash 或可追溯到 run_metadata。
+2. 对 source-first 工作，先用 captured fixture 复现当前问题；不要反复请求 AKShare/Yahoo。
+3. 新增真实 provider 调用必须 opt-in，并将返回固化为可重复使用的 fixture。
+4. 用 source mapping、coverage、reconciliation、review export 的 artifacts 判断下一步。
+5. 只有 source-first coverage gate 指向 PDF/LLM fallback 时，才运行 PDF ingestion/chunk/retrieval/extract。
+6. 每个新 artifact 都要能追溯到 source artifact、source inventory 或 PDF run_metadata。
 
 测试与验证命令：
 - uv run pytest -v
 - uv run ruff check .
 - uv run mypy src tests
+- REAL_SOURCE_VALIDATION=1 INVENTORY_FIXTURE=tests/fixtures/akshare/600519_income_statement_2025_required_fields.jsonl OUT_DIR=tmp/runs/captured_source_validation_akshare scripts/run-real-source-validation.sh
+- REAL_SOURCE_VALIDATION=1 INVENTORY_FIXTURE=tests/fixtures/akshare/600519_combined_statements_2025_required_fields.jsonl OUT_DIR=tmp/runs/captured_source_validation_akshare_combined scripts/run-real-source-validation.sh
+- REAL_SOURCE_VALIDATION=1 INVENTORY_FIXTURE=tests/fixtures/yahoo/0001_hk_income_statement_2025_required_fields.jsonl OUT_DIR=tmp/runs/captured_source_validation_yahoo_income scripts/run-real-source-validation.sh
 
 如果 uv 不可用，可尝试项目虚拟环境中的 pytest；但最终最好保持上述命令可通过。
 

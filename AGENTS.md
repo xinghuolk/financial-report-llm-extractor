@@ -4,23 +4,24 @@
 
 ## Project Context
 
-`financial-report-llm-extractor` 是一个独立的 LLM-first 财报抽取器。它与 deterministic `financial-report-analysis` 架构保持隔离，目标是从年报 PDF 中抽取 Turtle v0.15 风格财务字段，并输出带证据、可 review 的结构化 JSON。
+`financial-report-llm-extractor` 是一个独立的财报抽取器。它与 deterministic `financial-report-analysis` 架构保持隔离。项目最早从 LLM/PDF-first 原型开始，但当前主线已经转为 source-first：先使用 AKShare/Yahoo 等结构化 provider artifacts 建立 Turtle v0.15 字段映射、单位/币种证明、source policy 和 reviewable JSON；PDF/LLM 只作为 selected-field evidence supplement、provider semantics sample proof 和 ambiguity review。
 
 核心目标：
-- 将 PDF 解析为 page text、table blocks、layout metadata、chunks。
-- 存储 chunks，用于 retrieval 和 evidence lookup。
-- 使用 Turtle v0.15 字段目录和优先级。
-- 对每个字段检索候选证据。
-- 调用 LLM 产出结构化 extracted items。
-- 每个 `present` 值必须带 page、chunk、block、snippet 证据。
-- 显式标记 missing、ambiguous、not_applicable、extraction_failed。
+- 使用 Turtle v0.15 字段目录、taxonomy、coverage matrix 和 source mapping catalog 定义目标字段语义。
+- 保存 AKShare/Yahoo raw artifacts，并生成可 replay 的 source inventory。
+- 对 provider raw fields 做 Turtle mapping、reconciliation、unit/currency proof 和 source policy selection。
+- 对 provider raw field 语义进行显式证明；PDF samples 只能作为 provider policy proof，不等于最终逐公司 PDF evidence。
+- 对 selected fields 复用 PDF ingestion/chunking/retrieval/LLM 作为 fallback 或 final evidence supplement。
+- 每个 `present` money 值必须有 source evidence、显式币种/单位/倍率；需要 PDF profile 时再补 page/block/snippet evidence。
+- 显式标记 missing、ambiguous、not_applicable、extraction_failed、definition_unverified、pdf_required、source_unavailable 等状态。
 
-第一可用切片：
-- 单份年报 PDF 输入。
-- 构建文档 chunk index。
-- 抽取 P0/P1 Turtle 字段。
-- 输出 value、unit、period、scope、confidence、evidence。
-- 缺失或歧义字段必须显式表达。
+当前验证切片：
+- 使用 captured AKShare/Yahoo provider baseline replay `600519`、`00001`、`01113`。
+- 先稳定 HK 15-field denominator，再扩 full P0/P1 33 fields。
+- 每个 HK 字段必须 clean present 或进入稳定 terminal bucket。
+- `net_profit` 当前应被视为 Yahoo raw field semantics sampled proof，不是最终逐公司 PDF evidence。
+- `gross_profit` 在 HK provider raw semantics 未证明前保持 non-clean / definition-unverified / pdf-required。
+- 缺失或歧义字段必须显式表达，不能通过找一个 PDF 近似值硬凑 clean。
 
 ## Read First
 
@@ -28,15 +29,22 @@
 - `README.md`
 - `docs/requirements/2026-04-30-llm-first-financial-report-extractor-requirements.md`
 - `docs/design/2026-04-30-llm-first-turtle-financial-extraction-design.md`
+- `docs/design/2026-05-01-structured-data-source-first-financial-extraction-design.md`
+- `docs/design/2026-05-07-source-first-architecture-drift-analysis.zh.md`
 - `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
 - `docs/2026-04-30-codex-claude-handoff-prompt.md`
 
 已完成计划可参考：
 - `docs/superpowers/plans/2026-04-30-phase-0-contracts.md`
 - `docs/superpowers/plans/2026-04-30-phase-1-pdf-probe-page-store.md`
+- `docs/superpowers/specs/2026-05-07-phase-m4-provider-semantics-correction.md`
+- `docs/superpowers/plans/2026-05-07-phase-m4-provider-semantics-correction.md`
 
 字段目录：
 - `field_catalog/turtle_v015_priority_fields.json`
+- `field_catalog/turtle_v015_source_mapping_minimal.json`
+- `field_catalog/provider_raw_semantics_hk.json`
+- `field_catalog/hk_yahoo_trust_policy.json`
 
 ## Current State
 
@@ -115,11 +123,18 @@ Phase 8 foundation 已完成：
 必须保持：
 - 独立应用优先；skills 只作为薄封装。
 - ingestion、chunking、retrieval、LLM transport、validation/export 保持边界清晰。
+- Source-first 是当前主线：AKShare/Yahoo provider artifacts 先于 PDF/LLM fallback。
+- Provider raw field semantics proof 是 source policy 的信任边界；不要用逐公司 PDF 值匹配替代 provider 语义证明。
+- PDF samples 只能作为 sampled provider policy proof；它们不等于最终 per-export `pdf_evidence`。
+- `source_evidence`、`trust_policy_evidence`、`pdf_evidence` 必须分开建模和报告。
+- Replay/report artifacts 应显式区分 `provider_semantics_verified_fields`、`sampled_pdf_policy_proof_fields`、`final_pdf_evidence_fields`、`provider_semantics_unverified_fields`。
 - LLM 输出必须 evidence-grounded。
 - present 值缺证据时不能静默接受。
 - 金额、币种、单位、倍率必须显式建模。
 - 缺失、歧义、不可用、抽取失败必须状态化。
 - artifact ID 要稳定、可复现，避免运行时随机数。
+- HK `gross_profit` 在 Yahoo/AKShare raw semantics 未证明前不能 clean；不得因为某个 PDF 样本值匹配就 promote。
+- HK `net_profit` 可以保留 Yahoo `Net Income Common Stockholders` raw field 判断，但必须表述为 sampled provider semantics proof，不是最终 PDF evidence。
 
 不要引入：
 - canonical fact promotion。
@@ -139,6 +154,8 @@ Phase 8 foundation 已完成：
 - 保持 dataclass 合同简单、可序列化、可验证。
 - 不要大范围重构已通过的 Phase 0/1，除非新阶段确实需要。
 - 不要把 retrieval 或 LLM 逻辑提前塞进 ingestion 层。
+- 不要把 broad PDF retrieval 当作解决 provider semantics 的默认办法。
+- 不要为了提高 clean coverage 而把 `definition_unverified`、`pdf_required`、`source_unavailable` 混成一个 missing/warning bucket。
 
 代码风格：
 - Python package 位于 `src/financial_report_llm_extractor/`。
@@ -146,6 +163,13 @@ Phase 8 foundation 已完成：
 - 使用 frozen dataclass 表达稳定合同。
 - 使用显式 `validate()` 方法表达业务不变量。
 - 保持函数小而可测试。
+
+本地命令环境：
+- 当前仓库在 Windows + PowerShell 环境下工作时，Codex 内部标准命令应优先使用 PowerShell，并显式进入 UTF-8 模式，避免中文文档、JSON artifact、测试输出乱码。
+- Windows PowerShell 建议在读取/写入文本前设置：`[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()`，并对 `Get-Content` / `Set-Content` 显式使用 `-Encoding UTF8`。
+- 需要生成无 BOM UTF-8 测试 fixture 或 JSONL 时，优先使用 .NET `System.Text.UTF8Encoding($false)` 写入。
+- 以上 PowerShell UTF-8 约定仅适用于 Windows/PowerShell 场景；如果代理运行在 Linux、macOS、WSL 或其他 UTF-8 shell 中，不要照搬 PowerShell 专用初始化。
+- Codex 沙箱内不要默认使用 Git Bash；本机 Git Bash/MSYS2 可能因 Windows 沙箱限制无法创建 signal pipe。除非用户明确要求并验证可用，否则以 PowerShell UTF-8 模式作为默认命令环境。
 
 ## Verification
 

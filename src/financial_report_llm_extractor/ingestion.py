@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,13 +69,32 @@ def compute_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def resolve_pdf_text_parser(
+    *,
+    fallback_parser: PdfTextParser | None = None,
+    pdftotext_path: str | None = None,
+) -> PdfTextParser:
+    resolved_pdftotext_path = (
+        shutil.which("pdftotext") if pdftotext_path is None else pdftotext_path
+    )
+    if resolved_pdftotext_path:
+        return PdftotextParser()
+    if fallback_parser is not None:
+        return fallback_parser
+    raise RuntimeError(
+        "no PDF text parser available: pdftotext is not on PATH and no fallback "
+        "parser was provided"
+    )
+
+
 def ingest_pdf(
     pdf_path: Path,
     output_dir: Path,
     *,
     parser: PdfTextParser | None = None,
+    fallback_parser: PdfTextParser | None = None,
 ) -> IngestResult:
-    active_parser = parser or PdftotextParser()
+    active_parser = parser or resolve_pdf_text_parser(fallback_parser=fallback_parser)
     source_pdf_hash = compute_sha256(pdf_path)
     pages = split_pdftotext_pages(active_parser.extract_text(pdf_path))
 

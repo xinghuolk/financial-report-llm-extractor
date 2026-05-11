@@ -1,0 +1,651 @@
+"""Deterministic source-to-Turtle mapping."""
+
+from __future__ import annotations
+
+import json
+from collections import Counter
+from dataclasses import asdict, dataclass, field
+from decimal import Decimal
+from pathlib import Path
+from typing import Literal
+
+from financial_report_llm_extractor.models import Currency
+from financial_report_llm_extractor.money import MoneyNormalizationError, normalize_money
+from financial_report_llm_extractor.structured_sources.catalog import (
+    SourceMappingCatalog,
+    SourceMappingEntry,
+)
+from financial_report_llm_extractor.structured_sources.models import (
+    SourceEvidence,
+    SourceInventoryRecord,
+    SourceName,
+)
+
+
+MappedFieldStatus = Literal["present", "missing", "ambiguous", "derived", "blocked"]
+
+
+@dataclass(frozen=True)
+class TurtleMappingCandidate:
+    source: SourceName
+    raw_field_name: str
+    raw_field_code: str | None
+    raw_value: str | int | float | None
+    value: Decimal | None
+    normalized_value: Decimal | None
+    currency: Currency
+    unit: str | None
+    period: str | None
+    scope: str
+    source_evidence: tuple[SourceEvidence, ...]
+    errors: tuple[str, ...] = field(default_factory=tuple)
+    canonical_unit: Currency | None = None
+    statement_metadata_proven: bool = False
+    unit_multiplier: Decimal | None = None
+    currency_proof_source: str | None = None
+    unit_proof_source: str | None = None
+    reporting_metadata_proof_source: str | None = None
+    review_notes: tuple[str, ...] = field(default_factory=tuple)
+    market: str = ""
+
+    def to_dict(self) -> dict[str, object]:
+        payload = asdict(self)
+        for key in ("value", "normalized_value", "unit_multiplier"):
+            if payload[key] is not None:
+                payload[key] = str(payload[key])
+        payload["review_notes"] = list(self.review_notes)
+        return payload
+
+
+@dataclass(frozen=True)
+class MappedTurtleField:
+    field_id: str
+    status: MappedFieldStatus
+    value: Decimal | None = None
+    normalized_value: Decimal | None = None
+    currency: Currency = "unknown"
+    unit: str | None = None
+    canonical_unit: Currency | None = None
+    period: str | None = None
+    scope: str = "unknown"
+    candidates: tuple[TurtleMappingCandidate, ...] = field(default_factory=tuple)
+    source_evidence: tuple[SourceEvidence, ...] = field(default_factory=tuple)
+    derived_from: tuple[str, ...] = field(default_factory=tuple)
+    errors: tuple[str, ...] = field(default_factory=tuple)
+    policy_evidence_candidates: tuple[TurtleMappingCandidate, ...] = field(
+        default_factory=tuple
+    )
+    review_notes: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "field_id": self.field_id,
+            "status": self.status,
+            "value": str(self.value) if self.value is not None else None,
+            "normalized_value": (
+                str(self.normalized_value) if self.normalized_value is not None else None
+            ),
+            "currency": self.currency,
+            "unit": self.unit,
+            "canonical_unit": self.canonical_unit,
+            "period": self.period,
+            "scope": self.scope,
+            "candidates": [candidate.to_dict() for candidate in self.candidates],
+            "policy_evidence_candidates": [
+                candidate.to_dict() for candidate in self.policy_evidence_candidates
+            ],
+            "source_evidence": [evidence.to_dict() for evidence in self.source_evidence],
+            "derived_from": list(self.derived_from),
+            "errors": list(self.errors),
+            "review_notes": list(self.review_notes),
+        }
+
+
+@dataclass(frozen=True)
+class TurtleMappingResult:
+    catalog_id: str
+    catalog_version: str
+    fields: dict[str, MappedTurtleField]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "catalog_id": self.catalog_id,
+            "catalog_version": self.catalog_version,
+            "fields": {
+                field_id: self.fields[field_id].to_dict()
+                for field_id in sorted(self.fields)
+            },
+        }
+
+
+def map_source_inventory(
+    catalog: SourceMappingCatalog,
+    records: list[SourceInventoryRecord] | tuple[SourceInventoryRecord, ...],
+) -> TurtleMappingResult:
+    catalog.validate()
+    mapped: dict[str, MappedTurtleField] = {}
+    for field_id, entry in catalog.entries.items():
+        mapped[field_id] = _map_direct_field(entry, records)
+
+    # Phase H2.4 #1: derivation may be market-scoped to avoid leaking a
+    # CN-specific derivation into HK runs (which would always emit a
+    # spurious "derivation input not present" blocked status). When records
+    # are present we use their market; if records is empty no derivation
+    # can fire anyway.
+    record_market = records[0].market if records else None
+    for field_id, entry in catalog.entries.items():
+        if not entry.derivation or mapped[field_id].status != "missing":
+            continue
+        if entry.derivation_markets and record_market not in entry.derivation_markets:
+            # Skip derivation: it doesn't apply to this market. Leave the
+            # field as missing so downstream policy can classify cleanly.
+            continue
+        mapped[field_id] = _derive_field(entry, mapped, records)
+
+    return TurtleMappingResult(
+        catalog_id=catalog.catalog_id,
+        catalog_version=catalog.version,
+        fields=mapped,
+    )
+
+
+def write_turtle_mapping_artifacts(
+    result: TurtleMappingResult,
+    output_dir: Path,
+) -> dict[str, Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    mapping_path = output_dir / "turtle_mapping.json"
+    summary_path = output_dir / "source_coverage_summary.json"
+    markdown_path = output_dir / "source_coverage_summary.md"
+
+    mapping_payload = result.to_dict()
+    summary_payload = build_source_mapping_summary(result)
+    mapping_path.write_text(
+        json.dumps(mapping_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    summary_path.write_text(
+        json.dumps(summary_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    markdown_path.write_text(_summary_markdown(summary_payload), encoding="utf-8")
+
+    return {
+        "mapping": mapping_path,
+        "coverage_json": summary_path,
+        "coverage_markdown": markdown_path,
+    }
+
+
+def build_source_mapping_summary(result: TurtleMappingResult) -> dict[str, object]:
+    counts = Counter(field.status for field in result.fields.values())
+    blocker_fields = {
+        "missing": sorted(
+            field_id
+            for field_id, field in result.fields.items()
+            if field.status == "missing"
+        ),
+        "ambiguous": sorted(
+            field_id
+            for field_id, field in result.fields.items()
+            if field.status == "ambiguous"
+        ),
+    }
+    return {
+        "catalog_id": result.catalog_id,
+        "catalog_version": result.catalog_version,
+        "total_fields": len(result.fields),
+        "status_counts": dict(sorted(counts.items())),
+        "blocker_fields": blocker_fields,
+    }
+
+
+def _map_direct_field(
+    entry: SourceMappingEntry,
+    records: list[SourceInventoryRecord] | tuple[SourceInventoryRecord, ...],
+) -> MappedTurtleField:
+    matched_candidates = tuple(
+        _candidate_from_record(record, entry)
+        for record in records
+        if _record_matches_entry(record, entry)
+    )
+    if not matched_candidates:
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="missing",
+            errors=("no source candidates matched catalog aliases",),
+        )
+    valid_candidates = tuple(
+        candidate for candidate in matched_candidates if not candidate.errors
+    )
+    if not valid_candidates:
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="blocked",
+            candidates=matched_candidates,
+            errors=("matched source candidates failed validation or normalization",),
+        )
+    candidates = _apply_alias_precedence(entry, valid_candidates)
+    policy_evidence_candidates = tuple(
+        candidate for candidate in valid_candidates if candidate not in candidates
+    )
+    if len(candidates) > 1:
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="ambiguous",
+            candidates=candidates,
+            policy_evidence_candidates=policy_evidence_candidates,
+            errors=("multiple source candidates matched catalog aliases",),
+        )
+    candidate = candidates[0]
+    return MappedTurtleField(
+        field_id=entry.field_id,
+        status="present",
+        value=candidate.value,
+        normalized_value=candidate.normalized_value,
+        currency=candidate.currency,
+        unit=candidate.unit,
+        canonical_unit=candidate.canonical_unit,
+        period=candidate.period,
+        scope=candidate.scope,
+        candidates=candidates,
+        source_evidence=candidate.source_evidence,
+        policy_evidence_candidates=policy_evidence_candidates,
+        review_notes=candidate.review_notes,
+    )
+
+
+def _derive_field(
+    entry: SourceMappingEntry,
+    mapped: dict[str, MappedTurtleField],
+    records: list[SourceInventoryRecord] | tuple[SourceInventoryRecord, ...] = (),
+) -> MappedTurtleField:
+    assert entry.derivation is not None
+    parts = entry.derivation.split()
+    if len(parts) != 3 or parts[1] not in {"-", "+"}:
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="blocked",
+            errors=(f"unsupported derivation: {entry.derivation}",),
+        )
+
+    op = parts[1]
+    sign = 1 if op == "+" else -1
+    left_op_str, right_op_str = parts[0], parts[2]
+
+    # Cross-provider check (before resolving): if both operands use provider:RAW
+    # form, providers must match.
+    if ":" in left_op_str and ":" in right_op_str:
+        left_provider = left_op_str.split(":", 1)[0]
+        right_provider = right_op_str.split(":", 1)[0]
+        if left_provider != right_provider:
+            return MappedTurtleField(
+                field_id=entry.field_id,
+                status="blocked",
+                errors=(
+                    f"derivation operands use different providers: "
+                    f"{entry.derivation}",
+                ),
+            )
+
+    left, left_err = _resolve_derivation_operand(left_op_str, mapped, records)
+    right, right_err = _resolve_derivation_operand(right_op_str, mapped, records)
+    if left_err or right_err:
+        errs = tuple(e for e in (left_err, right_err) if e)
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="blocked",
+            errors=errs,
+        )
+    assert left is not None and right is not None
+    if left.status not in {"present", "derived"} or right.status not in {
+        "present",
+        "derived",
+    }:
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="blocked",
+            errors=(f"derivation input not present: {entry.derivation}",),
+        )
+    compatibility_error = _compatibility_error(left, right)
+    if compatibility_error:
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="blocked",
+            errors=(compatibility_error,),
+        )
+    if left.value is None or right.value is None:
+        return MappedTurtleField(
+            field_id=entry.field_id,
+            status="blocked",
+            errors=("derivation input value missing",),
+        )
+
+    if left.unit == right.unit:
+        value = left.value + sign * right.value
+        normalized_value = (
+            left.normalized_value + sign * right.normalized_value
+            if left.normalized_value is not None and right.normalized_value is not None
+            else None
+        )
+        unit = left.unit
+    else:
+        if left.normalized_value is None or right.normalized_value is None:
+            return MappedTurtleField(
+                field_id=entry.field_id,
+                status="blocked",
+                errors=("derivation input normalized value missing",),
+            )
+        value = left.normalized_value + sign * right.normalized_value
+        normalized_value = value
+        unit = left.canonical_unit
+    return MappedTurtleField(
+        field_id=entry.field_id,
+        status="derived",
+        value=value,
+        normalized_value=normalized_value,
+        currency=left.currency,
+        unit=unit,
+        canonical_unit=left.canonical_unit,
+        period=left.period,
+        scope=left.scope,
+        source_evidence=left.source_evidence + right.source_evidence,
+        derived_from=(left.field_id, right.field_id),
+    )
+
+
+def _resolve_derivation_operand(
+    operand: str,
+    mapped: dict[str, MappedTurtleField],
+    records: list[SourceInventoryRecord] | tuple[SourceInventoryRecord, ...],
+) -> tuple[MappedTurtleField | None, str | None]:
+    """Return (operand-as-MappedTurtleField, error).
+
+    For `provider:RAW` form, look up raw value directly from source records,
+    bypassing mapped Turtle field lookup. Otherwise look up Turtle field ID
+    in `mapped`.
+    """
+    if ":" not in operand:
+        m = mapped.get(operand)
+        if m is None:
+            return None, f"derivation input missing from catalog: {operand}"
+        return m, None
+
+    provider, raw_field_name = operand.split(":", 1)
+    matches = [
+        r
+        for r in records
+        if r.source == provider
+        and r.raw_field_name == raw_field_name
+        and r.source_status == "present"
+    ]
+    if not matches:
+        return None, f"derivation input not present: {operand}"
+    if len(matches) > 1:
+        return None, f"derivation input has multiple records: {operand}"
+
+    rec = matches[0]
+    # Phase H2.4 #2: route through normalize_money so unit_multiplier is
+    # respected (千元/million/etc). Pre-fix we set value+normalized_value
+    # both to parsed_numeric_value, which silently dropped the multiplier.
+    try:
+        rec.validate()
+        money = normalize_money(
+            str(rec.raw_value),
+            unit_context=f"{rec.currency} {rec.unit}",
+        )
+    except (ValueError, MoneyNormalizationError) as exc:
+        return None, f"derivation input normalization failed: {operand} ({exc})"
+    return (
+        MappedTurtleField(
+            field_id=operand,
+            status="present",
+            value=money.value,
+            normalized_value=money.normalized_value,
+            currency=rec.currency,
+            unit=rec.unit,
+            canonical_unit=money.normalized_unit,
+            period=rec.period,
+            scope=rec.scope,
+            source_evidence=rec.source_evidence,
+        ),
+        None,
+    )
+
+
+def _record_matches_entry(
+    record: SourceInventoryRecord,
+    entry: SourceMappingEntry,
+) -> bool:
+    if record.source_status != "present":
+        return False
+    # Phase H2.2 Sub-B: prefer market-scoped aliases when present
+    market_aliases = entry.by_market_aliases.get(record.market, {}).get(
+        record.source, ()
+    )
+    if market_aliases and (
+        record.raw_field_name in market_aliases
+        or (
+            record.raw_field_code is not None
+            and record.raw_field_code in market_aliases
+        )
+    ):
+        return True
+    aliases = entry.source_aliases.get(record.source, ())
+    return record.raw_field_name in aliases or (
+        record.raw_field_code is not None and record.raw_field_code in aliases
+    )
+
+
+def _candidate_from_record(
+    record: SourceInventoryRecord,
+    entry: SourceMappingEntry,
+) -> TurtleMappingCandidate:
+    if (
+        entry.null_means_zero
+        and record.source_status == "present"
+        and record.parsed_numeric_value is None
+        and (
+            record.raw_value is None
+            or str(record.raw_value).strip().lower() in ("", "none", "null")
+        )
+    ):
+        try:
+            record.validate()
+            return TurtleMappingCandidate(
+                source=record.source,
+                raw_field_name=record.raw_field_name,
+                raw_field_code=record.raw_field_code,
+                raw_value=record.raw_value,
+                value=Decimal("0"),
+                normalized_value=Decimal("0"),
+                currency=record.currency,
+                unit=record.unit,
+                period=record.period,
+                scope=record.scope,
+                source_evidence=record.source_evidence,
+                canonical_unit=record.currency if record.currency != "unknown" else None,
+                errors=(),
+                statement_metadata_proven=_statement_metadata_proven(record),
+                unit_multiplier=Decimal("1"),
+                currency_proof_source=_currency_proof_source(record),
+                unit_proof_source=_unit_proof_source(record),
+                reporting_metadata_proof_source=_reporting_metadata_proof_source(record),
+                review_notes=("null_interpreted_as_zero",),
+                market=record.market,
+            )
+        except ValueError:
+            # Record is structurally invalid; fall through to normal error path
+            pass
+
+    errors: list[str] = []
+    value: Decimal | None = None
+    normalized_value: Decimal | None = None
+    unit_multiplier: Decimal | None = None
+    canonical_unit: Currency | None = None
+    record_is_valid = False
+    try:
+        record.validate()
+        record_is_valid = True
+        money = normalize_money(
+            str(record.raw_value),
+            unit_context=f"{record.currency} {record.unit}",
+        )
+        value = money.value
+        normalized_value = money.normalized_value
+        unit_multiplier = money.unit_multiplier
+        canonical_unit = money.normalized_unit
+    except (ValueError, MoneyNormalizationError) as exc:
+        errors.append(str(exc))
+
+    return TurtleMappingCandidate(
+        source=record.source,
+        raw_field_name=record.raw_field_name,
+        raw_field_code=record.raw_field_code,
+        raw_value=record.raw_value,
+        value=value,
+        normalized_value=normalized_value,
+        currency=record.currency,
+        unit=record.unit,
+        period=record.period,
+        scope=record.scope,
+        source_evidence=record.source_evidence,
+        canonical_unit=canonical_unit,
+        errors=tuple(errors),
+        statement_metadata_proven=(
+            _statement_metadata_proven(record) if record_is_valid else False
+        ),
+        unit_multiplier=unit_multiplier,
+        currency_proof_source=(
+            _currency_proof_source(record) if record_is_valid else None
+        ),
+        unit_proof_source=_unit_proof_source(record) if record_is_valid else None,
+        reporting_metadata_proof_source=(
+            _reporting_metadata_proof_source(record) if record_is_valid else None
+        ),
+        market=record.market,
+    )
+
+
+def _statement_metadata_proven(record: SourceInventoryRecord) -> bool:
+    if record.market != "HK":
+        return False
+    if record.currency in {"unknown", "ambiguous"}:
+        return False
+    if record.unit is None or record.unit.upper() == record.currency:
+        return False
+    if record.report_type != "annual":
+        return False
+    if record.source == "akshare":
+        return bool(record.account_standard)
+    if record.source == "yahoo":
+        return True
+    return False
+
+
+def _currency_proof_source(record: SourceInventoryRecord) -> str | None:
+    if record.currency in {"unknown", "ambiguous"}:
+        return None
+    if record.source == "akshare" and record.market == "HK" and (
+        record.report_type is not None or record.account_standard is not None
+    ):
+        return "akshare_statement_metadata"
+    if record.source == "yahoo" and record.report_type == "annual":
+        return "yahoo_statement_metadata"
+    return f"{record.source}_record_currency"
+
+
+def _unit_proof_source(record: SourceInventoryRecord) -> str | None:
+    if record.unit is None:
+        return None
+    if (
+        record.currency not in {"unknown", "ambiguous"}
+        and record.unit.upper() == record.currency
+    ):
+        return "invalid_currency_as_unit"
+    return f"source_unit:{record.unit}"
+
+
+def _reporting_metadata_proof_source(record: SourceInventoryRecord) -> str | None:
+    if not _statement_metadata_proven(record):
+        return None
+    if record.source == "akshare" and record.market == "HK":
+        return "akshare_hk_metadata_join"
+    if record.source == "yahoo" and record.report_type == "annual":
+        return "yahoo_annual_statement"
+    return None
+
+
+def _apply_alias_precedence(
+    entry: SourceMappingEntry,
+    candidates: tuple[TurtleMappingCandidate, ...],
+) -> tuple[TurtleMappingCandidate, ...]:
+    best_rank_by_source: dict[SourceName, int] = {}
+    for candidate in candidates:
+        rank = _alias_rank(entry, candidate)
+        best_rank_by_source[candidate.source] = min(
+            rank,
+            best_rank_by_source.get(candidate.source, rank),
+        )
+    return tuple(
+        candidate
+        for candidate in candidates
+        if _alias_rank(entry, candidate) == best_rank_by_source[candidate.source]
+    )
+
+
+def _alias_rank(entry: SourceMappingEntry, candidate: TurtleMappingCandidate) -> int:
+    # Phase H2.2 Sub-B: market-scoped aliases take precedence over provider-level
+    market_aliases = entry.by_market_aliases.get(candidate.market, {}).get(
+        candidate.source, ()
+    )
+    for index, alias in enumerate(market_aliases):
+        if candidate.raw_field_name == alias or candidate.raw_field_code == alias:
+            return index
+    aliases = entry.source_aliases.get(candidate.source, ())
+    for index, alias in enumerate(aliases):
+        if candidate.raw_field_name == alias or candidate.raw_field_code == alias:
+            # Offset by len(market_aliases) so market matches always rank ahead
+            return len(market_aliases) + index
+    return len(market_aliases) + len(aliases)
+
+
+def _compatibility_error(
+    left: MappedTurtleField,
+    right: MappedTurtleField,
+) -> str | None:
+    if left.currency != right.currency:
+        return "derivation inputs use different currencies"
+    if left.period != right.period:
+        return "derivation inputs use different periods"
+    if left.scope != right.scope:
+        return "derivation inputs use different scopes"
+    if left.canonical_unit != right.canonical_unit:
+        return "derivation inputs use different canonical units"
+    return None
+
+
+def _summary_markdown(summary: dict[str, object]) -> str:
+    status_counts = summary["status_counts"]
+    assert isinstance(status_counts, dict)
+    blocker_fields = summary["blocker_fields"]
+    assert isinstance(blocker_fields, dict)
+
+    lines = [
+        "# Source Coverage Summary",
+        "",
+        f"- total_fields: {summary['total_fields']}",
+        "",
+        "| status | count |",
+        "| --- | ---: |",
+    ]
+    for status, count in status_counts.items():
+        lines.append(f"| {status} | {count} |")
+    lines.extend(["", "## Blockers", ""])
+    for status in ("missing", "ambiguous"):
+        fields = blocker_fields.get(status, [])
+        if fields:
+            lines.append(f"- {status}: {', '.join(fields)}")
+        else:
+            lines.append(f"- {status}: none")
+    return "\n".join(lines) + "\n"

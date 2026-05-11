@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "chunks": "tmp/runs/00001_chunks_gen/chunks.jsonl",
+    "metadata": "tmp/runs/00001_chunks_gen/run_metadata.json",
+    "pages": "tmp/runs/00001_chunks_gen/pages.jsonl"
+  },
+  "chunker_version": "phase2-logical-chunks-v1",
+  "page_count": 350,
+  "parser_name": "pdftotext",
+  "parser_version": "pdftotext-layout",
+  "source_pdf_hash": "34f5a498f634c08889ae3af938bad245b39de268c12d4d7c5eddb32446bc682e",
+  "source_pdf_path": "downloads/hk_stocks/00001/annual/2025_annual_en.pdf"
+}

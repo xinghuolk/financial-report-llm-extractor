@@ -1,0 +1,23 @@
+{
+  "artifact_paths": {
+    "extraction_result": "tmp/runs/provider_field_capture_baseline/extraction_result.json",
+    "provider_field_inventory_summary": "tmp/runs/provider_field_capture_baseline/provider_field_inventory_summary.json",
+    "reconciliation_report": "tmp/runs/provider_field_capture_baseline/reconciliation_report.json",
+    "review_summary": "tmp/runs/provider_field_capture_baseline/review_summary.json",
+    "source_artifact_manifest": "tmp/runs/provider_field_capture_baseline/source_artifact_manifest.json",
+    "source_inventory": "tmp/runs/provider_field_capture_baseline/source_inventory.jsonl",
+    "turtle_mapping": "tmp/runs/provider_field_capture_baseline/turtle_mapping.json"
+  },
+  "mapping_coverage": {
+    "coverage_ratio": 0.0,
+    "covered_count": 0,
+    "covered_fields": [],
+    "total_fields": 9
+  },
+  "record_count": 6771,
+  "sample_count": 18,
+  "source_artifact_count": 18,
+  "source_errors": [],
+  "status": "completed",
+  "validation_mode": "real_source_adapter"
+}
