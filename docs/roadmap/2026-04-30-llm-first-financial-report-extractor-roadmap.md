@@ -1688,3 +1688,12 @@ Remaining post-branch follow-ups (out of branch scope):
 - 6 P3/P4 fields with no source provider data and no current `pdf_aliases` (deeper notes-only disclosures with weak retrieval signal). Either land via a future Phase I-D iteration with curated alias sets per disclosure pattern, or accept as locked terminal `not_in_scope`.
 - Confidence threshold value calibration (Phase I-A.2 follow-up #2) deferred until ~50+ labeled (company, field) pairs collected. Framework already in place.
 - Bulk re-validation across more HK and CN issuers when batch extract budget allows (current validation set is 6 HK companies; CN P3 LLM coverage not validated).
+- HK-B promotion candidates (`acct_payable`, `fix_assets`): current shape is locked by `tests/test_phase_hk_b_*.py`. Sample-scoped promotion requires PDF spot-check on the 3 clean-match HK issuers (01810/02498/06862) before any catalog change.
+- `_resolve_derivation_operand` period-equality assertion (Phase H2.1 carryover): low immediate risk but worth a fail-loud check before summing multi-period operands.
+
+## 8. Phase Summary Index
+
+A point-in-time snapshot of waves, milestones, and open decisions lives at
+`docs/2026-05-11-phase-summary.md` (post Phase HK-LLM-2/C + HK-B.1-.4 locks).
+Use that doc as the TOC when onboarding into this branch; this roadmap remains
+the authoritative per-phase implementation record.
