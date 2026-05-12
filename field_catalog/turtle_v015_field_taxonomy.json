@@ -940,6 +940,20 @@
       "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Non-current (long-term) portion of contract liabilities / deferred revenue. CN A-share: 递延收益 (DEFER_INCOME). HK Yahoo: Non Current Deferred Revenue. Feeds Turtle v0.15 phase3 factor2/3 EV-track + cash-protection-grade."
+    },
+    "non_recurring_items_breakdown": {
+      "priority": "P3",
+      "domain": "notes_and_mda",
+      "statement_type": "notes",
+      "value_type": "text",
+      "source_mode": "pdf_only",
+      "period_type": "duration",
+      "scope_expectation": "consolidated",
+      "currency_requirement": "not_applicable",
+      "unit_requirement": "not_applicable",
+      "evidence_requirement": "pdf_required",
+      "fallback_policy": "pdf_allowed",
+      "description": "Non-recurring items breakdown raw line items disclosed in notes (e.g., asset disposal gain, government subsidies, insurance proceeds, investment income one-offs). Feeds Turtle v0.15 phase3 factor3 step3 V1-V5 classification; classification judgment happens downstream."
     }
   }
 }

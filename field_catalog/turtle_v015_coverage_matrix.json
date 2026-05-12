@@ -1319,6 +1319,22 @@
         }
       ],
       "notes": "Yahoo 'Non Current Deferred Revenue' verified in 00001/01810/02498/09987 fixtures. AKShare DEFER_INCOME (CN) for long-term deferred income. HK side mostly Yahoo-only."
+    },
+    "non_recurring_items_breakdown": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "PDF-only field; no provider exposes the line-item breakdown. Feeds Turtle v0.15 phase3 factor3 step3 V1-V5 classification."
     }
   }
 }

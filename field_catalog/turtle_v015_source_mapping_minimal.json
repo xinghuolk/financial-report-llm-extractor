@@ -85,7 +85,8 @@
         "segment_revenue_profit",
         "time_deposits_or_wealth_products",
         "contract_liabilities_current",
-        "contract_liabilities_non_current"
+        "contract_liabilities_non_current",
+        "non_recurring_items_breakdown"
       ]
     }
   ],
@@ -2055,6 +2056,34 @@
         "non current deferred revenue",
         "long-term deferred revenue",
         "non-current contract liabilities"
+      ]
+    },
+    "non_recurring_items_breakdown": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Non Recurring Items"
+        ]
+      },
+      "pdf_aliases": [
+        "非经常性损益",
+        "非经常性损益项目",
+        "非经常性损益明细",
+        "非经常性损益情况",
+        "扣除非经常性损益",
+        "non-recurring items",
+        "non-recurring profit or loss",
+        "exceptional items",
+        "items affecting comparability",
+        "one-off items"
       ]
     }
   }

@@ -84,7 +84,8 @@
         "time_deposits_or_wealth_products",
         "interest_paid_cash",
         "contract_liabilities_current",
-        "contract_liabilities_non_current"
+        "contract_liabilities_non_current",
+        "non_recurring_items_breakdown"
       ]
     },
     {
