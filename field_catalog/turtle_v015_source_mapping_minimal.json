@@ -86,7 +86,11 @@
         "time_deposits_or_wealth_products",
         "contract_liabilities_current",
         "contract_liabilities_non_current",
-        "non_recurring_items_breakdown"
+        "non_recurring_items_breakdown",
+        "cash_parent_company",
+        "interest_bearing_debt_parent_company",
+        "equity_investment_in_subsidiaries",
+        "amounts_due_from_subsidiaries"
       ]
     }
   ],
@@ -2084,6 +2088,111 @@
         "exceptional items",
         "items affecting comparability",
         "one-off items"
+      ]
+    },
+    "cash_parent_company": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Cash Parent Company"
+        ]
+      },
+      "pdf_aliases": [
+        "母公司资产负债表",
+        "母公司现金及现金等价物",
+        "母公司货币资金",
+        "母公司 货币资金",
+        "公司资产负债表",
+        "parent company balance sheet",
+        "company balance sheet",
+        "company cash and cash equivalents",
+        "holding company cash"
+      ]
+    },
+    "interest_bearing_debt_parent_company": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Interest Bearing Debt Parent Company"
+        ]
+      },
+      "pdf_aliases": [
+        "母公司短期借款",
+        "母公司长期借款",
+        "母公司应付债券",
+        "母公司有息负债",
+        "company short-term borrowings",
+        "company long-term borrowings",
+        "company bonds payable",
+        "parent company borrowings"
+      ]
+    },
+    "equity_investment_in_subsidiaries": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Equity Investment In Subsidiaries"
+        ]
+      },
+      "pdf_aliases": [
+        "对子公司投资",
+        "对子公司的投资",
+        "长期股权投资 子公司",
+        "投资性主体对子公司投资",
+        "母公司长期股权投资",
+        "investments in subsidiaries",
+        "interests in subsidiaries",
+        "investment in subsidiaries at cost"
+      ]
+    },
+    "amounts_due_from_subsidiaries": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Amounts Due From Subsidiaries"
+        ]
+      },
+      "pdf_aliases": [
+        "应收子公司款",
+        "应收子公司款项",
+        "其他应收款 子公司",
+        "母公司其他应收款",
+        "amounts due from subsidiaries",
+        "loans to subsidiaries",
+        "receivables from subsidiaries",
+        "due from subsidiaries"
       ]
     }
   }

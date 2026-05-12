@@ -954,6 +954,62 @@
       "evidence_requirement": "pdf_required",
       "fallback_policy": "pdf_allowed",
       "description": "Non-recurring items breakdown raw line items disclosed in notes (e.g., asset disposal gain, government subsidies, insurance proceeds, investment income one-offs). Feeds Turtle v0.15 phase3 factor3 step3 V1-V5 classification; classification judgment happens downstream."
+    },
+    "cash_parent_company": {
+      "priority": "P3",
+      "domain": "balance_sheet",
+      "statement_type": "balance_sheet",
+      "value_type": "money",
+      "source_mode": "pdf_only",
+      "period_type": "point_in_time",
+      "scope_expectation": "parent",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "pdf_required",
+      "fallback_policy": "pdf_allowed",
+      "description": "Cash and cash equivalents on the parent-company (standalone) balance sheet. Distinct from consolidated cash. Feeds Turtle v0.15 phase3 factor1B 模块九 SOTP — holding-company liquidity component."
+    },
+    "interest_bearing_debt_parent_company": {
+      "priority": "P3",
+      "domain": "balance_sheet",
+      "statement_type": "balance_sheet",
+      "value_type": "money",
+      "source_mode": "pdf_only",
+      "period_type": "point_in_time",
+      "scope_expectation": "parent",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "pdf_required",
+      "fallback_policy": "pdf_allowed",
+      "description": "Aggregate interest-bearing debt on the parent-company (standalone) balance sheet = short-term borrowings + long-term borrowings + bonds payable (parent-only). Feeds Turtle v0.15 phase3 factor1B 模块九 SOTP — holding-company net debt."
+    },
+    "equity_investment_in_subsidiaries": {
+      "priority": "P3",
+      "domain": "balance_sheet",
+      "statement_type": "balance_sheet",
+      "value_type": "money",
+      "source_mode": "pdf_only",
+      "period_type": "point_in_time",
+      "scope_expectation": "parent",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "pdf_required",
+      "fallback_policy": "pdf_allowed",
+      "description": "Long-term equity investment in subsidiaries on the parent-company (standalone) balance sheet. Eliminated in consolidation, so only visible in parent FS. Feeds Turtle v0.15 phase3 factor1B 模块九 SOTP — value of operating subsidiaries from holdco perspective."
+    },
+    "amounts_due_from_subsidiaries": {
+      "priority": "P3",
+      "domain": "balance_sheet",
+      "statement_type": "balance_sheet",
+      "value_type": "money",
+      "source_mode": "pdf_only",
+      "period_type": "point_in_time",
+      "scope_expectation": "parent",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "pdf_required",
+      "fallback_policy": "pdf_allowed",
+      "description": "Receivables / loans due from subsidiaries on the parent-company (standalone) balance sheet. Eliminated in consolidation. Feeds Turtle v0.15 phase3 factor1B 模块九 SOTP — intra-group financing exposure."
     }
   }
 }

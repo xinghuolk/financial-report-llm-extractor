@@ -85,7 +85,11 @@
         "interest_paid_cash",
         "contract_liabilities_current",
         "contract_liabilities_non_current",
-        "non_recurring_items_breakdown"
+        "non_recurring_items_breakdown",
+        "cash_parent_company",
+        "interest_bearing_debt_parent_company",
+        "equity_investment_in_subsidiaries",
+        "amounts_due_from_subsidiaries"
       ]
     },
     {

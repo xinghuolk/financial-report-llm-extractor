@@ -1335,6 +1335,70 @@
         }
       ],
       "notes": "PDF-only field; no provider exposes the line-item breakdown. Feeds Turtle v0.15 phase3 factor3 step3 V1-V5 classification."
+    },
+    "cash_parent_company": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Parent-company-only field (scope_expectation=parent). AKShare/Yahoo expose only consolidated balance sheet, so no provider route. LLM must locate the '母公司资产负债表 / Company balance sheet' section."
+    },
+    "interest_bearing_debt_parent_company": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Parent-only sum of st_borr + lt_borr + bond_payable on the standalone balance sheet. LLM may need to sum rows or find a totals row."
+    },
+    "equity_investment_in_subsidiaries": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Visible only on parent-company FS (eliminated in consolidation). Distinct from `lt_eqt_invest` (consolidated long-term equity investment in JVs/associates)."
+    },
+    "amounts_due_from_subsidiaries": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Visible only on parent-company FS (eliminated in consolidation). May appear as receivables-from-subsidiaries or loans-to-subsidiaries note row."
     }
   }
 }
