@@ -61,7 +61,10 @@
         "dividends_paid",
         "capital_expenditures",
         "depreciation_amortization",
-        "stock_based_compensation"
+        "stock_based_compensation",
+        "c_pay_to_staff",
+        "c_paid_for_taxes",
+        "lt_eqt_invest"
       ]
     },
     {
@@ -80,7 +83,14 @@
         "related_party_receivables_payables",
         "restricted_cash",
         "segment_revenue_profit",
-        "time_deposits_or_wealth_products"
+        "time_deposits_or_wealth_products",
+        "contract_liabilities_current",
+        "contract_liabilities_non_current",
+        "non_recurring_items_breakdown",
+        "cash_parent_company",
+        "interest_bearing_debt_parent_company",
+        "equity_investment_in_subsidiaries",
+        "amounts_due_from_subsidiaries"
       ]
     }
   ],
@@ -1924,6 +1934,286 @@
         "dividends per share",
         "dividend per share",
         "每股股息"
+      ]
+    },
+    "c_pay_to_staff": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "PAY_STAFF_CASH",
+          "支付给职工以及为职工支付的现金"
+        ],
+        "yahoo": []
+      },
+      "pdf_aliases": [
+        "支付给职工以及为职工支付的现金",
+        "cash paid to employees",
+        "cash paid to and on behalf of employees"
+      ]
+    },
+    "c_paid_for_taxes": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "PAY_ALL_TAX",
+          "支付的各项税费"
+        ],
+        "yahoo": []
+      },
+      "pdf_aliases": [
+        "支付的各项税费",
+        "income tax paid",
+        "cash paid for taxes",
+        "taxes paid"
+      ]
+    },
+    "lt_eqt_invest": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "LONG_EQUITY_INVEST",
+          "长期股权投资"
+        ],
+        "yahoo": [
+          "Long Term Equity Investment",
+          "Investmentsin Associatesat Cost",
+          "Investmentsin Joint Venturesat Cost"
+        ]
+      },
+      "pdf_aliases": [
+        "长期股权投资",
+        "long-term equity investment",
+        "investments in associates",
+        "investments in joint ventures"
+      ]
+    },
+    "contract_liabilities_current": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "CONTRACT_LIAB",
+          "合同负债",
+          "ADVANCE_RECEIVABLES"
+        ],
+        "yahoo": []
+      },
+      "pdf_aliases": [
+        "合同负债",
+        "contract liabilities",
+        "deferred revenue",
+        "advance from customers"
+      ]
+    },
+    "contract_liabilities_non_current": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "DEFER_INCOME",
+          "递延收益"
+        ],
+        "yahoo": [
+          "Non Current Deferred Revenue"
+        ]
+      },
+      "pdf_aliases": [
+        "递延收益",
+        "non current deferred revenue",
+        "long-term deferred revenue",
+        "non-current contract liabilities"
+      ]
+    },
+    "non_recurring_items_breakdown": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Non Recurring Items"
+        ]
+      },
+      "pdf_aliases": [
+        "非经常性损益",
+        "非经常性损益项目",
+        "非经常性损益明细",
+        "非经常性损益情况",
+        "扣除非经常性损益",
+        "non-recurring items",
+        "non-recurring profit or loss",
+        "exceptional items",
+        "items affecting comparability",
+        "one-off items"
+      ]
+    },
+    "cash_parent_company": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Cash Parent Company"
+        ]
+      },
+      "pdf_aliases": [
+        "母公司资产负债表",
+        "母公司现金及现金等价物",
+        "母公司货币资金",
+        "母公司 货币资金",
+        "公司资产负债表",
+        "parent company balance sheet",
+        "company balance sheet",
+        "balance sheet of the company",
+        "financial position of the company",
+        "financial position and reserve movement of the company",
+        "company cash and cash equivalents",
+        "holding company cash"
+      ]
+    },
+    "interest_bearing_debt_parent_company": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Interest Bearing Debt Parent Company"
+        ]
+      },
+      "pdf_aliases": [
+        "母公司短期借款",
+        "母公司长期借款",
+        "母公司应付债券",
+        "母公司有息负债",
+        "母公司资产负债表",
+        "financial position of the company",
+        "balance sheet of the company",
+        "company borrowings",
+        "company short-term borrowings",
+        "company long-term borrowings",
+        "company bonds payable",
+        "parent company borrowings",
+        "borrowings of the company"
+      ]
+    },
+    "equity_investment_in_subsidiaries": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Equity Investment In Subsidiaries"
+        ]
+      },
+      "pdf_aliases": [
+        "对子公司投资",
+        "对子公司的投资",
+        "长期股权投资 子公司",
+        "投资性主体对子公司投资",
+        "母公司长期股权投资",
+        "母公司资产负债表",
+        "investment in subsidiaries",
+        "investments in subsidiaries",
+        "interests in subsidiaries",
+        "interest in subsidiaries",
+        "investment in subsidiaries at cost",
+        "financial position of the company",
+        "balance sheet of the company"
+      ]
+    },
+    "amounts_due_from_subsidiaries": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Amounts Due From Subsidiaries"
+        ]
+      },
+      "pdf_aliases": [
+        "应收子公司款",
+        "应收子公司款项",
+        "其他应收款 子公司",
+        "母公司其他应收款",
+        "母公司资产负债表",
+        "amount due from subsidiaries",
+        "amount due from a subsidiary",
+        "amounts due from subsidiaries",
+        "amounts due from a subsidiary",
+        "loans to subsidiaries",
+        "loans to a subsidiary",
+        "receivables from subsidiaries",
+        "due from subsidiaries",
+        "due from a subsidiary",
+        "financial position of the company",
+        "balance sheet of the company"
       ]
     }
   }

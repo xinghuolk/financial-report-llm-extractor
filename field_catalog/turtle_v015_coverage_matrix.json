@@ -1204,6 +1204,201 @@
         }
       ],
       "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+    },
+    "c_pay_to_staff": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "CN AKShare PAY_STAFF_CASH verified to exist in 600519 fixture. Yahoo HK has no direct equivalent ('cash paid to employees' aggregated into working capital changes); HK side may need pdf_only fallback in future."
+    },
+    "c_paid_for_taxes": {
+      "domain": "cash_flow",
+      "priority": "P2",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "cash_flow",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "CN AKShare PAY_ALL_TAX verified to exist in 600519 fixture. Yahoo HK has only 'Taxes Refund Paid' / 'Tax Provision' (accrual), no direct cash-paid field; HK side may need pdf_only fallback."
+    },
+    "lt_eqt_invest": {
+      "domain": "balance_sheet",
+      "priority": "P2",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "CN AKShare LONG_EQUITY_INVEST + Yahoo HK 'Long Term Equity Investment' both exist. Used by Turtle v0.15 phase3 factor1B 模块九 SOTP 子公司持股价值 (consolidated scope, not parent-only)."
+    },
+    "contract_liabilities_current": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "AKShare CONTRACT_LIAB (CN) / 合同负债 (HK) verified to exist in 02498 + 06862 fixtures. Yahoo does not separate current from non-current Deferred Revenue (aggregates current into working capital changes); HK side may show as akshare-only single source."
+    },
+    "contract_liabilities_non_current": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Yahoo 'Non Current Deferred Revenue' verified in 00001/01810/02498/09987 fixtures. AKShare DEFER_INCOME (CN) for long-term deferred income. HK side mostly Yahoo-only."
+    },
+    "non_recurring_items_breakdown": {
+      "domain": "notes_and_mda",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "notes",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "PDF-only field; no provider exposes the line-item breakdown. Feeds Turtle v0.15 phase3 factor3 step3 V1-V5 classification."
+    },
+    "cash_parent_company": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Parent-company-only field (scope_expectation=parent). AKShare/Yahoo expose only consolidated balance sheet, so no provider route. LLM must locate the '母公司资产负债表 / Company balance sheet' section."
+    },
+    "interest_bearing_debt_parent_company": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Parent-only sum of st_borr + lt_borr + bond_payable on the standalone balance sheet. LLM may need to sum rows or find a totals row."
+    },
+    "equity_investment_in_subsidiaries": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Visible only on parent-company FS (eliminated in consolidation). Distinct from `lt_eqt_invest` (consolidated long-term equity investment in JVs/associates)."
+    },
+    "amounts_due_from_subsidiaries": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "pdf_evidence",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "pdf",
+          "mode": "evidence",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "pdf_required"
+        }
+      ],
+      "notes": "Visible only on parent-company FS (eliminated in consolidation). May appear as receivables-from-subsidiaries or loans-to-subsidiaries note row."
     }
   }
 }

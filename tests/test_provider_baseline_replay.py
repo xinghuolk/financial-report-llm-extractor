@@ -113,12 +113,17 @@ EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY: dict[str, list[str]] = {
     # stock_based_compensation: N4.B added with no provider raw, but
     # taxonomy.description tokens match partial inventory entries so it
     # lands in mapping_expansion_required for HK.
-    "00001": ["invest_income", "non_oper_exp", "non_oper_income", "other_cur_assets", "receiv_tax_refund", "stock_based_compensation"],
-    "01113": ["invest_income", "non_oper_exp", "non_oper_income", "receiv_tax_refund", "stock_based_compensation"],
+    # Phase G1a: c_pay_to_staff + c_paid_for_taxes added (CN-only).
+    # On HK: c_paid_for_taxes matches partial HK inventory via "税" token overlap
+    # → mapping_expansion_required. c_pay_to_staff has no overlap → source_unavailable
+    # (see EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS).
+    "00001": ["c_paid_for_taxes", "invest_income", "non_oper_exp", "non_oper_income", "other_cur_assets", "receiv_tax_refund", "stock_based_compensation"],
+    "01113": ["c_paid_for_taxes", "invest_income", "non_oper_exp", "non_oper_income", "receiv_tax_refund", "stock_based_compensation"],
 }
 EXPECTED_HK_SOURCE_UNAVAILABLE_FIELDS = frozenset(
     {
         "bond_payable",
+        "c_pay_to_staff",  # Phase G1a: CN-only AKShare; HK no provider data + no alias overlap
         "cip",
         "fv_value_chg_gain",
         "rd_exp",
@@ -590,7 +595,9 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     # match PDF exactly per 600519 sample) — clean_present 34 → 36.
     # H2.1 Task 4: SGA promoted via akshare derivation MANAGE_EXPENSE + SALE_EXPENSE
     # (EXACT-matches PDF for 600519/2024 sample) — clean_present 36 → 37.
-    assert maotai_combined["clean_present_count"] == 37
+    # Phase G1a: +3 new P2 fields (c_pay_to_staff / c_paid_for_taxes / lt_eqt_invest)
+    # all clean in 2025 baseline fixture for 600519 → 37 → 40.
+    assert maotai_combined["clean_present_count"] == 40
     assert {
         "bond_payable",
         "st_borr",
@@ -771,6 +778,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "inventories",
             "investing_cash_flow",
             "lt_borr",
+            "lt_eqt_invest",
             "minority_int",
             "money_cap",
             "net_profit",
@@ -802,6 +810,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "inventories",
             "investing_cash_flow",
             "lt_borr",
+            "lt_eqt_invest",
             "minority_int",
             "money_cap",
             "net_profit",
@@ -818,7 +827,10 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
             "total_liabilities",
         },
     }
-    expected_clean_count_by_company = {"00001": 29, "01113": 31}
+    # Phase G1a: +1 cell per HK company (lt_eqt_invest clean via Yahoo
+    # "Long Term Equity Investment"); c_pay_to_staff / c_paid_for_taxes both
+    # unresolved_conflict on HK (no provider data on either AKShare HK or Yahoo HK).
+    expected_clean_count_by_company = {"00001": 30, "01113": 32}
 
     for company_id in HK_COMPANY_IDS:
         combined = companies[company_id]["coverage"]["combined"]
