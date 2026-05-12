@@ -107,7 +107,16 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 下一步候选：G1a/G1b/G2/G3 已落地（+10 catalog 字段，+13 source-first cells；G2/G3 纯 pdf_only 走 LLM）。G3 原 review 估算"需新 schema 维度"是过度评估——`scope_expectation: parent` enum 早已存在且无业务逻辑读它，G3 实为纯标签级 catalog 扩展。剩余按 `docs/2026-05-12-turtle-v015-catalog-gap-analysis.md` 优先级：G4 (P4 llm_review pipeline 6 字段，**需新抽取模块**，是唯一真正的架构投资)。或合并到 main（branch 已 ~24 commits ahead，处于可交付状态）。
 
-**G3 LLM validation (600519 + 01810 + 02498, PDF+LLM, 2026-05-12)**：catalog 落地后首跑命中率低 (01810 全 miss)，原因是 HK 报告用 "Financial position of the Company" / "Investment in subsidiaries (singular)" 等措辞与 v1 aliases 不匹配。补 HK-specific PDF aliases (`financial position of the company` / `balance sheet of the company` / 单数 `investment in subsidiaries` / `amount due from a subsidiary` 等) 后：cash_parent_company **3/3** ✓ + equity_investment_in_subsidiaries **3/3** ✓ + amounts_due_from_subsidiaries 1/3 (02498 ✓; 600519/01810 issuer 未单独披露) + interest_bearing_debt_parent_company 0/3 (3 家测试公司 issuer 母公司均无 debt 行，真实 negative)。结论：G3 aliases 已 PDF-validated 跨 CN+HK，剩余 miss 是 issuer 数据稀疏不是 catalog 缺陷。
+**G3 LLM validation (600519 + 01810 + 02498 + 00001, PDF+LLM, 2026-05-12)**：catalog 落地后首跑命中率低 (01810 全 miss)，原因是 HK 报告用 "Financial position of the Company" / "Investment in subsidiaries (singular)" 等措辞与 v1 aliases 不匹配。补 HK-specific PDF aliases (`financial position of the company` / `balance sheet of the company` / 单数 `investment in subsidiaries` / `amount due from a subsidiary` 等) 后实测结果：
+
+| 字段 | 600519 | 01810 | 02498 | 00001 | hit | alias status |
+|---|---|---|---|---|---|---|
+| cash_parent_company | ✓ 77.25B | ✓ 1.52M千 | ✓ 1.85M千 | ✓ 7 HK$M | **4/4** | PDF-validated CN+HK |
+| equity_investment_in_subsidiaries | ✓ 1.61B | ✓ 42.89M千 | ✓ 4.37M千 | ✓ 368,139 HK$M | **4/4** | PDF-validated CN+HK |
+| amounts_due_from_subsidiaries | ✗ 未披露 | ✗ 未披露 | ✓ 3.21M千 | ✓ 25,731 HK$M | 2/4 | alias 工作；2 家真未披露 |
+| interest_bearing_debt_parent_company | ✗ $0 debt | ✗ $0 debt | ✗ $0 debt | ✗ $0 debt | 0/4 | **alias 工作但 4/4 issuer parent 真零债务**（00001 LLM 列出完整 parent FS 行项目，明确"no borrowings/bonds line"；CK Hutchison 等控股集团 debt 全在 operating subsidiaries） |
+
+**4/4 alias 组 PDF-validated**。低命中率字段 (amounts_due / interest_bearing_debt) 全部是 issuer 数据稀疏（控股结构 + 消费品 issuer 母公司 debt 少），不是 catalog 缺陷。
 
 **G1b 跟进 note**：00001/01113/06862 contract_liabilities current/non_current 在 unresolved_conflict 是 provider 真稀疏（Yahoo 只有 `Non Current Deferred *Taxes*` 不是 `Deferred Revenue`；AKShare HK 仅 06862 有 `合同负债` 但 `statement_metadata_unproven`）。**By-design 走 LLM supplement**，不扩 HK-AKShare trust policy（P3 ROI 太低且 PDF 大概率根本不披露）。
 
