@@ -104,6 +104,36 @@
           "expected_yahoo_raw_value": "11303000000",
           "yahoo_raw_field": "Total Revenue",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yum China 2024 Total revenues line; US$ reporter."
+        },
+        {
+          "company_id": "00392",
+          "provider_ticker": "0392.HK",
+          "report_ref": "downloads/hk_stocks/00392/annual/2024_annual_en.pdf",
+          "pdf_page": 200,
+          "statement_name": "Consolidated Statement of Profit or Loss (Note 5)",
+          "statement_line": "Revenue",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "84064089",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "84064089000",
+          "yahoo_raw_field": "Total Revenue",
+          "match_basis": "PDF Note 5 Revenue 84,064,089 K RMB exactly equals Yahoo Total Revenue 84,064,089,000 CNY"
+        },
+        {
+          "company_id": "03320",
+          "provider_ticker": "3320.HK",
+          "report_ref": "downloads/hk_stocks/03320/annual/2024_annual_en.pdf",
+          "pdf_page": 240,
+          "statement_name": "Consolidated Statement of Profit or Loss (Note 4)",
+          "statement_line": "收益 / Revenue",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "257673256",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "257673256000",
+          "yahoo_raw_field": "Total Revenue",
+          "match_basis": "PDF Note 4 收益/Revenue 257,673,256 K RMB equals Yahoo Total Revenue 257,673,256,000 CNY"
         }
       ],
       "additional_trusted_currencies": [
@@ -116,7 +146,9 @@
         "01810",
         "02498",
         "06862",
-        "09987"
+        "09987",
+        "00392",
+        "03320"
       ]
     },
     {
@@ -821,6 +853,36 @@
           "expected_yahoo_raw_value": "911000000",
           "yahoo_raw_field": "Net Income Common Stockholders",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; Yum China 2024 Net income = $980M total - $69M NCI = $911M attributable."
+        },
+        {
+          "company_id": "00392",
+          "provider_ticker": "0392.HK",
+          "report_ref": "downloads/hk_stocks/00392/annual/2024_annual_en.pdf",
+          "pdf_page": 100,
+          "statement_name": "Consolidated Statement of Profit or Loss",
+          "statement_line": "Profit attributable to shareholders of the Company",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "5123085",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "5123085000",
+          "yahoo_raw_field": "Net Income Common Stockholders",
+          "match_basis": "PDF Profit attributable to shareholders 5,123,085 K RMB equals Yahoo NICS 5,123,085,000 CNY"
+        },
+        {
+          "company_id": "03320",
+          "provider_ticker": "3320.HK",
+          "report_ref": "downloads/hk_stocks/03320/annual/2024_annual_en.pdf",
+          "pdf_page": 245,
+          "statement_name": "Consolidated Statement of Profit or Loss",
+          "statement_line": "Equity shareholders of the Company / 本公司權益持有人",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "3350857",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "3350857000",
+          "yahoo_raw_field": "Net Income Common Stockholders",
+          "match_basis": "PDF Equity shareholders 3,350,857 K RMB equals Yahoo NICS 3,350,857,000 CNY (Note: 03320 has minority interest of ~5B which Yahoo correctly excludes)"
         }
       ],
       "additional_trusted_currencies": [
@@ -833,7 +895,9 @@
         "01810",
         "02498",
         "06862",
-        "09987"
+        "09987",
+        "00392",
+        "03320"
       ]
     },
     {
@@ -936,6 +1000,21 @@
           "expected_yahoo_raw_value": "801000000",
           "yahoo_raw_field": "Accounts Payable",
           "match_basis": "pdf_value * pdf_unit_multiplier equals expected_yahoo_raw_value; after Phase HK-B.5.2 fixture backfill the Yahoo HK candidate is correctly stamped as USD; trust rule's additional_trusted_currencies=['CNY','USD'] accepts it."
+        },
+        {
+          "company_id": "00392",
+          "provider_ticker": "0392.HK",
+          "report_ref": "downloads/hk_stocks/00392/annual/2024_annual_en.pdf",
+          "pdf_page": 280,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Trade payables",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "3379844",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "3379844000",
+          "yahoo_raw_field": "Accounts Payable",
+          "match_basis": "PDF Trade payables 3,379,844 K RMB equals Yahoo Accounts Payable 3,379,844,000 CNY"
         }
       ],
       "pdf_verified_company_ids": [
@@ -944,7 +1023,8 @@
         "01810",
         "02498",
         "06862",
-        "09987"
+        "09987",
+        "00392"
       ],
       "additional_trusted_currencies": [
         "CNY",
@@ -1134,6 +1214,21 @@
           "expected_yahoo_raw_value": "79000000",
           "yahoo_raw_field": "Accounts Receivable",
           "match_basis": "PDF 'Accounts receivable, net' = $79M USD exactly equals Yahoo 'Accounts Receivable' 79,000,000. Yum China also reports a broader 'Receivables' aggregate ($316M including payment-processor receivables) — the source mapping correctly picks 'Accounts Receivable' as the AR alias match."
+        },
+        {
+          "company_id": "00392",
+          "provider_ticker": "0392.HK",
+          "report_ref": "downloads/hk_stocks/00392/annual/2024_annual_en.pdf",
+          "pdf_page": 285,
+          "statement_name": "Consolidated Statement of Financial Position",
+          "statement_line": "Trade receivables (Note 26)",
+          "reported_currency": "RMB",
+          "reported_unit": "thousand",
+          "pdf_value": "5134785",
+          "pdf_unit_multiplier": 1000,
+          "expected_yahoo_raw_value": "5134785000",
+          "yahoo_raw_field": "Accounts Receivable",
+          "match_basis": "PDF Trade receivables Note 26 5,134,785 K RMB equals Yahoo Accounts Receivable 5,134,785,000 CNY"
         }
       ],
       "pdf_verified_company_ids": [
@@ -1142,7 +1237,8 @@
         "01810",
         "02498",
         "06862",
-        "09987"
+        "09987",
+        "00392"
       ],
       "additional_trusted_currencies": [
         "CNY",

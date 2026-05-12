@@ -36,8 +36,14 @@ COMPANY=<ticker> YEAR=<year> MARKET=<CN|HK> \
 1. 年报 PDF 已下载到 `downloads/<market>_stocks/<ticker>/annual/<year>_annual_en.pdf`
    （和 `_zh.pdf` 若可用）
 2. `.env` 含 `DEEPSEEK_API_KEY`（或对应 LLM 配置）
-3. 本地 venv 装好（`uv sync` 已跑过）
-4. 网络可达 AKShare + Yahoo Finance（live fetch 阶段）
+3. **执行前先 source .env**（脚本不会自动 source）：
+   ```bash
+   set -a; source .env; set +a
+   ```
+   ⚠️ 不 source 则 LLM step 全部失败（error: "missing API key environment
+   variable: DEEPSEEK_API_KEY"），所有 P3 pdf_only 字段都 `extraction_failed`。
+4. 本地 venv 装好（`uv sync` 已跑过）
+5. 网络可达 AKShare + Yahoo Finance（live fetch 阶段）
 
 ## Step 0: 确认 reporting currency（HK 公司）
 
@@ -202,7 +208,10 @@ uv run pytest -v && uv run ruff check . && uv run mypy src tests
 
 1. **漏 PDF_PATH + LLM_CONFIG**（最常见，本文档诞生的直接原因）
    → P3 pdf_only 字段全部 unresolved；coverage 表面低
-2. **不读 evaluation.md，只看 total counts**
+2. **没 source .env**（仅次于上面，Phase HK-B.9 中曾踩）
+   → LLM step 跑了但全部失败，`extraction_failed` 错误："missing API key
+   environment variable: DEEPSEEK_API_KEY"。需先 `set -a; source .env; set +a`。
+3. **不读 evaluation.md，只看 total counts**
    → 把 by-design missing 当作问题
 3. **不按 reason 分类，把所有 unresolved 一起 grep**
    → 浪费时间分析 `missing_source_candidate`（无 actionable item）
