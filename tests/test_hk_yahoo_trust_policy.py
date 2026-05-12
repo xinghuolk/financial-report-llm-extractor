@@ -40,7 +40,10 @@ def test_load_hk_yahoo_trust_policy_validates_samples() -> None:
     # that previously survived backfill via deterministic-candidate path).
     # Phase HK-B.8: +6 accounts_receiv samples (all 6 HK issuers; Yahoo
     # Accounts Receivable = PDF Trade receivables / Debtors / AR net).
-    assert len(verified_samples) == 58
+    # Phase HK-B.9: +4 for 00392 (revenue/net_profit/acct_payable/accounts_receiv)
+    # + 2 for 03320 (revenue/net_profit). 02669 deferred — systematic Yahoo-PDF
+    # discrepancy ~0.5-1.5% not within rounding.
+    assert len(verified_samples) == 64
     assert {sample.pdf_page > 0 for sample in verified_samples} == {True}
     assert policy.rule_for_field("revenue") is not None
     assert policy.is_pdf_verified("revenue") is True
@@ -101,10 +104,11 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
     )
     # Phase HK-B.5.3: net_profit extended with 4 non-HKD samples
     # (01810/02498/06862/09987) to recover honest coverage post-HK-B.5.2.
+    # Phase HK-B.9: +00392 + 03320 (utilities + pharma new HK cohort) PDF-verified.
     assert net_evidence["sample_companies"] == [
-        "00001", "01113", "01810", "02498", "06862", "09987"
+        "00001", "00392", "01113", "01810", "02498", "03320", "06862", "09987"
     ]
-    assert net_evidence["sample_count"] == 6
+    assert net_evidence["sample_count"] == 8
 
 
 def test_hk_yahoo_trust_policy_validates_sample_page_text() -> None:

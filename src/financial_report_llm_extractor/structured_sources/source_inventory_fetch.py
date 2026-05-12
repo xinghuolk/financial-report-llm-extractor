@@ -261,6 +261,9 @@ HK_ISSUER_FINANCIAL_CURRENCY: dict[str, Literal["CNY", "HKD", "USD"]] = {
     "02498": "CNY",  # RMB reporter
     "06862": "CNY",  # RMB reporter
     "09987": "USD",  # Yum China — US$ reporter (US-domiciled, HK-listed)
+    "00392": "CNY",  # Beijing Enterprises Holdings — RMB reporter (functional currency changed from HKD to RMB)
+    "02669": "CNY",  # China Overseas Property Services — RMB reporter
+    "03320": "CNY",  # China Resources Pharmaceutical — RMB reporter
 }
 
 

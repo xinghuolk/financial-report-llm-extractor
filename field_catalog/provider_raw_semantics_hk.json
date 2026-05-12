@@ -47,7 +47,8 @@
       "trusted_currency": "HKD",
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
-      "turtle_field_id": "net_profit"
+      "turtle_field_id": "net_profit",
+      "pdf_verified_company_ids": null
     },
     {
       "allowed_as_primary": true,
@@ -65,7 +66,8 @@
       "trusted_currency": "HKD",
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
-      "turtle_field_id": "revenue"
+      "turtle_field_id": "revenue",
+      "pdf_verified_company_ids": null
     },
     {
       "allowed_as_primary": true,
@@ -83,7 +85,8 @@
       "trusted_currency": "HKD",
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
-      "turtle_field_id": "revenue"
+      "turtle_field_id": "revenue",
+      "pdf_verified_company_ids": null
     },
     {
       "allowed_as_primary": true,
@@ -496,7 +499,8 @@
         "01810",
         "02498",
         "06862",
-        "09987"
+        "09987",
+        "00392"
       ]
     },
     {
@@ -551,7 +555,8 @@
         "01810",
         "02498",
         "06862",
-        "09987"
+        "09987",
+        "00392"
       ]
     }
   ]
