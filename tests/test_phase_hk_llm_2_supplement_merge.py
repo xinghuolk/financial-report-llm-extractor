@@ -69,11 +69,17 @@ CASES = [
     # c_paid_for_taxes via AKShare; lt_eqt_invest=None for Maotai). HK 6: +1
     # each (lt_eqt_invest clean via Yahoo "Long Term Equity Investment";
     # c_pay_to_staff/c_paid_for_taxes have no HK provider data).
+    # Phase G1b: +2 P3 fields (contract_liabilities_current +
+    # contract_liabilities_non_current). 600519: +1 (cl_current via AKShare
+    # CONTRACT_LIAB=9.59B; cl_non_current=None). 01810/02498/09987: +1 each
+    # (cl_non_current via Yahoo "Non Current Deferred Revenue").
+    # 00001/01113/06862: no change (cl_current/cl_non_current land in
+    # unresolved_conflict or source_unavailable).
     (
         "600519", "CN", date(2024, 12, 31),
         REPO / "tmp" / "runs" / "600519_2024-12-31" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "600519_2024-12-31_llm" / "llm_evidence_supplement.json",
-        41, 46,
+        42, 47,
         ("buyback_cancellation_progress", "capitalized_rd",
          "contingent_liabilities_commitments", "dividend_plan",
          "related_party_receivables_payables"),
@@ -101,7 +107,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "01810" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "01810"
             / "llm_evidence_supplement.json",
-        34, 41,  # +lt_eqt_invest (G1a) +1
+        35, 42,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1
         ("bad_debt_provision", "buyback_cancellation_progress",
          "contingent_liabilities_commitments", "dividend_plan",
          "lease_liability_maturity", "receivables_aging",
@@ -112,7 +118,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "02498" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "02498"
             / "llm_evidence_supplement.json",
-        34, 39,  # +lt_eqt_invest (G1a) +1
+        35, 40,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "related_party_receivables_payables",
          "time_deposits_or_wealth_products"),
@@ -132,7 +138,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "09987" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "09987"
             / "llm_evidence_supplement.json",
-        33, 36,  # +lt_eqt_invest (G1a) +1
+        34, 37,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1
         ("lease_liability_maturity", "segment_revenue_profit",
          "time_deposits_or_wealth_products"),
     ),

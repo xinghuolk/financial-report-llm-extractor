@@ -912,6 +912,34 @@
       "evidence_requirement": "source_only_allowed",
       "fallback_policy": "pdf_allowed",
       "description": "Long-term equity investment in associates and joint ventures (consolidated scope; CN term: 长期股权投资). Feeds Turtle v0.15 phase3 factor1B 模块九 SOTP 估值."
+    },
+    "contract_liabilities_current": {
+      "priority": "P3",
+      "domain": "balance_sheet",
+      "statement_type": "balance_sheet",
+      "value_type": "money",
+      "source_mode": "direct",
+      "period_type": "point_in_time",
+      "scope_expectation": "consolidated",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "source_only_allowed",
+      "fallback_policy": "pdf_allowed",
+      "description": "Current portion of contract liabilities (prepayment for future services). CN A-share: 合同负债 (current). HK: current portion of trade and other receivables/contract liabilities. Feeds Turtle v0.15 phase3 factor2/3 EV-track + cash-protection-grade for prepayment-model businesses (property management, liquor distributors, SaaS subscriptions)."
+    },
+    "contract_liabilities_non_current": {
+      "priority": "P3",
+      "domain": "balance_sheet",
+      "statement_type": "balance_sheet",
+      "value_type": "money",
+      "source_mode": "direct",
+      "period_type": "point_in_time",
+      "scope_expectation": "consolidated",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "source_only_allowed",
+      "fallback_policy": "pdf_allowed",
+      "description": "Non-current (long-term) portion of contract liabilities / deferred revenue. CN A-share: 递延收益 (DEFER_INCOME). HK Yahoo: Non Current Deferred Revenue. Feeds Turtle v0.15 phase3 factor2/3 EV-track + cash-protection-grade."
     }
   }
 }

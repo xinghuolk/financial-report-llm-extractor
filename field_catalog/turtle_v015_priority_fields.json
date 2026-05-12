@@ -82,7 +82,9 @@
         "segment_revenue_profit",
         "restricted_cash",
         "time_deposits_or_wealth_products",
-        "interest_paid_cash"
+        "interest_paid_cash",
+        "contract_liabilities_current",
+        "contract_liabilities_non_current"
       ]
     },
     {

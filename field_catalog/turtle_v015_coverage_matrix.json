@@ -1273,6 +1273,52 @@
         }
       ],
       "notes": "CN AKShare LONG_EQUITY_INVEST + Yahoo HK 'Long Term Equity Investment' both exist. Used by Turtle v0.15 phase3 factor1B 模块九 SOTP 子公司持股价值 (consolidated scope, not parent-only)."
+    },
+    "contract_liabilities_current": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "akshare_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "AKShare CONTRACT_LIAB (CN) / 合同负债 (HK) verified to exist in 02498 + 06862 fixtures. Yahoo does not separate current from non-current Deferred Revenue (aggregates current into working capital changes); HK side may show as akshare-only single source."
+    },
+    "contract_liabilities_non_current": {
+      "domain": "balance_sheet",
+      "priority": "P3",
+      "primary_route": "yahoo_direct",
+      "verification": "expected",
+      "routes": [
+        {
+          "source": "yahoo",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        },
+        {
+          "source": "akshare",
+          "mode": "direct",
+          "status": "expected",
+          "statement_type": "balance_sheet",
+          "evidence_requirement": "source_only_allowed"
+        }
+      ],
+      "notes": "Yahoo 'Non Current Deferred Revenue' verified in 00001/01810/02498/09987 fixtures. AKShare DEFER_INCOME (CN) for long-term deferred income. HK side mostly Yahoo-only."
     }
   }
 }

@@ -83,7 +83,9 @@
         "related_party_receivables_payables",
         "restricted_cash",
         "segment_revenue_profit",
-        "time_deposits_or_wealth_products"
+        "time_deposits_or_wealth_products",
+        "contract_liabilities_current",
+        "contract_liabilities_non_current"
       ]
     }
   ],
@@ -2002,6 +2004,57 @@
         "long-term equity investment",
         "investments in associates",
         "investments in joint ventures"
+      ]
+    },
+    "contract_liabilities_current": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "CONTRACT_LIAB",
+          "合同负债",
+          "ADVANCE_RECEIVABLES"
+        ],
+        "yahoo": []
+      },
+      "pdf_aliases": [
+        "合同负债",
+        "contract liabilities",
+        "deferred revenue",
+        "advance from customers"
+      ]
+    },
+    "contract_liabilities_non_current": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "yahoo_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "DEFER_INCOME",
+          "递延收益"
+        ],
+        "yahoo": [
+          "Non Current Deferred Revenue"
+        ]
+      },
+      "pdf_aliases": [
+        "递延收益",
+        "non current deferred revenue",
+        "long-term deferred revenue",
+        "non-current contract liabilities"
       ]
     }
   }
