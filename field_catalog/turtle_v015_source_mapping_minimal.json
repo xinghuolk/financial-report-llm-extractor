@@ -92,6 +92,14 @@
         "equity_investment_in_subsidiaries",
         "amounts_due_from_subsidiaries"
       ]
+    },
+    {
+      "priority": "P4",
+      "name": "Annual-text qualitative pdf-only fields (Phase G4-C)",
+      "fields": [
+        "audit_opinion",
+        "dividend_policy_text"
+      ]
     }
   ],
   "source_mappings": {
@@ -2214,6 +2222,74 @@
         "due from a subsidiary",
         "financial position of the company",
         "balance sheet of the company"
+      ]
+    },
+    "audit_opinion": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Audit Opinion"
+        ]
+      },
+      "pdf_aliases": [
+        "审计意见",
+        "审计报告",
+        "独立审计师的报告",
+        "独立审计师报告",
+        "无保留意见",
+        "保留意见",
+        "否定意见",
+        "无法表示意见",
+        "强调事项",
+        "independent auditor's report",
+        "auditor's opinion",
+        "audit opinion",
+        "opinion of the auditors",
+        "report of the auditors",
+        "report of the independent auditor",
+        "unqualified opinion",
+        "qualified opinion",
+        "adverse opinion",
+        "disclaimer of opinion",
+        "emphasis of matter"
+      ]
+    },
+    "dividend_policy_text": {
+      "value_type": "text",
+      "statement_type": "notes",
+      "domain": "notes_and_mda",
+      "source_mode": "pdf_only",
+      "primary_route": "pdf_evidence",
+      "verification_status": "expected",
+      "currency_requirement": "optional",
+      "unit_requirement": "optional",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "yahoo": [
+          "Dividend Policy"
+        ]
+      },
+      "pdf_aliases": [
+        "股利分配政策",
+        "现金分红政策",
+        "利润分配政策",
+        "派息政策",
+        "股利政策",
+        "分红政策",
+        "未来三年股东回报规划",
+        "股东回报规划",
+        "dividend policy",
+        "dividend distribution policy",
+        "shareholder returns policy",
+        "policy on dividend"
       ]
     }
   }

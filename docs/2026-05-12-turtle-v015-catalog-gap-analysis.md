@@ -153,9 +153,22 @@
 | **`non_recurring_items_breakdown`** | P3 | income_statement | text | pdf_only | factor3 step3 V1-V5 分类的**原始明细行**（金额、性质），分类判断由下游做 |
 | (optional) `investment_activity_detail` | P3 | cash_flow | text | pdf_only | factor3 step5 对外投资明细（收购/参股/对外投资清单） |
 
-**Group E — Catalog 已定义但未实现抽取的 P4 字段**（需新 pipeline）
+**Group E — Catalog 已定义但未实现抽取的 P4 字段** (G4-C 实施 2026-05-12)
 
-6 个 P4 `llm_review` 字段（audit_opinion / auditor_change_history / dividend_policy_text / mda_business_review / mda_forward_guidance / mda_risk_factors）：catalog 内已定义但 `source_mapping_minimal.json` 未映射；现有 LLM extraction pipeline (`llm_field_extraction.py`) 不支持段落级定性文本输出。phase3 因子1A 一票否决 + 因子1B 商业模式都依赖这 6 字段。
+原始 6 字段评估 vs G4-C 实施决定：
+
+| 字段 | 原 source_mode | G4-C 决定 | 理由 |
+|---|---|---|---|
+| audit_opinion | llm_review | **→ pdf_only 启用** | factor1A 一票否决核心；输出为审计意见段落 + opinion 类型（不需要 LLM 判断，纯 text 抽取） |
+| dividend_policy_text | llm_review | **→ pdf_only 启用** | factor2 派息能力；输出为派息政策段落（纯 text 抽取） |
+| mda_business_review | llm_review | 留 llm_review (未启用) | MD&A 业务回顾 2000-5000 字段落级；下游 Turtle Agent 已做定性判断；本项目集中抽取 ROI 低 |
+| mda_forward_guidance | llm_review | 留 llm_review (未启用) | 同上 |
+| mda_risk_factors | llm_review | 留 llm_review (未启用) | 同上 |
+| auditor_change_history | llm_review | 留 llm_review (未启用) | **多期数据**——需 5 年审计师任期合并；本项目明确单期 scope，不可做 |
+
+**关键架构洞察**（G4 实施时验证）：`llm_review.py` 模块用于 conflict adjudication 不是段落抽取；`source_mode=llm_review` 在当前 pipeline **未被消费**。原 gap doc 把 G4 估算为 "6-10h 新 module" 是过度评估——5/6 字段本质同 G2/G3 模式（更长 text + 强 anchor alias），只是被错误的 `source_mode` 标签隐藏。
+
+**实施结果**：catalog 从 56 → 68 mapped 字段（G1-G4-C 合计 +12）。剩余 4 字段留在 taxonomy/coverage_matrix 但不映射 = **显式 out-of-project-scope 信号**——任何 evaluate-company 都不会处理它们，但 catalog 仍然描述了它们的"存在"。下游 Turtle Agent 自己用 PDF + LLM 抽取这 4 字段不会重复本项目工作（本项目根本没做）。
 
 ### ⊘ 看似 phase3 需要但实际是下游 scope
 
