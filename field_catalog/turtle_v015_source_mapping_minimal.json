@@ -2242,6 +2242,9 @@
       "pdf_aliases": [
         "审计意见",
         "审计报告",
+        "审计意见类型",
+        "标准无保留意见",
+        "标准的无保留意见",
         "独立审计师的报告",
         "独立审计师报告",
         "无保留意见",
@@ -2252,6 +2255,10 @@
         "independent auditor's report",
         "auditor's opinion",
         "audit opinion",
+        "our opinion",
+        "in our opinion",
+        "in our opinion, the consolidated",
+        "what we have audited",
         "opinion of the auditors",
         "report of the auditors",
         "report of the independent auditor",
@@ -2259,7 +2266,9 @@
         "qualified opinion",
         "adverse opinion",
         "disclaimer of opinion",
-        "emphasis of matter"
+        "emphasis of matter",
+        "give a true and fair view",
+        "present fairly"
       ]
     },
     "dividend_policy_text": {
