@@ -181,3 +181,74 @@ worth tracking but not blocking.
    the previous commit (Phase HK-B.5.1 follow-up).
 4. **Workflow standardization**: `docs/new-company-analysis-workflow.md`
    captures the standard 6-step process; future HK additions follow it.
+
+## Phase HK-B.9 follow-up investigation (2026-05-12)
+
+Timeboxed deep-dive into the 02669 / 03320 discrepancies flagged above.
+Outcome: both are **real architectural limits**, not catalog bugs. Drift
+§177 enforcement correctly excluded them via allowlist; no catalog change.
+
+### 02669 — Yahoo data quality issuer-level quirk
+
+Cross-checked Yahoo's `Gross Accounts Receivable` (2,878,532 K) vs PDF
+Note 22(a) `Trade receivables` gross (2,827,771 K) = +50.8M diff. Net
+side: Yahoo 2,630,264 K vs PDF 2,595,032 K = +35.2M (1.4%).
+
+Yahoo's impairment differs from PDF too (Yahoo -248,268 vs implied
+PDF -232,739). So both gross AND impairment are slightly broader than
+PDF — Yahoo data vendor uses a slightly different methodology for
+property-services companies, likely includes some sub-category PDF
+Note 22 treats separately. Revenue side: Yahoo +88,777 (0.63%); cost
+side: Yahoo +77,351 (0.66%). Pattern consistent: Yahoo is ~0.5-1.5%
+broader than PDF reported lines across **all** spot-checked items.
+
+**Not a sector pattern** (other property cos like 01113 match cleanly).
+**Not a fiscal-cut issue** (PDF is audited Dec 31, Yahoo likely same).
+Most plausible: Yahoo data vendor has a 02669-specific data feed
+difference. Without access to Yahoo's source-data contract docs, the
+exact cause cannot be pinned. The honest catalog state: **02669
+permanently excluded from allowlists** until data source clarified.
+
+### 03320 — Pharma sector AP/AR scope ambiguity
+
+PDF disclosure structure:
+- BS line "Trade and other receivables (Note 23)": 93,929,934 K
+- Note 23(a) "Trade receivables (pure)": 83,694,249 K
+- Yahoo "Accounts Receivable": **100,547,852 K** (larger than BOTH)
+
+Yahoo (100.5B) > PDF Trade+Other (93.9B) > PDF pure Trade (83.7B).
+Yahoo is **6.6B larger than even the combined "Trade and other"** —
+Yahoo aggregates something beyond what PDF reports under "Trade and
+other receivables", possibly:
+- Related-party receivables (separate BS line in PDF)
+- Other current financial assets
+- Bills receivable (subset of trade receivables broken out separately)
+
+For Trade payables side, Yahoo (58.8B) sits **between** PDF pure Trade
+(40.1B) and PDF Trade+Other (80.7B): roughly midway. So for AP, Yahoo
+includes some "other" but not all "other" — granular scope inside
+PDF Note 26's sub-categories that Yahoo selectively aggregates.
+
+**Pharma sector hypothesis**: distributors like 03320 have large
+"government subsidy receivables", "rebate receivables", "promotional
+discount receivables" — categories specific to pharmaceutical
+distribution business model. Yahoo's pharma-specific data feed may
+aggregate them differently than the issuer reports.
+
+**Not verifiable without sector cohort**: need ≥2 more pharma HK
+issuers to confirm if this is sector-pattern or 03320-specific.
+For now: **03320 stays in revenue + net_profit allowlist; excluded
+from acct_payable / accounts_receiv allowlist**. Future Phase
+HK-B.10 (if pharma cohort expands) can test the sector hypothesis.
+
+### Architectural takeaway
+
+Both edge cases reveal: **the allowlist mechanism does its job**.
+Without it, naive broad promotion would silently mis-attribute data
+for 02669 and 03320 on AP/AR fields. The PDF spot-check + per-issuer
+gating successfully caught both edge cases before catalog corruption.
+
+The investigation itself was an `S` (~30-45 min) effort that produced
+2 documented limitations + 1 sector hypothesis for future expansion.
+No catalog change; no test changes. Phase HK-B.9 closed as architecturally
+sound with documented exceptions.
