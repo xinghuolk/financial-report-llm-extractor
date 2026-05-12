@@ -16,3 +16,6 @@ indexes/
 downloads/
 tmp/*
 !tmp/.gitkeep
+
+# Claude Code session local files (settings.local.json, scheduled_tasks.lock, etc)
+.claude/
