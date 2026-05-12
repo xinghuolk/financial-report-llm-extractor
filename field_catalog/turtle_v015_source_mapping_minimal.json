@@ -2113,6 +2113,9 @@
         "公司资产负债表",
         "parent company balance sheet",
         "company balance sheet",
+        "balance sheet of the company",
+        "financial position of the company",
+        "financial position and reserve movement of the company",
         "company cash and cash equivalents",
         "holding company cash"
       ]
@@ -2137,10 +2140,15 @@
         "母公司长期借款",
         "母公司应付债券",
         "母公司有息负债",
+        "母公司资产负债表",
+        "financial position of the company",
+        "balance sheet of the company",
+        "company borrowings",
         "company short-term borrowings",
         "company long-term borrowings",
         "company bonds payable",
-        "parent company borrowings"
+        "parent company borrowings",
+        "borrowings of the company"
       ]
     },
     "equity_investment_in_subsidiaries": {
@@ -2164,9 +2172,14 @@
         "长期股权投资 子公司",
         "投资性主体对子公司投资",
         "母公司长期股权投资",
+        "母公司资产负债表",
+        "investment in subsidiaries",
         "investments in subsidiaries",
         "interests in subsidiaries",
-        "investment in subsidiaries at cost"
+        "interest in subsidiaries",
+        "investment in subsidiaries at cost",
+        "financial position of the company",
+        "balance sheet of the company"
       ]
     },
     "amounts_due_from_subsidiaries": {
@@ -2189,10 +2202,18 @@
         "应收子公司款项",
         "其他应收款 子公司",
         "母公司其他应收款",
+        "母公司资产负债表",
+        "amount due from subsidiaries",
+        "amount due from a subsidiary",
         "amounts due from subsidiaries",
+        "amounts due from a subsidiary",
         "loans to subsidiaries",
+        "loans to a subsidiary",
         "receivables from subsidiaries",
-        "due from subsidiaries"
+        "due from subsidiaries",
+        "due from a subsidiary",
+        "financial position of the company",
+        "balance sheet of the company"
       ]
     }
   }
