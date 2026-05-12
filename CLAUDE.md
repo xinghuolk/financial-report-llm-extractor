@@ -85,7 +85,9 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 ## 文档导读
 
-**先看**：`docs/2026-05-11-phase-summary.md` —— 阶段性快照（6 waves、coverage 表、未决项、onboarding artifact map），是进入分支的入口文档。
+**先看**：`docs/2026-05-11-phase-summary.md` —— 阶段性快照（7 waves、coverage 表、未决项、onboarding artifact map），是进入分支的入口文档。
+
+**分析新公司**：必看 `docs/new-company-analysis-workflow.md` —— 6 阶段标准工作流（currency 确认 → fetch → evaluate-with-LLM → 读 evaluation.md → 按 reason 分类决策 → PDF spot-check → catalog 更新）。**关键陷阱**：`evaluate-company` 必须带 `PDF_PATH` + `LLM_CONFIG`，否则 P3 pdf_only 字段（dividend_plan/dps 等 14 个）假性 unresolved。
 
 随后查阅 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）。
 
