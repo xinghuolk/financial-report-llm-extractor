@@ -65,11 +65,15 @@ def no_live_llm() -> Iterator[None]:
 CASES = [
     # company, market, period_end, inventory_path, supplement_path,
     # expected_baseline_clean, expected_with_llm_total, expected_supplement_fields
+    # Phase G1a: +3 P2 fields. CN 600519: +2 clean (c_pay_to_staff +
+    # c_paid_for_taxes via AKShare; lt_eqt_invest=None for Maotai). HK 6: +1
+    # each (lt_eqt_invest clean via Yahoo "Long Term Equity Investment";
+    # c_pay_to_staff/c_paid_for_taxes have no HK provider data).
     (
         "600519", "CN", date(2024, 12, 31),
         REPO / "tmp" / "runs" / "600519_2024-12-31" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "600519_2024-12-31_llm" / "llm_evidence_supplement.json",
-        39, 44,
+        41, 46,
         ("buyback_cancellation_progress", "capitalized_rd",
          "contingent_liabilities_commitments", "dividend_plan",
          "related_party_receivables_payables"),
@@ -79,7 +83,7 @@ CASES = [
         REPO / "tmp" / "runs" / "h2_2_after" / "00001" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "00001"
             / "llm_evidence_supplement.json",
-        31, 36,  # +accounts_receiv (HK-B.8) +1
+        32, 37,  # +lt_eqt_invest (G1a) +1
         ("capitalized_interest", "contingent_liabilities_commitments",
          "dividend_plan", "dps", "segment_revenue_profit"),
     ),
@@ -88,20 +92,16 @@ CASES = [
         REPO / "tmp" / "runs" / "h2_2_after" / "01113" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "01113"
             / "llm_evidence_supplement.json",
-        32, 36,  # +accounts_receiv (HK-B.8) +1
+        33, 37,  # +lt_eqt_invest (G1a) +1
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "dps"),
     ),
-    # Phase HK-B.8: all 6 HK issuers' accounts_receiv promoted to clean
-    # via multi-currency Yahoo trust rule (PDF spot-check verified Yahoo
-    # 'Accounts Receivable' = PDF pure Trade Receivables / Debtors / AR net).
-    # Net +1 baseline cell per company.
     (
         "01810", "HK", date(2024, 12, 31),
         HK_LLM_6_EXTENSION_FIXTURE / "01810" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "01810"
             / "llm_evidence_supplement.json",
-        33, 40,
+        34, 41,  # +lt_eqt_invest (G1a) +1
         ("bad_debt_provision", "buyback_cancellation_progress",
          "contingent_liabilities_commitments", "dividend_plan",
          "lease_liability_maturity", "receivables_aging",
@@ -112,7 +112,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "02498" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "02498"
             / "llm_evidence_supplement.json",
-        33, 38,
+        34, 39,  # +lt_eqt_invest (G1a) +1
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "related_party_receivables_payables",
          "time_deposits_or_wealth_products"),
@@ -122,7 +122,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "06862" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "06862"
             / "llm_evidence_supplement.json",
-        34, 39,
+        35, 40,  # +lt_eqt_invest (G1a) +1
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "related_party_receivables_payables",
          "time_deposits_or_wealth_products"),
@@ -132,7 +132,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "09987" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "09987"
             / "llm_evidence_supplement.json",
-        32, 35,
+        33, 36,  # +lt_eqt_invest (G1a) +1
         ("lease_liability_maturity", "segment_revenue_profit",
          "time_deposits_or_wealth_products"),
     ),

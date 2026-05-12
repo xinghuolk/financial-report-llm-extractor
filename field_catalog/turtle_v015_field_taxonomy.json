@@ -870,6 +870,48 @@
       "evidence_requirement": "llm_review_required",
       "fallback_policy": "llm_review_required",
       "description": "Auditor change history text for the report."
+    },
+    "c_pay_to_staff": {
+      "priority": "P2",
+      "domain": "cash_flow",
+      "statement_type": "cash_flow",
+      "value_type": "money",
+      "source_mode": "source_optional",
+      "period_type": "duration",
+      "scope_expectation": "consolidated",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "source_only_allowed",
+      "fallback_policy": "pdf_allowed",
+      "description": "Cash paid to and on behalf of employees during the reporting period (CN A-share term: 支付给职工以及为职工支付的现金). Feeds Turtle v0.15 phase3 factor3 step4 经营支出还原."
+    },
+    "c_paid_for_taxes": {
+      "priority": "P2",
+      "domain": "cash_flow",
+      "statement_type": "cash_flow",
+      "value_type": "money",
+      "source_mode": "source_optional",
+      "period_type": "duration",
+      "scope_expectation": "consolidated",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "source_only_allowed",
+      "fallback_policy": "pdf_allowed",
+      "description": "Cash paid for various taxes during the reporting period (CN A-share term: 支付的各项税费). Feeds Turtle v0.15 phase3 factor3 step4 现金税款."
+    },
+    "lt_eqt_invest": {
+      "priority": "P2",
+      "domain": "balance_sheet",
+      "statement_type": "balance_sheet",
+      "value_type": "money",
+      "source_mode": "direct",
+      "period_type": "point_in_time",
+      "scope_expectation": "consolidated",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "evidence_requirement": "source_only_allowed",
+      "fallback_policy": "pdf_allowed",
+      "description": "Long-term equity investment in associates and joint ventures (consolidated scope; CN term: 长期股权投资). Feeds Turtle v0.15 phase3 factor1B 模块九 SOTP 估值."
     }
   }
 }

@@ -61,7 +61,10 @@
         "dividends_paid",
         "capital_expenditures",
         "depreciation_amortization",
-        "stock_based_compensation"
+        "stock_based_compensation",
+        "c_pay_to_staff",
+        "c_paid_for_taxes",
+        "lt_eqt_invest"
       ]
     },
     {
@@ -1924,6 +1927,81 @@
         "dividends per share",
         "dividend per share",
         "每股股息"
+      ]
+    },
+    "c_pay_to_staff": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "PAY_STAFF_CASH",
+          "支付给职工以及为职工支付的现金"
+        ],
+        "yahoo": []
+      },
+      "pdf_aliases": [
+        "支付给职工以及为职工支付的现金",
+        "cash paid to employees",
+        "cash paid to and on behalf of employees"
+      ]
+    },
+    "c_paid_for_taxes": {
+      "value_type": "money",
+      "statement_type": "cash_flow",
+      "domain": "cash_flow",
+      "source_mode": "source_optional",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "PAY_ALL_TAX",
+          "支付的各项税费"
+        ],
+        "yahoo": []
+      },
+      "pdf_aliases": [
+        "支付的各项税费",
+        "income tax paid",
+        "cash paid for taxes",
+        "taxes paid"
+      ]
+    },
+    "lt_eqt_invest": {
+      "value_type": "money",
+      "statement_type": "balance_sheet",
+      "domain": "balance_sheet",
+      "source_mode": "direct",
+      "primary_route": "akshare_direct",
+      "verification_status": "expected",
+      "currency_requirement": "required",
+      "unit_requirement": "required",
+      "fallback_policy": "pdf_allowed",
+      "source_aliases": {
+        "akshare": [
+          "LONG_EQUITY_INVEST",
+          "长期股权投资"
+        ],
+        "yahoo": [
+          "Long Term Equity Investment",
+          "Investmentsin Associatesat Cost",
+          "Investmentsin Joint Venturesat Cost"
+        ]
+      },
+      "pdf_aliases": [
+        "长期股权投资",
+        "long-term equity investment",
+        "investments in associates",
+        "investments in joint ventures"
       ]
     }
   }

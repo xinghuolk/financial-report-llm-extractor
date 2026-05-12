@@ -59,7 +59,10 @@
         "repurchase_of_stock",
         "dividends_paid",
         "capital_expenditures",
-        "depreciation_amortization"
+        "depreciation_amortization",
+        "c_pay_to_staff",
+        "c_paid_for_taxes",
+        "lt_eqt_invest"
       ]
     },
     {
@@ -96,4 +99,3 @@
     }
   ]
 }
-
