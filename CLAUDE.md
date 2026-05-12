@@ -91,15 +91,19 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 随后查阅 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）、Phase G1a（3 CN-direct P2 fields）、Phase G1b（contract_liabilities current+non_current split）、Phase G2（non_recurring_items_breakdown text/pdf_only）、Phase G3（parent-company-only SOTP 4 字段）、Phase G4-C（混合方案：audit_opinion + dividend_policy_text 加入 P4 pdf_only；mda_business_review/mda_forward_guidance/mda_risk_factors/auditor_change_history 留在 source_mode=llm_review 未启用 = 显式 out-of-project-scope）均已落地。catalog 覆盖 **68 字段** mapped（P0:22 + P1:11 + P2:12 + P3:21 + P4:2）+ 4 未映射 P4（仍在 taxonomy/coverage_matrix 内但 source_mapping_minimal 不引用）。**关键认知**：`scope_expectation` 是纯 metadata 标签（`field_metadata.py:32-38` Literal `consolidated/parent/attributable_to_owners/unknown/not_applicable`），`src/` 内无业务逻辑读它做 filtering——G3 只是给 4 个 pdf_only 字段贴 `parent` 标签，不需要 schema 维度扩展或代码改动。**G4-C 关键洞察**：现有 `llm_review.py` 模块用于 conflict adjudication 不是段落抽取；`source_mode=llm_review` 在当前 pipeline 里**未被消费**，等价于"defined but inert"。G4-C 把 2 个真正 PDF-可抽字段 (audit_opinion + dividend_policy_text) 转为 `pdf_only` 进入 text-mode pipeline；剩 4 字段 (MD&A 段落 + 多期 auditor_change_history) 显式留在 unused `llm_review` 模式 = catalog 边界即下游 Turtle Agent scope。
 
-**当前覆盖率（live evaluate-company PDF+LLM，post-G4-C 2026-05-12，catalog 68 mapped 字段）**：
-- **CN 600519/2024**: source-first 42/68 (62%) clean → **+LLM 54/68 (79%)** ✓ (含 G4-C audit_opinion 标准无保留 + dividend_policy_text)
+**当前覆盖率（live evaluate-company PDF+LLM，catalog 68 mapped 字段）**：
+
+post-G4-C 实测 (2026-05-12, 2 CN + 3 HK)：
+- **CN 600519/2024**: source-first 42/68 (62%) clean → **+LLM 54/68 (79%)** ✓ (G4-C audit_opinion 标准无保留 + dividend_policy_text)
 - **CN 300750/2024 (CATL)**: source-first 42/68 (62%) → **+LLM 55/68 (81%)** ✓ (G4-C 同 600519 命中)
-- **HK 00001/2025 (HKD)**: source-first 32/68 (47%) + 1 terminal → **+LLM 44/68 (65%)** (pre-G4-C 基线，post-G4-C 未重测)
-- **HK 01113/2025 (HKD)**: source-first 33/68 (49%) → **+LLM 41/68 (60%)** (pre-G4-C 基线)
 - **HK 01810/2024 (CNY)**: source-first 35/68 (51%) + 2 terminal → **+LLM 49/68 (72%)** ✓ (G4-C unqualified p224 + dividend policy p110)
-- **HK 02498/2024 (CNY)**: source-first 35/68 (51%) + 2 terminal → **+LLM 49/68 (72%)** ✓ (G4-C 同上)
-- **HK 06862/2024 (CNY)**: source-first 35/68 (51%) + 1 terminal → **+LLM 48/68 (71%)** ✓ (G4-C 命中 + G3 interest_bearing_debt 2.07M千 RMB)
-- **HK 09987/2024 (USD)**: source-first 34/68 (50%) + 1 terminal → **+LLM 44/68 (65%)** (pre-G4-C 基线)
+- **HK 02498/2024 (CNY)**: source-first 35/68 (51%) + 2 terminal → **+LLM 49/68 (72%)** ✓ (G4-C unqualified p129 + dividend policy p70)
+- **HK 06862/2024 (CNY)**: source-first 35/68 (51%) + 1 terminal → **+LLM 48/68 (71%)** ✓ (G4-C 命中 + G3 interest_bearing_debt 2.07M千 RMB 唯一正向)
+
+pre-G4-C baseline (未在 G4-C catalog 下重测，值保守，可能因 G4-C +1~+2)：
+- **HK 00001/2025 (HKD)**: source-first 32/68 (47%) + 1 terminal → +LLM 44/68 (65%) (G3 4/4 命中已锁)
+- **HK 01113/2025 (HKD)**: source-first 33/68 (49%) → +LLM 41/68 (60%)
+- **HK 09987/2024 (USD)**: source-first 34/68 (50%) + 1 terminal → +LLM 44/68 (65%) (HK-B.8 accounts_receiv promoted)
 - **Sample-verified breadth**: 4 CN 公司 × 4 promotion 字段 = 16 EXACT match samples
 - **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
 - **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）

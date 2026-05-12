@@ -1702,6 +1702,175 @@ Outputs land in `tmp/runs/${COMPANY}_${PERIOD_END}/`:
 - `evaluate-company`：单 (公司, 期末)，可选 live (via `fetch-source-inventory`) 或 fixture，含 LLM supplement，输出 bucket-classified evaluation。
 - `replay-provider-baseline`：多公司 batch，仅从已有 fixture replay，输出 multi-slice export。
 
+### Phase G1-G4-C Implementation Result (Turtle v0.15 catalog gap closure, 2026-05-12)
+
+Phase 系列起点：`docs/2026-05-12-turtle-v015-catalog-gap-analysis.md` (Group A-E
+gap classification per Turtle v0.15 phase3 framework reference)。Catalog 从 56
+mapped 字段扩展到 68 mapped 字段（+12，落地 Group A-D + 部分 E）。Implementation
+results in chronological commit order:
+
+**Phase G1a** (commit `a60a1bc`, merged via PR #3 `3fbcdfd`) — 3 CN-direct P2 fields:
+
+- `c_pay_to_staff` (cash_flow money source_optional)
+  - AKShare `PAY_STAFF_CASH` / 支付给职工以及为职工支付的现金
+  - HK end: 无 Yahoo 对应 → source_unavailable
+- `c_paid_for_taxes` (cash_flow money source_optional)
+  - AKShare `PAY_ALL_TAX` / 支付的各项税费
+  - HK end: 无 Yahoo 对应 → mapping_expansion（"税" token overlap）
+- `lt_eqt_invest` (balance_sheet money direct)
+  - AKShare `LONG_EQUITY_INVEST` / 长期股权投资
+  - Yahoo HK "Long Term Equity Investment" + Investments in Associates/JV at Cost
+
+Source-first delta:
+- CN 600519/2024: 39 → 41 clean (+c_pay_to_staff 15.35B + c_paid_for_taxes 77.06B;
+  lt_eqt_invest=None for Maotai = source_unavailable)
+- HK 6 公司: +1 each (lt_eqt_invest via Yahoo promote)
+- Total cohort +8 source-first clean cells
+
+**Phase G1b** (commit `cefc41f`) — `contract_liabilities` current+non_current split per
+gap-doc 方案 b:
+
+- `contract_liabilities_current` (P3 balance_sheet money direct)
+  - aliases: AKShare `CONTRACT_LIAB` / 合同负债 / ADVANCE_RECEIVABLES
+- `contract_liabilities_non_current` (P3 balance_sheet money direct)
+  - aliases: AKShare `DEFER_INCOME` / 递延收益; Yahoo "Non Current Deferred Revenue"
+
+Source-first delta:
+- 600519: +1 (cl_current via AKShare 9.59B)
+- 01810/02498/09987: +1 each (cl_non_current via Yahoo NC Deferred Revenue)
+- 00001/01113/06862: no change (provider truly sparse: Yahoo 只有 "Non Current
+  Deferred *Taxes*" 不是 "Deferred Revenue"; 06862 AKShare 有 合同负债 但
+  `statement_metadata_unproven`)
+
+By-design: 3 HK 公司 unresolved_conflict 走 LLM supplement (P3 ROI 低不扩
+HK-AKShare trust policy)。Gap doc §7 line 237 误标 00001 ✓ 已纠正。
+
+**Phase G2** (commit `1a5d7aa`) — `non_recurring_items_breakdown` text/pdf_only:
+
+- P3 notes_and_mda text pdf_only / period_type=duration
+- 9 PDF aliases (5 CN + 4 EN): 非经常性损益 / 非经常性损益项目 /
+  non-recurring items / exceptional items / items affecting comparability / 等
+- Validator-required yahoo placeholder ("Non Recurring Items")，无实际 raw 匹配
+- Catalog 模板复用 receivables_aging
+- Source-first 计数 0 变化（纯 pdf_only 走 LLM supplement）
+- Phase3 用途: factor3 step3 V1-V5 分类的**原始明细行**
+
+**Phase G3** (commit `d0bdfc7` + `65bb55d` follow-up) — parent-company-only SOTP
+4 fields:
+
+- 4 字段全部 P3 balance_sheet money pdf_only / `scope_expectation: parent`
+- 关键架构洞察: `scope_expectation` enum 已含 `parent` 值
+  (`field_metadata.py:32-38`)，`src/` 内**无业务逻辑读它**做 filtering = G3 是纯
+  标签级 catalog 扩展，**不需要 schema 维度扩展或代码改动**。原 gap doc 估算
+  "需新 schema 维度" 是过度评估。
+- Fields:
+  - `cash_parent_company` — 母公司单体现金
+  - `interest_bearing_debt_parent_company` — st_borr + lt_borr + bond_payable
+    parent-only 聚合
+  - `equity_investment_in_subsidiaries` — 对子公司长投 parent-only
+    (distinct from G1a `lt_eqt_invest` consolidated JV/associates)
+  - `amounts_due_from_subsidiaries` — 母子内部往来
+- G3 follow-up commit (`65bb55d`) 补 HK-specific PDF aliases after first-run miss
+  on 01810: HK 报告用 "Financial position of the Company" / 单数
+  "Investment in subsidiaries" / "Amount due from a subsidiary"——首版 aliases
+  全是合并报表式措辞 + 复数。补 9 个 HK-specific anchor aliases 后 retrieval
+  正确指向 parent FS 段。
+
+**G3 Validation Result** (full 7-cohort PDF+LLM, commits `d4957a3` + `e8b4d30`):
+
+| 字段 | 600519 | 00001 | 01113 | 01810 | 02498 | 06862 | 09987 | Hit |
+|---|---|---|---|---|---|---|---|---|
+| cash_parent_company | ✓ 77B | ✓ 7M HK$ | ✓ 19,545$ | ✓ 1.52M千 | ✓ 1.85M千 | ✓ 1.91M千 | ✓ 16 USD | **7/7 ⭐** |
+| equity_investment_in_subsidiaries | ✓ 1.6B | ✓ 368B HK$ | ✓ 252M千 | ✓ 42.9M千 | ✓ 4.4M千 | ✓ 1.7M千 | ✓ 4.9M USD | **7/7 ⭐** |
+| amounts_due_from_subsidiaries | ✗ | ✓ 25.7B HK$ | ✗ | ✗ | ✓ 3.21M千 | ✓ 0 RMB | ✓ 41$ | 4/7 |
+| interest_bearing_debt_parent_company | ✗ | ✗ | ✗ | ✗ | ✗ | **✓ 2.07M千 RMB** | ✗ | 1/7 |
+
+全 4 alias 组**都有正向 PDF evidence**。低命中率 (interest_bearing_debt 1/7 +
+amounts_due 4/7) 全部是 issuer-level 数据稀疏（CK Hutchison 控股集团 debt 全在
+operating subsidiaries; Maotai/Xiaomi/Pop Mart 消费品 parent 零债务；3 家不
+单独披露母子内部往来）—— LLM 在每个 miss case 都正确返回 "parent FS retrieved
+but no such line found"，不是 catalog 缺陷。
+
+**Phase G4-C** (commits `51cfa85` + `3e89f7f`, branch
+`feature/g4-phase-c-audit-opinion-and-dividend-policy`) — Hybrid G4 plan:
+
+混合方案落地 audit_opinion + dividend_policy_text，其余 4 P4 字段 (MD&A 3 +
+auditor_change_history) 显式留为 out-of-project-scope。
+
+**关键架构洞察 (G4 brainstorm 时验证)**:
+- `llm_review.py` 模块用于 conflict adjudication 不是段落抽取
+- `source_mode=llm_review` 在当前 pipeline **未被消费** = "defined but inert"
+- 原 gap doc 估算 G4 "6-10h 新 module" 是过度评估
+- 5/6 P4 字段本质同 G2/G3 模式（更长 text + 强 anchor alias），只是被错误
+  source_mode 标签隐藏
+
+**G4-C 实施 (2 字段启用)**:
+
+- `audit_opinion` (P4 → pdf_only)
+  - factor1A 一票否决核心
+  - 28 PDF aliases (CN + HK): 审计意见 / 标准无保留意见 / 独立审计师的报告 /
+    independent auditor's report / our opinion / in our opinion / what we have
+    audited / give a true and fair view / unqualified opinion / 等
+  - source_mode: `llm_review → pdf_only`
+  - evidence_requirement: `llm_review_required → pdf_required`
+  - fallback_policy: `llm_review_required → pdf_allowed`
+- `dividend_policy_text` (P4 → pdf_only)
+  - factor2 派息能力
+  - 12 PDF aliases: 股利分配政策 / 现金分红政策 / 派息政策 / dividend policy /
+    shareholder returns policy / 等
+  - 同上 metadata 转换
+
+**G4-C 留下不映射的 4 字段** (taxonomy/coverage_matrix 仍含 entries，
+source_mapping_minimal 不引用 = `evaluate-company` 不处理):
+
+- `mda_business_review` — 段落级 2000-5000 字，下游做定性分类更合适
+- `mda_forward_guidance` — 同上
+- `mda_risk_factors` — 同上
+- `auditor_change_history` — **多期数据**，本项目明确单期 scope 不可做
+
+**G4-C Validation Result** (commit `3e89f7f`, 2 CN + 3 HK PDF+LLM):
+
+| 字段 | 600519 | 300750 | 01810 | 02498 | 06862 | Hit |
+|---|---|---|---|---|---|---|
+| audit_opinion | ✓ 标准无保留意见 | ✓ 标准的无保留意见 | ✓ unqualified p224 | ✓ unqualified p129 | ✓ unqualified p135 | **5/5 ⭐** |
+| dividend_policy_text | ✓ p34 | ✓ p58 | ✓ p110 | ✓ p70 | ✓ p73 | **5/5 ⭐** |
+
+HK 首跑 audit_opinion 0/3 — alias `independent auditor's report` 召回了
+Responsibilities/Procedures 章节（更多 chunks），错过 Opinion 段本身。补 HK
+opinion-paragraph anchor aliases (`our opinion` / `in our opinion` /
+`what we have audited` / `give a true and fair view` / `present fairly`) 后
+HK 3/3 全部正确识别 unqualified 类型 + 准确页码。
+
+**Catalog growth summary (post-G4-C)**:
+
+| 时点 | mapped fields | P0 | P1 | P2 | P3 | P4 |
+|---|---:|---:|---:|---:|---:|---:|
+| Wave 1 baseline | 15 | — | — | — | — | — |
+| Post-N1–N3 (05-08) | 33 | 22 | 11 | 0 | 0 | 0 |
+| Post-N4.A–.C (05-09) | 44 | 22 | 11 | 9 | 2 | 0 |
+| Post-I-C (05-09) | 56 | 22 | 11 | 9 | 14 | 0 |
+| Post-G1a/G1b (PR #3) | 61 | 22 | 11 | 12 | 16 | 0 |
+| Post-G2 (PR #3) | 62 | 22 | 11 | 12 | 17 | 0 |
+| Post-G3 (PR #3) | 66 | 22 | 11 | 12 | 21 | 0 |
+| **Post-G4-C** | **68** | 22 | 11 | 12 | 21 | 2 |
+
+剩 4 P4 字段在 taxonomy/coverage_matrix 但不映射 = 显式 out-of-project-scope。
+
+**G4-C 已知 loose ends** (review 2026-05-12 诚实评估):
+
+1. 4 P4 "out-of-scope" 字段缺 machine-readable signal — catalog 不携带
+   "intentionally unmapped" 标注，只有 CLAUDE.md + gap doc Group E 文档解释
+2. 无 regression test 锁定 "4 字段故意不映射" — 未来误添加无 alarm
+3. CLAUDE.md cohort table 3 行 (00001/01113/09987) 未在 G4-C catalog 下重测，
+   值是保守推测（仍标 pre-G4-C 基线）
+4. P4 内 metadata 分裂 (2 字段 pdf_only vs 4 字段 llm_review) — 设计意图，非
+   bug，但维护者可能困惑
+5. dividend_policy_text 在 600519 上抽到 "公司利润分配符合《章程》规定"
+   —— 是合规声明而非完整 policy 段落；hit 率高但 value 精度未深 audit
+6. Branch `feature/g4-phase-c-audit-opinion-and-dividend-policy` 待 PR 合并
+
+所有 loose ends 不 blocking；可单独 follow-up 不必拖累合并。
+
 ## 7. Branch Completion Criteria
 
 This branch is complete when:
