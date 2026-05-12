@@ -234,7 +234,7 @@
 | AKShare CN 600519 cash flow `PAY_ALL_TAX` | ✓ 存在 |
 | AKShare CN 600519 BS `LONG_EQUITY_INVEST` | ✓ 存在 |
 | AKShare HK 02498 `合同负债` | ✓ 存在（current only） |
-| Yahoo HK `Non Current Deferred Revenue` 多公司 | ✓ 存在（00001/01810/02498，仅非流动）|
+| Yahoo HK `Non Current Deferred Revenue` 多公司 | 部分：**01810/02498/09987 有**；**00001/01113/06862 无**（00001/01113/06862 Yahoo 只有 `Non Current Deferred *Taxes*` Liabilities/Assets，是递延税款不是合同负债/递延收益——本表初版写错为"00001 ✓"已纠正） |
 | sister repo `financial-report-analysis` 已实现这些字段 | ✓ 见 `2026-04-22-turtle-v015-financial-field-gap-analysis.md` §0 |
 
 未验证但已知（待 G1a 实施时确认）：

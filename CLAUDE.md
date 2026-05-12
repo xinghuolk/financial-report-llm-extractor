@@ -89,23 +89,25 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 **分析新公司**：必看 `docs/new-company-analysis-workflow.md` —— 6 阶段标准工作流（currency 确认 → fetch → evaluate-with-LLM → 读 evaluation.md → 按 reason 分类决策 → PDF spot-check → catalog 更新）。**关键陷阱**：`evaluate-company` 必须带 `PDF_PATH` + `LLM_CONFIG`，否则 P3 pdf_only 字段（dividend_plan/dps 等 14 个）假性 unresolved。
 
-随后查阅 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）均已落地。catalog 覆盖 56 字段（P0:22 + P1:11 + P2:9 + P3:14）。
+随后查阅 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）、Phase G1a（3 CN-direct P2 fields）、Phase G1b（contract_liabilities current+non_current split）均已落地。catalog 覆盖 **61 字段**（P0:22 + P1:11 + P2:12 + P3:16）。
 
-**当前覆盖率（live evaluate-company，post-HK-B.8 accounts_receiv multi-currency verified）**：
-- **CN 600519/2024**: source-first 39/56 (70%) clean → **+LLM 44/56 (79%)** ✓ regression-locked
-- **HK 00001/2025 (HKD)**: source-first 31/56 (55%) + 1 terminal → **+LLM 36/56 (64%)** ✓
-- **HK 01113/2025 (HKD)**: source-first 32/56 (57%) → **+LLM 36/56 (64%)** ✓
-- **HK 01810/2024 (CNY)**: source-first 33/56 (59%) → **+LLM 40/56 (71%)** ✓
-- **HK 02498/2024 (CNY)**: source-first 33/56 (59%) → **+LLM 38/56 (68%)** ✓
-- **HK 06862/2024 (CNY)**: source-first 34/56 (61%) → **+LLM 39/56 (70%)** ✓
-- **HK 09987/2024 (USD)**: source-first 32/56 (57%) → **+LLM 35/56 (63%)** ✓ (HK-B.8 accounts_receiv promoted)
+**当前覆盖率（live evaluate-company，post-G1 catalog 61 字段）**：
+- **CN 600519/2024**: source-first 42/61 (69%) clean → **+LLM 47/61 (77%)** ✓ regression-locked
+- **HK 00001/2025 (HKD)**: source-first 32/61 (52%) + 1 terminal → **+LLM 37/61 (61%)** ✓
+- **HK 01113/2025 (HKD)**: source-first 33/61 (54%) → **+LLM 37/61 (61%)** ✓
+- **HK 01810/2024 (CNY)**: source-first 35/61 (57%) → **+LLM 42/61 (69%)** ✓
+- **HK 02498/2024 (CNY)**: source-first 35/61 (57%) → **+LLM 40/61 (66%)** ✓
+- **HK 06862/2024 (CNY)**: source-first 35/61 (57%) → **+LLM 40/61 (66%)** ✓
+- **HK 09987/2024 (USD)**: source-first 34/61 (56%) → **+LLM 37/61 (61%)** ✓ (HK-B.8 accounts_receiv promoted)
 - **Sample-verified breadth**: 4 CN 公司 × 4 promotion 字段 = 16 EXACT match samples
 - **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
 - **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）
 - **Catalog verification** (Phase MX + Phase HK-B.5, 2026-05-11): coverage_matrix verified 24/62 → **36/62** (+12)；详情见 roadmap Phase MX + HK-B.5 Implementation Result
 - **HK issuer financial-currency 闭环** (Phase HK-B.5.1 + .5.2, 2026-05-11): `HK_ISSUER_FINANCIAL_CURRENCY` map（PDF spot-checked 6 HK）+ fixture backfill (1616 records) + `HkYahooTrustRule.additional_trusted_currencies` schema → 全部 HK 字段现在用 issuer reporting currency stamp；09987 acct_payable promote 到 clean。注意：revenue/net_profit/total_assets 等 HKD-only trust rules 未做 multi-currency 扩展，非 HKD reporter 的这些字段现在正确 unresolved（之前是 wrong-label-trust-policy 误触发的 mirage clean）
 
-下一步候选：HK-B.8 已 promote accounts_receiv 6 HK 公司 (+6 cells)。trust policy samples: 14 → 58（4 倍增长）。gross_profit per recon §177 不 promote。剩余可选：defer_tax_liab Yahoo HK 无数据可扩展；或合并到 main（branch 已 ~18 commits ahead，处于可交付状态）。
+下一步候选：G1a/G1b 已落地（+5 catalog 字段，+13 source-first cells）。剩余按 `docs/2026-05-12-turtle-v015-catalog-gap-analysis.md` 优先级：G2 (`non_recurring_items_breakdown` text/pdf_only) → G3 (parent_company_only scope 4 字段) → G4 (P4 llm_review pipeline 6 字段)。或合并到 main（branch 已 ~20 commits ahead，处于可交付状态）。
+
+**G1b 跟进 note**：00001/01113/06862 contract_liabilities current/non_current 在 unresolved_conflict 是 provider 真稀疏（Yahoo 只有 `Non Current Deferred *Taxes*` 不是 `Deferred Revenue`；AKShare HK 仅 06862 有 `合同负债` 但 `statement_metadata_unproven`）。**By-design 走 LLM supplement**，不扩 HK-AKShare trust policy（P3 ROI 太低且 PDF 大概率根本不披露）。
 
 `docs/2026-05-08-roadmap-evaluation.zh.md` 包含覆盖率分析和修复路径（Phase H/I 落地前的视角，部分数字已过期但分析框架仍有效）。
 
