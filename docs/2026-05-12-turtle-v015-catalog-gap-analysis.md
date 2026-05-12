@@ -109,19 +109,53 @@
 
 ### ✗ Catalog 缺失 + 本项目应补
 
-按 priority 排序：
+按字段类别分组（priority 排序在 §4 优先级矩阵）：
 
-| 字段 | priority | domain | value_type | source_mode | phase3 依赖证据 | 用途 |
+**Group A — 与现有 56 fields 同模式的 provider-direct 字段**（最低风险）
+
+| 字段 | priority | domain | value_type | source_mode | provider 验证 | phase3 用途 |
 |---|---|---|---|---|---|---|
-| **`contract_liabilities`** | P3 | balance_sheet | money | direct | factor3 step8 现金质量 + factor2 EV 双轨 | 物业/白酒/SaaS 等先收款业务的"类现金" |
-| **`non_recurring_items_breakdown`** | P3 | income_statement | text | pdf_only | factor3 step3 V1-V5 分类 | 非经常性损益**明细行**（金额、性质、分类），让下游做分类判断 |
-| **`cash_parent_company`** | P3 | balance_sheet | money | pdf_only | factor1B 模块九 SOTP | 母公司单体现金（scope_expectation=parent_company_only）|
-| **`interest_bearing_debt_parent_company`** | P3 | balance_sheet | money | pdf_only | 同上 | 母公司单体 st_borr+lt_borr+bond_payable |
-| **`equity_investment_in_subsidiaries`** | P3 | balance_sheet | money | pdf_only | 同上 | 母公司对子公司长期股权投资 |
-| **`amounts_due_from_subsidiaries`** | P3 | balance_sheet | money | pdf_only | 同上 | 母子内部往来 |
-| (optional) `investment_activity_detail` | P3 | cash_flow | text | pdf_only | factor3 step5 对外投资明细 | 收购/参股/对外投资清单 |
+| **`c_pay_to_staff`** | P2 | cash_flow | money | direct | AKShare CN `PAY_STAFF_CASH` ✓ 验证过；Yahoo HK 待查 | factor3 step4 经营支出还原 — 员工现金支付 |
+| **`c_paid_for_taxes`** | P2 | cash_flow | money | direct | AKShare CN `PAY_ALL_TAX` ✓ 验证过；Yahoo HK 待查 | factor3 step4 现金税款 |
+| **`lt_eqt_invest`** | P2 | balance_sheet | money | direct | AKShare CN `LONG_EQUITY_INVEST` ✓ 验证过；Yahoo HK 待查 | factor1B 模块九 SOTP 子公司持股价值（**合并口径**，不同于 Group C 的 parent-only） |
 
-**关键 schema 扩展**：4 个母公司单体字段需引入新 metadata `scope_expectation: parent_company_only`。当前 catalog 假设所有字段都是合并口径（`scope_expectation: consolidated`）。
+来源参考：sister repo `report-collector/financial-report-analysis` 已实现这些字段（per `2026-04-22-turtle-v015-financial-field-gap-analysis.md` §0 "主表核心骨架已完成"列表），但本项目 catalog 未包含。
+
+**Group B — current/non-current scope 分裂的字段**（schema 思考）
+
+| 字段 | priority | domain | value_type | source_mode | provider 验证 | phase3 用途 |
+|---|---|---|---|---|---|---|
+| **`contract_liabilities`** | P3 | balance_sheet | money | direct | AKShare 02498 `合同负债` = 16.4M（current）；Yahoo `Non Current Deferred Revenue` = 01810 2.07B / 02498 68M / 00001 1M（**仅非流动**） | factor2/3 EV 双轨 + 现金质量审计 — 物业/白酒/SaaS 等先收款业务的"类现金" |
+
+⚠ **关键 schema 决策**：Yahoo "Non Current Deferred Revenue" 与 AKShare "合同负债"**不是同一 scope**（Yahoo = 长期；AKShare = 流动/合并）。PDF 一般披露 current + non-current 两行 + total。需选其一：
+
+- **方案 a**：加 1 个聚合字段 `contract_liabilities`（aggregate）+ derivation rule（current + non-current 求和），需新 schema 支持二级字段分组
+- **方案 b**：加 2 个字段 `contract_liabilities_current` + `contract_liabilities_non_current`，trust policy 各自独立；下游 sum 时合并
+- **方案 c**：加 1 个聚合字段 + 双 provider 都直接匹配 PDF 总和（要求 PDF 现成有 total 行）
+
+推荐方案 b（最简洁，与现有 schema 兼容；下游 sum 比 catalog 内 derivation 更灵活）。
+
+**Group C — 新 scope 维度的字段**（架构扩展）
+
+| 字段 | priority | domain | value_type | source_mode | phase3 用途 |
+|---|---|---|---|---|---|
+| **`cash_parent_company`** | P3 | balance_sheet | money | pdf_only | factor1B 模块九 SOTP — 母公司单体现金 |
+| **`interest_bearing_debt_parent_company`** | P3 | balance_sheet | money | pdf_only | 同上 — st_borr+lt_borr+bond_payable parent-only |
+| **`equity_investment_in_subsidiaries`** | P3 | balance_sheet | money | pdf_only | 同上 — 对子公司长期股权投资 |
+| **`amounts_due_from_subsidiaries`** | P3 | balance_sheet | money | pdf_only | 同上 — 母子内部往来 |
+
+⚠ **关键 schema 扩展**：4 个字段都需引入新 metadata `scope_expectation: parent_company_only`。当前 catalog 假设所有字段都是合并口径（`scope_expectation: consolidated`）。这是真正的 catalog 维度扩展。
+
+**Group D — 文本明细 / 文本聚合字段**
+
+| 字段 | priority | domain | value_type | source_mode | phase3 用途 |
+|---|---|---|---|---|---|
+| **`non_recurring_items_breakdown`** | P3 | income_statement | text | pdf_only | factor3 step3 V1-V5 分类的**原始明细行**（金额、性质），分类判断由下游做 |
+| (optional) `investment_activity_detail` | P3 | cash_flow | text | pdf_only | factor3 step5 对外投资明细（收购/参股/对外投资清单） |
+
+**Group E — Catalog 已定义但未实现抽取的 P4 字段**（需新 pipeline）
+
+6 个 P4 `llm_review` 字段（audit_opinion / auditor_change_history / dividend_policy_text / mda_business_review / mda_forward_guidance / mda_risk_factors）：catalog 内已定义但 `source_mapping_minimal.json` 未映射；现有 LLM extraction pipeline (`llm_field_extraction.py`) 不支持段落级定性文本输出。phase3 因子1A 一票否决 + 因子1B 商业模式都依赖这 6 字段。
 
 ### ⊘ 看似 phase3 需要但实际是下游 scope
 
@@ -137,24 +171,33 @@
 
 ## 4. 优先级矩阵
 
-按 (本项目 scope) × (phase3 关键性) × (implementation cost)：
+按 (本项目 scope) × (phase3 关键性) × (implementation cost) × (provider 验证状态)：
 
-| 阶段 | 内容 | Effort | phase3 影响 | 推荐顺序 |
-|---|---|---|---|---|
-| **G1** | 加 `contract_liabilities` 单字段 | XS-S (~1-2h) | factor2/3 EV 双轨直接受益；02669 物业 / 03320 医药等先收款业务立刻产数据 | **1** |
-| **G2** | 加 `non_recurring_items_breakdown` (text) | S-M (~2-3h) | factor3 V1-V5 分类的原始数据；下游可以做分类 | **2** |
-| **G3** | schema 扩展 `scope_expectation: parent_company_only` + 4 母公司字段 | M (~4-6h) | factor1B 模块九 SOTP 估值；控股公司分析的必要前提 | **3** |
-| **G4** | 6 P4 llm_review 字段实现（新 extraction path）| M-L (~6-10h) | factor1A 一票否决 + factor1B 定性输入；架构投资大 | **4** |
-| **G5 (optional)** | `investment_activity_detail` (text) | S | factor3 step5 对外投资明细 | 5 |
+| 阶段 | 内容 | Effort | 风险 | provider 已验证？ | phase3 影响 | 顺序 |
+|---|---|---|---|---|---|---|
+| **G1a** | 3 CN-direct fields (c_pay_to_staff, c_paid_for_taxes, lt_eqt_invest) — Group A | S (~1-2h batch) | 低（同 P2 cash_flow/BS 模式） | ✓ AKShare CN | factor3 经营支出 + factor1B SOTP（合并口径） | **1** |
+| **G1b** | `contract_liabilities` 处理 current + non_current scope 分裂 — Group B | S-M (~2-4h) | 中（schema 思考：方案 a/b/c）| ⚠ 部分（Yahoo LT-only, AKShare current-only） | factor2/3 EV 双轨核心；先收款模式"类现金" | **2** |
+| **G2** | `non_recurring_items_breakdown` (text pdf_only) — Group D | S-M (~2-3h) | 中（拆解 schema 设计：表格 row schema） | ✗ pdf_only | factor3 V1-V5 分类原始明细 | **3** |
+| **G3** | parent_company_only scope 扩展 + 4 字段 — Group C | M (~4-6h) | 中-高（新 schema 维度 scope_expectation） | ✗ pdf_only | factor1B 模块九 SOTP；控股公司分析必备 | **4** |
+| **G4** | 6 P4 llm_review 字段 + 新 extraction pipeline — Group E | M-L (~6-10h) | 高（新 module，输出 schema 与现有 numerical extraction 不同）| ✗ pdf_only 段落文本 | factor1A 一票否决 + factor1B 定性输入；架构投资大 | **5** |
+| **G5 (optional)** | `investment_activity_detail` (text) — Group D 第二项 | S | 低 | ✗ pdf_only | factor3 step5 对外投资明细 | 6 |
 
-**总投入估算（全部 5 阶段）**：~15-25h（小 phase 模式分多次 commit）。
+**总投入估算（全部 6 阶段）**：~17-27h（小 phase 模式分多次 commit）。
+
+**G1a 应先做的具体理由**：
+- 唯一 **provider 数据已验证存在**的批次（AKShare CN `PAY_STAFF_CASH` / `PAY_ALL_TAX` / `LONG_EQUITY_INVEST` 都已在 600519 fixture 中确认）
+- 3 字段同 P2 模式，可批量加 catalog + test 一次性搞定
+- 低风险验证一遍现有 standard new-company add-field workflow
+- 立即让 CN cohort cash flow + BS 完整度 +3 cells；HK 端待 Yahoo 字段查对后扩
 
 ## 5. 下一步建议
 
-**严格按优先级 G1 → G2 → G3 → G4 顺序执行**，每个 phase 独立 commit + PR。
+**严格按优先级 G1a → G1b → G2 → G3 → G4 顺序执行**，每个独立 commit + PR。
 
 理由：
-- **G1 / G2 是单字段扩展**，与现有 56-field architecture 完全兼容；不动 schema；可立即用现有 standard new-company workflow 验证
+- **G1a 是 3 个 provider-direct 字段批量扩展**，与现有 56-field architecture 完全兼容；不动 schema；最低风险；唯一 provider 数据已验证
+- **G1b contract_liabilities scope 分裂**，需要 schema 决策（current/non_current 双字段方案推荐）；中等复杂
+- **G2 文本明细字段**，与现有 pdf_only text fields（如 receivables_aging）同模式
 - **G3 引入新 schema 维度**（parent_company_only scope），是真正的 architecture 演进；应作为独立 phase 设计 + 测试
 - **G4 是新 LLM extraction pipeline**（不同于现有 pdf_evidence numerical extraction）；本质是新 module，最重，最后做
 
@@ -162,6 +205,7 @@
 - ❌ 试图在本项目层做多年 time-series 整合 → 下游 scope
 - ❌ 试图实现 Owner Earnings / EV 计算 → 下游 scope
 - ❌ 把 6 P4 标 `not_in_scope` 删除 → 它们是 catalog 真实缺口，应该实现，不应 deletion
+- ❌ 在 G1b 处理 current/non_current 时强行用 derivation 方案 → 增加 catalog 复杂度，下游 sum 更灵活
 
 ## 6. 与现有架构的契合
 
@@ -171,14 +215,31 @@
 - `docs/new-company-analysis-workflow.md` 6-step workflow 适用
 - regression test `tests/test_phase_*` 模式适用
 
-**G1 contract_liabilities 立即可做**：
-1. 看 9 HK + 4 CN 现有 fixture 是否有合同负债数据（AKShare/Yahoo 是否返回）
-2. PDF spot-check：02669 物业（应该有，物业管理预收）、03320 医药（可能有，rebate）、01810 Xiaomi（应该有，硬件预售）
-3. 加 taxonomy + source_mapping + 可能加 trust policy rule
-4. regression test
-5. commit
+**G1a 立即可做**（3 字段 batch）：
+1. catalog 加 3 字段 (taxonomy + coverage_matrix + source_mapping_minimal) — AKShare alias 已知
+2. 跑 4 CN 公司 (600519/300750/601919/688008) evaluate-company 验证 clean_present
+3. HK 端：查 Yahoo HK 字段名（Cash Paid for Salaries / Tax Provision Cash Paid / Long Term Investments 等候选）
+4. regression test (test_phase_*.py)
+5. commit + PR
 
-预期效果：**至少 02669 + 03320 立刻 +1 cell**，验证字段抽取通路通畅，之后再做 G2-G4。
+预期效果：CN cohort 立刻 +3 cells × 4 公司 = +12 cells；HK 端取决于 Yahoo 字段是否存在。
+
+## 7. 验证已做的工作
+
+写本文档时已 grep 验证：
+
+| 检查 | 结果 |
+|---|---|
+| AKShare CN 600519 cash flow `PAY_STAFF_CASH` | ✓ 存在 |
+| AKShare CN 600519 cash flow `PAY_ALL_TAX` | ✓ 存在 |
+| AKShare CN 600519 BS `LONG_EQUITY_INVEST` | ✓ 存在 |
+| AKShare HK 02498 `合同负债` | ✓ 存在（current only） |
+| Yahoo HK `Non Current Deferred Revenue` 多公司 | ✓ 存在（00001/01810/02498，仅非流动）|
+| sister repo `financial-report-analysis` 已实现这些字段 | ✓ 见 `2026-04-22-turtle-v015-financial-field-gap-analysis.md` §0 |
+
+未验证但已知（待 G1a 实施时确认）：
+- Yahoo HK 对应 `c_pay_to_staff` / `c_paid_for_taxes` / `lt_eqt_invest` 的字段名（可能用 `Cash Paid for Salaries` / `Cash Paid for Taxes` / `Long Term Investments`）
+- HK 9 公司 + CN 4 公司各自 PDF 中是否清晰披露 contract_liabilities 当期 + 非流动数
 
 ## 参考
 
