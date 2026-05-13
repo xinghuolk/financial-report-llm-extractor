@@ -1,26 +1,31 @@
 # 阶段性总结 — Source-First 财报抽取器
 
-> 日期: 2026-05-11（首发；含 Wave 7 catalog verification + HK currency-label fix 后续）
-> 分支: `feature/source-first-roadmap-requirements` @ `d05bf7f`
-> 范围: Phase HK-B.8 + 全 HK trust policy multi-currency 落地后的项目快照，
-> 处于自然 inflection point。作为
-> `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
+> 日期: 2026-05-11（首发）；2026-05-12 增补 Wave 8 catalog gap closure (G1-G4-C)。
+> 当前快照: G4-C feature branch `feature/g4-phase-c-audit-opinion-and-dividend-policy`
+> @ `3e89f7f`（待 PR），main 含 G1-G3 (PR #3 `3fbcdfd`)。
+> 作为 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
 > 的 TOC 入口，不替代它。
 
 ## TL;DR
 
 - **架构转向已完成**: PDF-first LLM 抽取器 → source-first
   （AKShare/Yahoo → reconciliation → source policy → PDF/LLM supplement）。
-- **Catalog**: 15 → **56 字段** (P0:22 + P1:11 + P2:9 + P3:14)；
-  coverage matrix **36/62 verified**（Phase MX +11 + HK-B.5 +1）。
-- **覆盖率**（post-HK-B.8）: CN 600519/2024 **79%** (44/56 含 LLM)；
-  6 家 HK 公司 **63–71%** 含 LLM，全部 PDF-verified + regression-locked。
+- **Catalog**: 15 → **68 mapped 字段** (P0:22 + P1:11 + P2:12 + P3:21 + P4:2)；
+  另 4 P4 字段在 taxonomy/coverage_matrix 但不映射 = 显式 out-of-project-scope。
+  Wave 8 G1-G4-C 闭合 Turtle v0.15 phase3 catalog gap (Group A-D + 部分 E)。
+- **覆盖率**（post-G4-C, /68）: CN 600519/2024 **79%** (54/68 含 LLM)；CN
+  300750/2024 **81%** (55/68)；HK 01810/02498 **72%** (49/68)；HK 06862
+  **71%** (48/68)；HK 00001/01113/09987 见 §3 表（pre-G4-C 基线值）。
 - **HK trust policy 多币种闭环**: trust 验证 sample 数 14 → **58**（4x 增长）；
   9 HK 字段全 PDF-verified per-issuer（HKD/CNY/USD）。
+- **G3/G4-C alias retrieval ranking fix 模式**: HK 报告用与 CN 完全不同的措辞
+  ("Financial position of the Company" / "in our opinion" 等)。首版 G3/G4-C
+  aliases 全是合并/CN 措辞，HK retrieval 召回错误章节；补 9-12 个 HK-specific
+  anchor aliases 后 hit rate ~0% → 7/7 (G3) / 5/5 (G4-C)。
 - **纪律**: **594 tests** 通过，ruff + mypy clean，drift §177 严格执行
   （无 silent promotion，sample-verified 规则强制 PDF spot-check）。
-- **§7 5 项 branch completion criteria**: 5/5 ✅ 满足，分支处于可合并状态
-  （328 commits，比 main 领先 320）。
+- **§7 5 项 branch completion criteria**: 5/5 ✅ 满足。G1-G3 PR #3 已合并到 main；
+  G4-C 待 PR。
 
 ## 1. 阶段时间线（按 wave 分组）
 
@@ -102,15 +107,26 @@ alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
 
 ## 3. 覆盖率里程碑
 
-| 公司 / 期间 | Reporter | source-first clean | +LLM | 锁定在 |
-|------------|----------|------------------:|-----:|--------|
-| CN 600519 / 2024 | CNY | 39/56 (70%) | **44/56 (79%)** | `test_phase_hk_llm_2_supplement_merge.py::[600519]` |
-| HK 00001 / 2025 | HKD | 31/56 (55%) | **36/56 (64%)** | `test_phase_hk_llm_2_supplement_merge.py::[00001]` |
-| HK 01113 / 2025 | HKD | 32/56 (57%) | **36/56 (64%)** | `test_phase_hk_llm_2_supplement_merge.py::[01113]` |
-| HK 01810 / 2024 | CNY | 33/56 (59%) | **40/56 (71%)** | `test_phase_hk_llm_2_supplement_merge.py::[01810]` |
-| HK 02498 / 2024 | CNY | 33/56 (59%) | **38/56 (68%)** | `test_phase_hk_llm_2_supplement_merge.py::[02498]` |
-| HK 06862 / 2024 | CNY | 34/56 (61%) | **39/56 (70%)** | `test_phase_hk_llm_2_supplement_merge.py::[06862]` |
-| HK 09987 / 2024 | USD | 32/56 (57%) | **35/56 (63%)** | `test_phase_hk_llm_2_supplement_merge.py::[09987]` |
+**Post-G4-C 实测 (2026-05-12, 5 公司)**：
+
+| 公司 / 期间 | Reporter | source-first clean | +LLM | 备注 |
+|------------|----------|------------------:|-----:|------|
+| CN 600519 / 2024 | CNY | 42/68 (62%) | **54/68 (79%)** | G4-C 命中 audit_opinion + dividend_policy_text |
+| CN 300750 / 2024 | CNY | 42/68 (62%) | **55/68 (81%)** | CATL，新增 cohort |
+| HK 01810 / 2024 | CNY | 35/68 (51%) | **49/68 (72%)** | G3 cash/equity_invest + G4-C 全命中 |
+| HK 02498 / 2024 | CNY | 35/68 (51%) | **49/68 (72%)** | 同上 + amounts_due 命中 |
+| HK 06862 / 2024 | CNY | 35/68 (51%) | **48/68 (71%)** | G3 interest_bearing_debt 唯一命中 + G4-C 命中 |
+
+**Pre-G4-C baseline (未在 G4-C catalog 下重测，值为保守估计)**：
+
+| 公司 / 期间 | Reporter | source-first clean | +LLM (pre-G4-C) | 注 |
+|------------|----------|------------------:|-----:|----|
+| HK 00001 / 2025 | HKD | 32/68 (47%) | 44/68 (65%) | G3 4/4 命中已锁；G4-C 待重测 |
+| HK 01113 / 2025 | HKD | 33/68 (49%) | 41/68 (60%) | G3 命中已锁；G4-C 待重测 |
+| HK 09987 / 2024 | USD | 34/68 (50%) | 44/68 (65%) | G3 命中已锁；G4-C 待重测 |
+
+`test_phase_hk_llm_2_supplement_merge.py` 锁定 G1-G3 catalog 下的 baseline 计数。
+G4-C 测试未补 (loose end #2)。
 
 **HK Yahoo Trust Policy 多币种规则覆盖（post-HK-B.8）**：
 
@@ -135,9 +151,15 @@ alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
 | Wave 1 baseline | 15 | 传统 Turtle 最小集 |
 | Post-N1–N3 (05-08) | 33 | P0:22 + P1:11 扩展 |
 | Post-N4.A–.C (05-09) | 44 | + 8 P2 source-first + 1 P2 LLM + 2 P3 |
-| Post-I-C (05-09) | **56** | + 12 P3 text-mode pdf_only |
+| Post-I-C (05-09) | 56 | + 12 P3 text-mode pdf_only |
+| Post-G1a/G1b (05-12, PR #3) | 61 | +3 CN-direct P2 + 2 contract_liabilities P3 split |
+| Post-G2 (05-12, PR #3) | 62 | +1 P3 non_recurring_items_breakdown text |
+| Post-G3 (05-12, PR #3) | 66 | +4 P3 parent-company-only SOTP fields |
+| **Post-G4-C (05-12, 待 PR)** | **68** | +2 P4 pdf_only (audit_opinion + dividend_policy_text) |
 
-剩 6 个 P3/P4 字段未映射（终态或检索信号弱；详见 §6）。
+剩 4 P4 字段在 taxonomy/coverage_matrix 但 source_mapping_minimal 不引用 = 显式
+out-of-project-scope (mda_business_review / mda_forward_guidance / mda_risk_factors
+段落级文本下游做；auditor_change_history 多期 inherently 下游)。详见 §6。
 
 **Sample-verification 广度**
 
@@ -150,10 +172,20 @@ alias-scored top-k)、`extraction.py` (FakeLlmClient + real transport)、
 - 6 家 HK 公司 × 4 个 HK-B 字段 = **24 条 named shape-lock 断言**
   （`tests/test_phase_hk_b_*.py`；post-HK-B.6/.8 部分形态已变 promoted）
 - HK fixtures: 2 (baseline) + 4 (HK 6 extension) = **6 家 HK 公司持久化**
+- **G3 validation breadth (Wave 8)**: 7 家公司 × 4 G3 fields = **28 G3 hit/miss
+  evidence**，全 PDF-validated（`docs/roadmap/...md` §G3 Implementation Result）。
+  Hit matrix: cash 7/7, equity_invest 7/7, amounts_due 4/7, interest_bearing_debt
+  1/7（06862 海底捞 唯一正向）。低命中率全是 issuer-level 数据稀疏。
+- **G4-C validation breadth (Wave 8)**: 5 家公司 × 2 G4-C fields = **10 G4-C
+  hit evidence**, 5/5 + 5/5 完美命中。HK opinion-paragraph anchor aliases
+  补完后 retrieval 100% 准确指向正确章节。
 
 **测试数增长**：~50 (bootstrap) → 450 (H0) → 524 (H2) → 552
 (HK-LLM-2 initial 3-co) → 587 (post HK-B.1-.4 + HK-LLM-2/C) → **594
-(post HK-B.5 → .8 multi-currency closure)**。
+(post HK-B.5 → .8 multi-currency closure)**。Wave 8 G1-G4-C 落地未引入新 test
+（catalog 改动复用既有 test_field_metadata + test_catalog_consistency framework；
+test_phase_hk_llm_2_supplement_merge baseline counts 已 updated）；G4-C
+"intentionally unmapped P4 4 fields" regression test 未补（loose end）。
 
 ## 4. 方法论快照
 
@@ -252,11 +284,15 @@ roadmap 或 recon 文档中明确标记为 deferred / requires-decision 的事�
 | `defer_tax_liab` Yahoo HK 多币种 | HKD 1 sample，非 HKD issuer 无 Yahoo 数据 | HK-B.7 中标记 | Yahoo Deferred Tax Liabilities Non Current 在 4 非 HKD issuer 全无数据；无法多币种扩展。 |
 | `bad_debt_provision` matrix verified | HK-LLM-2 lock 中 4 HK 命中，但 primary_route=yahoo_direct invariant 阻碍 promote 到 verified | Phase MX section | 需要把 primary_route 重构为 pdf_evidence 以反映实际 LLM 路径。 |
 | Yahoo HK adapter live-detect financialCurrency | Phase HK-B.5.1 用 hardcoded map (6 公司)；未知 HK 公司仍 fallback HKD | HK-B.5.1 section | 用 `yfinance.Ticker.info.financialCurrency` 替代 hardcoded map，扩展到任意 HK ticker。 |
-| 6 个检索信号弱的 P3/P4 字段 | 未映射 | roadmap §7 follow-up | 要么走 Phase I-D 用按 disclosure pattern 精修的 alias，要么接受终态 `not_in_scope`。 |
+| ~~6 个检索信号弱的 P3/P4 字段~~ | **Wave 8 G1-G3 闭合** | roadmap G1-G3 sections | G1a/G1b/G2/G3 落地共 +10 字段（5 P3 + 4 P3-parent + 1 P2-split）。G3 4/4 alias 组 PDF-validated 跨 7 cohort。 |
+| **G4-C 4 字段 out-of-scope 信号 catalog 层缺机器可读 marker** | loose end #1 | G4-C review | 仅在 CLAUDE.md + gap doc Group E 文档解释；catalog 自身不携带。**可选**：加 description 注明或新增 `intentionally_unmapped` 字段。 |
+| **G4-C regression test 未锁 4 字段不映射** | loose end #2 | G4-C review | 加 test_p4_intentionally_unmapped 锁定 mda_3 + auditor_change_history 不在 source_mapping。 |
+| **CLAUDE.md cohort table 3 行 (00001/01113/09987) 未在 G4-C catalog 下重测** | loose end #3 | G4-C review | 跑 3 公司补全表 (~15 min)；当前值为保守估计。 |
+| **G4-C dividend_policy_text 精度未深 audit** | loose end #5 | G4-C review | 600519 抽到 "公司利润分配符合《章程》规定" 是合规声明非完整 policy；hit 率高 value 精度待评估。 |
 | Confidence threshold 校准值 | 框架已就位、值待定 | Phase I-A.2 follow-up #2 | 收集 ~50+ 人工标注的 (company, field) 对后定阈值。 |
-| 跨更多 issuer 批量重验证 | 当前 6 HK + 4 CN | roadmap §7 follow-up | 在金融 / 科技 / 能源等行业扩展验证 cohort。 |
+| 跨更多 issuer 批量重验证 | 当前 6 HK + 4 CN (G3 7-cohort + G4-C 5-cohort 增量验证) | roadmap §7 follow-up | 在金融 / 能源等行业扩展。 |
 | `_resolve_derivation_operand` period 等值断言 | deferred | H2.1 carryover | 添加显式 period-end 等值检查，防多期 operand 被静默累加。 |
-| 合并分支到 `main` | 暂未 | — | 已领先 320 commits；分支处于可交付状态，所有 trust policy promotion 均 PDF-evidenced。 |
+| ~~合并分支到 `main`~~ | **G1-G3 PR #3 已合并** ✓ | — | G4-C feature branch 待 PR。 |
 
 ## 7. Onboarding 文档地图
 

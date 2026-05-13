@@ -1160,34 +1160,34 @@
     "dividend_policy_text": {
       "domain": "notes_and_mda",
       "priority": "P4",
-      "primary_route": "llm_review",
+      "primary_route": "pdf_evidence",
       "verification": "expected",
       "routes": [
         {
-          "source": "llm",
-          "mode": "review",
+          "source": "pdf",
+          "mode": "evidence",
           "status": "expected",
           "statement_type": "notes",
-          "evidence_requirement": "llm_review_required"
+          "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+      "notes": "PDF-only field; processed via text-mode LLM extraction (same pipeline as G2 non_recurring_items_breakdown). Phase G4-C conversion 2026-05-12: was source_mode=llm_review (pipeline-unsupported); now pdf_only since extraction is straight text retrieval, not LLM judgment."
     },
     "audit_opinion": {
       "domain": "notes_and_mda",
       "priority": "P4",
-      "primary_route": "llm_review",
+      "primary_route": "pdf_evidence",
       "verification": "expected",
       "routes": [
         {
-          "source": "llm",
-          "mode": "review",
+          "source": "pdf",
+          "mode": "evidence",
           "status": "expected",
           "statement_type": "notes",
-          "evidence_requirement": "llm_review_required"
+          "evidence_requirement": "pdf_required"
         }
       ],
-      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+      "notes": "PDF-only field; processed via text-mode LLM extraction. Phase G4-C conversion 2026-05-12: was source_mode=llm_review (pipeline-unsupported); now pdf_only — extraction is paragraph retrieval, opinion-type classification happens downstream."
     },
     "auditor_change_history": {
       "domain": "notes_and_mda",

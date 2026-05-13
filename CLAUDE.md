@@ -89,23 +89,28 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 **分析新公司**：必看 `docs/new-company-analysis-workflow.md` —— 6 阶段标准工作流（currency 确认 → fetch → evaluate-with-LLM → 读 evaluation.md → 按 reason 分类决策 → PDF spot-check → catalog 更新）。**关键陷阱**：`evaluate-company` 必须带 `PDF_PATH` + `LLM_CONFIG`，否则 P3 pdf_only 字段（dividend_plan/dps 等 14 个）假性 unresolved。
 
-随后查阅 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）、Phase G1a（3 CN-direct P2 fields）、Phase G1b（contract_liabilities current+non_current split）、Phase G2（non_recurring_items_breakdown text/pdf_only）、Phase G3（parent-company-only SOTP 4 字段：cash/interest_bearing_debt/equity_investment_in_subsidiaries/amounts_due_from_subsidiaries）均已落地。catalog 覆盖 **66 字段**（P0:22 + P1:11 + P2:12 + P3:21）。**关键认知**：`scope_expectation` 是纯 metadata 标签（`field_metadata.py:32-38` Literal `consolidated/parent/attributable_to_owners/unknown/not_applicable`），`src/` 内无业务逻辑读它做 filtering——G3 只是给 4 个 pdf_only 字段贴 `parent` 标签，不需要 schema 维度扩展或代码改动。
+随后查阅 `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md` —— Bucket 1（H0 null_means_zero）、Bucket 4（terminal taxonomy）、Phase H1（surgical conflict resolution）、Phase I-A/I-A.2（HK LLM 抽取 + 6 follow-ups）、Phase N4（P2+P3 扩展）、Phase I-C（text-mode）、Phase I-C.1（whitespace 归一化）、Phase EC（evaluate-company orchestrator）、Phase H2（CN/HK conflict surgical resolution）、Phase H2.1（catalog 加法 derivation 解锁 CN SGA）、Phase H2.2（多公司 sample-verification + market-scoped source_aliases + clean-row candidate audit）、Phase G1a（3 CN-direct P2 fields）、Phase G1b（contract_liabilities current+non_current split）、Phase G2（non_recurring_items_breakdown text/pdf_only）、Phase G3（parent-company-only SOTP 4 字段）、Phase G4-C（混合方案：audit_opinion + dividend_policy_text 加入 P4 pdf_only；mda_business_review/mda_forward_guidance/mda_risk_factors/auditor_change_history 留在 source_mode=llm_review 未启用 = 显式 out-of-project-scope）均已落地。catalog 覆盖 **68 字段** mapped（P0:22 + P1:11 + P2:12 + P3:21 + P4:2）+ 4 未映射 P4（仍在 taxonomy/coverage_matrix 内但 source_mapping_minimal 不引用）。**关键认知**：`scope_expectation` 是纯 metadata 标签（`field_metadata.py:32-38` Literal `consolidated/parent/attributable_to_owners/unknown/not_applicable`），`src/` 内无业务逻辑读它做 filtering——G3 只是给 4 个 pdf_only 字段贴 `parent` 标签，不需要 schema 维度扩展或代码改动。**G4-C 关键洞察**：现有 `llm_review.py` 模块用于 conflict adjudication 不是段落抽取；`source_mode=llm_review` 在当前 pipeline 里**未被消费**，等价于"defined but inert"。G4-C 把 2 个真正 PDF-可抽字段 (audit_opinion + dividend_policy_text) 转为 `pdf_only` 进入 text-mode pipeline；剩 4 字段 (MD&A 段落 + 多期 auditor_change_history) 显式留在 unused `llm_review` 模式 = catalog 边界即下游 Turtle Agent scope。
 
-**当前覆盖率（live evaluate-company PDF+LLM，post-G3 全 cohort validated 2026-05-12，catalog 66 字段）**：
-- **CN 600519/2024**: source-first 42/66 (64%) clean → **+LLM 52/66 (79%)** ✓ regression-locked
-- **HK 00001/2025 (HKD)**: source-first 32/66 (48%) + 1 terminal → **+LLM 44/66 (67%)** ✓
-- **HK 01113/2025 (HKD)**: source-first 33/66 (50%) → **+LLM 41/66 (62%)** ✓
-- **HK 01810/2024 (CNY)**: source-first 35/66 (53%) + 2 terminal → **+LLM 47/66 (71%)** ✓
-- **HK 02498/2024 (CNY)**: source-first 35/66 (53%) + 2 terminal → **+LLM 47/66 (71%)** ✓
-- **HK 06862/2024 (CNY)**: source-first 35/66 (53%) + 1 terminal → **+LLM 47/66 (71%)** ✓ (interest_bearing_debt_parent_company ✓ 2.07M千 RMB — G3 alias 正向命中)
-- **HK 09987/2024 (USD)**: source-first 34/66 (52%) + 1 terminal → **+LLM 44/66 (67%)** ✓ (HK-B.8 accounts_receiv promoted)
+**当前覆盖率（live evaluate-company PDF+LLM，catalog 68 mapped 字段）**：
+
+post-G4-C 实测 (2026-05-12, 2 CN + 3 HK)：
+- **CN 600519/2024**: source-first 42/68 (62%) clean → **+LLM 54/68 (79%)** ✓ (G4-C audit_opinion 标准无保留 + dividend_policy_text)
+- **CN 300750/2024 (CATL)**: source-first 42/68 (62%) → **+LLM 55/68 (81%)** ✓ (G4-C 同 600519 命中)
+- **HK 01810/2024 (CNY)**: source-first 35/68 (51%) + 2 terminal → **+LLM 49/68 (72%)** ✓ (G4-C unqualified p224 + dividend policy p110)
+- **HK 02498/2024 (CNY)**: source-first 35/68 (51%) + 2 terminal → **+LLM 49/68 (72%)** ✓ (G4-C unqualified p129 + dividend policy p70)
+- **HK 06862/2024 (CNY)**: source-first 35/68 (51%) + 1 terminal → **+LLM 48/68 (71%)** ✓ (G4-C 命中 + G3 interest_bearing_debt 2.07M千 RMB 唯一正向)
+
+pre-G4-C baseline (未在 G4-C catalog 下重测，值保守，可能因 G4-C +1~+2)：
+- **HK 00001/2025 (HKD)**: source-first 32/68 (47%) + 1 terminal → +LLM 44/68 (65%) (G3 4/4 命中已锁)
+- **HK 01113/2025 (HKD)**: source-first 33/68 (49%) → +LLM 41/68 (60%)
+- **HK 09987/2024 (USD)**: source-first 34/68 (50%) + 1 terminal → +LLM 44/68 (65%) (HK-B.8 accounts_receiv promoted)
 - **Sample-verified breadth**: 4 CN 公司 × 4 promotion 字段 = 16 EXACT match samples
 - **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
 - **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）
 - **Catalog verification** (Phase MX + Phase HK-B.5, 2026-05-11): coverage_matrix verified 24/66 → **36/66** (+12)；详情见 roadmap Phase MX + HK-B.5 Implementation Result
 - **HK issuer financial-currency 闭环** (Phase HK-B.5.1 + .5.2, 2026-05-11): `HK_ISSUER_FINANCIAL_CURRENCY` map（PDF spot-checked 6 HK）+ fixture backfill (1616 records) + `HkYahooTrustRule.additional_trusted_currencies` schema → 全部 HK 字段现在用 issuer reporting currency stamp；09987 acct_payable promote 到 clean。注意：revenue/net_profit/total_assets 等 HKD-only trust rules 未做 multi-currency 扩展，非 HKD reporter 的这些字段现在正确 unresolved（之前是 wrong-label-trust-policy 误触发的 mirage clean）
 
-下一步候选：G1a/G1b/G2/G3 已落地（+10 catalog 字段，+13 source-first cells；G2/G3 纯 pdf_only 走 LLM）。G3 原 review 估算"需新 schema 维度"是过度评估——`scope_expectation: parent` enum 早已存在且无业务逻辑读它，G3 实为纯标签级 catalog 扩展。剩余按 `docs/2026-05-12-turtle-v015-catalog-gap-analysis.md` 优先级：G4 (P4 llm_review pipeline 6 字段，**需新抽取模块**，是唯一真正的架构投资)。或合并到 main（branch 已 ~24 commits ahead，处于可交付状态）。
+下一步候选：G1a/G1b/G2/G3/G4-C 已落地（+12 mapped catalog 字段，+13 source-first cells；G2/G3/G4-C 纯 pdf_only 走 LLM）。原 gap doc 估算 G3 "需新 schema 维度" + G4 "需新抽取模块" 都被实测证伪——G3 是纯标签级，G4-C 是 source_mode 转换 (llm_review→pdf_only) + 模板复用，5/6 P4 字段实质同 G2/G3 模式。**G4-C validation (5 公司 PDF+LLM, 2 CN + 3 HK, 2026-05-12)**：audit_opinion **5/5 ⭐** + dividend_policy_text **5/5 ⭐**（HK 增 "our opinion / in our opinion / what we have audited" anchor aliases 修 retrieval ranking）。剩余 4 P4 未映射字段 (MD&A 3 + auditor_change_history) **显式留在下游 scope**——MD&A 段落级 + 多期 audit history 在本项目数据收集层 ROI 太低。或合并到 main 完成 catalog gap closure 阶段。
 
 **G3 LLM validation (full 7-cohort, PDF+LLM, 2026-05-12)**：catalog 落地后首跑命中率低 (01810 全 miss)，原因是 HK 报告用 "Financial position of the Company" / "Investment in subsidiaries (singular)" 等措辞与 v1 aliases 不匹配。补 HK-specific PDF aliases (`financial position of the company` / `balance sheet of the company` / 单数 `investment in subsidiaries` / `amount due from a subsidiary` 等) 后跑全 7 cohort 实测：
 
