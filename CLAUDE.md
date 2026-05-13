@@ -93,17 +93,15 @@ Provider artifacts (AKShare/Yahoo) → reconciliation & semantics proof → sour
 
 **当前覆盖率（live evaluate-company PDF+LLM，catalog 68 mapped 字段）**：
 
-post-G4-C 实测 (2026-05-12, 2 CN + 3 HK)：
-- **CN 600519/2024**: source-first 42/68 (62%) clean → **+LLM 54/68 (79%)** ✓ (G4-C audit_opinion 标准无保留 + dividend_policy_text)
-- **CN 300750/2024 (CATL)**: source-first 42/68 (62%) → **+LLM 55/68 (81%)** ✓ (G4-C 同 600519 命中)
-- **HK 01810/2024 (CNY)**: source-first 35/68 (51%) + 2 terminal → **+LLM 49/68 (72%)** ✓ (G4-C unqualified p224 + dividend policy p110)
-- **HK 02498/2024 (CNY)**: source-first 35/68 (51%) + 2 terminal → **+LLM 49/68 (72%)** ✓ (G4-C unqualified p129 + dividend policy p70)
-- **HK 06862/2024 (CNY)**: source-first 35/68 (51%) + 1 terminal → **+LLM 48/68 (71%)** ✓ (G4-C 命中 + G3 interest_bearing_debt 2.07M千 RMB 唯一正向)
-
-pre-G4-C baseline (未在 G4-C catalog 下重测，值保守，可能因 G4-C +1~+2)：
-- **HK 00001/2025 (HKD)**: source-first 32/68 (47%) + 1 terminal → +LLM 44/68 (65%) (G3 4/4 命中已锁)
-- **HK 01113/2025 (HKD)**: source-first 33/68 (49%) → +LLM 41/68 (60%)
-- **HK 09987/2024 (USD)**: source-first 34/68 (50%) + 1 terminal → +LLM 44/68 (65%) (HK-B.8 accounts_receiv promoted)
+G4-C catalog 实测 (DeepSeek baseline 2026-05-12 / Codex `gpt-5.5` validation 2026-05-13)：
+- **CN 600519/2024**: source-first 42/68 → DS +LLM **54/68 (79%)**；Codex **52/68 (76%)** — Codex 正确拒绝 2 个 DS false positive (`dividend_policy_text` 浅命中 + `receiv_tax_refund` 把 2023 值映到 2024)
+- **CN 300750/2024 (CATL)**: source-first 42/68 → DS +LLM **55/68 (81%)** (Codex 未跑)
+- **HK 01810/2024 (CNY)**: source-first 35/68 + 2 terminal → DS **49/68 (72%)**；Codex **53/68 (78%, +5)** — c_paid_for_taxes p237 / dividends_paid -23.3M p238 / non_oper_income 1.67B p230 / non_recurring SBC p10
+- **HK 02498/2024 (CNY)**: source-first 35/68 + 2 terminal → DS **49/68 (72%)** (Codex 未跑)
+- **HK 06862/2024 (CNY)**: source-first 35/68 + 1 terminal → DS **48/68 (71%)**；G3 interest_bearing_debt 2.07M 千 RMB 唯一正向
+- **HK 00001/2025 (HKD)**: source-first 32/68 + 1 terminal → DS pre-G4-C 44/68；Codex G4-C **47/68 (69%, +3)**
+- **HK 01113/2025 (HKD)**: source-first 33/68 → DS pre-G4-C 41/68；Codex G4-C **44/68 (65%, +3)**
+- **HK 09987/2024 (USD)**: source-first 34/68 + 1 terminal → DS pre-G4-C 44/68；Codex G4-C **43/68 (63%, -1)** — codex 命中 audit_opinion，丢 contract_liab_current/segment
 - **Sample-verified breadth**: 4 CN 公司 × 4 promotion 字段 = 16 EXACT match samples
 - **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
 - **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）

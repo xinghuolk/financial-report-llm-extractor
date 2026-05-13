@@ -291,3 +291,64 @@ def test_akshare_aliases_appear_in_provider_baseline_inventory() -> None:
         raise AssertionError(
             f"akshare aliases in source_mapping not found in provider baseline:\n{msg}"
         )
+
+
+# 4 P4 fields that are deliberately defined in taxonomy + coverage_matrix
+# (for downstream Turtle Agent reference) but NOT in source_mapping_minimal.
+# Paragraph-level MD&A extraction and multi-period audit-firm tenure tracking
+# are out of project scope for this data-collection layer.
+# See Phase G4-C Implementation Result in the roadmap and the description
+# field on each taxonomy entry for the rationale.
+_P4_INTENTIONALLY_UNMAPPED: tuple[str, ...] = (
+    "mda_business_review",
+    "mda_forward_guidance",
+    "mda_risk_factors",
+    "auditor_change_history",
+)
+
+
+def test_p4_intentionally_unmapped_fields_stay_unmapped() -> None:
+    """Regression lock: the 4 P4 fields documented as out-of-project-scope
+    must remain unmapped in source_mapping_minimal but present in taxonomy
+    and coverage_matrix. If a future contributor maps one of them, this
+    test forces them to update _P4_INTENTIONALLY_UNMAPPED here and the
+    description marker in turtle_v015_field_taxonomy.json so the scope
+    decision stays explicit.
+
+    See Phase G4-C Implementation Result (loose end #1) in the roadmap.
+    """
+    taxonomy = load_field_taxonomy(TAXONOMY)
+    coverage = load_coverage_matrix(COVERAGE_MATRIX)
+    # Load with all priorities so source_mapping_minimal entries are visible.
+    source_mapping = load_source_mapping_catalog(
+        SOURCE_MAPPING, priorities=("P0", "P1", "P2", "P3", "P4")
+    )
+
+    for field_id in _P4_INTENTIONALLY_UNMAPPED:
+        assert field_id in taxonomy.fields, (
+            f"intentionally-unmapped P4 field '{field_id}' missing from "
+            f"taxonomy; coverage gap doc and downstream Turtle Agent rely "
+            f"on it being defined."
+        )
+        assert taxonomy.fields[field_id].priority == "P4", (
+            f"field '{field_id}' expected priority P4, got "
+            f"{taxonomy.fields[field_id].priority!r}"
+        )
+        assert "[Intentionally unmapped" in taxonomy.fields[field_id].description, (
+            f"field '{field_id}' description must start with marker "
+            f"'[Intentionally unmapped — out of project scope]' so the "
+            f"out-of-scope decision is machine-readable. Update the "
+            f"taxonomy description if you are deliberately mapping this "
+            f"field, then remove it from _P4_INTENTIONALLY_UNMAPPED."
+        )
+        assert field_id in coverage.fields, (
+            f"intentionally-unmapped P4 field '{field_id}' missing from "
+            f"coverage_matrix"
+        )
+        assert field_id not in source_mapping.entries, (
+            f"P4 field '{field_id}' is documented as intentionally unmapped "
+            f"(out of project scope) but appears in source_mapping_minimal. "
+            f"Either (a) remove it from source_mapping, or (b) update "
+            f"_P4_INTENTIONALLY_UNMAPPED in this test and the taxonomy "
+            f"description marker to reflect the scope decision change."
+        )

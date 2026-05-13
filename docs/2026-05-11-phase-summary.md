@@ -285,10 +285,10 @@ roadmap 或 recon 文档中明确标记为 deferred / requires-decision 的事�
 | `bad_debt_provision` matrix verified | HK-LLM-2 lock 中 4 HK 命中，但 primary_route=yahoo_direct invariant 阻碍 promote 到 verified | Phase MX section | 需要把 primary_route 重构为 pdf_evidence 以反映实际 LLM 路径。 |
 | Yahoo HK adapter live-detect financialCurrency | Phase HK-B.5.1 用 hardcoded map (6 公司)；未知 HK 公司仍 fallback HKD | HK-B.5.1 section | 用 `yfinance.Ticker.info.financialCurrency` 替代 hardcoded map，扩展到任意 HK ticker。 |
 | ~~6 个检索信号弱的 P3/P4 字段~~ | **Wave 8 G1-G3 闭合** | roadmap G1-G3 sections | G1a/G1b/G2/G3 落地共 +10 字段（5 P3 + 4 P3-parent + 1 P2-split）。G3 4/4 alias 组 PDF-validated 跨 7 cohort。 |
-| **G4-C 4 字段 out-of-scope 信号 catalog 层缺机器可读 marker** | loose end #1 | G4-C review | 仅在 CLAUDE.md + gap doc Group E 文档解释；catalog 自身不携带。**可选**：加 description 注明或新增 `intentionally_unmapped` 字段。 |
-| **G4-C regression test 未锁 4 字段不映射** | loose end #2 | G4-C review | 加 test_p4_intentionally_unmapped 锁定 mda_3 + auditor_change_history 不在 source_mapping。 |
-| **CLAUDE.md cohort table 3 行 (00001/01113/09987) 未在 G4-C catalog 下重测** | loose end #3 | G4-C review | 跑 3 公司补全表 (~15 min)；当前值为保守估计。 |
-| **G4-C dividend_policy_text 精度未深 audit** | loose end #5 | G4-C review | 600519 抽到 "公司利润分配符合《章程》规定" 是合规声明非完整 policy；hit 率高 value 精度待评估。 |
+| ~~**G4-C 4 字段 out-of-scope 信号 catalog 层缺机器可读 marker**~~ | **已关闭 (2026-05-13)** | G4-C 收尾 | 4 P4 字段 (3 MD&A + auditor_change_history) taxonomy description 加 `[Intentionally unmapped — out of project scope]` 前缀；coverage_matrix notes 同步；机器可读 marker 落地。 |
+| ~~**G4-C regression test 未锁 4 字段不映射**~~ | **已关闭 (2026-05-13)** | G4-C 收尾 | `tests/test_catalog_consistency.py::test_p4_intentionally_unmapped_fields_stay_unmapped` 锁定 4 字段在 taxonomy + coverage_matrix 但不在 source_mapping_minimal，且 description 必须含 marker。 |
+| ~~**CLAUDE.md cohort table 3 行 (00001/01113/09987) 未在 G4-C catalog 下重测**~~ | **已关闭 (2026-05-13)** | G4-C 收尾 | 全部 3 行已用 Codex `gpt-5.5` + G4-C catalog 重测：00001 +3 / 01113 +3 / 09987 -1。详情见 `docs/2026-05-13-subscription-llm-validation.md`。 |
+| ~~**G4-C dividend_policy_text 精度未深 audit**~~ | **已关闭 (2026-05-13)** | Codex validation | Codex `gpt-5.5` 在 600519 上正确返回 `not_found`，reasoning 明确指出 DS 命中 "公司利润分配符合《章程》规定" 是合规声明非真 policy；DS 是 shallow false positive。 |
 | Confidence threshold 校准值 | 框架已就位、值待定 | Phase I-A.2 follow-up #2 | 收集 ~50+ 人工标注的 (company, field) 对后定阈值。 |
 | 跨更多 issuer 批量重验证 | 当前 6 HK + 4 CN (G3 7-cohort + G4-C 5-cohort 增量验证) | roadmap §7 follow-up | 在金融 / 能源等行业扩展。 |
 | `_resolve_derivation_operand` period 等值断言 | deferred | H2.1 carryover | 添加显式 period-end 等值检查，防多期 operand 被静默累加。 |

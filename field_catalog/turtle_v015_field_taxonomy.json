@@ -799,7 +799,7 @@
       "unit_requirement": "not_applicable",
       "evidence_requirement": "llm_review_required",
       "fallback_policy": "llm_review_required",
-      "description": "Management discussion business review text."
+      "description": "[Intentionally unmapped — out of project scope] Management discussion business review text. Defined in taxonomy and coverage_matrix for downstream Turtle Agent consumption, but not in source_mapping_minimal: MD&A paragraph-level extraction is the downstream agent's responsibility, not this data-collection layer. See docs/2026-05-11-phase-summary.md §3 and roadmap Phase G4-C Implementation Result."
     },
     "mda_forward_guidance": {
       "priority": "P4",
@@ -813,7 +813,7 @@
       "unit_requirement": "not_applicable",
       "evidence_requirement": "llm_review_required",
       "fallback_policy": "llm_review_required",
-      "description": "Management discussion forward guidance text."
+      "description": "[Intentionally unmapped — out of project scope] Management discussion forward guidance text. Same scoping rationale as mda_business_review: paragraph-level MD&A extraction belongs to the downstream Turtle Agent, not this data-collection layer."
     },
     "mda_risk_factors": {
       "priority": "P4",
@@ -827,7 +827,7 @@
       "unit_requirement": "not_applicable",
       "evidence_requirement": "llm_review_required",
       "fallback_policy": "llm_review_required",
-      "description": "Management discussion risk factors text."
+      "description": "[Intentionally unmapped — out of project scope] Management discussion risk factors text. Same scoping rationale as mda_business_review: paragraph-level MD&A extraction belongs to the downstream Turtle Agent, not this data-collection layer."
     },
     "dividend_policy_text": {
       "priority": "P4",
@@ -869,7 +869,7 @@
       "unit_requirement": "not_applicable",
       "evidence_requirement": "llm_review_required",
       "fallback_policy": "llm_review_required",
-      "description": "Auditor change history text for the report."
+      "description": "[Intentionally unmapped — out of project scope] Auditor change history text for the report. Multi-period audit-firm tenure tracking inherently requires cross-year disclosure correlation that belongs to the downstream Turtle Agent, not this single-period data-collection layer."
     },
     "c_pay_to_staff": {
       "priority": "P2",

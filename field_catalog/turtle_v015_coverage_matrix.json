@@ -1123,7 +1123,7 @@
           "evidence_requirement": "llm_review_required"
         }
       ],
-      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+      "notes": "[Intentionally unmapped — out of project scope] Defined here for downstream Turtle Agent reference but not in source_mapping_minimal. Paragraph-level MD&A extraction is the downstream agent's responsibility, not this data-collection layer. Regression test test_p4_intentionally_unmapped locks this out-of-scope status."
     },
     "mda_forward_guidance": {
       "domain": "notes_and_mda",
@@ -1139,7 +1139,7 @@
           "evidence_requirement": "llm_review_required"
         }
       ],
-      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+      "notes": "[Intentionally unmapped — out of project scope] Same scoping rationale as mda_business_review."
     },
     "mda_risk_factors": {
       "domain": "notes_and_mda",
@@ -1155,7 +1155,7 @@
           "evidence_requirement": "llm_review_required"
         }
       ],
-      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+      "notes": "[Intentionally unmapped — out of project scope] Same scoping rationale as mda_business_review."
     },
     "dividend_policy_text": {
       "domain": "notes_and_mda",
@@ -1203,7 +1203,7 @@
           "evidence_requirement": "llm_review_required"
         }
       ],
-      "notes": "No captured proof yet; planned llm_review route via llm review remains expected."
+      "notes": "[Intentionally unmapped — out of project scope] Multi-period audit-firm tenure tracking inherently requires cross-year disclosure correlation that belongs to the downstream Turtle Agent."
     },
     "c_pay_to_staff": {
       "domain": "cash_flow",
