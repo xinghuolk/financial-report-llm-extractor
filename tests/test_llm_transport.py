@@ -418,7 +418,12 @@ def test_codex_client_builds_responses_request(
     assert isinstance(content, list)
     first_part = content[0]
     assert isinstance(first_part, dict)
-    assert json.loads(first_part["text"])["field_id"] == "cash"
+    serialized_user_payload = first_part["text"]
+    assert isinstance(serialized_user_payload, str)
+    assert "json" in serialized_user_payload
+    parsed_user_payload = json.loads(serialized_user_payload)
+    assert parsed_user_payload["field_id"] == "cash"
+    assert parsed_user_payload["_response_format"] == "json"
 
 
 def test_codex_client_adds_json_instruction_when_prompt_omits_keyword(
@@ -516,6 +521,94 @@ def test_urllib_transport_parses_responses_sse_completed_event(
 
     assert raw["id"] == "resp_1"
     assert response_json_text(raw) == json.dumps({"fields": []})
+
+
+def test_urllib_transport_detects_sse_without_content_type(
+    monkeypatch: Any,
+) -> None:
+    class FakeResponse:
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            completed = {
+                "type": "response.completed",
+                "response": {
+                    "output": [
+                        {
+                            "type": "message",
+                            "content": [{"type": "output_text", "text": "{}"}],
+                        }
+                    ]
+                },
+            }
+            return (
+                "event: response.completed\n"
+                f"data: {json.dumps(completed)}\n\n"
+            ).encode("utf-8")
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *args, **kwargs: FakeResponse())
+
+    raw = UrllibHttpTransport().post_json(
+        "https://chatgpt.com/backend-api/codex/responses",
+        {"Content-Type": "application/json"},
+        {"stream": True},
+        12,
+    )
+
+    assert response_json_text(raw) == "{}"
+
+
+def test_urllib_transport_backfills_empty_completed_response_from_sse_text(
+    monkeypatch: Any,
+) -> None:
+    class FakeHeaders:
+        def get(self, name: str, default: str = "") -> str:
+            if name.lower() == "content-type":
+                return "text/event-stream"
+            return default
+
+    class FakeResponse:
+        headers = FakeHeaders()
+
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            completed = {
+                "type": "response.completed",
+                "response": {
+                    "id": "resp_empty_output",
+                    "status": "completed",
+                    "output": [],
+                },
+            }
+            return (
+                "event: response.output_text.delta\n"
+                "data: {\"type\":\"response.output_text.delta\",\"delta\":\"{\\\"ok\\\":\"}\n\n"
+                "event: response.output_text.done\n"
+                "data: {\"type\":\"response.output_text.done\",\"text\":\"{\\\"ok\\\":true}\"}\n\n"
+                "event: response.completed\n"
+                f"data: {json.dumps(completed)}\n\n"
+            ).encode("utf-8")
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *args, **kwargs: FakeResponse())
+
+    raw = UrllibHttpTransport().post_json(
+        "https://chatgpt.com/backend-api/codex/responses",
+        {"Content-Type": "application/json"},
+        {"stream": True},
+        12,
+    )
+
+    assert raw["id"] == "resp_empty_output"
+    assert response_json_text(raw) == "{\"ok\":true}"
 
 
 def test_claude_code_client_builds_messages_request(

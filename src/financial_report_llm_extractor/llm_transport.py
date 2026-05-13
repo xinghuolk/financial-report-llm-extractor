@@ -395,7 +395,7 @@ class CodexResponsesClient:
                         {
                             "type": "input_text",
                             "text": json.dumps(
-                                user_payload,
+                                _codex_json_user_payload(user_payload),
                                 ensure_ascii=False,
                                 sort_keys=True,
                             ),
@@ -517,6 +517,12 @@ def _ensure_json_instruction(system_prompt: str) -> str:
     return f"{system_prompt}\nReturn a json object."
 
 
+def _codex_json_user_payload(user_payload: dict[str, object]) -> dict[str, object]:
+    payload = dict(user_payload)
+    payload.setdefault("_response_format", "json")
+    return payload
+
+
 def _is_sse_response(response: object, raw_text: str) -> bool:
     headers = getattr(response, "headers", None)
     content_type = ""
@@ -528,7 +534,12 @@ def _is_sse_response(response: object, raw_text: str) -> bool:
         getheader = getattr(response, "getheader", None)
         if callable(getheader):
             content_type = str(getheader("Content-Type", ""))
-    return "text/event-stream" in content_type.lower() or raw_text.startswith("data:")
+    stripped = raw_text.lstrip()
+    return (
+        "text/event-stream" in content_type.lower()
+        or stripped.startswith("data:")
+        or stripped.startswith("event:")
+    )
 
 
 def _parse_sse_response(raw_text: str) -> dict[str, object]:
@@ -552,7 +563,17 @@ def _parse_sse_response(raw_text: str) -> dict[str, object]:
         events.append(cast(dict[str, object], event))
         response = event.get("response")
         if event.get("type") == "response.completed" and isinstance(response, dict):
-            return cast(dict[str, object], response)
+            completed_response = dict(response)
+            output = completed_response.get("output")
+            if (
+                isinstance(output, list)
+                and not output
+                and (done_text is not None or delta_parts)
+            ):
+                completed_response["output"] = _codex_output_from_text(
+                    done_text if done_text is not None else "".join(delta_parts)
+                )
+            return completed_response
         event_type = str(event.get("type", ""))
         delta = event.get("delta")
         if event_type.endswith(".delta") and isinstance(delta, str):
@@ -563,15 +584,19 @@ def _parse_sse_response(raw_text: str) -> dict[str, object]:
     output_text = done_text if done_text is not None else "".join(delta_parts)
     if output_text:
         return {
-            "output": [
-                {
-                    "type": "message",
-                    "content": [{"type": "output_text", "text": output_text}],
-                }
-            ],
+            "output": _codex_output_from_text(output_text),
             "stream_event_count": len(events),
         }
     raise ValueError("SSE response missing response.completed or output text")
+
+
+def _codex_output_from_text(output_text: str) -> list[dict[str, object]]:
+    return [
+        {
+            "type": "message",
+            "content": [{"type": "output_text", "text": output_text}],
+        }
+    ]
 
 
 def _claude_code_headers(access_token: str) -> dict[str, str]:
