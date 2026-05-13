@@ -172,9 +172,18 @@ The request should be built from the existing prompt contract:
       "type": "json_object"
     }
   },
+  "stream": true,
   "store": false
 }
 ```
+
+Codex subscription Responses must be requested as streaming SSE. The transport
+is responsible for parsing `text/event-stream` events and returning the
+`response.completed.response` object when present, or a compatible
+`output[].content[].text` response assembled from output text events. When
+`text.format.type=json_object` is used, the instructions must include the
+literal lower-case word `json`; callers that omit it should be normalized by
+the Codex client before sending the request.
 
 Headers should include:
 
@@ -400,6 +409,18 @@ uv run mypy src tests
 Mitigation: isolate Codex header construction in one helper and cover it with
 tests that mirror the known Hermes-compatible header contract.
 
+**Risk:** Codex subscription backend requires streaming Responses semantics.
+
+Mitigation: send `stream: true`, parse SSE `response.completed` events in the
+stdlib transport, and keep the returned raw response compatible with the shared
+`response_json_text()` parser.
+
+**Risk:** Codex `json_object` requests are rejected unless the prompt contains
+the literal `json` keyword.
+
+Mitigation: normalize Codex instructions to include a lower-case `json`
+directive before sending the request.
+
 **Risk:** Claude Code credential file shape changes.
 
 Mitigation: keep credential parsing narrow, fail with
@@ -410,6 +431,15 @@ Mitigation: keep credential parsing narrow, fail with
 
 Mitigation: return `subscription_token_expired` with an actionable message to
 run the official CLI login again. This preserves the read-only credential scope.
+
+**Risk:** Anthropic policy blocks direct Claude Code subscription OAuth calls
+to `/v1/messages`.
+
+Mitigation: treat the direct `claude-code` HTTP client as best-effort only and
+do not present it as a verified production path. If direct calls are rejected
+with subscription-specific `rate_limit_error` responses, the viable follow-up is
+a separate CLI bridge through the official `claude -p` process, not more HTTP
+header changes inside this feature.
 
 **Risk:** Provider-native raw response shapes fragment parsing code.
 
@@ -436,4 +466,3 @@ Reference files in `/home/like/git/hermes-agent`:
   payload structure. This project should implement a tiny single-turn subset.
 - `agent/usage_pricing.py`: subscription routes are treated as included. This
   project does not need full cost estimation in the first version.
-

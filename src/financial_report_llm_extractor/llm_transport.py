@@ -171,7 +171,11 @@ class UrllibHttpTransport:
             method="POST",
         )
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            data = json.loads(response.read().decode("utf-8"))
+            raw_text = response.read().decode("utf-8")
+            if _is_sse_response(response, raw_text):
+                data = _parse_sse_response(raw_text)
+            else:
+                data = json.loads(raw_text)
             return cast(dict[str, object], data)
 
 
@@ -383,7 +387,7 @@ class CodexResponsesClient:
     ) -> dict[str, object]:
         payload = {
             "model": self.config.model,
-            "instructions": system_prompt,
+            "instructions": _ensure_json_instruction(system_prompt),
             "input": [
                 {
                     "role": "user",
@@ -400,6 +404,7 @@ class CodexResponsesClient:
                 }
             ],
             "text": {"format": {"type": "json_object"}},
+            "stream": True,
             "store": False,
         }
         raw_response = self._post_with_retries(payload)
@@ -504,6 +509,69 @@ def _codex_headers(access_token: str) -> dict[str, str]:
     if account_id:
         headers["ChatGPT-Account-ID"] = account_id
     return headers
+
+
+def _ensure_json_instruction(system_prompt: str) -> str:
+    if "json" in system_prompt:
+        return system_prompt
+    return f"{system_prompt}\nReturn a json object."
+
+
+def _is_sse_response(response: object, raw_text: str) -> bool:
+    headers = getattr(response, "headers", None)
+    content_type = ""
+    if headers is not None:
+        get_header = getattr(headers, "get", None)
+        if callable(get_header):
+            content_type = str(get_header("Content-Type", ""))
+    if not content_type:
+        getheader = getattr(response, "getheader", None)
+        if callable(getheader):
+            content_type = str(getheader("Content-Type", ""))
+    return "text/event-stream" in content_type.lower() or raw_text.startswith("data:")
+
+
+def _parse_sse_response(raw_text: str) -> dict[str, object]:
+    events: list[dict[str, object]] = []
+    delta_parts: list[str] = []
+    done_text: str | None = None
+    for block in raw_text.split("\n\n"):
+        data_lines = [
+            line.removeprefix("data:").strip()
+            for line in block.splitlines()
+            if line.startswith("data:")
+        ]
+        if not data_lines:
+            continue
+        data_text = "\n".join(data_lines)
+        if data_text == "[DONE]":
+            continue
+        event = json.loads(data_text)
+        if not isinstance(event, dict):
+            continue
+        events.append(cast(dict[str, object], event))
+        response = event.get("response")
+        if event.get("type") == "response.completed" and isinstance(response, dict):
+            return cast(dict[str, object], response)
+        event_type = str(event.get("type", ""))
+        delta = event.get("delta")
+        if event_type.endswith(".delta") and isinstance(delta, str):
+            delta_parts.append(delta)
+        text = event.get("text")
+        if event_type.endswith(".done") and isinstance(text, str):
+            done_text = text
+    output_text = done_text if done_text is not None else "".join(delta_parts)
+    if output_text:
+        return {
+            "output": [
+                {
+                    "type": "message",
+                    "content": [{"type": "output_text", "text": output_text}],
+                }
+            ],
+            "stream_event_count": len(events),
+        }
+    raise ValueError("SSE response missing response.completed or output text")
 
 
 def _claude_code_headers(access_token: str) -> dict[str, str]:

@@ -10,6 +10,7 @@ from financial_report_llm_extractor.extraction import PromptRequest
 from financial_report_llm_extractor.llm_transport import (
     LlmTransportConfig,
     OpenAiCompatibleClient,
+    UrllibHttpTransport,
     create_llm_client,
     response_json_text,
     resolve_provider_kind,
@@ -406,6 +407,8 @@ def test_codex_client_builds_responses_request(
     assert headers["ChatGPT-Account-ID"] == "acct-123"
     assert payload["model"] == "gpt-5.3-codex"
     assert payload["instructions"]
+    assert "json" in str(payload["instructions"])
+    assert payload["stream"] is True
     assert payload["store"] is False
     input_items = payload["input"]
     assert isinstance(input_items, list)
@@ -416,6 +419,103 @@ def test_codex_client_builds_responses_request(
     first_part = content[0]
     assert isinstance(first_part, dict)
     assert json.loads(first_part["text"])["field_id"] == "cash"
+
+
+def test_codex_client_adds_json_instruction_when_prompt_omits_keyword(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    token = _jwt_with_exp(
+        int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
+    )
+    _write_codex_auth(tmp_path, monkeypatch, token)
+    transport = FakeHttpTransport(
+        [
+            {
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [
+                            {"type": "output_text", "text": json.dumps({"ok": True})}
+                        ],
+                    }
+                ]
+            }
+        ]
+    )
+    client = create_llm_client(
+        LlmTransportConfig(
+            provider="openai-codex",
+            model="gpt-5.3-codex",
+            base_url="https://chatgpt.com/backend-api/codex",
+            api_key_env="",
+        ),
+        transport=transport,
+    )
+
+    client.complete_json(system_prompt="Return an object.", user_payload={"ok": True})
+
+    instructions = str(transport.calls[0][2]["instructions"])
+    assert "json" in instructions
+
+
+def test_urllib_transport_parses_responses_sse_completed_event(
+    monkeypatch: Any,
+) -> None:
+    class FakeHeaders:
+        def get(self, name: str, default: str = "") -> str:
+            if name.lower() == "content-type":
+                return "text/event-stream"
+            return default
+
+    class FakeResponse:
+        headers = FakeHeaders()
+
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            completed = {
+                "type": "response.completed",
+                "response": {
+                    "id": "resp_1",
+                    "output": [
+                        {
+                            "type": "message",
+                            "content": [
+                                {
+                                    "type": "output_text",
+                                    "text": json.dumps({"fields": []}),
+                                }
+                            ],
+                        }
+                    ],
+                },
+            }
+            return (
+                "event: response.completed\n"
+                f"data: {json.dumps(completed)}\n\n"
+                "data: [DONE]\n\n"
+            ).encode("utf-8")
+
+    def fake_urlopen(request: object, timeout: float) -> FakeResponse:
+        assert timeout == 12
+        return FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    raw = UrllibHttpTransport().post_json(
+        "https://chatgpt.com/backend-api/codex/responses",
+        {"Content-Type": "application/json"},
+        {"stream": True},
+        12,
+    )
+
+    assert raw["id"] == "resp_1"
+    assert response_json_text(raw) == json.dumps({"fields": []})
 
 
 def test_claude_code_client_builds_messages_request(

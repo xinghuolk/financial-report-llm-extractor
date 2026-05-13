@@ -1874,3 +1874,14 @@ If Step 4 required no changes, skip this commit.
 - Type consistency: Provider ids are consistently `openai-codex` and `claude-code`; token status values are `valid`, `missing`, `expired`, and `invalid`; error codes match the spec.
 - Parser consistency: `response_json_text()` is the shared parser entry for OpenAI-compatible, Gemini, Codex Responses, and Anthropic Messages response shapes.
 
+## Post-Review Amendments
+
+- Codex subscription Responses require `stream: true`; the stdlib transport must
+  parse `text/event-stream` and return the completed Responses object or an
+  assembled `output_text` response.
+- Codex `text.format.type=json_object` requests must include the literal
+  lower-case `json` keyword in instructions.
+- Direct Anthropic `/v1/messages` calls with Claude Code subscription OAuth
+  tokens are best-effort only. If Anthropic rejects them with subscription
+  policy/rate-limit responses, the follow-up architecture is a separate
+  `claude -p` CLI bridge, not a change to the current HTTP transport.
