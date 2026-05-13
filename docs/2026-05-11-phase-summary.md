@@ -293,6 +293,7 @@ roadmap 或 recon 文档中明确标记为 deferred / requires-decision 的事�
 | 跨更多 issuer 批量重验证 | 当前 6 HK + 4 CN (G3 7-cohort + G4-C 5-cohort 增量验证) | roadmap §7 follow-up | 在金融 / 能源等行业扩展。 |
 | `_resolve_derivation_operand` period 等值断言 | deferred | H2.1 carryover | 添加显式 period-end 等值检查，防多期 operand 被静默累加。 |
 | **R1 SQLite indexer (`data/extracted.db`)** | **已落地 (2026-05-13)** | R1 plan | New `cache/` module + `index` / `query` CLI commands. Indexes existing `tmp/runs/*/{evaluation,llm_evidence_supplement}.json` joined by field_id. `field_values` is latest-catalog-version only; `extractions` keeps history. Exit codes: 0=hit, 1=miss, 2=db not initialized. R2 (provider fetch cache) + R3 (LLM cache) + R4 (DB-aware `pipeline` command) follow in separate PRs. |
+| **R2 Provider fetch cache** | **已落地 (2026-05-13)** | R2 plan | `tmp/.cache/{akshare,yahoo}/<cid>_<period>.json` content-addressed + 24h default TTL + embedded artifact blobs (cache hit replays into SourceArtifactStore). `--skip-if-cached` / `--no-cache` flags. Deduplicates AKShare/Yahoo network calls across CLI invocations. R3 (LLM cache) + R4 (DB-aware `pipeline` command) follow in separate tasks. |
 | ~~合并分支到 `main`~~ | **G1-G3 PR #3 已合并** ✓ | — | G4-C feature branch 待 PR。 |
 
 ## 7. Onboarding 文档地图
