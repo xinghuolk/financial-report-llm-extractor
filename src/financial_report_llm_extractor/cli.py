@@ -43,6 +43,7 @@ from financial_report_llm_extractor.structured_sources.provider_baseline_replay 
 )
 from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
     PeriodSpec,
+    SourceInventoryArtifact,
 )
 from financial_report_llm_extractor.structured_sources.source_mapping_expansion import (
     write_source_mapping_expansion_review,
@@ -268,6 +269,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--catalog", type=Path, required=True,
         help="Source mapping catalog JSON path.",
     )
+    fetch_source_parser.add_argument(
+        "--cache-ttl-hours", type=int, default=24,
+        help="Provider cache TTL in hours (default 24; 0 = always re-fetch).",
+    )
+    fetch_source_parser.add_argument(
+        "--no-cache", action="store_true",
+        help="Bypass the provider cache entirely (no read, no write).",
+    )
+    fetch_source_parser.add_argument(
+        "--skip-if-cached", action="store_true",
+        help="Exit successfully without fetching if all keys are cache-fresh.",
+    )
 
     index_parser = subparsers.add_parser("index")
     index_parser.add_argument("--runs", type=Path, required=True,
@@ -326,7 +339,10 @@ def _run_fetch_source_inventory(
     providers: tuple[str, ...],
     out_dir: Path,
     catalog_path: Path,
-) -> None:
+    cache_ttl_hours: int = 24,
+    no_cache: bool = False,
+    skip_if_cached: bool = False,
+) -> SourceInventoryArtifact | dict[str, object]:
     from financial_report_llm_extractor.structured_sources.real_source_validation import (
         PandasAkshareClient,
         YFinanceStatementClient,
@@ -335,6 +351,26 @@ def _run_fetch_source_inventory(
         fetch_source_inventory,
         hk_issuer_financial_currency,
     )
+
+    cache_root: Path | None = None if no_cache else Path("tmp/.cache")
+
+    if skip_if_cached and cache_root is not None:
+        from financial_report_llm_extractor.cache.provider_cache import (
+            cache_get_with_artifacts,
+        )
+        period_end = period.period_end.isoformat()
+        all_fresh = True
+        for provider in providers:
+            hit = cache_get_with_artifacts(
+                cache_root=cache_root, provider=provider,
+                company=company, period_end=period_end,
+                ttl_hours=cache_ttl_hours,
+            )
+            if hit is None:
+                all_fresh = False
+                break
+        if all_fresh:
+            return {"skipped": True, "providers": list(providers)}
 
     # Phase HK-B.5.1: HK AKShare records get stamped with the issuer's
     # financial-reporting currency (not the HK trading-market currency).
@@ -351,7 +387,7 @@ def _run_fetch_source_inventory(
     )
     yahoo_client = YFinanceStatementClient() if "yahoo" in providers else None
 
-    artifact = fetch_source_inventory(
+    return fetch_source_inventory(
         company=company,
         period=period,
         market=market,  # type: ignore[arg-type]
@@ -360,12 +396,9 @@ def _run_fetch_source_inventory(
         yahoo_client=yahoo_client,
         out_dir=out_dir,
         catalog_path=catalog_path,
+        cache_root=cache_root,
+        ttl_hours=cache_ttl_hours,
     )
-    print(json.dumps({
-        "inventory_path": str(artifact.inventory_path),
-        "summary_path": str(artifact.summary_path),
-        "record_count": artifact.record_count,
-    }, indent=2))
 
 
 def _run_evaluate_company(**kwargs: object) -> None:
@@ -800,14 +833,25 @@ def main(argv: list[str] | None = None) -> int:
         providers = tuple(
             p.strip() for p in args.providers.split(",") if p.strip()
         )
-        _run_fetch_source_inventory(
+        fetch_result = _run_fetch_source_inventory(
             company=args.company,
             period=period,
             market=args.market,
             providers=providers,
             out_dir=args.out,
             catalog_path=args.catalog,
+            cache_ttl_hours=args.cache_ttl_hours,
+            no_cache=args.no_cache,
+            skip_if_cached=args.skip_if_cached,
         )
+        if isinstance(fetch_result, dict):
+            print(json.dumps(fetch_result, indent=2, sort_keys=True))
+        else:
+            print(json.dumps({
+                "inventory_path": str(fetch_result.inventory_path),
+                "summary_path": str(fetch_result.summary_path),
+                "record_count": fetch_result.record_count,
+            }, indent=2))
         return 0
 
     if args.command == "index":

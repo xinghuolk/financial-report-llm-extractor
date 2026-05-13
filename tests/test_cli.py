@@ -941,12 +941,19 @@ def test_fetch_source_inventory_subcommand_dispatches_correctly(
 ) -> None:
     """argv → run_fetch wiring 测，主体逻辑 mock 掉。"""
     from financial_report_llm_extractor.cli import main
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        SourceInventoryArtifact,
+    )
 
     captured: dict[str, object] = {}
 
-    def fake_runner(**kwargs: object) -> object:
+    def fake_runner(**kwargs: object) -> SourceInventoryArtifact:
         captured.update(kwargs)
-        return object()
+        return SourceInventoryArtifact(
+            inventory_path=tmp_path / "source_inventory.jsonl",
+            summary_path=tmp_path / "source_inventory_summary.json",
+            record_count=0,
+        )
 
     monkeypatch.setattr(
         "financial_report_llm_extractor.cli._run_fetch_source_inventory",
@@ -1361,3 +1368,64 @@ def test_cli_query_command_db_not_initialized_returns_exit_2(
     body = _json.loads(capsys.readouterr().out)
     assert body["miss"] is True
     assert body["reason"] == "db_not_initialized"
+
+
+# ---------------------------------------------------------------------------
+# R2 Task 3: --cache-ttl-hours / --no-cache / --skip-if-cached flags
+# ---------------------------------------------------------------------------
+
+def test_cli_fetch_source_inventory_default_ttl_is_24h(
+    tmp_path: Path,
+) -> None:
+    """Default --cache-ttl-hours is 24."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "fetch-source-inventory",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--providers", "akshare",
+        "--out", str(tmp_path / "out"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+    ])
+    assert args.cache_ttl_hours == 24
+    assert args.no_cache is False
+    assert args.skip_if_cached is False
+
+
+def test_cli_fetch_source_inventory_no_cache_flag(tmp_path: Path) -> None:
+    """--no-cache sets args.no_cache to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "fetch-source-inventory",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--providers", "akshare",
+        "--out", str(tmp_path / "out"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--no-cache",
+    ])
+    assert args.no_cache is True
+
+
+def test_cli_fetch_source_inventory_skip_if_cached_flag(tmp_path: Path) -> None:
+    """--skip-if-cached sets args.skip_if_cached to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "fetch-source-inventory",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--providers", "akshare",
+        "--out", str(tmp_path / "out"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--skip-if-cached",
+    ])
+    assert args.skip_if_cached is True
