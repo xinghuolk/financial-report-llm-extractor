@@ -926,29 +926,35 @@ def main(argv: list[str] | None = None) -> int:
             fid: str(info.get("priority", ""))
             for fid, info in taxonomy.get("fields", {}).items()
         }
-        if (
-            args.catalog_version is None
-            and taxonomy_version != "unknown"
-        ):
-            print(
-                f"warning: using current taxonomy version "
-                f"'{taxonomy_version}' as catalog_version for all runs; "
-                f"historical runs may have been generated under a different "
-                f"catalog. Pass --catalog-version to override.",
-                file=_sys.stderr,
-            )
         _init_db(args.db)
         count_runs = 0
         count_fields = 0
+        runs_needing_fallback: list[str] = []
         for sub in sorted(args.runs.iterdir()):
             if not sub.is_dir() or not (sub / "evaluation.json").exists():
                 continue
+            # Peek at evaluation.json to check for embedded catalog_version
+            sub_payload = json.loads(
+                (sub / "evaluation.json").read_text(encoding="utf-8")
+            )
+            if not sub_payload.get("catalog_version"):
+                runs_needing_fallback.append(sub.name)
             count_fields += _index_run(
                 run_dir=sub, db_path=args.db,
                 catalog_version=catalog_version,
                 priority_map=priority_map,
             )
             count_runs += 1
+        if runs_needing_fallback and args.catalog_version is None:
+            print(
+                f"warning: {len(runs_needing_fallback)} run(s) lack embedded "
+                f"catalog_version; labeled with taxonomy version "
+                f"'{taxonomy_version}'. Pass --catalog-version to override "
+                f"for historical runs. Affected: "
+                f"{', '.join(runs_needing_fallback[:5])}"
+                f"{' ...' if len(runs_needing_fallback) > 5 else ''}",
+                file=_sys.stderr,
+            )
         print(json.dumps({
             "indexed_runs": count_runs,
             "indexed_fields": count_fields,
@@ -1042,7 +1048,11 @@ def main(argv: list[str] | None = None) -> int:
                 db_path=args.db, company=args.company,
                 period_end=period_end_str,
             )
-            if hit is not None and hit.get("catalog_version") == catalog_version:
+            if (
+                hit is not None
+                and hit.get("catalog_version") == catalog_version
+                and hit.get("market") == args.market
+            ):
                 print(_json.dumps({
                     "status": "cache_hit",
                     "company": args.company,
