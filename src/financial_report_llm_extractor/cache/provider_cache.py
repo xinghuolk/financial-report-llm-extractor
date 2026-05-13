@@ -29,6 +29,19 @@ from typing import Any
 
 SCHEMA_VERSION = "provider_cache_v1"
 
+_INVALID_SEGMENT_CHARS = ("/", "\\", "..", "\x00")
+
+
+def _validate_segment(name: str, value: str) -> None:
+    if not value:
+        raise ValueError(f"{name} must be non-empty")
+    for bad in _INVALID_SEGMENT_CHARS:
+        if bad in value:
+            raise ValueError(
+                f"{name}={value!r} contains forbidden substring {bad!r}; "
+                f"cache key segments must be plain identifiers"
+            )
+
 
 def cache_path(
     *,
@@ -38,6 +51,9 @@ def cache_path(
     period_end: str,
 ) -> Path:
     """Return the cache file path for a (provider, company, period_end) key."""
+    _validate_segment("provider", provider)
+    _validate_segment("company", company)
+    _validate_segment("period_end", period_end)
     return cache_root / provider / f"{company}_{period_end}.json"
 
 

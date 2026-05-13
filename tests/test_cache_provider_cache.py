@@ -3,6 +3,8 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from financial_report_llm_extractor.cache.provider_cache import (
     cache_get,
     cache_path,
@@ -115,3 +117,22 @@ def test_cache_get_malformed_file_returns_none(tmp_path: Path) -> None:
         company="600519", period_end="2024-12-31",
         ttl_hours=24,
     ) is None
+
+
+def test_cache_path_rejects_path_traversal(tmp_path: Path) -> None:
+    """Reject any segment containing /, \\, .., or NUL to prevent escape."""
+    with pytest.raises(ValueError, match="forbidden substring"):
+        cache_path(
+            cache_root=tmp_path, provider="../escape",
+            company="600519", period_end="2024-12-31",
+        )
+    with pytest.raises(ValueError, match="forbidden substring"):
+        cache_path(
+            cache_root=tmp_path, provider="akshare",
+            company="600519/../etc", period_end="2024-12-31",
+        )
+    with pytest.raises(ValueError, match="must be non-empty"):
+        cache_path(
+            cache_root=tmp_path, provider="",
+            company="600519", period_end="2024-12-31",
+        )
