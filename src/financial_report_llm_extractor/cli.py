@@ -340,6 +340,48 @@ def build_parser() -> argparse.ArgumentParser:
         help="Bypass the LLM completion cache.",
     )
 
+    pipeline_parser = subparsers.add_parser(
+        "pipeline",
+        help="DB-aware end-to-end: pre-check DB, fetch + evaluate if miss, auto-index.",
+    )
+    pipeline_parser.add_argument("--company", required=True, type=str)
+    pipeline_parser.add_argument("--year", type=int)
+    pipeline_parser.add_argument("--period-end", type=str)
+    pipeline_parser.add_argument("--report-type", default="annual", type=str)
+    pipeline_parser.add_argument("--market", required=True, choices=["CN", "HK"])
+    pipeline_parser.add_argument("--pdf", type=Path)
+    pipeline_parser.add_argument(
+        "--llm-config", type=Path,
+        help="LLM transport config JSON. If omitted, LLM supplement step is skipped.",
+    )
+    pipeline_parser.add_argument(
+        "--db", type=Path, default=Path("data/extracted.db"),
+        help="SQLite cache DB path.",
+    )
+    pipeline_parser.add_argument(
+        "--catalog", type=Path,
+        default=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+    )
+    pipeline_parser.add_argument(
+        "--taxonomy", type=Path,
+        default=Path("field_catalog/turtle_v015_field_taxonomy.json"),
+    )
+    pipeline_parser.add_argument(
+        "--priorities", default="P0,P1,P2,P3,P4", type=str,
+    )
+    pipeline_parser.add_argument(
+        "--out", type=Path, required=True,
+        help="Output dir for fresh runs.",
+    )
+    pipeline_parser.add_argument(
+        "--force", action="store_true",
+        help="Bypass DB pre-check; always run fetch + evaluate.",
+    )
+    pipeline_parser.add_argument(
+        "--no-cache", action="store_true",
+        help="Bypass provider + LLM caches.",
+    )
+
     return parser
 
 
@@ -970,6 +1012,108 @@ def main(argv: list[str] | None = None) -> int:
             out_dir=args.out,
             no_llm_cache=args.no_llm_cache,
         )
+        return 0
+
+    if args.command == "pipeline":
+        import json as _json
+        from financial_report_llm_extractor.cache.db import init_db
+        from financial_report_llm_extractor.cache.db_query import query_extraction
+        from financial_report_llm_extractor.cache.indexer import index_run
+
+        # Resolve period
+        if args.year is not None and args.period_end is not None:
+            parser.error("--year and --period-end are mutually exclusive")
+        if args.year is not None:
+            period = PeriodSpec.from_year(args.year)
+        elif args.period_end is not None:
+            period = PeriodSpec.from_period_end(args.period_end, args.report_type)
+        else:
+            parser.error("one of --year or --period-end is required")
+
+        # Read catalog_version from taxonomy
+        taxonomy_doc = _json.loads(args.taxonomy.read_text(encoding="utf-8"))
+        catalog_version = str(taxonomy_doc.get("version", "unknown"))
+        period_end_str = period.period_end.isoformat()
+
+        # Pre-check DB
+        init_db(args.db)
+        if not args.force:
+            hit = query_extraction(
+                db_path=args.db, company=args.company,
+                period_end=period_end_str,
+            )
+            if hit is not None and hit.get("catalog_version") == catalog_version:
+                print(_json.dumps({
+                    "status": "cache_hit",
+                    "company": args.company,
+                    "period_end": period_end_str,
+                    "catalog_version": catalog_version,
+                    "artifact_path": hit.get("artifact_path"),
+                    "field_count": len(hit.get("fields", {})),
+                }, indent=2, sort_keys=True))
+                return 0
+
+        # Cache miss / force: run fetch + evaluate + index
+        priorities = tuple(
+            p.strip() for p in args.priorities.split(",") if p.strip()
+        )
+
+        # Fetch (R2 cache via _run_fetch_source_inventory)
+        fetch_result = _run_fetch_source_inventory(
+            company=args.company,
+            period=period,
+            market=args.market,
+            providers=("akshare", "yahoo"),
+            out_dir=args.out,
+            catalog_path=args.catalog,
+            cache_ttl_hours=24,
+            no_cache=args.no_cache,
+            skip_if_cached=False,
+        )
+        if isinstance(fetch_result, dict):
+            # Shouldn't happen with skip_if_cached=False, but defensive
+            print(_json.dumps(
+                {"status": "fetch_skipped", **fetch_result},
+                indent=2, sort_keys=True,
+            ))
+            return 0
+
+        # Evaluate (R3 cache forwarded via no_llm_cache flag — pipeline tracks
+        # --no-cache as the combined provider+llm bypass)
+        _run_evaluate_company(
+            company=args.company,
+            period=period,
+            market=args.market,
+            inventory_path=fetch_result.inventory_path,
+            inventory_summary_path=fetch_result.summary_path,
+            catalog_path=args.catalog,
+            taxonomy_path=args.taxonomy,
+            pdf_path=args.pdf,
+            llm_config_path=args.llm_config,
+            priorities=priorities,
+            out_dir=args.out,
+            no_llm_cache=args.no_cache,
+        )
+
+        # Auto-index
+        priority_map = {
+            fid: str(info.get("priority", ""))
+            for fid, info in taxonomy_doc.get("fields", {}).items()
+        }
+        n_fields = index_run(
+            run_dir=args.out, db_path=args.db,
+            catalog_version=catalog_version,
+            priority_map=priority_map,
+        )
+
+        print(_json.dumps({
+            "status": "fresh_run",
+            "company": args.company,
+            "period_end": period_end_str,
+            "catalog_version": catalog_version,
+            "artifact_path": str(args.out),
+            "field_count": n_fields,
+        }, indent=2, sort_keys=True))
         return 0
 
     raise ValueError(f"unknown command: {args.command}")
