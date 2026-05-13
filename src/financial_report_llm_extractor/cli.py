@@ -857,20 +857,28 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "query":
+        import sqlite3 as _sqlite3
         from financial_report_llm_extractor.cache.db_query import (
             query_extraction as _query_extraction,
             query_field as _query_field,
         )
-        if args.field is not None:
-            query_result: object = _query_field(
-                db_path=args.db, company=args.company,
-                period_end=args.period, field_id=args.field,
-            )
-        else:
-            query_result = _query_extraction(
-                db_path=args.db, company=args.company,
-                period_end=args.period,
-            )
+        try:
+            if args.field is not None:
+                query_result: object = _query_field(
+                    db_path=args.db, company=args.company,
+                    period_end=args.period, field_id=args.field,
+                )
+            else:
+                query_result = _query_extraction(
+                    db_path=args.db, company=args.company,
+                    period_end=args.period,
+                )
+        except _sqlite3.OperationalError as exc:
+            print(json.dumps(
+                {"miss": True, "reason": "db_not_initialized", "detail": str(exc)},
+                sort_keys=True,
+            ))
+            return 2
         if query_result is None:
             print(json.dumps({"miss": True}, sort_keys=True))
             return 1

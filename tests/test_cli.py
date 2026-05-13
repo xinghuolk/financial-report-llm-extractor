@@ -1340,3 +1340,24 @@ def test_cli_query_command_miss_returns_exit_1(
         "--company", "nope", "--period", "2024-12-31", "--field", "x",
     ])
     assert exit_code == 1
+
+
+def test_cli_query_command_db_not_initialized_returns_exit_2(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    """If the DB file is missing or has no schema, query returns
+    exit code 2 with a structured {miss, reason=db_not_initialized}
+    response instead of a Python traceback."""
+    import json as _json
+    from financial_report_llm_extractor.cli import main
+
+    nonexistent_db = tmp_path / "does_not_exist.db"
+    exit_code = main([
+        "query", "--db", str(nonexistent_db),
+        "--company", "600519", "--period", "2024-12-31",
+        "--field", "revenue",
+    ])
+    assert exit_code == 2
+    body = _json.loads(capsys.readouterr().out)
+    assert body["miss"] is True
+    assert body["reason"] == "db_not_initialized"
