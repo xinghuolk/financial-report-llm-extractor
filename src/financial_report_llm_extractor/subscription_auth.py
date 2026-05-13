@@ -246,9 +246,13 @@ def _read_claude_credentials(
     env: dict[str, str] | None,
 ) -> tuple[SubscriptionCredentialStatus, SubscriptionRuntimeCredentials | None]:
     env_map = _runtime_env(env)
+    invalid_env_source: str | None = None
     for env_name in ("ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"):
         token = env_map.get(env_name, "").strip()
         if token:
+            if not _is_claude_code_oauth_token(token):
+                invalid_env_source = invalid_env_source or env_name
+                continue
             status = SubscriptionCredentialStatus(
                 provider="claude-code",
                 available=True,
@@ -264,8 +268,34 @@ def _read_claude_credentials(
             )
             return status, credentials
 
+    keychain_unavailable_status: SubscriptionCredentialStatus | None = None
+    keychain_result = _read_claude_keychain_credentials()
+    if keychain_result is not None:
+        keychain_status, keychain_credentials = keychain_result
+        if keychain_credentials is not None:
+            return keychain_status, keychain_credentials
+        keychain_unavailable_status = keychain_status
+
     path = _claude_credentials_path(home=home, env=env)
     if not path.is_file():
+        if keychain_unavailable_status is not None:
+            return keychain_unavailable_status, None
+        if invalid_env_source is not None:
+            return (
+                SubscriptionCredentialStatus(
+                    provider="claude-code",
+                    available=False,
+                    credential_source=invalid_env_source,
+                    token_status="invalid",
+                    error_code=ERROR_CREDENTIALS_INVALID,
+                    message=(
+                        f"{invalid_env_source} is not a Claude Code OAuth "
+                        "or setup token"
+                    ),
+                    base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+                ),
+                None,
+            )
         return (
             SubscriptionCredentialStatus(
                 provider="claude-code",
@@ -345,6 +375,81 @@ def _read_claude_credentials(
         base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
     )
     return status, credentials
+
+
+def _is_claude_code_oauth_token(token: str) -> bool:
+    if not token:
+        return False
+    if token.startswith("sk-ant-api"):
+        return False
+    return token.startswith(("sk-ant-", "eyJ", "cc-"))
+
+
+def _read_claude_keychain_credentials() -> (
+    tuple[SubscriptionCredentialStatus, SubscriptionRuntimeCredentials | None] | None
+):
+    import platform
+    import subprocess
+
+    if platform.system() != "Darwin":
+        return None
+    try:
+        result = subprocess.run(
+            [
+                "security",
+                "find-generic-password",
+                "-s",
+                "Claude Code-credentials",
+                "-w",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    try:
+        payload = json.loads(result.stdout.strip())
+    except json.JSONDecodeError:
+        return None
+    oauth = payload.get("claudeAiOauth")
+    access_token = oauth.get("accessToken") if isinstance(oauth, dict) else None
+    expires_at = oauth.get("expiresAt") if isinstance(oauth, dict) else None
+    if not isinstance(access_token, str) or not access_token.strip():
+        return None
+    if _claude_file_token_is_expired(expires_at):
+        return (
+            SubscriptionCredentialStatus(
+                provider="claude-code",
+                available=False,
+                credential_source="macos_keychain",
+                token_status="expired",
+                error_code=ERROR_TOKEN_EXPIRED,
+                message=(
+                    "Claude Code keychain access token is expired; run the "
+                    "official Claude Code login again"
+                ),
+                base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+            ),
+            None,
+        )
+    return (
+        SubscriptionCredentialStatus(
+            provider="claude-code",
+            available=True,
+            credential_source="macos_keychain",
+            token_status="valid",
+            base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+        ),
+        SubscriptionRuntimeCredentials(
+            provider="claude-code",
+            access_token=access_token.strip(),
+            credential_source="macos_keychain",
+            base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+        ),
+    )
 
 
 def _claude_credentials_path(*, home: Path | None, env: dict[str, str] | None) -> Path:

@@ -421,7 +421,11 @@ def test_codex_client_builds_responses_request(
 def test_claude_code_client_builds_messages_request(
     monkeypatch: Any,
 ) -> None:
-    monkeypatch.setenv("ANTHROPIC_TOKEN", "claude-token")
+    monkeypatch.setenv("ANTHROPIC_TOKEN", "sk-ant-oat01-claude-token")
+    monkeypatch.setattr(
+        "financial_report_llm_extractor.llm_transport._detect_claude_code_version",
+        lambda: "2.1.74",
+    )
     transport = FakeHttpTransport(
         [
             {
@@ -451,9 +455,9 @@ def test_claude_code_client_builds_messages_request(
     assert response.fields[0].status == "missing"
     url, headers, payload, _timeout = transport.calls[0]
     assert url == "https://api.anthropic.com/v1/messages"
-    assert headers["Authorization"] == "Bearer claude-token"
+    assert headers["Authorization"] == "Bearer sk-ant-oat01-claude-token"
     assert headers["anthropic-version"]
-    assert "claude-code" in headers["user-agent"]
+    assert headers["user-agent"] == "claude-cli/2.1.74 (external, cli)"
     assert payload["model"] == "claude-sonnet-4-6"
     assert payload["max_tokens"] == 4096
     messages = payload["messages"]
@@ -461,6 +465,37 @@ def test_claude_code_client_builds_messages_request(
     first_message = messages[0]
     assert isinstance(first_message, dict)
     assert json.loads(first_message["content"])["field_id"] == "cash"
+
+
+def test_claude_code_user_agent_detects_installed_version(
+    monkeypatch: Any,
+) -> None:
+    import subprocess
+
+    class FakeCompleted:
+        returncode = 0
+        stdout = "2.2.3 (Claude Code)\n"
+
+    def fake_run(
+        args: list[str],
+        *,
+        capture_output: bool,
+        text: bool,
+        timeout: int,
+    ) -> FakeCompleted:
+        assert args == ["claude", "--version"]
+        assert capture_output is True
+        assert text is True
+        assert timeout == 5
+        return FakeCompleted()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    from financial_report_llm_extractor.llm_transport import _claude_code_headers
+
+    headers = _claude_code_headers("sk-ant-oat01-token")
+
+    assert headers["user-agent"] == "claude-cli/2.2.3 (external, cli)"
 
 
 def test_subscription_client_missing_credentials_fails_before_transport(

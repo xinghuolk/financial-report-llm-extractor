@@ -140,7 +140,7 @@ def test_claude_status_prefers_anthropic_token_env(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("ANTHROPIC_TOKEN", "env-oauth-token")
+    monkeypatch.setenv("ANTHROPIC_TOKEN", "sk-ant-oat01-env-oauth-token")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "lower-priority-token")
 
     status = subscription_auth_status("claude-code")
@@ -150,7 +150,153 @@ def test_claude_status_prefers_anthropic_token_env(
     assert status.token_status == "valid"
     assert status.credential_source == "ANTHROPIC_TOKEN"
     assert status.base_url == DEFAULT_CLAUDE_CODE_BASE_URL
-    assert creds.access_token == "env-oauth-token"
+    assert creds.access_token == "sk-ant-oat01-env-oauth-token"
+
+
+def test_claude_status_ignores_regular_api_key_env_when_file_exists(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("ANTHROPIC_TOKEN", "sk-ant-api03-regular-api-key")
+    credentials_path = tmp_path / ".claude" / ".credentials.json"
+    credentials_path.parent.mkdir()
+    credentials_path.write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "cc-file-token",
+                    "refreshToken": "refresh-token",
+                    "expiresAt": int(
+                        (
+                            datetime.now(timezone.utc) + timedelta(hours=1)
+                        ).timestamp()
+                        * 1000
+                    ),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    status = subscription_auth_status("claude-code")
+    creds = resolve_subscription_credentials("claude-code")
+
+    assert status.available is True
+    assert status.credential_source == str(credentials_path)
+    assert creds.access_token == "cc-file-token"
+
+
+def test_claude_status_reports_regular_api_key_env_as_invalid_without_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("ANTHROPIC_TOKEN", "sk-ant-api03-regular-api-key")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+
+    status = subscription_auth_status("claude-code")
+
+    assert status.available is False
+    assert status.token_status == "invalid"
+    assert status.credential_source == "ANTHROPIC_TOKEN"
+    assert status.error_code == "subscription_credentials_invalid"
+
+
+def test_claude_status_reads_macos_keychain_before_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import subprocess
+
+    class FakeCompleted:
+        returncode = 0
+        stdout = json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "cc-keychain-token",
+                    "refreshToken": "refresh-token",
+                    "expiresAt": int(
+                        (
+                            datetime.now(timezone.utc) + timedelta(hours=1)
+                        ).timestamp()
+                        * 1000
+                    ),
+                }
+            }
+        )
+
+    def fake_run(
+        args: list[str],
+        *,
+        capture_output: bool,
+        text: bool,
+        timeout: int,
+    ) -> FakeCompleted:
+        assert args == [
+            "security",
+            "find-generic-password",
+            "-s",
+            "Claude Code-credentials",
+            "-w",
+        ]
+        assert capture_output is True
+        assert text is True
+        assert timeout == 5
+        return FakeCompleted()
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("ANTHROPIC_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    status = subscription_auth_status("claude-code")
+    creds = resolve_subscription_credentials("claude-code")
+
+    assert status.available is True
+    assert status.credential_source == "macos_keychain"
+    assert creds.access_token == "cc-keychain-token"
+
+
+def test_claude_status_reports_expired_macos_keychain_without_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import subprocess
+
+    class FakeCompleted:
+        returncode = 0
+        stdout = json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "expired-keychain-token",
+                    "refreshToken": "refresh-token",
+                    "expiresAt": int(
+                        (
+                            datetime.now(timezone.utc) - timedelta(hours=1)
+                        ).timestamp()
+                        * 1000
+                    ),
+                }
+            }
+        )
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("ANTHROPIC_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: FakeCompleted(),
+    )
+
+    status = subscription_auth_status("claude-code")
+
+    assert status.available is False
+    assert status.credential_source == "macos_keychain"
+    assert status.token_status == "expired"
 
 
 def test_claude_status_reads_credentials_file(

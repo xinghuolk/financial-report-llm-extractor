@@ -21,6 +21,8 @@ from financial_report_llm_extractor.subscription_auth import (
     resolve_subscription_credentials,
 )
 
+CLAUDE_CODE_VERSION_FALLBACK = "2.1.74"
+
 ProviderKind = Literal[
     "openai-compatible",
     "gemini",
@@ -510,9 +512,30 @@ def _claude_code_headers(access_token: str) -> dict[str, str]:
         "Authorization": f"Bearer {access_token}",
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "claude-code-20250219,oauth-2025-04-20",
-        "user-agent": "claude-code/0.0.0",
+        "user-agent": f"claude-cli/{_detect_claude_code_version()} (external, cli)",
         "x-app": "cli",
     }
+
+
+def _detect_claude_code_version() -> str:
+    import subprocess
+
+    for command in ("claude", "claude-code"):
+        try:
+            result = subprocess.run(
+                [command, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if result.returncode != 0:
+            continue
+        version = result.stdout.strip().split(maxsplit=1)[0]
+        if version and version[0].isdigit():
+            return version
+    return CLAUDE_CODE_VERSION_FALLBACK
 
 
 def run_real_transport_probe(
