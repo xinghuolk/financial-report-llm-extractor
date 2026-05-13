@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from financial_report_llm_extractor.chunking import build_chunk_store
@@ -21,7 +22,12 @@ from financial_report_llm_extractor.evaluation import write_review_summary
 from financial_report_llm_extractor.extraction import run_fake_extraction
 from financial_report_llm_extractor.ingestion import ingest_pdf
 from financial_report_llm_extractor.llm_row_discovery import write_llm_row_inventory
-from financial_report_llm_extractor.llm_transport import run_real_transport_probe
+from financial_report_llm_extractor.llm_transport import (
+    LlmTransportConfig,
+    create_llm_client,
+    response_json_text,
+    run_real_transport_probe,
+)
 from financial_report_llm_extractor.quick_validation_runner import run_quick_validation
 from financial_report_llm_extractor.retrieval import write_retrieval_probe
 from financial_report_llm_extractor.statement_discovery import (
@@ -41,6 +47,7 @@ from financial_report_llm_extractor.structured_sources.source_inventory_fetch im
 from financial_report_llm_extractor.structured_sources.source_mapping_expansion import (
     write_source_mapping_expansion_review,
 )
+from financial_report_llm_extractor.subscription_auth import subscription_auth_status
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -177,6 +184,17 @@ def build_parser() -> argparse.ArgumentParser:
     extract_parser.add_argument("--config", required=True, type=Path)
     extract_parser.add_argument("--out", type=Path)
     extract_parser.add_argument("--raw-response-dir", type=Path)
+
+    auth_status_parser = subparsers.add_parser("llm-auth-status")
+    auth_status_parser.add_argument(
+        "--provider",
+        required=True,
+        choices=["openai-codex", "claude-code"],
+    )
+
+    subscription_smoke_parser = subparsers.add_parser("llm-subscription-smoke")
+    subscription_smoke_parser.add_argument("--config", required=True, type=Path)
+    subscription_smoke_parser.add_argument("--out", required=True, type=Path)
 
     evaluate_parser = subparsers.add_parser("evaluate")
     evaluate_parser.add_argument("--root", required=True, type=Path)
@@ -337,6 +355,51 @@ def _run_evaluate_company(**kwargs: object) -> None:
     }, indent=2))
 
 
+def _run_subscription_smoke(config_path: Path, out_dir: Path) -> dict[str, object]:
+    config = LlmTransportConfig.from_json(config_path)
+    if config.provider not in {"openai-codex", "claude-code"}:
+        raise SystemExit(
+            "subscription smoke requires provider openai-codex or claude-code"
+        )
+    client = create_llm_client(config)
+    prompt = {
+        "task": "subscription_smoke",
+        "provider": config.provider,
+        "model": config.model,
+        "response_schema": {
+            "type": "object",
+            "required": ["ok"],
+            "properties": {"ok": {"type": "boolean"}},
+        },
+    }
+    raw_response = client.complete_json(
+        system_prompt="Return strict JSON for the subscription smoke request.",
+        user_payload=prompt,
+    )
+    parsed = json.loads(response_json_text(raw_response))
+    if not isinstance(parsed, dict):
+        raise ValueError("subscription smoke response must be a JSON object")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "prompt.json").write_text(
+        json.dumps(prompt, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (out_dir / "raw_response.json").write_text(
+        json.dumps(raw_response, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (out_dir / "parsed_response.json").write_text(
+        json.dumps(parsed, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "ok": bool(parsed.get("ok")),
+        "provider": config.provider,
+        "model": config.model,
+        "out": str(out_dir),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -444,6 +507,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"items={real_result.item_count}")
         print(f"raw_responses={real_result.raw_response_count}")
         print(f"extraction_result_path={real_result.output_path}")
+        return 0
+
+    if args.command == "llm-auth-status":
+        status = subscription_auth_status(args.provider)
+        print(json.dumps(asdict(status), ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "llm-subscription-smoke":
+        result = _run_subscription_smoke(args.config, args.out)
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
 
     if args.command == "extract-llm":
