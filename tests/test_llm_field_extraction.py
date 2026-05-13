@@ -158,6 +158,41 @@ def test_run_extraction_with_not_found_response_returns_not_found() -> None:
     assert result.parsed_numeric_value is None
 
 
+def test_unwrap_llm_content_reads_codex_responses_shape() -> None:
+    from financial_report_llm_extractor.llm_field_extraction import unwrap_llm_content
+
+    raw = {
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": json.dumps({"field_id": "revenue", "found": False}),
+                    }
+                ],
+            }
+        ]
+    }
+
+    assert unwrap_llm_content(raw)["found"] is False
+
+
+def test_unwrap_llm_content_reads_anthropic_messages_shape() -> None:
+    from financial_report_llm_extractor.llm_field_extraction import unwrap_llm_content
+
+    raw = {
+        "content": [
+            {
+                "type": "text",
+                "text": json.dumps({"field_id": "revenue", "found": False}),
+            }
+        ]
+    }
+
+    assert unwrap_llm_content(raw)["found"] is False
+
+
 # ---------------------------------------------------------------------------
 # Task 5: Malformed response and raw archival
 # ---------------------------------------------------------------------------

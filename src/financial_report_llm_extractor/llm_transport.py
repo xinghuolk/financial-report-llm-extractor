@@ -17,7 +17,12 @@ from financial_report_llm_extractor.extraction import (
     run_fake_extraction,
 )
 
-ProviderKind = Literal["openai-compatible", "gemini"]
+ProviderKind = Literal[
+    "openai-compatible",
+    "gemini",
+    "codex-responses",
+    "anthropic-messages",
+]
 
 
 @dataclass(frozen=True)
@@ -49,6 +54,16 @@ PROVIDER_DEFAULTS: dict[str, ProviderDefaults] = {
         base_url="https://generativelanguage.googleapis.com/v1beta",
         api_key_env="GEMINI_API_KEY",
         kind="gemini",
+    ),
+    "openai-codex": ProviderDefaults(
+        base_url="https://chatgpt.com/backend-api/codex",
+        api_key_env="",
+        kind="codex-responses",
+    ),
+    "claude-code": ProviderDefaults(
+        base_url="https://api.anthropic.com",
+        api_key_env="",
+        kind="anthropic-messages",
     ),
 }
 
@@ -93,6 +108,10 @@ def _normalize_provider(provider: str) -> str:
         return "openai-compatible"
     if normalized in {"google-gemini", "google"}:
         return "gemini"
+    if normalized in {"codex", "openai-codex"}:
+        return "openai-codex"
+    if normalized in {"claude", "claude-code", "anthropic-subscription"}:
+        return "claude-code"
     return normalized
 
 
@@ -398,6 +417,10 @@ def _parse_response_json_content(raw_response: dict[str, object]) -> LlmResponse
 
 
 def _response_json_text(raw_response: dict[str, object]) -> str:
+    return response_json_text(raw_response)
+
+
+def response_json_text(raw_response: dict[str, object]) -> str:
     choices = raw_response.get("choices")
     if isinstance(choices, list) and choices:
         first_choice = choices[0]
@@ -429,6 +452,34 @@ def _response_json_text(raw_response: dict[str, object]) -> str:
         if not isinstance(text, str):
             raise ValueError("Gemini response part text must be a string")
         return text
+
+    output = raw_response.get("output")
+    if isinstance(output, list):
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            content_list = item.get("content")
+            if not isinstance(content_list, list):
+                continue
+            for part in content_list:
+                if not isinstance(part, dict):
+                    continue
+                if part.get("type") in {"output_text", "text"}:
+                    text = part.get("text")
+                    if isinstance(text, str):
+                        return text
+        raise ValueError("Codex response missing output text")
+
+    anthropic_content = raw_response.get("content")
+    if isinstance(anthropic_content, list):
+        for part in anthropic_content:
+            if not isinstance(part, dict):
+                continue
+            if part.get("type") == "text":
+                text = part.get("text")
+                if isinstance(text, str):
+                    return text
+        raise ValueError("Anthropic response missing text content")
 
     if choices is not None:
         raise ValueError("LLM response missing choices")

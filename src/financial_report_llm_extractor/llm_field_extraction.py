@@ -14,6 +14,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Literal, Protocol
 
+from financial_report_llm_extractor.llm_transport import response_json_text
+
 
 PROMPT_VERSION = "field-extraction-v1"
 SCHEMA_VERSION = "field-extraction-result-v1"
@@ -170,38 +172,24 @@ def unwrap_llm_content(raw: dict[str, object]) -> dict[str, object]:
     detected but malformed.
     """
     # Already parsed (FakeJsonClient or pre-unwrapped): no transport keys.
-    if "choices" not in raw and "candidates" not in raw:
+    if (
+        "choices" not in raw
+        and "candidates" not in raw
+        and "output" not in raw
+        and not ("content" in raw and isinstance(raw.get("content"), list))
+    ):
         return raw
 
-    # OpenAI-compatible
-    choices = raw.get("choices")
-    if isinstance(choices, list) and choices:
-        first = choices[0]
-        if isinstance(first, dict):
-            message = first.get("message")
-            if isinstance(message, dict):
-                content = message.get("content")
-                if isinstance(content, str):
-                    parsed = json.loads(content)
-                    if isinstance(parsed, dict):
-                        return parsed
-
-    # Gemini
-    candidates = raw.get("candidates")
-    if isinstance(candidates, list) and candidates:
-        first = candidates[0]
-        if isinstance(first, dict):
-            gcontent = first.get("content")
-            if isinstance(gcontent, dict):
-                parts = gcontent.get("parts")
-                if isinstance(parts, list) and parts:
-                    part = parts[0]
-                    if isinstance(part, dict):
-                        text = part.get("text")
-                        if isinstance(text, str):
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return parsed
+    if (
+        "choices" in raw
+        or "candidates" in raw
+        or "output" in raw
+        or ("content" in raw and isinstance(raw.get("content"), list))
+    ):
+        parsed = json.loads(response_json_text(raw))
+        if isinstance(parsed, dict):
+            return parsed
+        raise ValueError(f"LLM response content must be a JSON object: {raw!r}")
 
     raise ValueError(f"unable to unwrap LLM response: {raw!r}")
 

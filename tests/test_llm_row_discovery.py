@@ -51,6 +51,31 @@ def test_build_row_discovery_prompt_payload_is_statement_scoped() -> None:
     assert "full chunk text should not be copied wholesale" not in serialized
 
 
+def test_row_response_parser_reads_codex_responses_shape() -> None:
+    from financial_report_llm_extractor.llm_row_discovery import _parse_row_response
+
+    raw = {
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {"type": "output_text", "text": json.dumps({"rows": []})}
+                ],
+            }
+        ]
+    }
+
+    assert _parse_row_response(raw) == {"rows": []}
+
+
+def test_row_response_parser_reads_anthropic_messages_shape() -> None:
+    from financial_report_llm_extractor.llm_row_discovery import _parse_row_response
+
+    raw = {"content": [{"type": "text", "text": json.dumps({"rows": []})}]}
+
+    assert _parse_row_response(raw) == {"rows": []}
+
+
 class FakeHttpTransport:
     def __init__(self, content: str, *, response_kind: str = "openai") -> None:
         self.content = content

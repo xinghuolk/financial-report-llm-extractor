@@ -11,6 +11,7 @@ from financial_report_llm_extractor.llm_transport import (
     HttpTransport,
     LlmTransportConfig,
     create_llm_client,
+    response_json_text,
 )
 
 
@@ -173,41 +174,7 @@ def _parse_row_response(raw_response: dict[str, object]) -> dict[str, Any]:
 
 
 def _response_json_text(raw_response: dict[str, object]) -> str:
-    choices = raw_response.get("choices")
-    if isinstance(choices, list) and choices:
-        first_choice = choices[0]
-        if not isinstance(first_choice, dict):
-            raise ValueError("LLM response choice must be an object")
-        message = first_choice.get("message")
-        if not isinstance(message, dict):
-            raise ValueError("LLM response missing message")
-        content = message.get("content")
-        if not isinstance(content, str):
-            raise ValueError("LLM response message content must be a string")
-        return content
-
-    candidates = raw_response.get("candidates")
-    if isinstance(candidates, list) and candidates:
-        first_candidate = candidates[0]
-        if not isinstance(first_candidate, dict):
-            raise ValueError("Gemini response candidate must be an object")
-        content_obj = first_candidate.get("content")
-        if not isinstance(content_obj, dict):
-            raise ValueError("Gemini response missing content")
-        parts = content_obj.get("parts")
-        if not isinstance(parts, list) or not parts:
-            raise ValueError("Gemini response missing parts")
-        first_part = parts[0]
-        if not isinstance(first_part, dict):
-            raise ValueError("Gemini response part must be an object")
-        text = first_part.get("text")
-        if not isinstance(text, str):
-            raise ValueError("Gemini response part text must be a string")
-        return text
-
-    if choices is not None:
-        raise ValueError("LLM response missing choices")
-    raise ValueError("LLM response missing candidates")
+    return response_json_text(raw_response)
 
 
 def _rows_with_statement_context(

@@ -8,6 +8,7 @@ from financial_report_llm_extractor.llm_transport import (
     LlmTransportConfig,
     OpenAiCompatibleClient,
     create_llm_client,
+    response_json_text,
     resolve_provider_kind,
     run_real_transport_probe,
 )
@@ -101,6 +102,57 @@ def test_load_gemini_config_uses_provider_defaults(tmp_path: Path) -> None:
     assert config.base_url == "https://generativelanguage.googleapis.com/v1beta"
     assert config.api_key_env == "GEMINI_API_KEY"
     assert resolve_provider_kind(config) == "gemini"
+
+
+def test_load_openai_codex_config_uses_subscription_defaults(tmp_path: Path) -> None:
+    config_path = tmp_path / "llm_config.json"
+    config_path.write_text(
+        json.dumps({"provider": "openai-codex", "model": "gpt-5.3-codex"}),
+        encoding="utf-8",
+    )
+
+    config = LlmTransportConfig.from_json(config_path)
+
+    assert config.provider == "openai-codex"
+    assert config.base_url == "https://chatgpt.com/backend-api/codex"
+    assert config.api_key_env == ""
+    assert resolve_provider_kind(config) == "codex-responses"
+
+
+def test_load_claude_code_config_uses_subscription_defaults(tmp_path: Path) -> None:
+    config_path = tmp_path / "llm_config.json"
+    config_path.write_text(
+        json.dumps({"provider": "claude-code", "model": "claude-sonnet-4-6"}),
+        encoding="utf-8",
+    )
+
+    config = LlmTransportConfig.from_json(config_path)
+
+    assert config.provider == "claude-code"
+    assert config.base_url == "https://api.anthropic.com"
+    assert config.api_key_env == ""
+    assert resolve_provider_kind(config) == "anthropic-messages"
+
+
+def test_response_json_text_reads_codex_responses_output_text() -> None:
+    raw = {
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {"type": "output_text", "text": json.dumps({"fields": []})}
+                ],
+            }
+        ]
+    }
+
+    assert response_json_text(raw) == json.dumps({"fields": []})
+
+
+def test_response_json_text_reads_anthropic_messages_text() -> None:
+    raw = {"content": [{"type": "text", "text": json.dumps({"fields": []})}]}
+
+    assert response_json_text(raw) == json.dumps({"fields": []})
 
 
 def test_openai_compatible_client_builds_chat_completions_request(
