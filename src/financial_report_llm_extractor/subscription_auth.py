@@ -245,16 +245,115 @@ def _read_claude_credentials(
     home: Path | None,
     env: dict[str, str] | None,
 ) -> tuple[SubscriptionCredentialStatus, SubscriptionRuntimeCredentials | None]:
-    del home, env
-    return (
-        SubscriptionCredentialStatus(
-            provider="claude-code",
-            available=False,
-            credential_source=None,
-            token_status="missing",
-            error_code=ERROR_CREDENTIALS_MISSING,
-            message="Claude Code credentials not found",
-            base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
-        ),
-        None,
+    env_map = _runtime_env(env)
+    for env_name in ("ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"):
+        token = env_map.get(env_name, "").strip()
+        if token:
+            status = SubscriptionCredentialStatus(
+                provider="claude-code",
+                available=True,
+                credential_source=env_name,
+                token_status="valid",
+                base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+            )
+            credentials = SubscriptionRuntimeCredentials(
+                provider="claude-code",
+                access_token=token,
+                credential_source=env_name,
+                base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+            )
+            return status, credentials
+
+    path = _claude_credentials_path(home=home, env=env)
+    if not path.is_file():
+        return (
+            SubscriptionCredentialStatus(
+                provider="claude-code",
+                available=False,
+                credential_source=str(path),
+                token_status="missing",
+                error_code=ERROR_CREDENTIALS_MISSING,
+                message=(
+                    "Claude Code credentials not found; run the official "
+                    "Claude Code login first"
+                ),
+                base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+            ),
+            None,
+        )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return (
+            SubscriptionCredentialStatus(
+                provider="claude-code",
+                available=False,
+                credential_source=str(path),
+                token_status="invalid",
+                error_code=ERROR_CREDENTIALS_INVALID,
+                message="Claude Code credentials file is not valid JSON",
+                base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+            ),
+            None,
+        )
+    oauth = payload.get("claudeAiOauth")
+    access_token = oauth.get("accessToken") if isinstance(oauth, dict) else None
+    expires_at = oauth.get("expiresAt") if isinstance(oauth, dict) else None
+    if not isinstance(access_token, str) or not access_token.strip():
+        return (
+            SubscriptionCredentialStatus(
+                provider="claude-code",
+                available=False,
+                credential_source=str(path),
+                token_status="invalid",
+                error_code=ERROR_CREDENTIALS_INVALID,
+                message=(
+                    "Claude Code credentials file is missing "
+                    "claudeAiOauth.accessToken"
+                ),
+                base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+            ),
+            None,
+        )
+    if _claude_file_token_is_expired(expires_at):
+        return (
+            SubscriptionCredentialStatus(
+                provider="claude-code",
+                available=False,
+                credential_source=str(path),
+                token_status="expired",
+                error_code=ERROR_TOKEN_EXPIRED,
+                message=(
+                    "Claude Code access token is expired; run the official "
+                    "Claude Code login again"
+                ),
+                base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+            ),
+            None,
+        )
+    status = SubscriptionCredentialStatus(
+        provider="claude-code",
+        available=True,
+        credential_source=str(path),
+        token_status="valid",
+        base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
     )
+    credentials = SubscriptionRuntimeCredentials(
+        provider="claude-code",
+        access_token=access_token.strip(),
+        credential_source=str(path),
+        base_url=DEFAULT_CLAUDE_CODE_BASE_URL,
+    )
+    return status, credentials
+
+
+def _claude_credentials_path(*, home: Path | None, env: dict[str, str] | None) -> Path:
+    return _runtime_home(home, env) / ".claude" / ".credentials.json"
+
+
+def _claude_file_token_is_expired(expires_at: object) -> bool:
+    if not isinstance(expires_at, (int, float)):
+        return False
+    if expires_at <= 0:
+        return False
+    return int(time.time() * 1000) >= int(expires_at) - 60_000

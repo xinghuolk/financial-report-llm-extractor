@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from financial_report_llm_extractor.subscription_auth import (
+    DEFAULT_CLAUDE_CODE_BASE_URL,
     DEFAULT_CODEX_BASE_URL,
     SubscriptionAuthError,
     SubscriptionCredentialStatus,
@@ -132,3 +133,122 @@ def test_codex_status_reports_invalid_shape(
     assert status.available is False
     assert status.token_status == "invalid"
     assert status.error_code == "subscription_credentials_invalid"
+
+
+def test_claude_status_prefers_anthropic_token_env(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("ANTHROPIC_TOKEN", "env-oauth-token")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "lower-priority-token")
+
+    status = subscription_auth_status("claude-code")
+    creds = resolve_subscription_credentials("claude-code")
+
+    assert status.available is True
+    assert status.token_status == "valid"
+    assert status.credential_source == "ANTHROPIC_TOKEN"
+    assert status.base_url == DEFAULT_CLAUDE_CODE_BASE_URL
+    assert creds.access_token == "env-oauth-token"
+
+
+def test_claude_status_reads_credentials_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    credentials_path = tmp_path / ".claude" / ".credentials.json"
+    credentials_path.parent.mkdir()
+    credentials_path.write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "file-token",
+                    "refreshToken": "refresh-token",
+                    "expiresAt": int(
+                        (
+                            datetime.now(timezone.utc) + timedelta(hours=1)
+                        ).timestamp()
+                        * 1000
+                    ),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    status = subscription_auth_status("claude-code")
+    creds = resolve_subscription_credentials("claude-code")
+
+    assert status.available is True
+    assert status.token_status == "valid"
+    assert status.credential_source == str(credentials_path)
+    assert creds.access_token == "file-token"
+
+
+def test_claude_status_reports_missing_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    status = subscription_auth_status("claude-code")
+
+    assert status.available is False
+    assert status.token_status == "missing"
+    assert status.error_code == "subscription_credentials_missing"
+    assert status.credential_source == str(tmp_path / ".claude" / ".credentials.json")
+
+
+def test_claude_status_reports_expired_credentials_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    credentials_path = tmp_path / ".claude" / ".credentials.json"
+    credentials_path.parent.mkdir()
+    credentials_path.write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "expired-token",
+                    "refreshToken": "refresh-token",
+                    "expiresAt": int(
+                        (
+                            datetime.now(timezone.utc) - timedelta(hours=1)
+                        ).timestamp()
+                        * 1000
+                    ),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    status = subscription_auth_status("claude-code")
+    with pytest.raises(SubscriptionAuthError) as exc_info:
+        resolve_subscription_credentials("claude-code")
+
+    assert status.available is False
+    assert status.token_status == "expired"
+    assert status.error_code == "subscription_token_expired"
+    assert exc_info.value.code == "subscription_token_expired"
+
+
+def test_claude_status_redacts_token_values(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("ANTHROPIC_TOKEN", "secret-token-value")
+
+    status = subscription_auth_status("claude-code")
+
+    assert "secret-token-value" not in json.dumps(status.__dict__)
