@@ -284,6 +284,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override catalog_version (default: from --taxonomy 'version' field)",
     )
 
+    query_parser = subparsers.add_parser("query")
+    query_parser.add_argument("--db", type=Path, required=True,
+                              help="SQLite DB path")
+    query_parser.add_argument("--company", type=str, required=True)
+    query_parser.add_argument("--period", type=str, required=True,
+                              help="period_end like '2024-12-31'")
+    query_parser.add_argument("--field", type=str, default=None,
+                              help="Optional field_id; omit for full extraction")
+
     evaluate_parser = subparsers.add_parser(
         "evaluate-company",
         help="Per-(company, period) source-first + optional LLM evaluation.",
@@ -845,6 +854,27 @@ def main(argv: list[str] | None = None) -> int:
             "db": str(args.db),
             "catalog_version": catalog_version,
         }, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "query":
+        from financial_report_llm_extractor.cache.db_query import (
+            query_extraction as _query_extraction,
+            query_field as _query_field,
+        )
+        if args.field is not None:
+            query_result: object = _query_field(
+                db_path=args.db, company=args.company,
+                period_end=args.period, field_id=args.field,
+            )
+        else:
+            query_result = _query_extraction(
+                db_path=args.db, company=args.company,
+                period_end=args.period,
+            )
+        if query_result is None:
+            print(json.dumps({"miss": True}, sort_keys=True))
+            return 1
+        print(json.dumps(query_result, indent=2, ensure_ascii=False, sort_keys=True))
         return 0
 
     if args.command == "evaluate-company":

@@ -1234,3 +1234,109 @@ def test_cli_index_command_explicit_catalog_version_overrides_taxonomy(
     assert ("600519", "2024-12-31", "CN", "historical-snapshot") in (
         list_companies(db_path=db_path)
     )
+
+
+def test_cli_query_command_returns_field_json(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    """`query --field` outputs single field row as JSON."""
+    import json as _json
+    from financial_report_llm_extractor.cli import main
+
+    src_eval = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "evaluation.json")
+    src_supp = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "llm_evidence_supplement.json")
+    run_dir = tmp_path / "runs" / "600519_2024-12-31"
+    run_dir.mkdir(parents=True)
+    (run_dir / "evaluation.json").write_text(
+        src_eval.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (run_dir / "llm_evidence_supplement.json").write_text(
+        src_supp.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    tax_path = tmp_path / "tax.json"
+    tax_path.write_text(_json.dumps({
+        "catalog_id": "x", "version": "v1",
+        "source_priority_catalog": "x",
+        "fields": {"audit_opinion": {
+            "priority": "P4", "domain": "x", "statement_type": "x",
+            "value_type": "text", "source_mode": "pdf_only",
+            "period_type": "x", "scope_expectation": "x",
+            "currency_requirement": "not_applicable",
+            "unit_requirement": "not_applicable",
+            "evidence_requirement": "x", "fallback_policy": "x",
+            "description": "x"}},
+    }), encoding="utf-8")
+    db_path = tmp_path / "out.db"
+    main([
+        "index", "--runs", str(tmp_path / "runs"),
+        "--db", str(db_path), "--taxonomy", str(tax_path),
+    ])
+    capsys.readouterr()  # discard index output
+
+    exit_code = main([
+        "query",
+        "--db", str(db_path),
+        "--company", "600519",
+        "--period", "2024-12-31",
+        "--field", "audit_opinion",
+    ])
+    assert exit_code == 0
+    body = _json.loads(capsys.readouterr().out)
+    assert body["field_id"] == "audit_opinion"
+    assert body["value"].startswith("标准无保留意见")
+    assert body["evidence_page"] == 55
+    assert body["priority"] == "P4"
+
+
+def test_cli_query_command_without_field_returns_full_extraction(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    import json as _json
+    from financial_report_llm_extractor.cli import main
+
+    src_eval = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "evaluation.json")
+    src_supp = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "llm_evidence_supplement.json")
+    run_dir = tmp_path / "runs" / "600519_2024-12-31"
+    run_dir.mkdir(parents=True)
+    (run_dir / "evaluation.json").write_text(
+        src_eval.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (run_dir / "llm_evidence_supplement.json").write_text(
+        src_supp.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    tax_path = tmp_path / "tax.json"
+    tax_path.write_text(_json.dumps({
+        "catalog_id": "x", "version": "v1",
+        "source_priority_catalog": "x", "fields": {},
+    }), encoding="utf-8")
+    db_path = tmp_path / "out.db"
+    main(["index", "--runs", str(tmp_path / "runs"),
+          "--db", str(db_path), "--taxonomy", str(tax_path)])
+    capsys.readouterr()
+
+    main([
+        "query", "--db", str(db_path),
+        "--company", "600519", "--period", "2024-12-31",
+    ])
+    body = _json.loads(capsys.readouterr().out)
+    assert body["company"] == "600519"
+    assert set(body["fields"]) == {"revenue", "audit_opinion", "fix_assets"}
+
+
+def test_cli_query_command_miss_returns_exit_1(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    from financial_report_llm_extractor.cli import main
+    from financial_report_llm_extractor.cache.db import init_db
+
+    db_path = tmp_path / "out.db"
+    init_db(db_path)
+    exit_code = main([
+        "query", "--db", str(db_path),
+        "--company", "nope", "--period", "2024-12-31", "--field", "x",
+    ])
+    assert exit_code == 1
