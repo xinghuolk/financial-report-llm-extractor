@@ -191,10 +191,12 @@ class OpenAiCompatibleClient:
         config: LlmTransportConfig,
         *,
         transport: HttpTransport | None = None,
+        cache_root: Path | None = None,
     ) -> None:
         self.config = config
         self.transport = transport or UrllibHttpTransport()
         self.raw_exchanges: list[RawExchange] = []
+        self.cache_root = cache_root
 
     def extract(self, request: PromptRequest) -> LlmResponse:
         raw_response = self.complete_json(
@@ -215,10 +217,64 @@ class OpenAiCompatibleClient:
         system_prompt: str,
         user_payload: dict[str, object],
     ) -> dict[str, object]:
+        cache_hit = self._cache_lookup(system_prompt, user_payload)
+        if cache_hit is not None:
+            return cache_hit
         payload = self._build_payload(system_prompt, user_payload)
         raw_response = self._post_with_retries(payload)
         self.raw_exchanges.append(RawExchange(request=payload, raw_response=raw_response))
+        self._cache_store(system_prompt, user_payload, payload, raw_response)
         return raw_response
+
+    def _cache_lookup(
+        self,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object] | None:
+        if self.cache_root is None:
+            return None
+        from financial_report_llm_extractor.cache.llm_cache import (
+            cache_get as _cache_get,
+            cache_key as _cache_key,
+        )
+        key = _cache_key(
+            model=self.config.model,
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+        )
+        hit = _cache_get(cache_root=self.cache_root, key=key)
+        if hit is None:
+            return None
+        response = cast(dict[str, object], hit["response"])
+        self.raw_exchanges.append(
+            RawExchange(request=cast(dict[str, object], hit["request"]), raw_response=response)
+        )
+        return response
+
+    def _cache_store(
+        self,
+        system_prompt: str,
+        user_payload: dict[str, object],
+        request: dict[str, object],
+        response: dict[str, object],
+    ) -> None:
+        if self.cache_root is None:
+            return
+        from financial_report_llm_extractor.cache.llm_cache import (
+            cache_key as _cache_key,
+            cache_put as _cache_put,
+        )
+        key = _cache_key(
+            model=self.config.model,
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+        )
+        _cache_put(
+            cache_root=self.cache_root,
+            key=key,
+            request=request,
+            response=response,
+        )
 
     def _build_payload(
         self,
@@ -267,16 +323,17 @@ def create_llm_client(
     config: LlmTransportConfig,
     *,
     transport: HttpTransport | None = None,
+    cache_root: Path | None = None,
 ) -> LlmJsonClient:
     kind = resolve_provider_kind(config)
     if kind == "openai-compatible":
-        return OpenAiCompatibleClient(config, transport=transport)
+        return OpenAiCompatibleClient(config, transport=transport, cache_root=cache_root)
     if kind == "gemini":
-        return GeminiGenerateContentClient(config, transport=transport)
+        return GeminiGenerateContentClient(config, transport=transport, cache_root=cache_root)
     if kind == "codex-responses":
-        return CodexResponsesClient(config, transport=transport)
+        return CodexResponsesClient(config, transport=transport, cache_root=cache_root)
     if kind == "anthropic-messages":
-        return ClaudeCodeMessagesClient(config, transport=transport)
+        return ClaudeCodeMessagesClient(config, transport=transport, cache_root=cache_root)
     raise ValueError(f"unsupported provider kind: {kind}")
 
 
@@ -286,10 +343,12 @@ class GeminiGenerateContentClient:
         config: LlmTransportConfig,
         *,
         transport: HttpTransport | None = None,
+        cache_root: Path | None = None,
     ) -> None:
         self.config = config
         self.transport = transport or UrllibHttpTransport()
         self.raw_exchanges: list[RawExchange] = []
+        self.cache_root = cache_root
 
     def extract(self, request: PromptRequest) -> LlmResponse:
         raw_response = self.complete_json(
@@ -310,6 +369,9 @@ class GeminiGenerateContentClient:
         system_prompt: str,
         user_payload: dict[str, object],
     ) -> dict[str, object]:
+        cache_hit = self._cache_lookup(system_prompt, user_payload)
+        if cache_hit is not None:
+            return cache_hit
         payload: dict[str, object] = {
             "systemInstruction": {
                 "parts": [{"text": system_prompt}],
@@ -332,7 +394,58 @@ class GeminiGenerateContentClient:
         }
         raw_response = self._post_with_retries(payload)
         self.raw_exchanges.append(RawExchange(request=payload, raw_response=raw_response))
+        self._cache_store(system_prompt, user_payload, payload, raw_response)
         return raw_response
+
+    def _cache_lookup(
+        self,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object] | None:
+        if self.cache_root is None:
+            return None
+        from financial_report_llm_extractor.cache.llm_cache import (
+            cache_get as _cache_get,
+            cache_key as _cache_key,
+        )
+        key = _cache_key(
+            model=self.config.model,
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+        )
+        hit = _cache_get(cache_root=self.cache_root, key=key)
+        if hit is None:
+            return None
+        response = cast(dict[str, object], hit["response"])
+        self.raw_exchanges.append(
+            RawExchange(request=cast(dict[str, object], hit["request"]), raw_response=response)
+        )
+        return response
+
+    def _cache_store(
+        self,
+        system_prompt: str,
+        user_payload: dict[str, object],
+        request: dict[str, object],
+        response: dict[str, object],
+    ) -> None:
+        if self.cache_root is None:
+            return
+        from financial_report_llm_extractor.cache.llm_cache import (
+            cache_key as _cache_key,
+            cache_put as _cache_put,
+        )
+        key = _cache_key(
+            model=self.config.model,
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+        )
+        _cache_put(
+            cache_root=self.cache_root,
+            key=key,
+            request=request,
+            response=response,
+        )
 
     def _post_with_retries(self, payload: dict[str, object]) -> dict[str, object]:
         attempts = self.config.max_retries + 1
@@ -361,10 +474,12 @@ class CodexResponsesClient:
         config: LlmTransportConfig,
         *,
         transport: HttpTransport | None = None,
+        cache_root: Path | None = None,
     ) -> None:
         self.config = config
         self.transport = transport or UrllibHttpTransport()
         self.raw_exchanges: list[RawExchange] = []
+        self.cache_root = cache_root
 
     def extract(self, request: PromptRequest) -> LlmResponse:
         raw_response = self.complete_json(
@@ -385,6 +500,9 @@ class CodexResponsesClient:
         system_prompt: str,
         user_payload: dict[str, object],
     ) -> dict[str, object]:
+        cache_hit = self._cache_lookup(system_prompt, user_payload)
+        if cache_hit is not None:
+            return cache_hit
         payload = {
             "model": self.config.model,
             "instructions": _ensure_json_instruction(system_prompt),
@@ -409,7 +527,58 @@ class CodexResponsesClient:
         }
         raw_response = self._post_with_retries(payload)
         self.raw_exchanges.append(RawExchange(request=payload, raw_response=raw_response))
+        self._cache_store(system_prompt, user_payload, payload, raw_response)
         return raw_response
+
+    def _cache_lookup(
+        self,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object] | None:
+        if self.cache_root is None:
+            return None
+        from financial_report_llm_extractor.cache.llm_cache import (
+            cache_get as _cache_get,
+            cache_key as _cache_key,
+        )
+        key = _cache_key(
+            model=self.config.model,
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+        )
+        hit = _cache_get(cache_root=self.cache_root, key=key)
+        if hit is None:
+            return None
+        response = cast(dict[str, object], hit["response"])
+        self.raw_exchanges.append(
+            RawExchange(request=cast(dict[str, object], hit["request"]), raw_response=response)
+        )
+        return response
+
+    def _cache_store(
+        self,
+        system_prompt: str,
+        user_payload: dict[str, object],
+        request: dict[str, object],
+        response: dict[str, object],
+    ) -> None:
+        if self.cache_root is None:
+            return
+        from financial_report_llm_extractor.cache.llm_cache import (
+            cache_key as _cache_key,
+            cache_put as _cache_put,
+        )
+        key = _cache_key(
+            model=self.config.model,
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+        )
+        _cache_put(
+            cache_root=self.cache_root,
+            key=key,
+            request=request,
+            response=response,
+        )
 
     def _post_with_retries(self, payload: dict[str, object]) -> dict[str, object]:
         attempts = self.config.max_retries + 1
@@ -454,10 +623,12 @@ class ClaudeCodeMessagesClient:
         config: LlmTransportConfig,
         *,
         transport: HttpTransport | None = None,
+        cache_root: Path | None = None,
     ) -> None:
         self.config = config
         self.transport = transport or UrllibHttpTransport()
         self.raw_exchanges: list[RawExchange] = []
+        self.cache_root = cache_root
 
     def extract(self, request: PromptRequest) -> LlmResponse:
         raw_response = self.complete_json(
@@ -478,6 +649,9 @@ class ClaudeCodeMessagesClient:
         system_prompt: str,
         user_payload: dict[str, object],
     ) -> dict[str, object]:
+        cache_hit = self._cache_lookup(system_prompt, user_payload)
+        if cache_hit is not None:
+            return cache_hit
         payload = {
             "model": self.config.model,
             "max_tokens": 4096,
@@ -495,7 +669,58 @@ class ClaudeCodeMessagesClient:
         }
         raw_response = self._post_with_retries(payload)
         self.raw_exchanges.append(RawExchange(request=payload, raw_response=raw_response))
+        self._cache_store(system_prompt, user_payload, payload, raw_response)
         return raw_response
+
+    def _cache_lookup(
+        self,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object] | None:
+        if self.cache_root is None:
+            return None
+        from financial_report_llm_extractor.cache.llm_cache import (
+            cache_get as _cache_get,
+            cache_key as _cache_key,
+        )
+        key = _cache_key(
+            model=self.config.model,
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+        )
+        hit = _cache_get(cache_root=self.cache_root, key=key)
+        if hit is None:
+            return None
+        response = cast(dict[str, object], hit["response"])
+        self.raw_exchanges.append(
+            RawExchange(request=cast(dict[str, object], hit["request"]), raw_response=response)
+        )
+        return response
+
+    def _cache_store(
+        self,
+        system_prompt: str,
+        user_payload: dict[str, object],
+        request: dict[str, object],
+        response: dict[str, object],
+    ) -> None:
+        if self.cache_root is None:
+            return
+        from financial_report_llm_extractor.cache.llm_cache import (
+            cache_key as _cache_key,
+            cache_put as _cache_put,
+        )
+        key = _cache_key(
+            model=self.config.model,
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+        )
+        _cache_put(
+            cache_root=self.cache_root,
+            key=key,
+            request=request,
+            response=response,
+        )
 
     def _post_with_retries(self, payload: dict[str, object]) -> dict[str, object]:
         attempts = self.config.max_retries + 1
