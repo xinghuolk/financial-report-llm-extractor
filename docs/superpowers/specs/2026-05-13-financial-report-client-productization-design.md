@@ -1,7 +1,7 @@
 # FinancialReportClient 产品化设计 Spec
 
-> 日期：2026-05-13（rev 3）
-> 状态：Approved for implementation (pending 1 Open Decision)
+> 日期：2026-05-13（rev 4）
+> 状态：Approved for implementation pending R5 prerequisite (R1 schema market-scoping)
 > 背景：Turtle v0.15 phase3 68 mapped 字段已覆盖下游四因子分析所需 catalog 层数据。Phase R 已 ship 二级缓存（R1 SQLite DB + R2 provider cache + R3 LLM cache + R4 pipeline 编排），下游 `TradingAgents-CN` 需要一个稳定、可编程、不会泄露 extractor 内部实现的消费接口。
 
 ## 目标
@@ -25,6 +25,24 @@
 - 不在 extractor 内部计算 Owner Earnings、FCF、payout ratio、估值 ratio 或 Turtle Agent 四因子结论；这些属于 `TradingAgents-CN` / `financial-report-analysis` 下游逻辑。
 
 ## 前置 Blocker（须在动工前 close）
+
+### R5 prerequisite — R1 schema market-scoping
+
+**当前 R1 `field_values` PK = `(company, period_end, field_id)` 不含 `market`**。`db_query.query_extraction()` 只 filter (company, period_end)，忽略 market（`db_query.py:53`）。R4 `pipeline` 命令在 dispatch 层手工校验 `hit.get("market") == args.market`（commit `6d195c5`）作为 patch，但 **client API 会直接调 `query_extraction()`**——同一 race 复现：
+
+- 同 ticker 跨市场（如 CN A-share + HK ADR 映射到同一 ticker）会拿错 market 的字段
+- 第二次跨市场 `index_run` 的 `DELETE WHERE company=? AND period_end=?` 会 wipe 前一次的 field_values
+
+**Client API spec 要求 `market` 必选**（见下文 §Client Methods）。所以 Phase 1a 启动前必须先做 **R5: R1 schema market-scoping**：
+
+1. `field_values` schema v2: PK 加入 `market`，新增 `idx_field_values_market`
+2. `query_extraction()` / `query_field()` API 新增 `market` 必选参数
+3. `index_run()` 写入时填充 `market` 列
+4. CLI `query` 命令 `--market` flag 改为 required
+5. `init_db()` 检测旧 schema → drop + recreate（接受重 index 成本；R1 设计原则"tmp/runs 是 source of truth"允许此操作）
+6. Regression test：同 (company, period_end) 不同 market 共存不互覆盖
+
+详细实施方案见独立 R5 brainstorm（暂不写 plan 文档，brainstorm 在 PR description 中）。**R5 effort: ~半天**。
 
 ### Python 版本对齐
 
@@ -394,19 +412,25 @@ class FinancialReportClient:
         """
         返回一次 extraction 的完整 ExtractionResult.
 
-        include_llm_supplement filter:
-          False (默认): LLM_SUPPLEMENT 字段以占位形式返回
-            FieldValue(confidence=UNAVAILABLE, value=None,
-                       raw_bucket="llm_supplement_present",
-                       reason="llm_supplement_filtered")
-            — 字段 IS in result.fields；下游 iterate 时能看到"有 LLM 数据但
-              你没 opt-in"，is_reliable=False, is_present=False。
-          True: LLM 字段照常包含 (confidence=LLM_SUPPLEMENT, value=取自 DB).
-            **重要**：此 flag 仅决定**结果中是否含 LLM 字段**，**不决定**
-            是否运行 LLM。要触发 fresh LLM 抽取，用 FORCE_REFRESH + 有效
-            pdf_resolver + llm_config_path。否则若 DB row 当初未跑 LLM
-            (extractions.llm_provider=None)，本 flag 设为 True 也得不到
-            LLM 字段。
+        include_llm_supplement (symmetric semantics — 同时控制 filter + LLM step):
+          False (默认):
+            - 已有 DB row: LLM_SUPPLEMENT 字段以占位返回
+                FieldValue(confidence=UNAVAILABLE, value=None,
+                           raw_bucket="llm_supplement_present",
+                           reason="llm_supplement_filtered")
+              字段 IS in result.fields，is_reliable=False, is_present=False。
+            - DB miss + CACHE_FIRST: pipeline 跑但**跳过 LLM step**（evaluate
+              不带 pdf_path / llm_config）。
+            - DB miss + FORCE_REFRESH: 同上。
+          True:
+            - 已有 DB row: LLM 字段照常包含 (confidence=LLM_SUPPLEMENT)。
+            - DB miss + CACHE_FIRST: pipeline 跑且**包含 LLM step** — 需
+              pdf_resolver + llm_config_path 都已配齐，否则 raise
+              ExtractorError(reason="pdf_not_found" | "llm_config_missing")。
+            - DB miss + FORCE_REFRESH: 同上。
+          ⚠ Edge case: 已有 DB row 但 row 当初未跑 LLM
+            (extractions.llm_provider=None) → `include_llm_supplement=True`
+            仍返回 0 LLM 字段。要补抽取，用 FORCE_REFRESH。
 
         refresh_policy:
           CACHE_ONLY:    DB miss → staleness=MISSING, fields={}
@@ -516,7 +540,12 @@ if field.confidence == ConfidenceLevel.UNAVAILABLE:
 - `source == "llm"` 必须映射为 `LLM_SUPPLEMENT`；`verification_required` 自动 True。
 - HK `gross_profit` 在 provider raw semantics 未证明前不能映射为 `VERIFIED`（保持 `UNAVAILABLE` + raw_bucket=`terminal_unverified`）。
 - HK `net_profit` 可以是 provider semantics sampled proof，但不能被表述成最终逐公司 PDF evidence。
-- `source_evidence`、`trust_policy_evidence`、`pdf_evidence` 的区别由 `source` + `ExtractionResult.llm_provider` 字段表达，不能在 client export 层被抹平。
+- **Evidence kind 不在 Phase 1a 暴露**。当前 `selected_source` 字段只携带 4 个值 `{"akshare", "yahoo", "llm", None}`，**抹平**了内部细分：
+  - `"yahoo"` 直接 raw match vs `"yahoo"` 经过 H2 PDF semantics promotion → 同字符串
+  - `"akshare"` 直接 vs 经过 trust_policy_evidence sampled proof → 同字符串
+  - `"llm"` 只标记 LLM 来源，`ExtractionResult.llm_provider` 标记模型，但**不区分**该 LLM 字段是否带 PDF spot-check 证据
+
+  下游若需细分（如 caveat 报告区分 "raw provider match" vs "PDF-verified sample promotion"），通过未来 `evidence_kind` 字段或 separate `client.get_evidence(field_id)` API 暴露——这是 **Phase 2 deliverable**，不在 Phase 1a contract 中。Phase 1a 只暴露 value + bucket-derived ConfidenceLevel + 最粗粒度 source label。
 
 ## CACHE_FIRST 撞 Stale 的精确语义
 
@@ -645,6 +674,7 @@ Phase 1a **不保证多进程安全**。SQLite busy_timeout（R1 已设 10s）�
 
 | Phase | 内容 | Effort | Out-of-scope |
 | --- | --- | --- | --- |
+| **R5 (prerequisite)** | R1 schema market-scoping：`field_values` PK 加 market、query API 加 market 必选参数、indexer 写 market、CLI `query --market` required、init_db schema v2 检测+rebuild、cross-market 非冲突 regression test | ~半天 | client API（仍是 Phase 1a） |
 | 1a | `FinancialReportClient` library、dataclass contract、单一 backend（R1 DB + R4 pipeline in-process）、importlib.resources 打包 catalog、pip-installable package、focused tests | ~2-3 天 | HTTP、job queue、多 process、DB schema 暴露、subprocess fallback |
 | 1b | `TradingAgents-CN` 写 `FinancialReportAdapter`，接 fundamentals/value-investment，默认只用 `is_reliable` | ~1 天 | extractor 内部知识、bucket 直读 |
 | 2 | HTTP sidecar，同 contract 包一层 transport，服务多 consumer | ~2-3 天 | 业务语义变动 |
@@ -670,9 +700,14 @@ Phase 1a **不保证多进程安全**。SQLite busy_timeout（R1 已设 10s）�
 - **CACHE_ONLY DB miss 测试**：`fields == {}`, `staleness == MISSING`，不触发任何 fetch/evaluate。
 - **CACHE_ONLY guard 测试**：测试明确包含 `if result.staleness.is_missing: skip` 模式，验证 empty fields 不会被误 iterate。
 - **`extraction_id` 稳定性测试**：相同 (company, period_end, market, catalog_version, generated_at) → 相同 hash。
-- **`include_llm_supplement=True` 不触发新 LLM 测试**：DB row 无 LLM 字段（`extractions.llm_provider=None`），`include_llm_supplement=True` 仍返回 0 LLM 字段（除非 FORCE_REFRESH）。
+- **`include_llm_supplement=True` symmetric semantics 测试**:
+  - 已有 DB row 不带 LLM 字段 + CACHE_ONLY → 0 LLM 字段返回
+  - DB miss + CACHE_FIRST + `include_llm_supplement=True` + pdf_resolver/llm_config 配齐 → pipeline 跑且执行 LLM step → 返回 LLM 字段
+  - DB miss + CACHE_FIRST + `include_llm_supplement=False` → pipeline 跑但跳过 LLM step → 返回时 LLM 字段以占位 UNAVAILABLE 返回
+  - DB miss + CACHE_FIRST + `include_llm_supplement=True` + pdf_resolver 缺 → raise ExtractorError(pdf_not_found)
+- **R5 prerequisite test (cross-market non-collision)**：indexing 同 (company, period_end) 在 CN + HK 两次，验证 field_values 两套独立、不互覆盖；query_extraction(market="CN") 与 query_extraction(market="HK") 返回不同 fields dict。
 - **`PdfQuery` kw-only 测试**：`PdfQuery("600519", "2024-12-31", "CN")` 位置构造 raise；`PdfQuery(company=..., period_end=..., market=...)` 正常。
-- **测试 fixture 复用 `tests/fixtures/cache_sample_run/`**，不新造 fixture。
+- **测试 fixture 优先复用 `tests/fixtures/cache_sample_run/`**；现 fixture 仅含 3 buckets (clean_present / llm_supplement_present / unresolved_conflict)，不足处通过 **程序化 seed**（`init_db()` + 直接 SQL INSERT 或 `index_run()` + 临时 evaluation.json 文件）添加缺失 bucket (`terminal_unverified` / `source_unavailable` / `not_in_scope`) 与 catalog_version mismatch 的 stale 场景。禁止新建独立 client-only 整套 fixture 目录。
 
 ### Phase 1b
 
