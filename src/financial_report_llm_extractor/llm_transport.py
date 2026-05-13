@@ -16,6 +16,10 @@ from financial_report_llm_extractor.extraction import (
     PromptRequest,
     run_fake_extraction,
 )
+from financial_report_llm_extractor.subscription_auth import (
+    codex_chatgpt_account_id,
+    resolve_subscription_credentials,
+)
 
 ProviderKind = Literal[
     "openai-compatible",
@@ -263,6 +267,10 @@ def create_llm_client(
         return OpenAiCompatibleClient(config, transport=transport)
     if kind == "gemini":
         return GeminiGenerateContentClient(config, transport=transport)
+    if kind == "codex-responses":
+        return CodexResponsesClient(config, transport=transport)
+    if kind == "anthropic-messages":
+        return ClaudeCodeMessagesClient(config, transport=transport)
     raise ValueError(f"unsupported provider kind: {kind}")
 
 
@@ -339,6 +347,172 @@ class GeminiGenerateContentClient:
         if last_error is not None:
             raise last_error
         raise RuntimeError("LLM transport failed without an error")
+
+
+class CodexResponsesClient:
+    def __init__(
+        self,
+        config: LlmTransportConfig,
+        *,
+        transport: HttpTransport | None = None,
+    ) -> None:
+        self.config = config
+        self.transport = transport or UrllibHttpTransport()
+        self.raw_exchanges: list[RawExchange] = []
+
+    def extract(self, request: PromptRequest) -> LlmResponse:
+        raw_response = self.complete_json(
+            system_prompt=(
+                "Return strict JSON with a fields array. Each field must "
+                "include field_id, status, and optional value_raw/unit_context."
+            ),
+            user_payload={
+                "field_id": request.field_id,
+                "candidates": list(request.candidates),
+            },
+        )
+        return _parse_response_json_content(raw_response)
+
+    def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object]:
+        payload = {
+            "model": self.config.model,
+            "instructions": system_prompt,
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": json.dumps(
+                                user_payload,
+                                ensure_ascii=False,
+                                sort_keys=True,
+                            ),
+                        }
+                    ],
+                }
+            ],
+            "text": {"format": {"type": "json_object"}},
+            "store": False,
+        }
+        raw_response = self._post_with_retries(payload)
+        self.raw_exchanges.append(RawExchange(request=payload, raw_response=raw_response))
+        return raw_response
+
+    def _post_with_retries(self, payload: dict[str, object]) -> dict[str, object]:
+        attempts = self.config.max_retries + 1
+        last_error: TimeoutError | URLError | None = None
+        for _ in range(attempts):
+            try:
+                credentials = resolve_subscription_credentials("openai-codex")
+                return self.transport.post_json(
+                    f"{self.config.base_url.rstrip('/')}/responses",
+                    _codex_headers(credentials.access_token),
+                    payload,
+                    self.config.timeout_seconds,
+                )
+            except (TimeoutError, URLError) as error:
+                last_error = error
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("Codex transport failed without an error")
+
+
+class ClaudeCodeMessagesClient:
+    def __init__(
+        self,
+        config: LlmTransportConfig,
+        *,
+        transport: HttpTransport | None = None,
+    ) -> None:
+        self.config = config
+        self.transport = transport or UrllibHttpTransport()
+        self.raw_exchanges: list[RawExchange] = []
+
+    def extract(self, request: PromptRequest) -> LlmResponse:
+        raw_response = self.complete_json(
+            system_prompt=(
+                "Return strict JSON with a fields array. Each field must "
+                "include field_id, status, and optional value_raw/unit_context."
+            ),
+            user_payload={
+                "field_id": request.field_id,
+                "candidates": list(request.candidates),
+            },
+        )
+        return _parse_response_json_content(raw_response)
+
+    def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object]:
+        payload = {
+            "model": self.config.model,
+            "max_tokens": 4096,
+            "system": system_prompt,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        user_payload,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                }
+            ],
+        }
+        raw_response = self._post_with_retries(payload)
+        self.raw_exchanges.append(RawExchange(request=payload, raw_response=raw_response))
+        return raw_response
+
+    def _post_with_retries(self, payload: dict[str, object]) -> dict[str, object]:
+        attempts = self.config.max_retries + 1
+        last_error: TimeoutError | URLError | None = None
+        for _ in range(attempts):
+            try:
+                credentials = resolve_subscription_credentials("claude-code")
+                return self.transport.post_json(
+                    f"{self.config.base_url.rstrip('/')}/v1/messages",
+                    _claude_code_headers(credentials.access_token),
+                    payload,
+                    self.config.timeout_seconds,
+                )
+            except (TimeoutError, URLError) as error:
+                last_error = error
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("Claude Code transport failed without an error")
+
+
+def _codex_headers(access_token: str) -> dict[str, str]:
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}",
+        "originator": "codex_cli_rs",
+        "User-Agent": "codex_cli_rs/0.0.0",
+    }
+    account_id = codex_chatgpt_account_id(access_token)
+    if account_id:
+        headers["ChatGPT-Account-ID"] = account_id
+    return headers
+
+
+def _claude_code_headers(access_token: str) -> dict[str, str]:
+    return {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}",
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "claude-code-20250219,oauth-2025-04-20",
+        "user-agent": "claude-code/0.0.0",
+        "x-app": "cli",
+    }
 
 
 def run_real_transport_probe(

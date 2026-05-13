@@ -1,7 +1,10 @@
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
+
+import pytest
 
 from financial_report_llm_extractor.extraction import PromptRequest
 from financial_report_llm_extractor.llm_transport import (
@@ -31,6 +34,30 @@ class FakeHttpTransport:
         if isinstance(response, Exception):
             raise response
         return response
+
+
+def _jwt_with_exp(exp: int, account_id: str = "acct-test") -> str:
+    import base64
+
+    def enc(payload: dict[str, object]) -> str:
+        raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+    return (
+        f"{enc({'alg': 'none'})}."
+        f"{enc({'exp': exp, 'https://api.openai.com/auth': {'chatgpt_account_id': account_id}})}."
+        "sig"
+    )
+
+
+def _write_codex_auth(tmp_path: Path, monkeypatch: Any, token: str) -> None:
+    codex_home = tmp_path / "codex-home"
+    codex_home.mkdir()
+    (codex_home / "auth.json").write_text(
+        json.dumps({"tokens": {"access_token": token, "refresh_token": "refresh"}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
 
 def test_load_llm_config_from_json(tmp_path: Path) -> None:
@@ -323,6 +350,139 @@ def test_gemini_client_builds_generate_content_request(monkeypatch: Any) -> None
     assert transport.calls[0][2]["generationConfig"] == {
         "responseMimeType": "application/json"
     }
+
+
+def test_codex_client_builds_responses_request(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    token = _jwt_with_exp(
+        int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp()),
+        account_id="acct-123",
+    )
+    _write_codex_auth(tmp_path, monkeypatch, token)
+    transport = FakeHttpTransport(
+        [
+            {
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": json.dumps(
+                                    {
+                                        "fields": [
+                                            {"field_id": "cash", "status": "missing"}
+                                        ]
+                                    }
+                                ),
+                            }
+                        ],
+                    }
+                ]
+            }
+        ]
+    )
+
+    client = create_llm_client(
+        LlmTransportConfig(
+            provider="openai-codex",
+            model="gpt-5.3-codex",
+            base_url="https://chatgpt.com/backend-api/codex",
+            api_key_env="",
+        ),
+        transport=transport,
+    )
+    response = client.extract(PromptRequest(field_id="cash", candidates=()))
+
+    assert response.fields[0].status == "missing"
+    url, headers, payload, _timeout = transport.calls[0]
+    assert url == "https://chatgpt.com/backend-api/codex/responses"
+    assert headers["Authorization"] == f"Bearer {token}"
+    assert headers["originator"] == "codex_cli_rs"
+    assert headers["ChatGPT-Account-ID"] == "acct-123"
+    assert payload["model"] == "gpt-5.3-codex"
+    assert payload["instructions"]
+    assert payload["store"] is False
+    input_items = payload["input"]
+    assert isinstance(input_items, list)
+    first_item = input_items[0]
+    assert isinstance(first_item, dict)
+    content = first_item["content"]
+    assert isinstance(content, list)
+    first_part = content[0]
+    assert isinstance(first_part, dict)
+    assert json.loads(first_part["text"])["field_id"] == "cash"
+
+
+def test_claude_code_client_builds_messages_request(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_TOKEN", "claude-token")
+    transport = FakeHttpTransport(
+        [
+            {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(
+                            {"fields": [{"field_id": "cash", "status": "missing"}]}
+                        ),
+                    }
+                ]
+            }
+        ]
+    )
+
+    client = create_llm_client(
+        LlmTransportConfig(
+            provider="claude-code",
+            model="claude-sonnet-4-6",
+            base_url="https://api.anthropic.com",
+            api_key_env="",
+        ),
+        transport=transport,
+    )
+    response = client.extract(PromptRequest(field_id="cash", candidates=()))
+
+    assert response.fields[0].status == "missing"
+    url, headers, payload, _timeout = transport.calls[0]
+    assert url == "https://api.anthropic.com/v1/messages"
+    assert headers["Authorization"] == "Bearer claude-token"
+    assert headers["anthropic-version"]
+    assert "claude-code" in headers["user-agent"]
+    assert payload["model"] == "claude-sonnet-4-6"
+    assert payload["max_tokens"] == 4096
+    messages = payload["messages"]
+    assert isinstance(messages, list)
+    first_message = messages[0]
+    assert isinstance(first_message, dict)
+    assert json.loads(first_message["content"])["field_id"] == "cash"
+
+
+def test_subscription_client_missing_credentials_fails_before_transport(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    transport = FakeHttpTransport([])
+    client = create_llm_client(
+        LlmTransportConfig(
+            provider="openai-codex",
+            model="gpt-5.3-codex",
+            base_url="https://chatgpt.com/backend-api/codex",
+            api_key_env="",
+        ),
+        transport=transport,
+    )
+
+    with pytest.raises(Exception) as exc_info:
+        client.extract(PromptRequest(field_id="cash", candidates=()))
+
+    assert "subscription_credentials_missing" in str(exc_info.value)
+    assert transport.calls == []
 
 
 def test_openai_compatible_client_retries_timeout_errors(monkeypatch: Any) -> None:
