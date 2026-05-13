@@ -1,7 +1,10 @@
 # Codex and Claude Subscription Support Spec
 
 > Date: 2026-05-13
-> Status: approved for design, pending implementation plan
+> Status: **implemented**. Codex path validated for production via 4-cohort PDF+LLM run;
+> Claude HTTP path documented as diagnostic-only due to Anthropic policy block.
+> See `docs/2026-05-13-subscription-llm-validation.md` for live findings and the
+> 3 open options for a future production Claude path.
 > Scope: Add read-only support for existing OpenAI Codex and Claude Code subscription credentials as LLM providers.
 
 ## Goal

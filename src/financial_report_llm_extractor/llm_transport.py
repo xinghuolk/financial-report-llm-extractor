@@ -431,6 +431,24 @@ class CodexResponsesClient:
 
 
 class ClaudeCodeMessagesClient:
+    """Diagnostic-only Claude Code subscription HTTP transport.
+
+    Anthropic policy-blocks direct ``/v1/messages`` calls authenticated with
+    Claude Code subscription OAuth tokens — every request returns
+    ``rate_limit_error`` with a vague ``"Error"`` body even when the token is
+    valid and the organization-id resolves. This is by design: Claude Code
+    subscription tokens are scoped to the ``claude`` CLI process.
+
+    This class therefore remains useful for credential parsing, header
+    construction, smoke testing, and ``llm-auth-status`` diagnostics, but it
+    is **not a production LLM transport**. Selecting ``provider: claude-code``
+    in a real extraction config will fail at the first network call.
+
+    See ``docs/2026-05-13-subscription-llm-validation.md`` for the full
+    diagnosis and the three open options (CLI subprocess / API key / keep as
+    diagnostic only) for a future production Claude path.
+    """
+
     def __init__(
         self,
         config: LlmTransportConfig,
