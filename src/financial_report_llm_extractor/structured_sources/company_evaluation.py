@@ -434,7 +434,7 @@ def run_company_evaluation(
 
     (out_dir / "evaluation.json").write_text(
         json.dumps(
-            _evaluation_to_dict(evaluation),
+            _evaluation_to_dict(evaluation, catalog_version=taxonomy.version),
             indent=2,
             ensure_ascii=False,
             sort_keys=True,
@@ -506,9 +506,14 @@ def _run_llm_supplement_step(
     write_llm_evidence_supplement(result)
 
 
-def _evaluation_to_dict(ev: CompanyEvaluation) -> dict[str, object]:
+def _evaluation_to_dict(
+    ev: CompanyEvaluation,
+    *,
+    catalog_version: str = "unknown",
+) -> dict[str, object]:
     return {
         "schema_version": "company-evaluation-v1",
+        "catalog_version": catalog_version,
         "company": ev.company,
         "period_end": ev.period.period_end.isoformat(),
         "report_type": ev.period.report_type,
