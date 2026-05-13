@@ -269,6 +269,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Source mapping catalog JSON path.",
     )
 
+    index_parser = subparsers.add_parser("index")
+    index_parser.add_argument("--runs", type=Path, required=True,
+                              help="Directory containing per-company run subdirs")
+    index_parser.add_argument("--db", type=Path, required=True,
+                              help="SQLite DB path to create/update")
+    index_parser.add_argument(
+        "--taxonomy", type=Path,
+        default=Path("field_catalog/turtle_v015_field_taxonomy.json"),
+        help="Taxonomy JSON for catalog version + priority denormalization",
+    )
+    index_parser.add_argument(
+        "--catalog-version", type=str, default=None,
+        help="Override catalog_version (default: from --taxonomy 'version' field)",
+    )
+
     evaluate_parser = subparsers.add_parser(
         "evaluate-company",
         help="Per-(company, period) source-first + optional LLM evaluation.",
@@ -784,6 +799,52 @@ def main(argv: list[str] | None = None) -> int:
             out_dir=args.out,
             catalog_path=args.catalog,
         )
+        return 0
+
+    if args.command == "index":
+        import sys as _sys
+        from financial_report_llm_extractor.cache.db import (
+            init_db as _init_db,
+        )
+        from financial_report_llm_extractor.cache.indexer import (
+            index_run as _index_run,
+        )
+        taxonomy = json.loads(args.taxonomy.read_text(encoding="utf-8"))
+        taxonomy_version = str(taxonomy.get("version", "unknown"))
+        catalog_version = args.catalog_version or taxonomy_version
+        priority_map = {
+            fid: str(info.get("priority", ""))
+            for fid, info in taxonomy.get("fields", {}).items()
+        }
+        if (
+            args.catalog_version is None
+            and taxonomy_version != "unknown"
+        ):
+            print(
+                f"warning: using current taxonomy version "
+                f"'{taxonomy_version}' as catalog_version for all runs; "
+                f"historical runs may have been generated under a different "
+                f"catalog. Pass --catalog-version to override.",
+                file=_sys.stderr,
+            )
+        _init_db(args.db)
+        count_runs = 0
+        count_fields = 0
+        for sub in sorted(args.runs.iterdir()):
+            if not sub.is_dir() or not (sub / "evaluation.json").exists():
+                continue
+            count_fields += _index_run(
+                run_dir=sub, db_path=args.db,
+                catalog_version=catalog_version,
+                priority_map=priority_map,
+            )
+            count_runs += 1
+        print(json.dumps({
+            "indexed_runs": count_runs,
+            "indexed_fields": count_fields,
+            "db": str(args.db),
+            "catalog_version": catalog_version,
+        }, indent=2, sort_keys=True))
         return 0
 
     if args.command == "evaluate-company":
