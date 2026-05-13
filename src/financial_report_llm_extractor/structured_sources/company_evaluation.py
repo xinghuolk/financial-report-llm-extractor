@@ -353,6 +353,7 @@ def run_company_evaluation(
     priorities: tuple[str, ...],
     out_dir: Path,
     json_client: JsonClient | None = None,
+    cache_root: Path | None = Path("tmp/.cache"),
 ) -> CompanyEvaluation:
     """End-to-end: replay → optional LLM supplement → classify → write artifacts.
 
@@ -382,6 +383,7 @@ def run_company_evaluation(
             priorities=priorities,
             out_dir=out_dir,
             json_client=json_client,
+            cache_root=cache_root,
         )
 
     # Phase H2 Task 3: load HK trust policy + merged HK/CN provider semantics
@@ -455,6 +457,7 @@ def _run_llm_supplement_step(
     priorities: tuple[str, ...],
     out_dir: Path,
     json_client: JsonClient | None,
+    cache_root: Path | None = Path("tmp/.cache"),
 ) -> None:
     """Mirror llm_extraction_batch._process_one_company minus batching.
 
@@ -488,7 +491,7 @@ def _run_llm_supplement_step(
 
     if json_client is None:
         config = LlmTransportConfig.from_json(llm_config_path)
-        json_client = create_llm_client(config)
+        json_client = create_llm_client(config, cache_root=cache_root)
 
     result = extract_for_chunks(
         chunks=chunks,

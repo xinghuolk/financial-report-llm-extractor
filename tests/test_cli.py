@@ -1429,3 +1429,57 @@ def test_cli_fetch_source_inventory_skip_if_cached_flag(tmp_path: Path) -> None:
         "--skip-if-cached",
     ])
     assert args.skip_if_cached is True
+
+
+def test_cli_extract_llm_no_llm_cache_flag(tmp_path: Path) -> None:
+    """`extract-llm --no-llm-cache` sets args.no_llm_cache to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "extract-llm",
+        "--pdf", str(tmp_path / "report.pdf"),
+        "--company-id", "600519",
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--taxonomy", "field_catalog/turtle_v015_field_taxonomy.json",
+        "--llm-config", str(tmp_path / "llm.json"),
+        "--out", str(tmp_path / "out"),
+        "--no-llm-cache",
+    ])
+    assert args.no_llm_cache is True
+
+
+def test_cli_extract_llm_batch_no_llm_cache_flag(tmp_path: Path) -> None:
+    """`extract-llm-batch --no-llm-cache` sets args.no_llm_cache to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "extract-llm-batch",
+        "--manifest", str(tmp_path / "manifest.json"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--taxonomy", "field_catalog/turtle_v015_field_taxonomy.json",
+        "--llm-config", str(tmp_path / "llm.json"),
+        "--out", str(tmp_path / "out"),
+        "--no-llm-cache",
+    ])
+    assert args.no_llm_cache is True
+
+
+def test_cli_evaluate_company_no_llm_cache_flag(tmp_path: Path) -> None:
+    """`evaluate-company --no-llm-cache` sets args.no_llm_cache to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "evaluate-company",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--inventory", str(tmp_path / "inv.jsonl"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--taxonomy", "field_catalog/turtle_v015_field_taxonomy.json",
+        "--out", str(tmp_path / "out"),
+        "--no-llm-cache",
+    ])
+    assert args.no_llm_cache is True

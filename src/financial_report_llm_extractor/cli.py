@@ -135,6 +135,10 @@ def build_parser() -> argparse.ArgumentParser:
             "extraction_failed with a low_confidence error. Default: no gating."
         ),
     )
+    extract_llm_parser.add_argument(
+        "--no-llm-cache", action="store_true",
+        help="Bypass the LLM completion cache (tmp/.cache/llm/).",
+    )
 
     extract_llm_batch_parser = subparsers.add_parser(
         "extract-llm-batch",
@@ -178,6 +182,10 @@ def build_parser() -> argparse.ArgumentParser:
             "Demote `present` results below this LLM-reported confidence to "
             "extraction_failed. Default: no gating."
         ),
+    )
+    extract_llm_batch_parser.add_argument(
+        "--no-llm-cache", action="store_true",
+        help="Bypass the LLM completion cache (tmp/.cache/llm/).",
     )
 
     extract_parser = subparsers.add_parser("extract")
@@ -327,6 +335,10 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument("--llm-config", type=Path)
     evaluate_parser.add_argument("--priorities", default="P0,P1,P2,P3")
     evaluate_parser.add_argument("--out", type=Path, required=True)
+    evaluate_parser.add_argument(
+        "--no-llm-cache", action="store_true",
+        help="Bypass the LLM completion cache.",
+    )
 
     return parser
 
@@ -401,11 +413,12 @@ def _run_fetch_source_inventory(
     )
 
 
-def _run_evaluate_company(**kwargs: object) -> None:
+def _run_evaluate_company(*, no_llm_cache: bool = False, **kwargs: object) -> None:
     from financial_report_llm_extractor.structured_sources.company_evaluation import (
         run_company_evaluation,
     )
-    evaluation = run_company_evaluation(**kwargs)  # type: ignore[arg-type]
+    cache_root: Path | None = None if no_llm_cache else Path("tmp/.cache")
+    evaluation = run_company_evaluation(**kwargs, cache_root=cache_root)  # type: ignore[arg-type]
     print(json.dumps({
         "company": evaluation.company,
         "summary": dict(evaluation.by_bucket),
@@ -615,7 +628,8 @@ def main(argv: list[str] | None = None) -> int:
         catalog = load_source_mapping_catalog(args.catalog, priorities=priorities)
         taxonomy = load_field_taxonomy(args.taxonomy)
         config = LlmTransportConfig.from_json(args.llm_config)
-        client = create_llm_client(config)
+        cache_root = None if args.no_llm_cache else Path("tmp/.cache")
+        client = create_llm_client(config, cache_root=cache_root)
 
         result = extract_for_chunks(
             chunks=chunks, catalog=catalog, taxonomy=taxonomy,
@@ -658,7 +672,8 @@ def main(argv: list[str] | None = None) -> int:
         catalog = load_source_mapping_catalog(args.catalog, priorities=priorities)
         taxonomy = load_field_taxonomy(args.taxonomy)
         config = LlmTransportConfig.from_json(args.llm_config)
-        client = create_llm_client(config)
+        cache_root = None if args.no_llm_cache else Path("tmp/.cache")
+        client = create_llm_client(config, cache_root=cache_root)
 
         summary = run_batch(
             companies=companies,
@@ -953,6 +968,7 @@ def main(argv: list[str] | None = None) -> int:
             llm_config_path=args.llm_config,
             priorities=priorities,
             out_dir=args.out,
+            no_llm_cache=args.no_llm_cache,
         )
         return 0
 
