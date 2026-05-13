@@ -153,3 +153,125 @@ def test_fetch_akshare_no_cache_when_cache_root_is_none(tmp_path: Path) -> None:
     assert len(result) >= 1
     # No cache directory was created
     assert not (tmp_path / "cache").exists()
+
+
+def test_fetch_source_inventory_cache_hit_orchestrator_integration(
+    tmp_path: Path,
+) -> None:
+    """End-to-end: prime cache → fetch_source_inventory must succeed without
+    re-fetching, write manifest + jsonl normally. Reproduces the critical
+    bug where finalize_source_artifacts crashed on cache hit due to empty
+    store."""
+    import financial_report_llm_extractor.structured_sources.source_inventory_fetch as sif
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+    )
+    from financial_report_llm_extractor.structured_sources.models import (
+        SourceEvidence,
+        SourceInventoryRecord,
+    )
+    from datetime import date
+
+    cache_root = tmp_path / ".cache"
+
+    fake_record = SourceInventoryRecord(
+        source="akshare",
+        market="CN",
+        ticker="600519",
+        statement_type="balance_sheet",
+        period="2024-12-31",
+        report_type="annual",
+        raw_field_name="TOTAL_ASSETS",
+        raw_value="100000",
+        currency="CNY",
+        unit="yuan",
+        source_evidence=(
+            SourceEvidence(
+                source="akshare",
+                adapter="AkshareAdapter",
+                function="fetch_cn_statement_inventory",
+                artifact_id="aid_1",
+                raw_record_id="rid_1",
+                raw_field_name="TOTAL_ASSETS",
+            ),
+        ),
+    )
+
+    class FakeAdapter:
+        def __init__(self, *, client: object, artifact_store: object) -> None:
+            self._store = artifact_store
+
+        def fetch_cn_statement_inventory(
+            self,
+            *,
+            ticker: str,
+            exchange: str,
+            statement_type: str,
+            unit: str,
+        ) -> list[SourceInventoryRecord]:
+            if statement_type == "balance_sheet":
+                # Adapter writes artifact + returns records
+                self._store.write_json(  # type: ignore[attr-defined]
+                    source="akshare",
+                    artifact_id="aid_1",
+                    payload={"raw": "data", "ticker": ticker},
+                )
+                return [fake_record]
+            return []
+
+        def fetch_hk_statement_inventory(
+            self,
+            *,
+            ticker: str,
+            statement_type: str,
+            unit: str,
+        ) -> list[SourceInventoryRecord]:
+            return []
+
+    period = PeriodSpec(period_end=date(2024, 12, 31), report_type="annual")
+    catalog_path = Path("field_catalog/turtle_v015_field_taxonomy.json")
+
+    # Step 1: live fetch with cache to populate cache
+    out_dir1 = tmp_path / "run1"
+    with mock.patch.object(sif, "AkshareAdapter", FakeAdapter):
+        result1 = sif.fetch_source_inventory(
+            company="600519",
+            period=period,
+            market="CN",
+            providers=("akshare",),
+            akshare_client=MagicMock(),
+            yahoo_client=None,
+            out_dir=out_dir1,
+            catalog_path=catalog_path,
+            cache_root=cache_root,
+            ttl_hours=24,
+        )
+        assert result1.record_count >= 1
+
+    # Step 2: cache should be populated
+    assert (cache_root / "akshare").exists()
+
+    # Step 3: second call with a CRASHING adapter — must succeed via cache
+    class CrashingAdapter:
+        def __init__(self, **kwargs: object) -> None:
+            raise RuntimeError("adapter should not be invoked on cache hit")
+
+    out_dir2 = tmp_path / "run2"
+    with mock.patch.object(sif, "AkshareAdapter", CrashingAdapter):
+        result2 = sif.fetch_source_inventory(
+            company="600519",
+            period=period,
+            market="CN",
+            providers=("akshare",),
+            akshare_client=MagicMock(),
+            yahoo_client=None,
+            out_dir=out_dir2,
+            catalog_path=catalog_path,
+            cache_root=cache_root,
+            ttl_hours=24,
+        )
+    assert result2.record_count >= 1
+    assert (out_dir2 / "source_inventory.jsonl").exists()
+    assert (out_dir2 / "source_artifact_manifest.json").exists()
+    # The replayed artifact blob should exist in run2's artifacts dir
+    assert (out_dir2 / "source_artifacts" / "akshare" / "aid_1.json").exists()

@@ -7,6 +7,8 @@ source_inventory.jsonl + summary in a deterministic out_dir.
 
 from __future__ import annotations
 
+import json
+import sys
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -193,20 +195,41 @@ def _fetch_akshare_for_company(
     ttl_hours: int = 24,
 ) -> tuple[SourceInventoryRecord, ...]:
     if cache_root is not None and cache_key is not None:
-        from financial_report_llm_extractor.cache.provider_cache import cache_get
+        from financial_report_llm_extractor.cache.provider_cache import (
+            cache_get_with_artifacts,
+        )
         from financial_report_llm_extractor.structured_sources.artifacts import (
             _record_from_jsonable,
         )
-        cached = cache_get(
+        cached = cache_get_with_artifacts(
             cache_root=cache_root, provider="akshare",
             company=company, period_end=cache_key,
             ttl_hours=ttl_hours,
         )
         if cached is not None:
-            return tuple(
-                _record_from_jsonable(payload, line_number=i + 1)
-                for i, payload in enumerate(cached)
-            )
+            cached_records, cached_artifacts = cached
+            try:
+                records = tuple(
+                    _record_from_jsonable(payload, line_number=i + 1)
+                    for i, payload in enumerate(cached_records)
+                )
+            except (ValueError, KeyError, TypeError) as exc:
+                print(
+                    f"warning: akshare cache deserialize failed ({exc}); re-fetching",
+                    file=sys.stderr,
+                )
+            else:
+                # Replay artifacts into store so finalize_source_artifacts passes
+                for artifact_entry in cached_artifacts:
+                    store.write_json(
+                        source=artifact_entry["source"],
+                        artifact_id=artifact_entry["artifact_id"],
+                        payload=artifact_entry["payload"],
+                    )
+                return records
+
+    # Capture pre-fetch artifact count to identify this helper's contributions
+    pre_len = len(store.artifacts)
 
     adapter = AkshareAdapter(client=client, artifact_store=store)
     if market == "CN":
@@ -236,14 +259,26 @@ def _fetch_akshare_for_company(
         records_to_cache = tuple(hk_records)
 
     if cache_root is not None and cache_key is not None:
-        from financial_report_llm_extractor.cache.provider_cache import cache_put
+        from financial_report_llm_extractor.cache.provider_cache import (
+            cache_put_with_artifacts,
+        )
         from financial_report_llm_extractor.structured_sources.artifacts import (
             _record_to_jsonable,
         )
-        cache_put(
+        new_artifacts = store.artifacts[pre_len:]
+        artifact_entries = []
+        for a in new_artifacts:
+            blob_path = store.root / a.path
+            artifact_entries.append({
+                "source": a.source,
+                "artifact_id": a.artifact_id,
+                "payload": json.loads(blob_path.read_text(encoding="utf-8")),
+            })
+        cache_put_with_artifacts(
             cache_root=cache_root, provider="akshare",
             company=company, period_end=cache_key,
             records=[_record_to_jsonable(r) for r in records_to_cache],
+            artifacts=artifact_entries,
         )
 
     return records_to_cache
@@ -260,20 +295,41 @@ def _fetch_yahoo_for_company(
     ttl_hours: int = 24,
 ) -> tuple[SourceInventoryRecord, ...]:
     if cache_root is not None and cache_key is not None:
-        from financial_report_llm_extractor.cache.provider_cache import cache_get
+        from financial_report_llm_extractor.cache.provider_cache import (
+            cache_get_with_artifacts,
+        )
         from financial_report_llm_extractor.structured_sources.artifacts import (
             _record_from_jsonable,
         )
-        cached = cache_get(
+        cached = cache_get_with_artifacts(
             cache_root=cache_root, provider="yahoo",
             company=company, period_end=cache_key,
             ttl_hours=ttl_hours,
         )
         if cached is not None:
-            return tuple(
-                _record_from_jsonable(payload, line_number=i + 1)
-                for i, payload in enumerate(cached)
-            )
+            cached_records, cached_artifacts = cached
+            try:
+                records = tuple(
+                    _record_from_jsonable(payload, line_number=i + 1)
+                    for i, payload in enumerate(cached_records)
+                )
+            except (ValueError, KeyError, TypeError) as exc:
+                print(
+                    f"warning: yahoo cache deserialize failed ({exc}); re-fetching",
+                    file=sys.stderr,
+                )
+            else:
+                # Replay artifacts into store so finalize_source_artifacts passes
+                for artifact_entry in cached_artifacts:
+                    store.write_json(
+                        source=artifact_entry["source"],
+                        artifact_id=artifact_entry["artifact_id"],
+                        payload=artifact_entry["payload"],
+                    )
+                return records
+
+    # Capture pre-fetch artifact count to identify this helper's contributions
+    pre_len = len(store.artifacts)
 
     adapter = YahooAdapter(client=client, artifact_store=store)
     ticker: str
@@ -285,9 +341,9 @@ def _fetch_yahoo_for_company(
         ticker, currency = f"{company}.SS", "CNY"
     else:
         ticker, currency = f"{company}.SZ", "CNY"
-    records: list[SourceInventoryRecord] = []
+    records_list: list[SourceInventoryRecord] = []
     for st in _STATEMENT_TYPES:
-        records.extend(
+        records_list.extend(
             adapter.fetch_statement_inventory(
                 ticker=ticker,
                 market=market,
@@ -296,17 +352,29 @@ def _fetch_yahoo_for_company(
                 unit="raw",
             )
         )
-    records_to_cache = tuple(records)
+    records_to_cache = tuple(records_list)
 
     if cache_root is not None and cache_key is not None:
-        from financial_report_llm_extractor.cache.provider_cache import cache_put
+        from financial_report_llm_extractor.cache.provider_cache import (
+            cache_put_with_artifacts,
+        )
         from financial_report_llm_extractor.structured_sources.artifacts import (
             _record_to_jsonable,
         )
-        cache_put(
+        new_artifacts = store.artifacts[pre_len:]
+        artifact_entries = []
+        for a in new_artifacts:
+            blob_path = store.root / a.path
+            artifact_entries.append({
+                "source": a.source,
+                "artifact_id": a.artifact_id,
+                "payload": json.loads(blob_path.read_text(encoding="utf-8")),
+            })
+        cache_put_with_artifacts(
             cache_root=cache_root, provider="yahoo",
             company=company, period_end=cache_key,
             records=[_record_to_jsonable(r) for r in records_to_cache],
+            artifacts=artifact_entries,
         )
 
     return records_to_cache
