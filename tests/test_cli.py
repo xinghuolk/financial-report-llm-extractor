@@ -941,12 +941,19 @@ def test_fetch_source_inventory_subcommand_dispatches_correctly(
 ) -> None:
     """argv → run_fetch wiring 测，主体逻辑 mock 掉。"""
     from financial_report_llm_extractor.cli import main
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        SourceInventoryArtifact,
+    )
 
     captured: dict[str, object] = {}
 
-    def fake_runner(**kwargs: object) -> object:
+    def fake_runner(**kwargs: object) -> SourceInventoryArtifact:
         captured.update(kwargs)
-        return object()
+        return SourceInventoryArtifact(
+            inventory_path=tmp_path / "source_inventory.jsonl",
+            summary_path=tmp_path / "source_inventory_summary.json",
+            record_count=0,
+        )
 
     monkeypatch.setattr(
         "financial_report_llm_extractor.cli._run_fetch_source_inventory",
@@ -1115,3 +1122,364 @@ def test_extract_llm_help_lists_required_args() -> None:
     }
     assert {"pdf", "company_id", "catalog", "taxonomy",
             "llm_config", "out"} <= args_required
+
+
+def test_cli_index_command_scans_runs_dir(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    """`index` subcommand walks runs dir + writes DB; builds priority_map from
+    the taxonomy file; uses taxonomy version as default catalog_version."""
+    import json as _json
+    from financial_report_llm_extractor.cli import main
+
+    # Reuse the realistic two-file fixture.
+    src_eval = (
+        Path(__file__).parent / "fixtures" / "cache_sample_run"
+        / "evaluation.json"
+    )
+    src_supp = (
+        Path(__file__).parent / "fixtures" / "cache_sample_run"
+        / "llm_evidence_supplement.json"
+    )
+    run_dir = tmp_path / "runs" / "600519_2024-12-31"
+    run_dir.mkdir(parents=True)
+    (run_dir / "evaluation.json").write_text(
+        src_eval.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (run_dir / "llm_evidence_supplement.json").write_text(
+        src_supp.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    # Tiny taxonomy: version + 3 fields with priorities.
+    tax_path = tmp_path / "tax.json"
+    tax_path.write_text(_json.dumps({
+        "catalog_id": "tiny",
+        "version": "test-1",
+        "source_priority_catalog": "tiny",
+        "fields": {
+            "revenue": {"priority": "P0", "domain": "x", "statement_type": "x",
+                        "value_type": "money", "source_mode": "direct",
+                        "period_type": "x", "scope_expectation": "x",
+                        "currency_requirement": "applicable",
+                        "unit_requirement": "applicable",
+                        "evidence_requirement": "x", "fallback_policy": "x",
+                        "description": "x"},
+            "audit_opinion": {"priority": "P4", "domain": "x",
+                              "statement_type": "x", "value_type": "text",
+                              "source_mode": "pdf_only", "period_type": "x",
+                              "scope_expectation": "x",
+                              "currency_requirement": "not_applicable",
+                              "unit_requirement": "not_applicable",
+                              "evidence_requirement": "x",
+                              "fallback_policy": "x", "description": "x"},
+            "fix_assets": {"priority": "P0", "domain": "x",
+                           "statement_type": "x", "value_type": "money",
+                           "source_mode": "direct", "period_type": "x",
+                           "scope_expectation": "x",
+                           "currency_requirement": "applicable",
+                           "unit_requirement": "applicable",
+                           "evidence_requirement": "x",
+                           "fallback_policy": "x", "description": "x"},
+        },
+    }), encoding="utf-8")
+    db_path = tmp_path / "out.db"
+    exit_code = main([
+        "index",
+        "--runs", str(tmp_path / "runs"),
+        "--db", str(db_path),
+        "--taxonomy", str(tax_path),
+    ])
+    assert exit_code == 0
+    assert db_path.exists()
+
+    from financial_report_llm_extractor.cache.db_query import (
+        list_companies,
+        query_field,
+    )
+    assert ("600519", "2024-12-31", "CN", "test-1") in list_companies(
+        db_path=db_path
+    )
+    audit_row = query_field(
+        db_path=db_path, company="600519",
+        period_end="2024-12-31", field_id="audit_opinion",
+    )
+    assert audit_row is not None
+    assert audit_row["priority"] == "P4"
+    assert audit_row["value"].startswith("标准无保留意见")
+
+
+def test_cli_index_command_explicit_catalog_version_overrides_taxonomy(
+    tmp_path: Path,
+) -> None:
+    """`--catalog-version` override beats taxonomy version field."""
+    import json as _json
+    from financial_report_llm_extractor.cli import main
+
+    src_eval = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "evaluation.json")
+    run_dir = tmp_path / "runs" / "600519_2024-12-31"
+    run_dir.mkdir(parents=True)
+    (run_dir / "evaluation.json").write_text(
+        src_eval.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    tax_path = tmp_path / "tax.json"
+    tax_path.write_text(_json.dumps({
+        "catalog_id": "x", "version": "should-not-be-used",
+        "source_priority_catalog": "x", "fields": {},
+    }), encoding="utf-8")
+    db_path = tmp_path / "out.db"
+    main([
+        "index",
+        "--runs", str(tmp_path / "runs"),
+        "--db", str(db_path),
+        "--taxonomy", str(tax_path),
+        "--catalog-version", "historical-snapshot",
+    ])
+
+    from financial_report_llm_extractor.cache.db_query import list_companies
+    assert ("600519", "2024-12-31", "CN", "historical-snapshot") in (
+        list_companies(db_path=db_path)
+    )
+
+
+def test_cli_query_command_returns_field_json(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    """`query --field` outputs single field row as JSON."""
+    import json as _json
+    from financial_report_llm_extractor.cli import main
+
+    src_eval = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "evaluation.json")
+    src_supp = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "llm_evidence_supplement.json")
+    run_dir = tmp_path / "runs" / "600519_2024-12-31"
+    run_dir.mkdir(parents=True)
+    (run_dir / "evaluation.json").write_text(
+        src_eval.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (run_dir / "llm_evidence_supplement.json").write_text(
+        src_supp.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    tax_path = tmp_path / "tax.json"
+    tax_path.write_text(_json.dumps({
+        "catalog_id": "x", "version": "v1",
+        "source_priority_catalog": "x",
+        "fields": {"audit_opinion": {
+            "priority": "P4", "domain": "x", "statement_type": "x",
+            "value_type": "text", "source_mode": "pdf_only",
+            "period_type": "x", "scope_expectation": "x",
+            "currency_requirement": "not_applicable",
+            "unit_requirement": "not_applicable",
+            "evidence_requirement": "x", "fallback_policy": "x",
+            "description": "x"}},
+    }), encoding="utf-8")
+    db_path = tmp_path / "out.db"
+    main([
+        "index", "--runs", str(tmp_path / "runs"),
+        "--db", str(db_path), "--taxonomy", str(tax_path),
+    ])
+    capsys.readouterr()  # discard index output
+
+    exit_code = main([
+        "query",
+        "--db", str(db_path),
+        "--company", "600519",
+        "--period", "2024-12-31",
+        "--field", "audit_opinion",
+    ])
+    assert exit_code == 0
+    body = _json.loads(capsys.readouterr().out)
+    assert body["field_id"] == "audit_opinion"
+    assert body["value"].startswith("标准无保留意见")
+    assert body["evidence_page"] == 55
+    assert body["priority"] == "P4"
+
+
+def test_cli_query_command_without_field_returns_full_extraction(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    import json as _json
+    from financial_report_llm_extractor.cli import main
+
+    src_eval = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "evaluation.json")
+    src_supp = (Path(__file__).parent / "fixtures" / "cache_sample_run"
+                / "llm_evidence_supplement.json")
+    run_dir = tmp_path / "runs" / "600519_2024-12-31"
+    run_dir.mkdir(parents=True)
+    (run_dir / "evaluation.json").write_text(
+        src_eval.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (run_dir / "llm_evidence_supplement.json").write_text(
+        src_supp.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    tax_path = tmp_path / "tax.json"
+    tax_path.write_text(_json.dumps({
+        "catalog_id": "x", "version": "v1",
+        "source_priority_catalog": "x", "fields": {},
+    }), encoding="utf-8")
+    db_path = tmp_path / "out.db"
+    main(["index", "--runs", str(tmp_path / "runs"),
+          "--db", str(db_path), "--taxonomy", str(tax_path)])
+    capsys.readouterr()
+
+    main([
+        "query", "--db", str(db_path),
+        "--company", "600519", "--period", "2024-12-31",
+    ])
+    body = _json.loads(capsys.readouterr().out)
+    assert body["company"] == "600519"
+    assert set(body["fields"]) == {"revenue", "audit_opinion", "fix_assets"}
+
+
+def test_cli_query_command_miss_returns_exit_1(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    from financial_report_llm_extractor.cli import main
+    from financial_report_llm_extractor.cache.db import init_db
+
+    db_path = tmp_path / "out.db"
+    init_db(db_path)
+    exit_code = main([
+        "query", "--db", str(db_path),
+        "--company", "nope", "--period", "2024-12-31", "--field", "x",
+    ])
+    assert exit_code == 1
+
+
+def test_cli_query_command_db_not_initialized_returns_exit_2(
+    tmp_path: Path, capsys: "pytest.CaptureFixture[str]"
+) -> None:
+    """If the DB file is missing or has no schema, query returns
+    exit code 2 with a structured {miss, reason=db_not_initialized}
+    response instead of a Python traceback."""
+    import json as _json
+    from financial_report_llm_extractor.cli import main
+
+    nonexistent_db = tmp_path / "does_not_exist.db"
+    exit_code = main([
+        "query", "--db", str(nonexistent_db),
+        "--company", "600519", "--period", "2024-12-31",
+        "--field", "revenue",
+    ])
+    assert exit_code == 2
+    body = _json.loads(capsys.readouterr().out)
+    assert body["miss"] is True
+    assert body["reason"] == "db_not_initialized"
+
+
+# ---------------------------------------------------------------------------
+# R2 Task 3: --cache-ttl-hours / --no-cache / --skip-if-cached flags
+# ---------------------------------------------------------------------------
+
+def test_cli_fetch_source_inventory_default_ttl_is_24h(
+    tmp_path: Path,
+) -> None:
+    """Default --cache-ttl-hours is 24."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "fetch-source-inventory",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--providers", "akshare",
+        "--out", str(tmp_path / "out"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+    ])
+    assert args.cache_ttl_hours == 24
+    assert args.no_cache is False
+    assert args.skip_if_cached is False
+
+
+def test_cli_fetch_source_inventory_no_cache_flag(tmp_path: Path) -> None:
+    """--no-cache sets args.no_cache to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "fetch-source-inventory",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--providers", "akshare",
+        "--out", str(tmp_path / "out"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--no-cache",
+    ])
+    assert args.no_cache is True
+
+
+def test_cli_fetch_source_inventory_skip_if_cached_flag(tmp_path: Path) -> None:
+    """--skip-if-cached sets args.skip_if_cached to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "fetch-source-inventory",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--providers", "akshare",
+        "--out", str(tmp_path / "out"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--skip-if-cached",
+    ])
+    assert args.skip_if_cached is True
+
+
+def test_cli_extract_llm_no_llm_cache_flag(tmp_path: Path) -> None:
+    """`extract-llm --no-llm-cache` sets args.no_llm_cache to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "extract-llm",
+        "--pdf", str(tmp_path / "report.pdf"),
+        "--company-id", "600519",
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--taxonomy", "field_catalog/turtle_v015_field_taxonomy.json",
+        "--llm-config", str(tmp_path / "llm.json"),
+        "--out", str(tmp_path / "out"),
+        "--no-llm-cache",
+    ])
+    assert args.no_llm_cache is True
+
+
+def test_cli_extract_llm_batch_no_llm_cache_flag(tmp_path: Path) -> None:
+    """`extract-llm-batch --no-llm-cache` sets args.no_llm_cache to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "extract-llm-batch",
+        "--manifest", str(tmp_path / "manifest.json"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--taxonomy", "field_catalog/turtle_v015_field_taxonomy.json",
+        "--llm-config", str(tmp_path / "llm.json"),
+        "--out", str(tmp_path / "out"),
+        "--no-llm-cache",
+    ])
+    assert args.no_llm_cache is True
+
+
+def test_cli_evaluate_company_no_llm_cache_flag(tmp_path: Path) -> None:
+    """`evaluate-company --no-llm-cache` sets args.no_llm_cache to True."""
+    from financial_report_llm_extractor.cli import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "evaluate-company",
+        "--company", "600519",
+        "--year", "2024",
+        "--market", "CN",
+        "--inventory", str(tmp_path / "inv.jsonl"),
+        "--catalog", "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "--taxonomy", "field_catalog/turtle_v015_field_taxonomy.json",
+        "--out", str(tmp_path / "out"),
+        "--no-llm-cache",
+    ])
+    assert args.no_llm_cache is True

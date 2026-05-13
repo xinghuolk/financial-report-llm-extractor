@@ -1,0 +1,45 @@
+{
+  "company": "600519",
+  "period_end": "2024-12-31",
+  "market": "CN",
+  "report_type": "annual",
+  "generated_at": "2026-05-13T10:00:00",
+  "schema_version": "evaluation_v1",
+  "summary": {
+    "by_bucket": {
+      "clean_present": 1,
+      "llm_supplement_present": 1,
+      "unresolved_conflict": 1,
+      "terminal_unverified": 0,
+      "not_in_scope": 0,
+      "source_unavailable": 0
+    },
+    "total_fields": 3
+  },
+  "fields": {
+    "revenue": {
+      "bucket": "clean_present",
+      "value": "170899152276.34",
+      "currency": "CNY",
+      "unit": "yuan",
+      "selected_source": "akshare",
+      "reason": null
+    },
+    "audit_opinion": {
+      "bucket": "llm_supplement_present",
+      "value": null,
+      "currency": "unknown",
+      "unit": null,
+      "selected_source": "llm",
+      "reason": null
+    },
+    "fix_assets": {
+      "bucket": "unresolved_conflict",
+      "value": null,
+      "currency": "CNY",
+      "unit": null,
+      "selected_source": null,
+      "reason": "missing_source_candidate"
+    }
+  }
+}

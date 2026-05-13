@@ -507,3 +507,9 @@ def test_orchestrator_with_fake_stack_writes_all_artifacts(
     # Revenue should be clean_present after the fake-client fetch.
     revenue = next(f for f in evaluation.fields if f.field_id == "revenue")
     assert revenue.bucket == "clean_present"
+
+    # R4 Task 1: evaluation.json must embed catalog_version from the taxonomy.
+    import json as _json
+    eval_payload = _json.loads((tmp_path / "evaluation.json").read_text(encoding="utf-8"))
+    expected_version = _json.loads(taxonomy_path.read_text(encoding="utf-8"))["version"]
+    assert eval_payload["catalog_version"] == expected_version

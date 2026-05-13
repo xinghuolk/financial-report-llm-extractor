@@ -1,0 +1,24 @@
+{
+  "company_id": "600519",
+  "pdf_path": "downloads/cn_stocks/600519/annual/2024_年度报告.pdf",
+  "extracted_at": "2026-05-13T10:00:00",
+  "schema_version": "llm_evidence_v1",
+  "items": {
+    "audit_opinion": {
+      "status": "present",
+      "value": "标准无保留意见。",
+      "page": 55,
+      "confidence": 0.98,
+      "currency": null,
+      "unit": null,
+      "period": "2024年度",
+      "reasoning": "审计报告\"一、审计意见\"段落明确表达财务报表在所有重大方面公允反映。",
+      "statement_line": "我们认为，后附的财务报表在所有重大方面...",
+      "errors": [],
+      "parsed_numeric_value": null
+    }
+  },
+  "summary": {
+    "items_hit": 1
+  }
+}

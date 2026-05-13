@@ -353,6 +353,7 @@ def run_company_evaluation(
     priorities: tuple[str, ...],
     out_dir: Path,
     json_client: JsonClient | None = None,
+    cache_root: Path | None = Path("tmp/.cache"),
 ) -> CompanyEvaluation:
     """End-to-end: replay → optional LLM supplement → classify → write artifacts.
 
@@ -382,6 +383,7 @@ def run_company_evaluation(
             priorities=priorities,
             out_dir=out_dir,
             json_client=json_client,
+            cache_root=cache_root,
         )
 
     # Phase H2 Task 3: load HK trust policy + merged HK/CN provider semantics
@@ -432,7 +434,7 @@ def run_company_evaluation(
 
     (out_dir / "evaluation.json").write_text(
         json.dumps(
-            _evaluation_to_dict(evaluation),
+            _evaluation_to_dict(evaluation, catalog_version=taxonomy.version),
             indent=2,
             ensure_ascii=False,
             sort_keys=True,
@@ -455,6 +457,7 @@ def _run_llm_supplement_step(
     priorities: tuple[str, ...],
     out_dir: Path,
     json_client: JsonClient | None,
+    cache_root: Path | None = Path("tmp/.cache"),
 ) -> None:
     """Mirror llm_extraction_batch._process_one_company minus batching.
 
@@ -488,7 +491,7 @@ def _run_llm_supplement_step(
 
     if json_client is None:
         config = LlmTransportConfig.from_json(llm_config_path)
-        json_client = create_llm_client(config)
+        json_client = create_llm_client(config, cache_root=cache_root)
 
     result = extract_for_chunks(
         chunks=chunks,
@@ -503,9 +506,14 @@ def _run_llm_supplement_step(
     write_llm_evidence_supplement(result)
 
 
-def _evaluation_to_dict(ev: CompanyEvaluation) -> dict[str, object]:
+def _evaluation_to_dict(
+    ev: CompanyEvaluation,
+    *,
+    catalog_version: str = "unknown",
+) -> dict[str, object]:
     return {
         "schema_version": "company-evaluation-v1",
+        "catalog_version": catalog_version,
         "company": ev.company,
         "period_end": ev.period.period_end.isoformat(),
         "report_type": ev.period.report_type,
