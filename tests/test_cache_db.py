@@ -68,3 +68,31 @@ def test_connect_returns_usable_connection(tmp_path: Path) -> None:
         assert rows == [(0,)]
     finally:
         conn.close()
+
+
+def test_field_values_insert_works_without_parent_extractions(
+    tmp_path: Path,
+) -> None:
+    """Regression: verify the field_values FK was correctly dropped.
+
+    A latent schema bug (Task 1+2 review) made INSERT into field_values
+    fail with OperationalError because the FOREIGN KEY referenced a
+    partial primary key of extractions. After the fix, field_values
+    rows can be inserted independently — the indexer enforces the
+    latest-catalog-version relationship at application level.
+    """
+    db_path = tmp_path / "test.db"
+    init_db(db_path)
+    conn = connect(db_path)
+    try:
+        conn.execute(
+            "INSERT INTO field_values "
+            "(company, period_end, field_id, bucket) "
+            "VALUES (?, ?, ?, ?)",
+            ("600519", "2024-12-31", "revenue", "clean_present"),
+        )
+        conn.commit()
+        rows = list(conn.execute("SELECT COUNT(*) FROM field_values"))
+        assert rows == [(1,)]
+    finally:
+        conn.close()

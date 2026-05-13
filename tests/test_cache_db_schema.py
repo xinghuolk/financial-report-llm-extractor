@@ -16,8 +16,9 @@ def test_field_values_ddl_contains_required_columns() -> None:
     sql = db_schema.CREATE_FIELD_VALUES_TABLE_SQL
     assert "CREATE TABLE" in sql
     assert "field_values" in sql
-    assert "FOREIGN KEY" in sql
-    assert "REFERENCES extractions" in sql
+    # No SQL FOREIGN KEY — relationship to extractions is logical only,
+    # enforced by the indexer (DELETE-then-INSERT semantic).
+    assert "FOREIGN KEY" not in sql
     # Columns introduced in the design review (reason + priority denormalized)
     for col in (
         "bucket", "field_id", "value", "reason", "priority",

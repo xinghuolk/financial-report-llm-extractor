@@ -12,6 +12,11 @@ Schema notes:
   `json.loads()` then context to decide on `Decimal`/`float`/`str`.
 - `priority` is denormalized from the taxonomy so queries like
   `WHERE priority='P0'` don't need a taxonomy join.
+- `field_values` does NOT declare a SQL FOREIGN KEY to `extractions`. The
+  relationship is logical: every field_values row corresponds to the
+  "latest" extractions row for the same (company, period_end). Indexer
+  enforces this by DELETE-then-INSERT on every re-index. Cross-table
+  integrity is application-level, not DB-level.
 """
 
 CREATE_EXTRACTIONS_TABLE_SQL = """
@@ -45,9 +50,7 @@ CREATE TABLE IF NOT EXISTS field_values (
   evidence_page       INTEGER,
   llm_confidence      REAL,
   llm_reasoning_short TEXT,
-  PRIMARY KEY (company, period_end, field_id),
-  FOREIGN KEY (company, period_end)
-    REFERENCES extractions(company, period_end)
+  PRIMARY KEY (company, period_end, field_id)
 );
 """.strip()
 
