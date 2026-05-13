@@ -162,7 +162,7 @@ def test_load_claude_code_config_uses_subscription_defaults(tmp_path: Path) -> N
 
 
 def test_response_json_text_reads_codex_responses_output_text() -> None:
-    raw = {
+    raw: dict[str, object] = {
         "output": [
             {
                 "type": "message",
@@ -177,7 +177,9 @@ def test_response_json_text_reads_codex_responses_output_text() -> None:
 
 
 def test_response_json_text_reads_anthropic_messages_text() -> None:
-    raw = {"content": [{"type": "text", "text": json.dumps({"fields": []})}]}
+    raw: dict[str, object] = {
+        "content": [{"type": "text", "text": json.dumps({"fields": []})}]
+    }
 
     assert response_json_text(raw) == json.dumps({"fields": []})
 
@@ -610,6 +612,68 @@ def test_run_real_transport_probe_writes_raw_response_artifact(
     output = json.loads(output_path.read_text(encoding="utf-8"))
     assert output["items"][0]["status"] == "present"
     assert output["items"][0]["money"]["normalized_value"] == "50000000"
+
+
+def test_subscription_raw_response_artifact_does_not_include_token(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    token = _jwt_with_exp(
+        int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
+    )
+    _write_codex_auth(tmp_path, monkeypatch, token)
+    retrieval_probe_path = tmp_path / "retrieval_probe.json"
+    config_path = tmp_path / "llm_config.json"
+    output_path = tmp_path / "extraction_result.json"
+    raw_dir = tmp_path / "raw"
+    retrieval_probe_path.write_text(
+        json.dumps(
+            {
+                "source_pdf_hash": "hash123",
+                "fields": [{"field_id": "cash", "candidates": []}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path.write_text(
+        json.dumps({"provider": "openai-codex", "model": "gpt-5.3-codex"}),
+        encoding="utf-8",
+    )
+    transport = FakeHttpTransport(
+        [
+            {
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": json.dumps(
+                                    {
+                                        "fields": [
+                                            {"field_id": "cash", "status": "missing"}
+                                        ]
+                                    }
+                                ),
+                            }
+                        ],
+                    }
+                ]
+            }
+        ]
+    )
+
+    run_real_transport_probe(
+        retrieval_probe_path,
+        config_path=config_path,
+        output_path=output_path,
+        raw_response_dir=raw_dir,
+        transport=transport,
+    )
+
+    raw_text = next(raw_dir.glob("*.json")).read_text(encoding="utf-8")
+    assert token not in raw_text
+    assert "Authorization" not in raw_text
 
 
 def test_run_real_transport_probe_archives_unparseable_raw_response(

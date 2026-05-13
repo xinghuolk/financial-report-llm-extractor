@@ -161,7 +161,7 @@ def test_run_extraction_with_not_found_response_returns_not_found() -> None:
 def test_unwrap_llm_content_reads_codex_responses_shape() -> None:
     from financial_report_llm_extractor.llm_field_extraction import unwrap_llm_content
 
-    raw = {
+    raw: dict[str, object] = {
         "output": [
             {
                 "type": "message",
@@ -181,7 +181,7 @@ def test_unwrap_llm_content_reads_codex_responses_shape() -> None:
 def test_unwrap_llm_content_reads_anthropic_messages_shape() -> None:
     from financial_report_llm_extractor.llm_field_extraction import unwrap_llm_content
 
-    raw = {
+    raw: dict[str, object] = {
         "content": [
             {
                 "type": "text",

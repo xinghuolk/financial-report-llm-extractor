@@ -362,7 +362,7 @@ def _run_subscription_smoke(config_path: Path, out_dir: Path) -> dict[str, objec
             "subscription smoke requires provider openai-codex or claude-code"
         )
     client = create_llm_client(config)
-    prompt = {
+    prompt: dict[str, object] = {
         "task": "subscription_smoke",
         "provider": config.provider,
         "model": config.model,
@@ -515,8 +515,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "llm-subscription-smoke":
-        result = _run_subscription_smoke(args.config, args.out)
-        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        smoke_result = _run_subscription_smoke(args.config, args.out)
+        print(json.dumps(smoke_result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
 
     if args.command == "extract-llm":

@@ -54,7 +54,7 @@ def test_build_row_discovery_prompt_payload_is_statement_scoped() -> None:
 def test_row_response_parser_reads_codex_responses_shape() -> None:
     from financial_report_llm_extractor.llm_row_discovery import _parse_row_response
 
-    raw = {
+    raw: dict[str, object] = {
         "output": [
             {
                 "type": "message",
@@ -71,7 +71,9 @@ def test_row_response_parser_reads_codex_responses_shape() -> None:
 def test_row_response_parser_reads_anthropic_messages_shape() -> None:
     from financial_report_llm_extractor.llm_row_discovery import _parse_row_response
 
-    raw = {"content": [{"type": "text", "text": json.dumps({"rows": []})}]}
+    raw: dict[str, object] = {
+        "content": [{"type": "text", "text": json.dumps({"rows": []})}]
+    }
 
     assert _parse_row_response(raw) == {"rows": []}
 
