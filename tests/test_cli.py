@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -492,6 +493,104 @@ def test_extract_command_calls_real_transport_layer(
 
     assert exit_code == 0
     assert calls == [(retrieval_probe_path, config_path, output_path, raw_dir)]
+
+
+def test_llm_auth_status_command_prints_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from financial_report_llm_extractor.subscription_auth import (
+        SubscriptionCredentialStatus,
+    )
+
+    def fake_status(provider: str) -> SubscriptionCredentialStatus:
+        assert provider == "openai-codex"
+        return SubscriptionCredentialStatus(
+            provider="openai-codex",
+            available=True,
+            credential_source="test-source",
+            token_status="valid",
+            base_url="https://chatgpt.com/backend-api/codex",
+        )
+
+    monkeypatch.setattr(cli, "subscription_auth_status", fake_status)
+
+    exit_code = cli.main(["llm-auth-status", "--provider", "openai-codex"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["provider"] == "openai-codex"
+    assert payload["available"] is True
+    assert payload["credential_source"] == "test-source"
+
+
+def test_llm_subscription_smoke_rejects_non_subscription_provider(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "llm_config.json"
+    config_path.write_text(
+        json.dumps({"provider": "ollama", "model": "qwen2.5:7b"}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit):
+        cli.main(
+            [
+                "llm-subscription-smoke",
+                "--config",
+                str(config_path),
+                "--out",
+                str(tmp_path / "smoke"),
+            ]
+        )
+
+
+def test_llm_subscription_smoke_writes_artifacts(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "llm_config.json"
+    out_dir = tmp_path / "smoke"
+    config_path.write_text(
+        json.dumps({"provider": "openai-codex", "model": "gpt-5.3-codex"}),
+        encoding="utf-8",
+    )
+
+    class FakeSmokeClient:
+        raw_exchanges: list[object] = []
+
+        def complete_json(
+            self,
+            *,
+            system_prompt: str,
+            user_payload: dict[str, object],
+        ) -> dict[str, object]:
+            assert "Return strict JSON" in system_prompt
+            assert user_payload["task"] == "subscription_smoke"
+            return {"choices": [{"message": {"content": json.dumps({"ok": True})}}]}
+
+    def fake_create_client(config: object) -> FakeSmokeClient:
+        return FakeSmokeClient()
+
+    monkeypatch.setattr(cli, "create_llm_client", fake_create_client)
+
+    exit_code = cli.main(
+        [
+            "llm-subscription-smoke",
+            "--config",
+            str(config_path),
+            "--out",
+            str(out_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert (out_dir / "prompt.json").exists()
+    assert (out_dir / "raw_response.json").exists()
+    assert (out_dir / "parsed_response.json").exists()
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
 
 
 def test_evaluate_command_calls_evaluation_layer(

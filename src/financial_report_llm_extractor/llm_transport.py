@@ -16,8 +16,19 @@ from financial_report_llm_extractor.extraction import (
     PromptRequest,
     run_fake_extraction,
 )
+from financial_report_llm_extractor.subscription_auth import (
+    codex_chatgpt_account_id,
+    resolve_subscription_credentials,
+)
 
-ProviderKind = Literal["openai-compatible", "gemini"]
+CLAUDE_CODE_VERSION_FALLBACK = "2.1.74"
+
+ProviderKind = Literal[
+    "openai-compatible",
+    "gemini",
+    "codex-responses",
+    "anthropic-messages",
+]
 
 
 @dataclass(frozen=True)
@@ -49,6 +60,16 @@ PROVIDER_DEFAULTS: dict[str, ProviderDefaults] = {
         base_url="https://generativelanguage.googleapis.com/v1beta",
         api_key_env="GEMINI_API_KEY",
         kind="gemini",
+    ),
+    "openai-codex": ProviderDefaults(
+        base_url="https://chatgpt.com/backend-api/codex",
+        api_key_env="",
+        kind="codex-responses",
+    ),
+    "claude-code": ProviderDefaults(
+        base_url="https://api.anthropic.com",
+        api_key_env="",
+        kind="anthropic-messages",
     ),
 }
 
@@ -93,6 +114,10 @@ def _normalize_provider(provider: str) -> str:
         return "openai-compatible"
     if normalized in {"google-gemini", "google"}:
         return "gemini"
+    if normalized in {"codex", "openai-codex"}:
+        return "openai-codex"
+    if normalized in {"claude", "claude-code", "anthropic-subscription"}:
+        return "claude-code"
     return normalized
 
 
@@ -146,7 +171,11 @@ class UrllibHttpTransport:
             method="POST",
         )
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            data = json.loads(response.read().decode("utf-8"))
+            raw_text = response.read().decode("utf-8")
+            if _is_sse_response(response, raw_text):
+                data = _parse_sse_response(raw_text)
+            else:
+                data = json.loads(raw_text)
             return cast(dict[str, object], data)
 
 
@@ -244,6 +273,10 @@ def create_llm_client(
         return OpenAiCompatibleClient(config, transport=transport)
     if kind == "gemini":
         return GeminiGenerateContentClient(config, transport=transport)
+    if kind == "codex-responses":
+        return CodexResponsesClient(config, transport=transport)
+    if kind == "anthropic-messages":
+        return ClaudeCodeMessagesClient(config, transport=transport)
     raise ValueError(f"unsupported provider kind: {kind}")
 
 
@@ -322,6 +355,300 @@ class GeminiGenerateContentClient:
         raise RuntimeError("LLM transport failed without an error")
 
 
+class CodexResponsesClient:
+    def __init__(
+        self,
+        config: LlmTransportConfig,
+        *,
+        transport: HttpTransport | None = None,
+    ) -> None:
+        self.config = config
+        self.transport = transport or UrllibHttpTransport()
+        self.raw_exchanges: list[RawExchange] = []
+
+    def extract(self, request: PromptRequest) -> LlmResponse:
+        raw_response = self.complete_json(
+            system_prompt=(
+                "Return strict JSON with a fields array. Each field must "
+                "include field_id, status, and optional value_raw/unit_context."
+            ),
+            user_payload={
+                "field_id": request.field_id,
+                "candidates": list(request.candidates),
+            },
+        )
+        return _parse_response_json_content(raw_response)
+
+    def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object]:
+        payload = {
+            "model": self.config.model,
+            "instructions": _ensure_json_instruction(system_prompt),
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": json.dumps(
+                                _codex_json_user_payload(user_payload),
+                                ensure_ascii=False,
+                                sort_keys=True,
+                            ),
+                        }
+                    ],
+                }
+            ],
+            "text": {"format": {"type": "json_object"}},
+            "stream": True,
+            "store": False,
+        }
+        raw_response = self._post_with_retries(payload)
+        self.raw_exchanges.append(RawExchange(request=payload, raw_response=raw_response))
+        return raw_response
+
+    def _post_with_retries(self, payload: dict[str, object]) -> dict[str, object]:
+        attempts = self.config.max_retries + 1
+        last_error: TimeoutError | URLError | None = None
+        for _ in range(attempts):
+            try:
+                credentials = resolve_subscription_credentials("openai-codex")
+                return self.transport.post_json(
+                    f"{self.config.base_url.rstrip('/')}/responses",
+                    _codex_headers(credentials.access_token),
+                    payload,
+                    self.config.timeout_seconds,
+                )
+            except (TimeoutError, URLError) as error:
+                last_error = error
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("Codex transport failed without an error")
+
+
+class ClaudeCodeMessagesClient:
+    """Diagnostic-only Claude Code subscription HTTP transport.
+
+    Anthropic policy-blocks direct ``/v1/messages`` calls authenticated with
+    Claude Code subscription OAuth tokens — every request returns
+    ``rate_limit_error`` with a vague ``"Error"`` body even when the token is
+    valid and the organization-id resolves. This is by design: Claude Code
+    subscription tokens are scoped to the ``claude`` CLI process.
+
+    This class therefore remains useful for credential parsing, header
+    construction, smoke testing, and ``llm-auth-status`` diagnostics, but it
+    is **not a production LLM transport**. Selecting ``provider: claude-code``
+    in a real extraction config will fail at the first network call.
+
+    See ``docs/2026-05-13-subscription-llm-validation.md`` for the full
+    diagnosis and the three open options (CLI subprocess / API key / keep as
+    diagnostic only) for a future production Claude path.
+    """
+
+    def __init__(
+        self,
+        config: LlmTransportConfig,
+        *,
+        transport: HttpTransport | None = None,
+    ) -> None:
+        self.config = config
+        self.transport = transport or UrllibHttpTransport()
+        self.raw_exchanges: list[RawExchange] = []
+
+    def extract(self, request: PromptRequest) -> LlmResponse:
+        raw_response = self.complete_json(
+            system_prompt=(
+                "Return strict JSON with a fields array. Each field must "
+                "include field_id, status, and optional value_raw/unit_context."
+            ),
+            user_payload={
+                "field_id": request.field_id,
+                "candidates": list(request.candidates),
+            },
+        )
+        return _parse_response_json_content(raw_response)
+
+    def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_payload: dict[str, object],
+    ) -> dict[str, object]:
+        payload = {
+            "model": self.config.model,
+            "max_tokens": 4096,
+            "system": system_prompt,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        user_payload,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                }
+            ],
+        }
+        raw_response = self._post_with_retries(payload)
+        self.raw_exchanges.append(RawExchange(request=payload, raw_response=raw_response))
+        return raw_response
+
+    def _post_with_retries(self, payload: dict[str, object]) -> dict[str, object]:
+        attempts = self.config.max_retries + 1
+        last_error: TimeoutError | URLError | None = None
+        for _ in range(attempts):
+            try:
+                credentials = resolve_subscription_credentials("claude-code")
+                return self.transport.post_json(
+                    f"{self.config.base_url.rstrip('/')}/v1/messages",
+                    _claude_code_headers(credentials.access_token),
+                    payload,
+                    self.config.timeout_seconds,
+                )
+            except (TimeoutError, URLError) as error:
+                last_error = error
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("Claude Code transport failed without an error")
+
+
+def _codex_headers(access_token: str) -> dict[str, str]:
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}",
+        "originator": "codex_cli_rs",
+        "User-Agent": "codex_cli_rs/0.0.0",
+    }
+    account_id = codex_chatgpt_account_id(access_token)
+    if account_id:
+        headers["ChatGPT-Account-ID"] = account_id
+    return headers
+
+
+def _ensure_json_instruction(system_prompt: str) -> str:
+    if "json" in system_prompt:
+        return system_prompt
+    return f"{system_prompt}\nReturn a json object."
+
+
+def _codex_json_user_payload(user_payload: dict[str, object]) -> dict[str, object]:
+    payload = dict(user_payload)
+    payload.setdefault("_response_format", "json")
+    return payload
+
+
+def _is_sse_response(response: object, raw_text: str) -> bool:
+    headers = getattr(response, "headers", None)
+    content_type = ""
+    if headers is not None:
+        get_header = getattr(headers, "get", None)
+        if callable(get_header):
+            content_type = str(get_header("Content-Type", ""))
+    if not content_type:
+        getheader = getattr(response, "getheader", None)
+        if callable(getheader):
+            content_type = str(getheader("Content-Type", ""))
+    stripped = raw_text.lstrip()
+    return (
+        "text/event-stream" in content_type.lower()
+        or stripped.startswith("data:")
+        or stripped.startswith("event:")
+    )
+
+
+def _parse_sse_response(raw_text: str) -> dict[str, object]:
+    events: list[dict[str, object]] = []
+    delta_parts: list[str] = []
+    done_text: str | None = None
+    for block in raw_text.split("\n\n"):
+        data_lines = [
+            line.removeprefix("data:").strip()
+            for line in block.splitlines()
+            if line.startswith("data:")
+        ]
+        if not data_lines:
+            continue
+        data_text = "\n".join(data_lines)
+        if data_text == "[DONE]":
+            continue
+        event = json.loads(data_text)
+        if not isinstance(event, dict):
+            continue
+        events.append(cast(dict[str, object], event))
+        response = event.get("response")
+        if event.get("type") == "response.completed" and isinstance(response, dict):
+            completed_response = dict(response)
+            output = completed_response.get("output")
+            if (
+                isinstance(output, list)
+                and not output
+                and (done_text is not None or delta_parts)
+            ):
+                completed_response["output"] = _codex_output_from_text(
+                    done_text if done_text is not None else "".join(delta_parts)
+                )
+            return completed_response
+        event_type = str(event.get("type", ""))
+        delta = event.get("delta")
+        if event_type.endswith(".delta") and isinstance(delta, str):
+            delta_parts.append(delta)
+        text = event.get("text")
+        if event_type.endswith(".done") and isinstance(text, str):
+            done_text = text
+    output_text = done_text if done_text is not None else "".join(delta_parts)
+    if output_text:
+        return {
+            "output": _codex_output_from_text(output_text),
+            "stream_event_count": len(events),
+        }
+    raise ValueError("SSE response missing response.completed or output text")
+
+
+def _codex_output_from_text(output_text: str) -> list[dict[str, object]]:
+    return [
+        {
+            "type": "message",
+            "content": [{"type": "output_text", "text": output_text}],
+        }
+    ]
+
+
+def _claude_code_headers(access_token: str) -> dict[str, str]:
+    return {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}",
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "claude-code-20250219,oauth-2025-04-20",
+        "user-agent": f"claude-cli/{_detect_claude_code_version()} (external, cli)",
+        "x-app": "cli",
+    }
+
+
+def _detect_claude_code_version() -> str:
+    import subprocess
+
+    for command in ("claude", "claude-code"):
+        try:
+            result = subprocess.run(
+                [command, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if result.returncode != 0:
+            continue
+        version = result.stdout.strip().split(maxsplit=1)[0]
+        if version and version[0].isdigit():
+            return version
+    return CLAUDE_CODE_VERSION_FALLBACK
+
+
 def run_real_transport_probe(
     retrieval_probe_path: Path,
     *,
@@ -398,6 +725,10 @@ def _parse_response_json_content(raw_response: dict[str, object]) -> LlmResponse
 
 
 def _response_json_text(raw_response: dict[str, object]) -> str:
+    return response_json_text(raw_response)
+
+
+def response_json_text(raw_response: dict[str, object]) -> str:
     choices = raw_response.get("choices")
     if isinstance(choices, list) and choices:
         first_choice = choices[0]
@@ -429,6 +760,34 @@ def _response_json_text(raw_response: dict[str, object]) -> str:
         if not isinstance(text, str):
             raise ValueError("Gemini response part text must be a string")
         return text
+
+    output = raw_response.get("output")
+    if isinstance(output, list):
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            content_list = item.get("content")
+            if not isinstance(content_list, list):
+                continue
+            for part in content_list:
+                if not isinstance(part, dict):
+                    continue
+                if part.get("type") in {"output_text", "text"}:
+                    text = part.get("text")
+                    if isinstance(text, str):
+                        return text
+        raise ValueError("Codex response missing output text")
+
+    anthropic_content = raw_response.get("content")
+    if isinstance(anthropic_content, list):
+        for part in anthropic_content:
+            if not isinstance(part, dict):
+                continue
+            if part.get("type") == "text":
+                text = part.get("text")
+                if isinstance(text, str):
+                    return text
+        raise ValueError("Anthropic response missing text content")
 
     if choices is not None:
         raise ValueError("LLM response missing choices")
