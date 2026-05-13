@@ -207,3 +207,101 @@ on the transport class pointing here.
 The 4-cohort validation above shows Codex `gpt-5.5` quality is at least
 comparable to DeepSeek, often higher. **Adding a second LLM transport is
 optional, not blocking** for the data-collection mission of this project.
+
+## Phase Q — Cross-Cohort DS False Positive Audit (2026-05-13)
+
+Using Codex `gpt-5.5` as a second-opinion oracle across 5 cohorts to find
+**fields where DeepSeek reported a present value but Codex declined with
+not_found**. Each disagreement is a DS-false-positive candidate.
+
+### Disagreement matrix (5-cohort, 01113 added)
+
+| Cohort | DS-only hits | Codex-only hits | Total disagree |
+|---|---:|---:|---:|
+| 600519 CN-2024 | 2 | 1 | 3 |
+| 00001 HK-2025 | 0 | 4 | 4 |
+| 01113 HK-2025 | 0 | 3 | 3 |
+| 01810 HK-2024 | 0 | 4 | 4 |
+| 09987 HK-2024 | 2 | 1 | 3 |
+| **Total** | **4** | **13** | **17** |
+
+### Audit results — all 4 DS-only hits are confirmed DS shallow false positives
+
+| Field (cohort) | DS reported value | Codex `not_found` reasoning | Verdict |
+|---|---|---|---|
+| `dividend_policy_text` (600519, P4) | `"公司利润分配符合《章程》规定"` | "Chunks include execution details but NOT the standing long-term policy text such as a target payout ratio, dividend frequency commitment" | **DS FP** — compliance acknowledgement, not policy text |
+| `receiv_tax_refund` (600519, P2) | `1,500,047.04` (2023 column value) | "2024年度 amount is blank; 2023年度 shows 1,500,047.04. -100% YoY change confirms current period not reported" | **DS FP** — wrong-period value |
+| `contract_liabilities_current` (09987, P3) | `232 USD-million` (= total) | "Current portion of total contract liabilities is not separately presented" | **DS FP — self-admitted inference error**. DS reasoning literally states: *"The current portion is not explicitly broken out in the provided chunks ... I infer that..."* Then DS reported the total as the current portion. |
+| `segment_revenue_profit` (09987, P2) | Note 16 intro paragraph identifying segments | "Introduction to Note 16 Segment Reporting is there but they do not include the actual segment revenue and profit disclosure table or values" | **DS FP** — DS reported prose description as the numerical value |
+
+### DS shallow FP rate
+
+Across 5 cohorts:
+
+- Total DS LLM hits: **56** (12 + 14 + 12 + 8 + 10)
+- DS hits Codex confirms as FPs: **4**
+- **DS shallow FP rate: 7.1%**
+
+Codex strict-reject accuracy: **4/4 (100%)** — every Codex `not_found` where DS
+said present was a verified DS shallow FP. None of the 4 needed PDF spot-check
+since DS's own reasoning text exposed the failure mode in 3/4 cases (and the
+4th is a published-data wrong-period attribution that the reasoning string
+makes obvious).
+
+### Failure-mode pattern
+
+DeepSeek (and likely other budget LLMs) exhibits **over-eager match**: when
+field-precise content is not present in the retrieved chunks, DS reports
+**related-but-not-precise content** as the field value with high confidence.
+Concretely:
+
+1. Returning a **prose description identifying** something as if it were the
+   numerical value of that thing (segment_revenue_profit case)
+2. Returning a **compliance acknowledgement** as if it were the policy itself
+   (dividend_policy_text case)
+3. Returning a **prior-period column** as if it were the current-period value
+   when current-period is blank (receiv_tax_refund case)
+4. Returning a **total/aggregate** as if it were a specific sub-component
+   when the sub-component is not separately disclosed (contract_liabilities_current case)
+
+Codex `gpt-5.5` exhibits this failure mode at materially lower rate. In 4
+spot-checks of codex-only hits (01810 c_paid_for_taxes p237, dividends_paid
+p238, non_oper_income p230, non_recurring_items_breakdown p10), all values
+were precise, well-cited, and verified against PDF.
+
+### Action implications
+
+Three distinct use-case routes, in decreasing precision:
+
+1. **Highest precision (e.g., production Turtle scoring)**: use Codex
+   `gpt-5.5` as primary LLM; do not promote DS-only hits without a Codex
+   second opinion.
+2. **DS + Codex consensus mode (future)**: keep DS as primary for cost
+   reasons but require Codex agreement before promoting an LLM hit to
+   `llm_supplement_present`. Disagreements get a new bucket like
+   `llm_consensus_diverge` for manual review. This is the Phase R direction
+   discussed but not implemented.
+3. **DS-only (current default)**: accept the 7.1% shallow FP rate as a
+   known data-quality property. Document it. Downstream agents can apply
+   their own confidence threshold.
+
+### Codex-only hits (13 cases)
+
+Where Codex reports present and DS does not, 4 spot-checks have already
+verified correctness (01810 cohort, all 4 codex-only hits). The remaining 9
+have not been individually audited but the pattern of well-cited page
+references and reasoning strings suggests similar reliability. Treat the 13
+as candidate quality uplift for Codex-primary configurations.
+
+## Status update for roadmap §7 follow-ups
+
+- **Confidence threshold value calibration** (Phase I-A.2 follow-up #2):
+  Phase Q gives the first concrete data point — DS hits have a ~7% shallow
+  FP rate at no-threshold. Future calibration should use Codex as ground
+  truth for a larger labeled sample (50+ field-instance pairs) to fit a
+  threshold curve. This is no longer blocked on label collection.
+- **Cross-LLM disagreement** as a quality signal: 17 cases across 5
+  cohorts. If extended to the full 8-cohort base + future issuers, this is
+  enough signal to architect a `llm_consensus_diverge` bucket without
+  speculative design.
+

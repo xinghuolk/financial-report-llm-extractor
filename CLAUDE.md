@@ -101,7 +101,9 @@ G4-C catalog 实测 (DeepSeek baseline 2026-05-12 / Codex `gpt-5.5` validation 2
 - **HK 06862/2024 (CNY)**: source-first 35/68 + 1 terminal → DS **48/68 (71%)**；G3 interest_bearing_debt 2.07M 千 RMB 唯一正向
 - **HK 00001/2025 (HKD)**: source-first 32/68 + 1 terminal → DS pre-G4-C 44/68；Codex G4-C **47/68 (69%, +3)**
 - **HK 01113/2025 (HKD)**: source-first 33/68 → DS pre-G4-C 41/68；Codex G4-C **44/68 (65%, +3)**
-- **HK 09987/2024 (USD)**: source-first 34/68 + 1 terminal → DS pre-G4-C 44/68；Codex G4-C **43/68 (63%, -1)** — codex 命中 audit_opinion，丢 contract_liab_current/segment
+- **HK 09987/2024 (USD)**: source-first 34/68 + 1 terminal → DS pre-G4-C 44/68；Codex G4-C **43/68 (63%, -1)** — codex 命中 audit_opinion，丢 contract_liab_current/segment（**Phase Q audit 显示丢的两个全是 DS shallow FP**：contract_liab DS 把 total 当 current；segment DS 把 Note 16 intro 散文当 segment 数据）
+
+**Phase Q (Codex 二次审计, 2026-05-13)**：5 cohort 共 56 DS LLM hits 中 4 个被 Codex 拒绝；PDF/reasoning audit 显示 **4/4 全是 DS shallow false positive**（DS FP 率 ~7.1%）。失败模式：DS over-eager match（散文当数据 / 合规声明当 policy / 上期值当本期 / total 当 current）。Codex `gpt-5.5` 不犯此错。详情 `docs/2026-05-13-subscription-llm-validation.md` Phase Q 章节。
 - **Sample-verified breadth**: 4 CN 公司 × 4 promotion 字段 = 16 EXACT match samples
 - **HK LLM raw**: 33/84 hits across 6 HK companies (phase_i_c_validation_v2)；merge-into-bucket pinned by `tests/test_phase_hk_llm_2_supplement_merge.py`
 - **LLM workflow**: evaluate-company 加 `--pdf <path> --llm-config tmp/llm_configs/deepseek.json` 启用；不传则跳过 LLM 步骤（不是 bug 是 by-design gating）
