@@ -500,6 +500,52 @@ class FinancialReportClient:
             include_llm_supplement=include_llm_supplement,
         )
 
+    def get_field(
+        self,
+        *,
+        company: str,
+        period_end: str,
+        market: str,
+        field_id: str,
+        include_llm_supplement: bool = False,
+        refresh_policy: RefreshPolicy = RefreshPolicy.CACHE_FIRST,
+    ) -> FieldValue:
+        """Return a single FieldValue.
+
+        Raises ExtractorError(reason='unknown_field') if field_id is not in
+        the taxonomy. If in taxonomy but no DB data, returns UNAVAILABLE
+        placeholder.
+        """
+        if field_id not in self._taxonomy_doc.get("fields", {}):
+            raise ExtractorError(
+                reason="unknown_field",
+                message=f"field_id {field_id!r} not in taxonomy",
+                company=company, period_end=period_end, market=market,
+            )
+
+        result = self.get_extraction(
+            company=company,
+            period_end=period_end,
+            market=market,
+            include_llm_supplement=include_llm_supplement,
+            refresh_policy=refresh_policy,
+        )
+        if field_id in result.fields:
+            return result.fields[field_id]
+
+        # In taxonomy but DB has no row → return UNAVAILABLE placeholder.
+        return FieldValue(
+            field_id=field_id,
+            value=None,
+            currency=None,
+            unit=None,
+            confidence=ConfidenceLevel.UNAVAILABLE,
+            source=None,
+            evidence_page=None,
+            raw_bucket="not_in_extraction",
+            reason="no_db_row",
+        )
+
     def _resolve_pdf_path(
         self,
         *,
