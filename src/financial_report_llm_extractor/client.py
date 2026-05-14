@@ -11,6 +11,7 @@ See docs/superpowers/specs/2026-05-13-financial-report-client-productization-des
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from typing import Callable
@@ -84,3 +85,42 @@ class ExtractorConfig:
     db_path: Path | None = None
     catalog_path: Path | None = None
     taxonomy_path: Path | None = None
+
+
+@dataclass(frozen=True)
+class FieldValue:
+    """A single field's extraction result with reliability metadata.
+
+    `value` is typed `Decimal | str | bool | None`:
+      money/number  → Decimal
+      text          → str
+      boolean       → bool
+      None when value is absent or filtered
+
+    `raw_bucket` preserves the source-first bucket name for audit; business
+    logic should branch on `confidence` (ConfidenceLevel) instead.
+    """
+
+    field_id: str
+    value: Decimal | str | bool | None
+    currency: str | None
+    unit: str | None
+    confidence: ConfidenceLevel
+    source: str | None
+    evidence_page: int | None
+    raw_bucket: str
+    reason: str | None = None
+
+    @property
+    def is_reliable(self) -> bool:
+        return self.confidence == ConfidenceLevel.VERIFIED
+
+    @property
+    def is_present(self) -> bool:
+        return self.value is not None
+
+    @property
+    def verification_required(self) -> bool:
+        """True for LLM-sourced values (downstream should apply confidence
+        threshold / consensus check before relying on them)."""
+        return self.source == "llm"

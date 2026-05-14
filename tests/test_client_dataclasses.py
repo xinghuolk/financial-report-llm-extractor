@@ -84,3 +84,99 @@ def test_extractor_config_frozen() -> None:
     cfg = ExtractorConfig()
     with pytest.raises(FrozenInstanceError):
         cfg.llm_config_path = None  # type: ignore[misc]
+
+
+def test_field_value_construction_and_frozen() -> None:
+    from decimal import Decimal
+    from dataclasses import FrozenInstanceError
+    from financial_report_llm_extractor.client import (
+        ConfidenceLevel,
+        FieldValue,
+    )
+
+    fv = FieldValue(
+        field_id="revenue",
+        value=Decimal("170899152276.34"),
+        currency="CNY",
+        unit="yuan",
+        confidence=ConfidenceLevel.VERIFIED,
+        source="akshare",
+        evidence_page=None,
+        raw_bucket="clean_present",
+    )
+    assert fv.field_id == "revenue"
+    assert fv.value == Decimal("170899152276.34")
+    assert fv.reason is None  # default
+
+    with pytest.raises(FrozenInstanceError):
+        fv.value = Decimal("0")  # type: ignore[misc]
+
+
+def test_field_value_is_reliable() -> None:
+    from financial_report_llm_extractor.client import ConfidenceLevel, FieldValue
+
+    verified = FieldValue(
+        field_id="revenue", value="1", currency=None, unit=None,
+        confidence=ConfidenceLevel.VERIFIED, source="akshare",
+        evidence_page=None, raw_bucket="clean_present",
+    )
+    assert verified.is_reliable is True
+
+    llm = FieldValue(
+        field_id="audit_opinion", value="opinion text", currency=None, unit=None,
+        confidence=ConfidenceLevel.LLM_SUPPLEMENT, source="llm",
+        evidence_page=55, raw_bucket="llm_supplement_present",
+    )
+    assert llm.is_reliable is False
+
+    ambiguous = FieldValue(
+        field_id="fix_assets", value=None, currency=None, unit=None,
+        confidence=ConfidenceLevel.AMBIGUOUS, source=None,
+        evidence_page=None, raw_bucket="unresolved_conflict",
+    )
+    assert ambiguous.is_reliable is False
+
+
+def test_field_value_is_present() -> None:
+    from financial_report_llm_extractor.client import ConfidenceLevel, FieldValue
+
+    present = FieldValue(
+        field_id="x", value="some_value", currency=None, unit=None,
+        confidence=ConfidenceLevel.VERIFIED, source="akshare",
+        evidence_page=None, raw_bucket="clean_present",
+    )
+    assert present.is_present is True
+
+    absent = FieldValue(
+        field_id="x", value=None, currency=None, unit=None,
+        confidence=ConfidenceLevel.UNAVAILABLE, source=None,
+        evidence_page=None, raw_bucket="source_unavailable",
+    )
+    assert absent.is_present is False
+
+
+def test_field_value_verification_required_derived_from_source() -> None:
+    """verification_required is a @property derived from source ==
+    'llm', not a stored field."""
+    from financial_report_llm_extractor.client import ConfidenceLevel, FieldValue
+
+    llm_field = FieldValue(
+        field_id="audit_opinion", value="opinion", currency=None, unit=None,
+        confidence=ConfidenceLevel.LLM_SUPPLEMENT, source="llm",
+        evidence_page=55, raw_bucket="llm_supplement_present",
+    )
+    assert llm_field.verification_required is True
+
+    akshare_field = FieldValue(
+        field_id="revenue", value="1", currency=None, unit=None,
+        confidence=ConfidenceLevel.VERIFIED, source="akshare",
+        evidence_page=None, raw_bucket="clean_present",
+    )
+    assert akshare_field.verification_required is False
+
+    no_source = FieldValue(
+        field_id="x", value=None, currency=None, unit=None,
+        confidence=ConfidenceLevel.UNAVAILABLE, source=None,
+        evidence_page=None, raw_bucket="source_unavailable",
+    )
+    assert no_source.verification_required is False
