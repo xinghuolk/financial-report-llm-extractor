@@ -232,3 +232,63 @@ def test_get_extraction_invalid_market_raises(tmp_path: Path) -> None:
             refresh_policy=RefreshPolicy.CACHE_ONLY,
         )
     assert excinfo.value.reason == "unsupported_market"
+
+
+def test_get_extraction_llm_config_missing_raises(tmp_path: Path) -> None:
+    """include_llm_supplement=True + CACHE_FIRST + DB miss + no llm_config_path
+    → ExtractorError(llm_config_missing)."""
+    from financial_report_llm_extractor.cache.db import init_db
+    from financial_report_llm_extractor.client import (
+        ExtractorConfig,
+        ExtractorError,
+        FinancialReportClient,
+        RefreshPolicy,
+    )
+
+    db_path = tmp_path / "empty.db"
+    init_db(db_path)
+    client = FinancialReportClient(
+        config=ExtractorConfig(
+            db_path=db_path, cache_root=tmp_path,
+            llm_config_path=None,  # explicit
+        ),
+    )
+    with pytest.raises(ExtractorError) as excinfo:
+        client.get_extraction(
+            company="600519", period_end="2024-12-31", market="CN",
+            refresh_policy=RefreshPolicy.CACHE_FIRST,
+            include_llm_supplement=True,
+        )
+    assert excinfo.value.reason == "llm_config_missing"
+
+
+def test_get_extraction_pdf_not_found_raises(tmp_path: Path) -> None:
+    """include_llm_supplement=True + CACHE_FIRST + DB miss + llm_config but
+    no pdf_resolver → ExtractorError(pdf_not_found)."""
+    from financial_report_llm_extractor.cache.db import init_db
+    from financial_report_llm_extractor.client import (
+        ExtractorConfig,
+        ExtractorError,
+        FinancialReportClient,
+        RefreshPolicy,
+    )
+
+    db_path = tmp_path / "empty.db"
+    init_db(db_path)
+    fake_llm_config = tmp_path / "llm.json"
+    fake_llm_config.write_text("{}", encoding="utf-8")
+
+    client = FinancialReportClient(
+        config=ExtractorConfig(
+            db_path=db_path, cache_root=tmp_path,
+            llm_config_path=fake_llm_config,
+            pdf_resolver=None,  # missing
+        ),
+    )
+    with pytest.raises(ExtractorError) as excinfo:
+        client.get_extraction(
+            company="600519", period_end="2024-12-31", market="CN",
+            refresh_policy=RefreshPolicy.CACHE_FIRST,
+            include_llm_supplement=True,
+        )
+    assert excinfo.value.reason == "pdf_not_found"

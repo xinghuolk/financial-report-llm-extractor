@@ -18,7 +18,7 @@ from decimal import Decimal
 from enum import Enum
 from importlib.resources import files as _pkg_files
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable
 
 
 class ConfidenceLevel(Enum):
@@ -212,42 +212,14 @@ class ExtractorError(Exception):
         self.cause_type = cause_type
 
 
-ValueType = Literal["money", "number", "text", "boolean"]
-
-
-def decode_value(
-    *,
-    value_text: str | None,
-    value_type: ValueType,
-) -> Decimal | str | bool | None:
-    """Decode an R1-stored JSON value-text into a Python type per taxonomy.
-
-    Critical: numeric values use Decimal(str(...)) to preserve precision
-    when the JSON contains a float literal.
-    """
-    if value_text is None:
-        return None
-    parsed: object = json.loads(value_text)
-    if parsed is None:
-        return None
-    if value_type in {"money", "number"}:
-        return Decimal(str(parsed))
-    if value_type == "text":
-        if not isinstance(parsed, str):
-            # text fields may legitimately be JSON-encoded as string;
-            # tolerate accidental non-string by stringifying.
-            return str(parsed)
-        return parsed
-    if value_type == "boolean":
-        return bool(parsed)
-    raise ValueError(f"unsupported value_type: {value_type!r}")
-
 
 def resolve_catalog_path(*, override: Path | None) -> Path:
-    """Return path to source_mapping_minimal catalog. Override > packaged."""
+    """Return path to source_mapping_minimal catalog. Override > packaged > editable-tree."""
     if override is not None:
         return override
     # Packaged catalog via importlib.resources (pyproject force-include).
+    # This works in wheel install (where _catalog_data/ exists in the
+    # installed package directory).
     try:
         resource = _pkg_files("financial_report_llm_extractor").joinpath(
             "_catalog_data", "turtle_v015_source_mapping_minimal.json"
@@ -257,14 +229,22 @@ def resolve_catalog_path(*, override: Path | None) -> Path:
             return packaged_path
     except (ModuleNotFoundError, FileNotFoundError):
         pass
-    # Editable-install fallback: relative to repo root (best-effort).
+    # Editable-install fallback: walk up from __file__ to find repo-root
+    # field_catalog/ directory. __file__ is src/financial_report_llm_extractor/client.py
+    # so parent.parent.parent = repo root.
+    editable_root = Path(__file__).resolve().parent.parent.parent
+    editable_path = editable_root / "field_catalog" / "turtle_v015_source_mapping_minimal.json"
+    if editable_path.exists():
+        return editable_path
+    # Last-resort: CWD-relative (preserves old behavior for unusual setups).
     return Path("field_catalog/turtle_v015_source_mapping_minimal.json")
 
 
 def resolve_taxonomy_path(*, override: Path | None) -> Path:
-    """Return path to field_taxonomy. Override > packaged."""
+    """Return path to field_taxonomy. Override > packaged > editable-tree."""
     if override is not None:
         return override
+    # Packaged catalog via importlib.resources (pyproject force-include).
     try:
         resource = _pkg_files("financial_report_llm_extractor").joinpath(
             "_catalog_data", "turtle_v015_field_taxonomy.json"
@@ -274,6 +254,12 @@ def resolve_taxonomy_path(*, override: Path | None) -> Path:
             return packaged_path
     except (ModuleNotFoundError, FileNotFoundError):
         pass
+    # Editable-install fallback: walk up from __file__ to find repo-root.
+    editable_root = Path(__file__).resolve().parent.parent.parent
+    editable_path = editable_root / "field_catalog" / "turtle_v015_field_taxonomy.json"
+    if editable_path.exists():
+        return editable_path
+    # Last-resort: CWD-relative.
     return Path("field_catalog/turtle_v015_field_taxonomy.json")
 
 
