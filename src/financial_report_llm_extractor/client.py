@@ -360,6 +360,238 @@ class FinancialReportClient:
             return Staleness.FRESH
         return Staleness.STALE
 
+    def get_extraction(
+        self,
+        *,
+        company: str,
+        period_end: str,
+        market: str,
+        include_llm_supplement: bool = False,
+        refresh_policy: RefreshPolicy = RefreshPolicy.CACHE_FIRST,
+    ) -> ExtractionResult:
+        """Return an ExtractionResult for the given (company, period_end, market).
+
+        See spec §Client Methods for full behavior table.
+        """
+        if market not in {"CN", "HK"}:
+            raise ExtractorError(
+                reason="unsupported_market",
+                message=f"market must be 'CN' or 'HK', got {market!r}",
+                company=company, period_end=period_end, market=market,
+            )
+
+        from financial_report_llm_extractor.cache.db_query import (
+            query_extraction,
+        )
+
+        # Step 1: try DB read.
+        try:
+            hit = query_extraction(
+                db_path=self._db_path,
+                company=company,
+                period_end=period_end,
+                market=market,
+            )
+        except Exception as exc:
+            if refresh_policy == RefreshPolicy.CACHE_ONLY:
+                raise ExtractorError(
+                    reason="db_not_initialized",
+                    message=f"DB lookup failed: {exc}",
+                    company=company, period_end=period_end, market=market,
+                    cause_type=type(exc).__name__,
+                ) from exc
+            hit = None
+
+        current_version = self.catalog_version()
+
+        # CACHE_ONLY: never trigger pipeline.
+        if refresh_policy == RefreshPolicy.CACHE_ONLY:
+            return self._materialize_from_hit(
+                hit=hit, company=company, period_end=period_end,
+                market=market, current_version=current_version,
+                include_llm_supplement=include_llm_supplement,
+            )
+
+        # CACHE_FIRST: hit wins (even stale).
+        if (
+            refresh_policy == RefreshPolicy.CACHE_FIRST
+            and hit is not None
+        ):
+            return self._materialize_from_hit(
+                hit=hit, company=company, period_end=period_end,
+                market=market, current_version=current_version,
+                include_llm_supplement=include_llm_supplement,
+            )
+
+        # FORCE_REFRESH, or CACHE_FIRST miss: run pipeline, re-query DB.
+        # Defensive: ensure required config for LLM step.
+        if include_llm_supplement and self.config.llm_config_path is None:
+            raise ExtractorError(
+                reason="llm_config_missing",
+                message="include_llm_supplement=True requires llm_config_path",
+                company=company, period_end=period_end, market=market,
+            )
+
+        try:
+            pdf_path = self._resolve_pdf_path(
+                company=company, period_end=period_end, market=market,
+                require=include_llm_supplement,
+            )
+        except ExtractorError:
+            raise
+        except Exception as exc:
+            raise ExtractorError(
+                reason="pdf_not_found",
+                message=str(exc),
+                company=company, period_end=period_end, market=market,
+                cause_type=type(exc).__name__,
+            ) from exc
+
+        from financial_report_llm_extractor.pipeline_core import run_pipeline
+
+        # Out_dir for the fresh run — under cache_root for cleanliness.
+        run_out_dir = (
+            self._cache_root / "runs" / f"{company}_{period_end}_{market}"
+        )
+        try:
+            run_pipeline(
+                company=company,
+                period_end=period_end,
+                market=market,
+                report_type="annual",  # default for client; CLI exposes override
+                db_path=self._db_path,
+                out_dir=run_out_dir,
+                catalog_path=self._catalog_path,
+                taxonomy_path=self._taxonomy_path,
+                priorities=("P0", "P1", "P2", "P3", "P4"),
+                pdf_path=pdf_path if include_llm_supplement else None,
+                llm_config_path=(
+                    self.config.llm_config_path
+                    if include_llm_supplement else None
+                ),
+                force=(refresh_policy == RefreshPolicy.FORCE_REFRESH),
+                no_cache=False,
+            )
+        except Exception as exc:
+            # Distinguish fetch vs evaluate failures by heuristic on exc type
+            # (out of scope for v1 — coarse map to fetch_failed).
+            reason = (
+                "evaluate_failed"
+                if "evaluat" in str(exc).lower()
+                else "fetch_failed"
+            )
+            raise ExtractorError(
+                reason=reason,
+                message=str(exc),
+                company=company, period_end=period_end, market=market,
+                cause_type=type(exc).__name__,
+            ) from exc
+
+        # Re-query DB after fresh run.
+        hit = query_extraction(
+            db_path=self._db_path,
+            company=company,
+            period_end=period_end,
+            market=market,
+        )
+        return self._materialize_from_hit(
+            hit=hit, company=company, period_end=period_end,
+            market=market, current_version=current_version,
+            include_llm_supplement=include_llm_supplement,
+        )
+
+    def _resolve_pdf_path(
+        self,
+        *,
+        company: str,
+        period_end: str,
+        market: str,
+        require: bool,
+    ) -> Path | None:
+        """Use pdf_resolver if set; return None if not required."""
+        if self.config.pdf_resolver is None:
+            if require:
+                raise ExtractorError(
+                    reason="pdf_not_found",
+                    message="pdf_resolver not configured",
+                    company=company, period_end=period_end, market=market,
+                )
+            return None
+        path = self.config.pdf_resolver(
+            PdfQuery(company=company, period_end=period_end, market=market)
+        )
+        if path is None or not path.exists():
+            if require:
+                raise ExtractorError(
+                    reason="pdf_not_found",
+                    message=f"pdf_resolver returned {path!r}; not usable",
+                    company=company, period_end=period_end, market=market,
+                )
+            return None
+        return path
+
+    def _materialize_from_hit(
+        self,
+        *,
+        hit: dict[str, Any] | None,
+        company: str,
+        period_end: str,
+        market: str,
+        current_version: str,
+        include_llm_supplement: bool,
+    ) -> ExtractionResult:
+        """Build an ExtractionResult from a query_extraction hit (or None)."""
+        if hit is None:
+            return ExtractionResult(
+                company=company,
+                period_end=period_end,
+                market=market,
+                catalog_version=current_version,
+                generated_at="",
+                extraction_id="",
+                staleness=Staleness.MISSING,
+                fields={},
+            )
+
+        catalog_version = str(hit.get("catalog_version", current_version))
+        staleness = (
+            Staleness.FRESH
+            if catalog_version == current_version
+            else Staleness.STALE
+        )
+        generated_at = str(hit.get("generated_at", ""))
+        taxonomy_fields = self._taxonomy_doc.get("fields", {})
+
+        fields: dict[str, FieldValue] = {}
+        for field_id, db_row in hit.get("fields", {}).items():
+            field_taxonomy = taxonomy_fields.get(field_id, {})
+            fv = build_field_value(
+                field_id=field_id,
+                db_row=db_row,
+                field_taxonomy=field_taxonomy,
+                include_llm_supplement=include_llm_supplement,
+            )
+            fields[field_id] = fv
+
+        return ExtractionResult(
+            company=company,
+            period_end=period_end,
+            market=market,
+            catalog_version=catalog_version,
+            generated_at=generated_at,
+            extraction_id=compute_extraction_id(
+                company=company,
+                period_end=period_end,
+                market=market,
+                catalog_version=catalog_version,
+                generated_at=generated_at,
+            ),
+            staleness=staleness,
+            fields=fields,
+            llm_provider=hit.get("llm_provider"),
+            llm_model=hit.get("llm_model"),
+        )
+
 
 _BUCKET_TO_CONFIDENCE: dict[str, ConfidenceLevel] = {
     "clean_present": ConfidenceLevel.VERIFIED,
