@@ -88,10 +88,12 @@ def index_run(
         )
 
         # field_values is "latest catalog version only" — replace all rows
-        # for this (company, period_end) on every index.
+        # for this (company, period_end, market) on every index.
+        # R5: scope DELETE by market so cross-market rows are not wiped.
         conn.execute(
-            "DELETE FROM field_values WHERE company = ? AND period_end = ?",
-            (company, period_end),
+            "DELETE FROM field_values "
+            "WHERE company = ? AND period_end = ? AND market = ?",
+            (company, period_end, market),
         )
 
         written = 0
@@ -106,13 +108,13 @@ def index_run(
             conn.execute(
                 """
                 INSERT INTO field_values (
-                  company, period_end, field_id, priority, bucket, value,
+                  company, period_end, market, field_id, priority, bucket, value,
                   currency, unit, selected_source, reason,
                   evidence_page, llm_confidence, llm_reasoning_short
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    company, period_end, field_id,
+                    company, period_end, market, field_id,
                     priority_map.get(field_id),
                     bucket,
                     row["value"],

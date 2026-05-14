@@ -311,6 +311,9 @@ def build_parser() -> argparse.ArgumentParser:
     query_parser.add_argument("--company", type=str, required=True)
     query_parser.add_argument("--period", type=str, required=True,
                               help="period_end like '2024-12-31'")
+    query_parser.add_argument("--market", type=str, required=True,
+                              choices=["CN", "HK"],
+                              help="Market scope: CN or HK")
     query_parser.add_argument("--field", type=str, default=None,
                               help="Optional field_id; omit for full extraction")
 
@@ -973,12 +976,13 @@ def main(argv: list[str] | None = None) -> int:
             if args.field is not None:
                 query_result: object = _query_field(
                     db_path=args.db, company=args.company,
-                    period_end=args.period, field_id=args.field,
+                    period_end=args.period, market=args.market,
+                    field_id=args.field,
                 )
             else:
                 query_result = _query_extraction(
                     db_path=args.db, company=args.company,
-                    period_end=args.period,
+                    period_end=args.period, market=args.market,
                 )
         except _sqlite3.OperationalError as exc:
             print(json.dumps(
@@ -1046,13 +1050,9 @@ def main(argv: list[str] | None = None) -> int:
         if not args.force:
             hit = query_extraction(
                 db_path=args.db, company=args.company,
-                period_end=period_end_str,
+                period_end=period_end_str, market=args.market,
             )
-            if (
-                hit is not None
-                and hit.get("catalog_version") == catalog_version
-                and hit.get("market") == args.market
-            ):
+            if hit is not None and hit.get("catalog_version") == catalog_version:
                 print(_json.dumps({
                     "status": "cache_hit",
                     "company": args.company,

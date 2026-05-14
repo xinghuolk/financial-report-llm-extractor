@@ -21,6 +21,7 @@ def query_field(
     db_path: Path,
     company: str,
     period_end: str,
+    market: str,
     field_id: str,
 ) -> dict[str, Any] | None:
     """Return one field row as a dict, or None on miss."""
@@ -29,15 +30,16 @@ def query_field(
         row = conn.execute(
             f"SELECT {', '.join(_FIELD_COLUMNS)} "
             "FROM field_values "
-            "WHERE company = ? AND period_end = ? AND field_id = ?",
-            (company, period_end, field_id),
+            "WHERE company = ? AND period_end = ? AND market = ? AND field_id = ?",
+            (company, period_end, market, field_id),
         ).fetchone()
     finally:
         conn.close()
     if row is None:
         return None
     return _decode_field_row(
-        company=company, period_end=period_end, field_id=field_id, row=row,
+        company=company, period_end=period_end, market=market,
+        field_id=field_id, row=row,
     )
 
 
@@ -46,6 +48,7 @@ def query_extraction(
     db_path: Path,
     company: str,
     period_end: str,
+    market: str,
 ) -> dict[str, Any] | None:
     """Return extraction metadata + all field rows as a nested dict."""
     conn = connect(db_path)
@@ -55,11 +58,11 @@ def query_extraction(
             SELECT market, report_type, catalog_version, schema_version,
                    generated_at, artifact_path, llm_provider, llm_model
             FROM extractions
-            WHERE company = ? AND period_end = ?
+            WHERE company = ? AND period_end = ? AND market = ?
             ORDER BY catalog_version DESC
             LIMIT 1
             """,
-            (company, period_end),
+            (company, period_end, market),
         ).fetchone()
         if meta is None:
             return None
@@ -67,8 +70,8 @@ def query_extraction(
             conn.execute(
                 f"SELECT field_id, {', '.join(_FIELD_COLUMNS)} "
                 "FROM field_values "
-                "WHERE company = ? AND period_end = ?",
-                (company, period_end),
+                "WHERE company = ? AND period_end = ? AND market = ?",
+                (company, period_end, market),
             )
         )
     finally:
@@ -77,14 +80,15 @@ def query_extraction(
     for r in field_rows:
         fid = r[0]
         decoded = _decode_field_row(
-            company=company, period_end=period_end, field_id=fid, row=r[1:],
+            company=company, period_end=period_end, market=market,
+            field_id=fid, row=r[1:],
         )
         fields[fid] = {k: v for k, v in decoded.items()
-                       if k not in {"company", "period_end", "field_id"}}
+                       if k not in {"company", "period_end", "market", "field_id"}}
     return {
         "company": company,
         "period_end": period_end,
-        "market": meta[0],
+        "market": market,
         "report_type": meta[1],
         "catalog_version": meta[2],
         "schema_version": meta[3],
@@ -112,13 +116,15 @@ def list_companies(*, db_path: Path) -> list[tuple[str, str, str, str]]:
 
 
 def _decode_field_row(
-    *, company: str, period_end: str, field_id: str, row: tuple[Any, ...],
+    *, company: str, period_end: str, market: str, field_id: str,
+    row: tuple[Any, ...],
 ) -> dict[str, Any]:
     (bucket, value_text, currency, unit, selected_source, reason,
      evidence_page, llm_confidence, llm_reasoning_short, priority) = row
     return {
         "company": company,
         "period_end": period_end,
+        "market": market,
         "field_id": field_id,
         "priority": priority,
         "bucket": bucket,
