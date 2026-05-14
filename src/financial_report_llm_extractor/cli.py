@@ -293,8 +293,11 @@ def build_parser() -> argparse.ArgumentParser:
     index_parser = subparsers.add_parser("index")
     index_parser.add_argument("--runs", type=Path, required=True,
                               help="Directory containing per-company run subdirs")
-    index_parser.add_argument("--db", type=Path, required=True,
-                              help="SQLite DB path to create/update")
+    index_parser.add_argument(
+        "--db", type=Path, default=None,
+        help="SQLite DB path. Default: <cache_root>/extracted.db where "
+        "cache_root = $FR_LLM_CACHE_ROOT or ~/.cache/financial-report-llm-extractor/",
+    )
     index_parser.add_argument(
         "--taxonomy", type=Path,
         default=Path("field_catalog/turtle_v015_field_taxonomy.json"),
@@ -306,8 +309,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     query_parser = subparsers.add_parser("query")
-    query_parser.add_argument("--db", type=Path, required=True,
-                              help="SQLite DB path")
+    query_parser.add_argument(
+        "--db", type=Path, default=None,
+        help="SQLite DB path. Default: <cache_root>/extracted.db where "
+        "cache_root = $FR_LLM_CACHE_ROOT or ~/.cache/financial-report-llm-extractor/",
+    )
     query_parser.add_argument("--company", type=str, required=True)
     query_parser.add_argument("--period", type=str, required=True,
                               help="period_end like '2024-12-31'")
@@ -358,8 +364,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="LLM transport config JSON. If omitted, LLM supplement step is skipped.",
     )
     pipeline_parser.add_argument(
-        "--db", type=Path, default=Path("data/extracted.db"),
-        help="SQLite cache DB path.",
+        "--db", type=Path, default=None,
+        help="SQLite cache DB path. Default: <cache_root>/extracted.db where "
+        "cache_root = $FR_LLM_CACHE_ROOT or ~/.cache/financial-report-llm-extractor/",
     )
     pipeline_parser.add_argument(
         "--catalog", type=Path,
@@ -922,6 +929,14 @@ def main(argv: list[str] | None = None) -> int:
         from financial_report_llm_extractor.cache.indexer import (
             index_run as _index_run,
         )
+        from financial_report_llm_extractor.client import (
+            resolve_cache_root as _resolve_cache_root,
+            resolve_db_path as _resolve_db_path,
+        )
+        # Align CLI default with client API: <cache_root>/extracted.db
+        args.db = _resolve_db_path(
+            override=args.db, cache_root=_resolve_cache_root(override=None),
+        )
         taxonomy = json.loads(args.taxonomy.read_text(encoding="utf-8"))
         taxonomy_version = str(taxonomy.get("version", "unknown"))
         catalog_version = args.catalog_version or taxonomy_version
@@ -971,6 +986,13 @@ def main(argv: list[str] | None = None) -> int:
         from financial_report_llm_extractor.cache.db_query import (
             query_extraction as _query_extraction,
             query_field as _query_field,
+        )
+        from financial_report_llm_extractor.client import (
+            resolve_cache_root as _resolve_cache_root,
+            resolve_db_path as _resolve_db_path,
+        )
+        args.db = _resolve_db_path(
+            override=args.db, cache_root=_resolve_cache_root(override=None),
         )
         try:
             if args.field is not None:
@@ -1027,6 +1049,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "pipeline":
         import json as _json
         from financial_report_llm_extractor.pipeline_core import run_pipeline
+        from financial_report_llm_extractor.client import (
+            resolve_cache_root as _resolve_cache_root,
+            resolve_db_path as _resolve_db_path,
+        )
 
         # argparse validates --year xor --period-end mutual exclusion below;
         # pipeline_core revalidates defensively.
@@ -1034,6 +1060,11 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("--year and --period-end are mutually exclusive")
         if args.year is None and args.period_end is None:
             parser.error("one of --year or --period-end is required")
+
+        # Align CLI default with client API: <cache_root>/extracted.db
+        args.db = _resolve_db_path(
+            override=args.db, cache_root=_resolve_cache_root(override=None),
+        )
 
         pipeline_result = run_pipeline(
             company=args.company,
