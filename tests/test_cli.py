@@ -1201,7 +1201,7 @@ def test_cli_index_command_scans_runs_dir(
     )
     audit_row = query_field(
         db_path=db_path, company="600519",
-        period_end="2024-12-31", field_id="audit_opinion",
+        period_end="2024-12-31", market="CN", field_id="audit_opinion",
     )
     assert audit_row is not None
     assert audit_row["priority"] == "P4"
@@ -1287,6 +1287,7 @@ def test_cli_query_command_returns_field_json(
         "--db", str(db_path),
         "--company", "600519",
         "--period", "2024-12-31",
+        "--market", "CN",
         "--field", "audit_opinion",
     ])
     assert exit_code == 0
@@ -1328,6 +1329,7 @@ def test_cli_query_command_without_field_returns_full_extraction(
     main([
         "query", "--db", str(db_path),
         "--company", "600519", "--period", "2024-12-31",
+        "--market", "CN",
     ])
     body = _json.loads(capsys.readouterr().out)
     assert body["company"] == "600519"
@@ -1344,7 +1346,8 @@ def test_cli_query_command_miss_returns_exit_1(
     init_db(db_path)
     exit_code = main([
         "query", "--db", str(db_path),
-        "--company", "nope", "--period", "2024-12-31", "--field", "x",
+        "--company", "nope", "--period", "2024-12-31",
+        "--market", "CN", "--field", "x",
     ])
     assert exit_code == 1
 
@@ -1362,12 +1365,25 @@ def test_cli_query_command_db_not_initialized_returns_exit_2(
     exit_code = main([
         "query", "--db", str(nonexistent_db),
         "--company", "600519", "--period", "2024-12-31",
-        "--field", "revenue",
+        "--market", "CN", "--field", "revenue",
     ])
     assert exit_code == 2
     body = _json.loads(capsys.readouterr().out)
     assert body["miss"] is True
     assert body["reason"] == "db_not_initialized"
+
+
+def test_cli_query_command_market_is_required(tmp_path: Path) -> None:
+    """`query` without --market must fail at argparse layer (exit 2)."""
+    from financial_report_llm_extractor.cli import main
+    db_path = tmp_path / "x.db"
+    with pytest.raises(SystemExit) as excinfo:
+        main([
+            "query", "--db", str(db_path),
+            "--company", "600519", "--period", "2024-12-31",
+            "--field", "revenue",
+        ])
+    assert excinfo.value.code == 2
 
 
 # ---------------------------------------------------------------------------
