@@ -183,6 +183,83 @@ def test_index_run_missing_evaluation_raises(tmp_path: Path) -> None:
                   catalog_version="v1", priority_map={})
 
 
+def test_index_run_market_column_populated(tmp_path: Path) -> None:
+    """All inserted field_values rows must have market column set."""
+    db_path = tmp_path / "extracted.db"
+    init_db(db_path)
+    index_run(
+        run_dir=FIXTURE_DIR, db_path=db_path,
+        catalog_version="v1", priority_map=PRIORITY_MAP,
+    )
+    conn = sqlite3.connect(db_path)
+    try:
+        rows = list(conn.execute("SELECT market FROM field_values"))
+    finally:
+        conn.close()
+    assert len(rows) == 3
+    for (market,) in rows:
+        assert market == "CN"  # fixture market
+
+
+def test_index_run_cross_market_does_not_collide(tmp_path: Path) -> None:
+    """Same (company, period_end) under different markets must coexist.
+
+    R5 invariant: DELETE+INSERT scopes by market; cross-market re-index
+    does NOT wipe previously indexed market's field_values.
+    """
+    db_path = tmp_path / "extracted.db"
+    init_db(db_path)
+
+    # Build a copy of the fixture but flip market to HK
+    cn_dir = FIXTURE_DIR  # market=CN
+    hk_dir = tmp_path / "hk_fake"
+    hk_dir.mkdir()
+    eval_payload = json.loads(
+        (cn_dir / "evaluation.json").read_text(encoding="utf-8")
+    )
+    eval_payload["market"] = "HK"
+    (hk_dir / "evaluation.json").write_text(
+        json.dumps(eval_payload), encoding="utf-8",
+    )
+    # Copy llm_evidence_supplement.json if present
+    supp = cn_dir / "llm_evidence_supplement.json"
+    if supp.exists():
+        (hk_dir / "llm_evidence_supplement.json").write_text(
+            supp.read_text(encoding="utf-8"), encoding="utf-8",
+        )
+
+    # Index CN first
+    index_run(
+        run_dir=cn_dir, db_path=db_path,
+        catalog_version="v1", priority_map=PRIORITY_MAP,
+    )
+    # Index HK second — must NOT wipe CN's field_values
+    index_run(
+        run_dir=hk_dir, db_path=db_path,
+        catalog_version="v1", priority_map=PRIORITY_MAP,
+    )
+
+    conn = sqlite3.connect(db_path)
+    try:
+        cn_count = conn.execute(
+            "SELECT COUNT(*) FROM field_values "
+            "WHERE company = '600519' AND period_end = '2024-12-31' AND market = 'CN'"
+        ).fetchone()[0]
+        hk_count = conn.execute(
+            "SELECT COUNT(*) FROM field_values "
+            "WHERE company = '600519' AND period_end = '2024-12-31' AND market = 'HK'"
+        ).fetchone()[0]
+        ext_count = conn.execute(
+            "SELECT COUNT(*) FROM extractions"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    assert cn_count == 3, f"CN field_values wiped! got {cn_count}, expected 3"
+    assert hk_count == 3, f"HK field_values missing! got {hk_count}"
+    assert ext_count == 2, f"expected 2 extractions rows, got {ext_count}"
+
+
 def test_index_run_missing_supplement_does_not_break(tmp_path: Path) -> None:
     """If llm_evidence_supplement.json is absent, LLM rows have null value but
     the row is still inserted with the bucket from evaluation.json."""
