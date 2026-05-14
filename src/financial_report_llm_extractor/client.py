@@ -18,7 +18,7 @@ from decimal import Decimal
 from enum import Enum
 from importlib.resources import files as _pkg_files
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 
 
 class ConfidenceLevel(Enum):
@@ -359,3 +359,87 @@ class FinancialReportClient:
         if hit.get("catalog_version") == self.catalog_version():
             return Staleness.FRESH
         return Staleness.STALE
+
+
+_BUCKET_TO_CONFIDENCE: dict[str, ConfidenceLevel] = {
+    "clean_present": ConfidenceLevel.VERIFIED,
+    "llm_supplement_present": ConfidenceLevel.LLM_SUPPLEMENT,
+    "unresolved_conflict": ConfidenceLevel.AMBIGUOUS,
+    "terminal_unverified": ConfidenceLevel.UNAVAILABLE,
+    "source_unavailable": ConfidenceLevel.UNAVAILABLE,
+    "not_in_scope": ConfidenceLevel.UNAVAILABLE,
+}
+
+
+def bucket_to_confidence(bucket: str) -> ConfidenceLevel:
+    """Translate source-first bucket → runtime ConfidenceLevel.
+
+    Unknown buckets map to UNAVAILABLE (defensive). raw_bucket on the
+    returned FieldValue preserves the original name for audit.
+    """
+    return _BUCKET_TO_CONFIDENCE.get(bucket, ConfidenceLevel.UNAVAILABLE)
+
+
+def build_field_value(
+    *,
+    field_id: str,
+    db_row: dict[str, Any],
+    field_taxonomy: dict[str, Any],
+    include_llm_supplement: bool,
+) -> FieldValue:
+    """Construct a FieldValue from a query_extraction row + taxonomy entry.
+
+    Handles bucket translation, Decimal decoding, LLM filter semantics, and
+    'unknown' currency normalization per spec.
+    """
+    raw_bucket = str(db_row.get("bucket", ""))
+    confidence = bucket_to_confidence(raw_bucket)
+
+    # LLM filter: when include_llm_supplement=False, replace LLM_SUPPLEMENT
+    # fields with UNAVAILABLE placeholder (still in dict, not silently dropped).
+    if (
+        confidence == ConfidenceLevel.LLM_SUPPLEMENT
+        and not include_llm_supplement
+    ):
+        return FieldValue(
+            field_id=field_id,
+            value=None,
+            currency=None,
+            unit=None,
+            confidence=ConfidenceLevel.UNAVAILABLE,
+            source=None,
+            evidence_page=None,
+            raw_bucket=raw_bucket,
+            reason="llm_supplement_filtered",
+        )
+
+    # Decode value per taxonomy.value_type
+    value_type = field_taxonomy.get("value_type", "text")
+    raw_value = db_row.get("value")
+    value: Decimal | str | bool | None
+    if raw_value is None:
+        value = None
+    elif value_type in {"money", "number"}:
+        # Decimal(str(...)) detour preserves precision (Task 7 invariant).
+        value = Decimal(str(raw_value))
+    elif value_type == "boolean":
+        value = bool(raw_value)
+    else:  # text
+        value = str(raw_value) if not isinstance(raw_value, str) else raw_value
+
+    # Currency: normalize "unknown" sentinel to None
+    currency = db_row.get("currency")
+    if currency == "unknown":
+        currency = None
+
+    return FieldValue(
+        field_id=field_id,
+        value=value,
+        currency=currency,
+        unit=db_row.get("unit"),
+        confidence=confidence,
+        source=db_row.get("selected_source"),
+        evidence_page=db_row.get("evidence_page"),
+        raw_bucket=raw_bucket,
+        reason=db_row.get("reason"),
+    )
