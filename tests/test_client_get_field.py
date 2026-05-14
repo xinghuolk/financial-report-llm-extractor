@@ -5,11 +5,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
+if TYPE_CHECKING:
+    from financial_report_llm_extractor.client import FinancialReportClient
 
-def _seed_db_and_client(tmp_path: Path):
+
+def _seed_db_and_client(tmp_path: Path) -> "FinancialReportClient":
     from financial_report_llm_extractor.cache.db import init_db
     from financial_report_llm_extractor.cache.indexer import index_run
     from financial_report_llm_extractor.client import (
