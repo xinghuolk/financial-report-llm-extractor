@@ -10,7 +10,10 @@ See docs/superpowers/specs/2026-05-13-financial-report-client-productization-des
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Callable
 
 
 class ConfidenceLevel(Enum):
@@ -54,3 +57,30 @@ class Staleness(Enum):
     @property
     def is_missing(self) -> bool:
         return self == Staleness.MISSING
+
+
+@dataclass(frozen=True, kw_only=True)
+class PdfQuery:
+    """Keyword-only dataclass for pdf_resolver to prevent positional misuse."""
+
+    company: str
+    period_end: str
+    market: str
+
+
+@dataclass(frozen=True)
+class ExtractorConfig:
+    """Caller-supplied configuration. All fields optional; None = use default.
+
+    Default resolution (see Task 9):
+      - catalog_path / taxonomy_path: importlib.resources packaged data
+      - cache_root: $FR_LLM_CACHE_ROOT or ~/.cache/financial-report-llm-extractor/
+      - db_path: <cache_root>/extracted.db
+    """
+
+    llm_config_path: Path | None = None
+    pdf_resolver: Callable[[PdfQuery], Path | None] | None = None
+    cache_root: Path | None = None
+    db_path: Path | None = None
+    catalog_path: Path | None = None
+    taxonomy_path: Path | None = None
