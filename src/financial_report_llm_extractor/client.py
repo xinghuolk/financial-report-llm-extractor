@@ -11,11 +11,12 @@ See docs/superpowers/specs/2026-05-13-financial-report-client-productization-des
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 
 
 class ConfidenceLevel(Enum):
@@ -207,3 +208,34 @@ class ExtractorError(Exception):
         self.period_end = period_end
         self.market = market
         self.cause_type = cause_type
+
+
+ValueType = Literal["money", "number", "text", "boolean"]
+
+
+def decode_value(
+    *,
+    value_text: str | None,
+    value_type: ValueType,
+) -> Decimal | str | bool | None:
+    """Decode an R1-stored JSON value-text into a Python type per taxonomy.
+
+    Critical: numeric values use Decimal(str(...)) to preserve precision
+    when the JSON contains a float literal.
+    """
+    if value_text is None:
+        return None
+    parsed: object = json.loads(value_text)
+    if parsed is None:
+        return None
+    if value_type in {"money", "number"}:
+        return Decimal(str(parsed))
+    if value_type == "text":
+        if not isinstance(parsed, str):
+            # text fields may legitimately be JSON-encoded as string;
+            # tolerate accidental non-string by stringifying.
+            return str(parsed)
+        return parsed
+    if value_type == "boolean":
+        return bool(parsed)
+    raise ValueError(f"unsupported value_type: {value_type!r}")
