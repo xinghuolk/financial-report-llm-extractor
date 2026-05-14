@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 def test_confidence_level_enum_values() -> None:
@@ -283,3 +285,89 @@ def test_extractor_error_raise_and_catch() -> None:
     with pytest.raises(ExtractorError) as excinfo:
         raise ExtractorError(reason="unknown_field", message="no such field")
     assert excinfo.value.reason == "unknown_field"
+
+
+def test_client_init_with_no_config_uses_defaults() -> None:
+    from financial_report_llm_extractor.client import FinancialReportClient
+
+    client = FinancialReportClient()
+    # __init__ doesn't raise; taxonomy/catalog loaded internally
+    assert client.catalog_version()
+
+
+def test_client_catalog_fields_returns_taxonomy_field_ids() -> None:
+    """catalog_fields() returns the field_ids known to the taxonomy."""
+    from financial_report_llm_extractor.client import FinancialReportClient
+
+    client = FinancialReportClient()
+    fields = client.catalog_fields()
+    assert isinstance(fields, tuple)
+    assert len(fields) > 50  # current catalog has 68 mapped + a few P4 unmapped
+    assert "revenue" in fields
+    assert "audit_opinion" in fields
+
+
+def test_client_catalog_version_returns_string() -> None:
+    from financial_report_llm_extractor.client import FinancialReportClient
+
+    client = FinancialReportClient()
+    version = client.catalog_version()
+    assert isinstance(version, str)
+    assert len(version) > 0
+
+
+def test_client_get_status_missing(tmp_path: "Path") -> None:
+    """Empty DB → Staleness.MISSING."""
+    from financial_report_llm_extractor.cache.db import init_db
+    from financial_report_llm_extractor.client import (
+        ExtractorConfig,
+        FinancialReportClient,
+        Staleness,
+    )
+
+    db_path = tmp_path / "empty.db"
+    init_db(db_path)
+
+    client = FinancialReportClient(
+        config=ExtractorConfig(db_path=db_path, cache_root=tmp_path)
+    )
+    status = client.get_status(
+        company="600519", period_end="2024-12-31", market="CN",
+    )
+    assert status == Staleness.MISSING
+
+
+def test_client_get_status_fresh(tmp_path: "Path") -> None:
+    """DB has matching catalog_version → Staleness.FRESH."""
+    import json as _json
+    from financial_report_llm_extractor.cache.db import init_db
+    from financial_report_llm_extractor.cache.indexer import index_run
+    from financial_report_llm_extractor.client import (
+        ExtractorConfig,
+        FinancialReportClient,
+        Staleness,
+    )
+
+    db_path = tmp_path / "out.db"
+    init_db(db_path)
+
+    fixture_dir = Path(__file__).parent / "fixtures" / "cache_sample_run"
+    tax_path = Path("field_catalog/turtle_v015_field_taxonomy.json")
+    taxonomy_doc = _json.loads(tax_path.read_text(encoding="utf-8"))
+    catalog_version = str(taxonomy_doc.get("version", "unknown"))
+    priority_map = {
+        fid: str(info.get("priority", ""))
+        for fid, info in taxonomy_doc.get("fields", {}).items()
+    }
+    index_run(
+        run_dir=fixture_dir, db_path=db_path,
+        catalog_version=catalog_version, priority_map=priority_map,
+    )
+
+    client = FinancialReportClient(
+        config=ExtractorConfig(db_path=db_path, cache_root=tmp_path)
+    )
+    status = client.get_status(
+        company="600519", period_end="2024-12-31", market="CN",
+    )
+    assert status == Staleness.FRESH

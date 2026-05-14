@@ -292,3 +292,70 @@ def resolve_db_path(*, override: Path | None, cache_root: Path) -> Path:
     if override is not None:
         return override
     return cache_root / "extracted.db"
+
+
+class FinancialReportClient:
+    """The public API surface of financial-report-llm-extractor.
+
+    Downstream consumers (e.g. TradingAgents-CN) instantiate this client
+    once and use it to query extracted financial-report data.
+
+    See docs/superpowers/specs/2026-05-13-financial-report-client-productization-design.md
+    """
+
+    def __init__(self, config: ExtractorConfig | None = None) -> None:
+        self.config = config or ExtractorConfig()
+        # Resolve and cache the taxonomy at init for fast catalog_fields()
+        # and catalog_version() lookups.
+        self._taxonomy_path = resolve_taxonomy_path(
+            override=self.config.taxonomy_path
+        )
+        self._catalog_path = resolve_catalog_path(
+            override=self.config.catalog_path
+        )
+        self._cache_root = resolve_cache_root(
+            override=self.config.cache_root
+        )
+        self._db_path = resolve_db_path(
+            override=self.config.db_path, cache_root=self._cache_root,
+        )
+        # Load taxonomy once (small file).
+        self._taxonomy_doc = json.loads(
+            self._taxonomy_path.read_text(encoding="utf-8")
+        )
+
+    def catalog_fields(self) -> tuple[str, ...]:
+        """Return all field_ids known to the current catalog (taxonomy)."""
+        fields = self._taxonomy_doc.get("fields", {})
+        return tuple(sorted(fields.keys()))
+
+    def catalog_version(self) -> str:
+        """Return current catalog version (= taxonomy.version)."""
+        return str(self._taxonomy_doc.get("version", "unknown"))
+
+    def get_status(
+        self,
+        *,
+        company: str,
+        period_end: str,
+        market: str,
+    ) -> Staleness:
+        """Lightweight DB lookup. Returns FRESH/STALE/MISSING."""
+        from financial_report_llm_extractor.cache.db_query import (
+            query_extraction,
+        )
+
+        try:
+            hit = query_extraction(
+                db_path=self._db_path,
+                company=company,
+                period_end=period_end,
+                market=market,
+            )
+        except Exception:
+            return Staleness.MISSING
+        if hit is None:
+            return Staleness.MISSING
+        if hit.get("catalog_version") == self.catalog_version():
+            return Staleness.FRESH
+        return Staleness.STALE
