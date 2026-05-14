@@ -1,7 +1,7 @@
 # FinancialReportClient 产品化设计 Spec
 
-> 日期：2026-05-13（rev 4）
-> 状态：Approved for implementation pending R5 prerequisite (R1 schema market-scoping)
+> 日期：2026-05-13（rev 4，2026-05-14 status update）
+> 状态：Approved for implementation — R5 prerequisite landed (PR #10 merged 2026-05-14)。Phase 1a 实施进行中。
 > 背景：Turtle v0.15 phase3 68 mapped 字段已覆盖下游四因子分析所需 catalog 层数据。Phase R 已 ship 二级缓存（R1 SQLite DB + R2 provider cache + R3 LLM cache + R4 pipeline 编排），下游 `TradingAgents-CN` 需要一个稳定、可编程、不会泄露 extractor 内部实现的消费接口。
 
 ## 目标
