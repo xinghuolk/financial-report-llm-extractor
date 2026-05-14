@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
+from importlib.resources import files as _pkg_files
 from pathlib import Path
 from typing import Callable, Literal
 
@@ -239,3 +241,54 @@ def decode_value(
     if value_type == "boolean":
         return bool(parsed)
     raise ValueError(f"unsupported value_type: {value_type!r}")
+
+
+def resolve_catalog_path(*, override: Path | None) -> Path:
+    """Return path to source_mapping_minimal catalog. Override > packaged."""
+    if override is not None:
+        return override
+    # Packaged catalog via importlib.resources (pyproject force-include).
+    try:
+        resource = _pkg_files("financial_report_llm_extractor").joinpath(
+            "_catalog_data", "turtle_v015_source_mapping_minimal.json"
+        )
+        packaged_path = Path(str(resource))
+        if packaged_path.exists():
+            return packaged_path
+    except (ModuleNotFoundError, FileNotFoundError):
+        pass
+    # Editable-install fallback: relative to repo root (best-effort).
+    return Path("field_catalog/turtle_v015_source_mapping_minimal.json")
+
+
+def resolve_taxonomy_path(*, override: Path | None) -> Path:
+    """Return path to field_taxonomy. Override > packaged."""
+    if override is not None:
+        return override
+    try:
+        resource = _pkg_files("financial_report_llm_extractor").joinpath(
+            "_catalog_data", "turtle_v015_field_taxonomy.json"
+        )
+        packaged_path = Path(str(resource))
+        if packaged_path.exists():
+            return packaged_path
+    except (ModuleNotFoundError, FileNotFoundError):
+        pass
+    return Path("field_catalog/turtle_v015_field_taxonomy.json")
+
+
+def resolve_cache_root(*, override: Path | None) -> Path:
+    """Return cache_root path. Precedence: override > env var > user home."""
+    if override is not None:
+        return override
+    env = os.environ.get("FR_LLM_CACHE_ROOT")
+    if env:
+        return Path(env)
+    return Path.home() / ".cache" / "financial-report-llm-extractor"
+
+
+def resolve_db_path(*, override: Path | None, cache_root: Path) -> Path:
+    """db_path defaults to <cache_root>/extracted.db."""
+    if override is not None:
+        return override
+    return cache_root / "extracted.db"
