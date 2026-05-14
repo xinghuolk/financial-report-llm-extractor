@@ -50,8 +50,12 @@ def _is_legacy_schema(db_path: Path) -> bool:
 
 
 def _drop_legacy_tables(db_path: Path) -> None:
-    """Drop field_values + indexes; preserve extractions (still works)
-    but legacy field_values data is lost. Operator must re-index."""
+    """Drop legacy v1 field_values + indexes AND extractions.
+
+    Both tables are recreated by init_db() with v2 schema. All legacy data
+    is lost; tmp/runs/* artifacts remain the source of truth and operator
+    must re-index via `financial-report-llm-extractor index ...`.
+    """
     conn = sqlite3.connect(db_path)
     try:
         conn.executescript(
