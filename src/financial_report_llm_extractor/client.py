@@ -169,3 +169,41 @@ class ExtractionResult:
     fields: dict[str, FieldValue]
     llm_provider: str | None = None
     llm_model: str | None = None
+
+
+class ExtractorError(Exception):
+    """Unified internal exception wrapper.
+
+    All exceptions that escape the client are wrapped as ExtractorError
+    with a stable `reason` code. Internal exceptions (sqlite3.OperationalError,
+    subprocess.CalledProcessError, urllib.error.URLError, etc.) are caught
+    at the client boundary and never leak to downstream.
+
+    Stable reason codes:
+      unsupported_market  — market not in {"CN", "HK"}
+      invalid_period      — period_end not a valid ISO date
+      unknown_field       — field_id not in taxonomy
+      pdf_not_found       — pdf_resolver returned None or file missing
+      llm_config_missing  — include_llm_supplement requires LLM config
+      fetch_failed        — pipeline fetch stage raised
+      evaluate_failed     — pipeline evaluate stage raised
+      db_not_initialized  — DB not found and refresh_policy=CACHE_ONLY
+    """
+
+    def __init__(
+        self,
+        *,
+        reason: str,
+        message: str,
+        company: str | None = None,
+        period_end: str | None = None,
+        market: str | None = None,
+        cause_type: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.reason = reason
+        self.message = message
+        self.company = company
+        self.period_end = period_end
+        self.market = market
+        self.cause_type = cause_type

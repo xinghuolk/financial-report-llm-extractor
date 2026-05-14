@@ -242,3 +242,44 @@ def test_extraction_result_construction() -> None:
     assert r.fields == {}
     assert r.llm_provider is None  # default
     assert r.llm_model is None     # default
+
+
+def test_extractor_error_init_and_attributes() -> None:
+    from financial_report_llm_extractor.client import ExtractorError
+
+    err = ExtractorError(
+        reason="fetch_failed",
+        message="AKShare returned 500",
+        company="600519",
+        period_end="2024-12-31",
+        market="CN",
+        cause_type="urllib.error.HTTPError",
+    )
+    assert err.reason == "fetch_failed"
+    assert err.message == "AKShare returned 500"
+    assert err.company == "600519"
+    assert err.period_end == "2024-12-31"
+    assert err.market == "CN"
+    assert err.cause_type == "urllib.error.HTTPError"
+    # also catchable as plain Exception
+    assert isinstance(err, Exception)
+    # __str__ uses message
+    assert "AKShare returned 500" in str(err)
+
+
+def test_extractor_error_optional_fields() -> None:
+    from financial_report_llm_extractor.client import ExtractorError
+
+    err = ExtractorError(reason="invalid_period", message="bad date")
+    assert err.company is None
+    assert err.period_end is None
+    assert err.market is None
+    assert err.cause_type is None
+
+
+def test_extractor_error_raise_and_catch() -> None:
+    from financial_report_llm_extractor.client import ExtractorError
+
+    with pytest.raises(ExtractorError) as excinfo:
+        raise ExtractorError(reason="unknown_field", message="no such field")
+    assert excinfo.value.reason == "unknown_field"
