@@ -180,3 +180,65 @@ def test_field_value_verification_required_derived_from_source() -> None:
         evidence_page=None, raw_bucket="source_unavailable",
     )
     assert no_source.verification_required is False
+
+
+def test_extraction_id_is_deterministic_sha256_prefix() -> None:
+    """Same (company, period_end, market, catalog_version, generated_at)
+    → same extraction_id; different → different."""
+    from financial_report_llm_extractor.client import compute_extraction_id
+
+    a = compute_extraction_id(
+        company="600519",
+        period_end="2024-12-31",
+        market="CN",
+        catalog_version="2026-05-02",
+        generated_at="2026-05-13T10:00:00",
+    )
+    b = compute_extraction_id(
+        company="600519",
+        period_end="2024-12-31",
+        market="CN",
+        catalog_version="2026-05-02",
+        generated_at="2026-05-13T10:00:00",
+    )
+    assert a == b
+    assert len(a) == 32  # 32 hex chars per spec
+    assert all(c in "0123456789abcdef" for c in a)
+
+
+def test_extraction_id_changes_on_any_key_change() -> None:
+    from financial_report_llm_extractor.client import compute_extraction_id
+
+    base = dict(
+        company="600519", period_end="2024-12-31", market="CN",
+        catalog_version="2026-05-02", generated_at="2026-05-13T10:00:00",
+    )
+    base_id = compute_extraction_id(**base)
+    for diff_field in ("company", "period_end", "market", "catalog_version", "generated_at"):
+        kwargs = dict(base)
+        kwargs[diff_field] = kwargs[diff_field] + "x"
+        assert compute_extraction_id(**kwargs) != base_id, (
+            f"changing {diff_field} should produce different extraction_id"
+        )
+
+
+def test_extraction_result_construction() -> None:
+    from financial_report_llm_extractor.client import (
+        ExtractionResult,
+        Staleness,
+    )
+
+    r = ExtractionResult(
+        company="600519",
+        period_end="2024-12-31",
+        market="CN",
+        catalog_version="2026-05-02",
+        generated_at="2026-05-13T10:00:00",
+        extraction_id="a" * 32,
+        staleness=Staleness.FRESH,
+        fields={},
+    )
+    assert r.staleness.is_fresh
+    assert r.fields == {}
+    assert r.llm_provider is None  # default
+    assert r.llm_model is None     # default

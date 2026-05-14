@@ -10,6 +10,7 @@ See docs/superpowers/specs/2026-05-13-financial-report-client-productization-des
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
@@ -124,3 +125,47 @@ class FieldValue:
         """True for LLM-sourced values (downstream should apply confidence
         threshold / consensus check before relying on them)."""
         return self.source == "llm"
+
+
+def compute_extraction_id(
+    *,
+    company: str,
+    period_end: str,
+    market: str,
+    catalog_version: str,
+    generated_at: str,
+) -> str:
+    """Return the 32-char hex prefix of SHA-256(keys joined by '|').
+
+    Downstream consumers use this as a foreign key in their derived-data
+    DB; same (company, period_end, market, catalog_version, generated_at)
+    always produces the same id.
+    """
+    canonical = f"{company}|{period_end}|{market}|{catalog_version}|{generated_at}"
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
+
+
+@dataclass(frozen=True)
+class ExtractionResult:
+    """A single extraction snapshot.
+
+    Callers MUST guard staleness before iterating fields:
+
+        if result.staleness.is_missing:
+            skip()
+        elif result.staleness.is_stale:
+            warn_then_decide()
+        else:
+            use_fields(result.fields)
+    """
+
+    company: str
+    period_end: str
+    market: str
+    catalog_version: str
+    generated_at: str
+    extraction_id: str
+    staleness: Staleness
+    fields: dict[str, FieldValue]
+    llm_provider: str | None = None
+    llm_model: str | None = None
