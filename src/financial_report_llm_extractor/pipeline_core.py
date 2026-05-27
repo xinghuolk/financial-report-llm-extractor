@@ -52,6 +52,7 @@ def run_pipeline(
     llm_config_path: Path | None = None,
     force: bool = False,
     no_cache: bool = False,
+    subscription_token: str | None = None,
 ) -> dict[str, Any]:
     """Run the DB-aware pipeline. Returns status dict.
 
@@ -140,6 +141,7 @@ def run_pipeline(
         out_dir=out_dir,
         # no_cache maps to combined provider+llm bypass: pass as cache_root
         cache_root=cache_root,
+        subscription_token=subscription_token,
     )
 
     priority_map = {
