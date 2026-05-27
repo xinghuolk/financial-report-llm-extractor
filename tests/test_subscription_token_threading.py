@@ -2,7 +2,7 @@ import inspect
 
 import pytest
 
-from financial_report_llm_extractor.client import ExtractorConfig, FinancialReportClient
+from financial_report_llm_extractor.client import ExtractorConfig
 from financial_report_llm_extractor.pipeline_core import run_pipeline
 from financial_report_llm_extractor.structured_sources.company_evaluation import (
     _run_llm_supplement_step,
@@ -18,7 +18,6 @@ def test_extractor_config_has_optional_subscription_token():
 @pytest.mark.parametrize(
     "func",
     [
-        FinancialReportClient.get_extraction,
         run_pipeline,
         run_company_evaluation,
         _run_llm_supplement_step,

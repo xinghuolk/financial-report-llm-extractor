@@ -355,7 +355,6 @@ class FinancialReportClient:
         market: str,
         include_llm_supplement: bool = False,
         refresh_policy: RefreshPolicy = RefreshPolicy.CACHE_FIRST,
-        subscription_token: str | None = None,
     ) -> ExtractionResult:
         """Return an ExtractionResult for the given (company, period_end, market).
 
