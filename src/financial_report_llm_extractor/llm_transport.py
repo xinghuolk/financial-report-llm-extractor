@@ -593,6 +593,7 @@ class CodexResponsesClient:
         last_error: TimeoutError | URLError | None = None
         for _ in range(attempts):
             try:
+                # injected token preferred; falsy (None/"") falls back to file-resolved creds
                 access_token = (
                     self.subscription_token
                     or resolve_subscription_credentials("openai-codex").access_token
