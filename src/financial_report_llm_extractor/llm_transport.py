@@ -324,6 +324,7 @@ def create_llm_client(
     *,
     transport: HttpTransport | None = None,
     cache_root: Path | None = None,
+    subscription_token: str | None = None,
 ) -> LlmJsonClient:
     kind = resolve_provider_kind(config)
     if kind == "openai-compatible":
@@ -331,7 +332,12 @@ def create_llm_client(
     if kind == "gemini":
         return GeminiGenerateContentClient(config, transport=transport, cache_root=cache_root)
     if kind == "codex-responses":
-        return CodexResponsesClient(config, transport=transport, cache_root=cache_root)
+        return CodexResponsesClient(
+            config,
+            transport=transport,
+            cache_root=cache_root,
+            subscription_token=subscription_token,
+        )
     if kind == "anthropic-messages":
         return ClaudeCodeMessagesClient(config, transport=transport, cache_root=cache_root)
     raise ValueError(f"unsupported provider kind: {kind}")
@@ -475,11 +481,13 @@ class CodexResponsesClient:
         *,
         transport: HttpTransport | None = None,
         cache_root: Path | None = None,
+        subscription_token: str | None = None,
     ) -> None:
         self.config = config
         self.transport = transport or UrllibHttpTransport()
         self.raw_exchanges: list[RawExchange] = []
         self.cache_root = cache_root
+        self.subscription_token = subscription_token
 
     def extract(self, request: PromptRequest) -> LlmResponse:
         raw_response = self.complete_json(
@@ -585,10 +593,14 @@ class CodexResponsesClient:
         last_error: TimeoutError | URLError | None = None
         for _ in range(attempts):
             try:
-                credentials = resolve_subscription_credentials("openai-codex")
+                # injected token preferred; falsy (None/"") falls back to file-resolved creds
+                access_token = (
+                    self.subscription_token
+                    or resolve_subscription_credentials("openai-codex").access_token
+                )
                 return self.transport.post_json(
                     f"{self.config.base_url.rstrip('/')}/responses",
-                    _codex_headers(credentials.access_token),
+                    _codex_headers(access_token),
                     payload,
                     self.config.timeout_seconds,
                 )

@@ -990,3 +990,47 @@ def test_openai_compatible_client_raises_after_retries(monkeypatch: Any) -> None
         raise AssertionError("expected URLError after retries")
 
     assert len(transport.calls) == 2
+
+
+def test_codex_client_prefers_injected_token(monkeypatch: Any, tmp_path: Path) -> None:
+    # No ~/.codex auth file: if the client fell back to file resolution it would raise.
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    injected = _jwt_with_exp(
+        int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp()),
+        account_id="acct-injected",
+    )
+    transport = FakeHttpTransport(
+        [
+            {
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": json.dumps(
+                                    {"fields": [{"field_id": "cash", "status": "missing"}]}
+                                ),
+                            }
+                        ],
+                    }
+                ]
+            }
+        ]
+    )
+    client = create_llm_client(
+        LlmTransportConfig(
+            provider="openai-codex",
+            model="gpt-5.3-codex",
+            base_url="https://chatgpt.com/backend-api/codex",
+            api_key_env="",
+        ),
+        transport=transport,
+        subscription_token=injected,
+    )
+    client.extract(PromptRequest(field_id="cash", candidates=()))
+
+    _url, headers, _payload, _timeout = transport.calls[0]
+    assert headers["Authorization"] == f"Bearer {injected}"
+    assert headers["ChatGPT-Account-ID"] == "acct-injected"

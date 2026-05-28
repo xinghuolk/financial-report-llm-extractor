@@ -89,6 +89,7 @@ class ExtractorConfig:
     db_path: Path | None = None
     catalog_path: Path | None = None
     taxonomy_path: Path | None = None
+    subscription_token: str | None = None
 
 
 @dataclass(frozen=True)
@@ -457,6 +458,7 @@ class FinancialReportClient:
                 ),
                 force=(refresh_policy == RefreshPolicy.FORCE_REFRESH),
                 no_cache=False,
+                subscription_token=self.config.subscription_token,
             )
         except Exception as exc:
             # Distinguish fetch vs evaluate failures by heuristic on exc type
