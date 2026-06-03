@@ -1001,6 +1001,8 @@ def test_merge_llm_evidence_supplement_promotes_missing_to_present(
         "schema_version": "llm-evidence-supplement-v1",
         "company_id": "00001",
         "pdf_path": "x.pdf",
+        "llm_provider": "codex",
+        "llm_model": "gpt-5.5",
         "extracted_at": "2026-05-08T00:00:00",
         "summary": {},
         "items": {
@@ -1022,6 +1024,10 @@ def test_merge_llm_evidence_supplement_promotes_missing_to_present(
     assert "llm_supplemented" in merged.items["rd_exp"].review_notes
     assert merged.items["rd_exp"].selected_source == "llm"
     assert merged.items["rd_exp"].verification_required
+    assert merged.llm_provider == "codex"
+    assert merged.llm_model == "gpt-5.5"
+    assert merged.to_dict()["llm_provider"] == "codex"
+    assert merged.to_dict()["llm_model"] == "gpt-5.5"
     # revenue must NOT be overridden
     assert merged.items["revenue"].value == Decimal("100")
 

@@ -101,6 +101,8 @@ class SourceFirstExportResult:
     catalog_id: str
     catalog_version: str
     items: dict[str, SourceFirstExportItem]
+    llm_provider: str | None = None
+    llm_model: str | None = None
 
     @property
     def summary(self) -> dict[str, object]:
@@ -111,6 +113,8 @@ class SourceFirstExportResult:
             "profile": self.profile,
             "catalog_id": self.catalog_id,
             "catalog_version": self.catalog_version,
+            "llm_provider": self.llm_provider,
+            "llm_model": self.llm_model,
             "items": {
                 field_id: self.items[field_id].to_dict()
                 for field_id in sorted(self.items)

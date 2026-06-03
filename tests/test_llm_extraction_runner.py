@@ -444,6 +444,29 @@ def test_write_llm_evidence_supplement_produces_well_formed_artifact(
     assert item["page"] == 4
 
 
+def test_write_llm_evidence_supplement_persists_llm_metadata(
+    tmp_path: Path,
+) -> None:
+    result = LlmExtractionRunResult(
+        pdf_path=Path("test.pdf"),
+        company_id="TEST",
+        chunk_count=0,
+        fields_attempted=(),
+        fields_present=(),
+        fields_not_found=(),
+        fields_failed=(),
+        artifact_path=tmp_path / "llm_evidence_supplement.json",
+        llm_provider="codex",
+        llm_model="gpt-5.5",
+    )
+
+    written_path = write_llm_evidence_supplement(result)
+
+    payload = json.loads(written_path.read_text(encoding="utf-8"))
+    assert payload["llm_provider"] == "codex"
+    assert payload["llm_model"] == "gpt-5.5"
+
+
 # ---------------------------------------------------------------------------
 # Task 5: load_chunks_jsonl helper
 # ---------------------------------------------------------------------------

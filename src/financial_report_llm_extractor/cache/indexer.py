@@ -39,9 +39,13 @@ def index_run(
     payload = json.loads(eval_path.read_text(encoding="utf-8"))
 
     supplement_items: dict[str, dict[str, Any]] = {}
+    llm_provider: str | None = None
+    llm_model: str | None = None
     supp_path = run_dir / "llm_evidence_supplement.json"
     if supp_path.exists():
         supp_payload = json.loads(supp_path.read_text(encoding="utf-8"))
+        llm_provider = _optional_text(supp_payload.get("llm_provider"))
+        llm_model = _optional_text(supp_payload.get("llm_model"))
         items = supp_payload.get("items", {})
         if isinstance(items, dict):
             supplement_items = {
@@ -83,7 +87,7 @@ def index_run(
             (
                 company, period_end, market, report_type,
                 effective_catalog_version, schema_version, generated_at,
-                str(run_dir), None, None,
+                str(run_dir), llm_provider, llm_model,
             ),
         )
 
@@ -193,3 +197,8 @@ def _truncate(text: Any, max_chars: int) -> str | None:
         return None
     s = str(text)
     return s if len(s) <= max_chars else s[: max_chars - 1] + "…"
+
+
+def _optional_text(value: Any) -> str | None:
+    text = str(value).strip() if value is not None else ""
+    return text or None

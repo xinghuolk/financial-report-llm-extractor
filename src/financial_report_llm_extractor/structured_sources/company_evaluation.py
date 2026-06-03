@@ -8,7 +8,7 @@ field) inputs; no global hardcoded field lists.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -492,8 +492,9 @@ def _run_llm_supplement_step(
         )
     chunks = load_chunks_jsonl(chunks_path)
 
+    config = LlmTransportConfig.from_json(llm_config_path)
+    llm_provider, llm_model = _llm_metadata_from_config_path(llm_config_path)
     if json_client is None:
-        config = LlmTransportConfig.from_json(llm_config_path)
         json_client = create_llm_client(
             config, cache_root=cache_root, subscription_token=subscription_token
         )
@@ -508,7 +509,26 @@ def _run_llm_supplement_step(
         out_dir=out_dir,
         priorities=priorities,
     )
+    result = replace(
+        result,
+        llm_provider=llm_provider or config.provider,
+        llm_model=llm_model or str(config.model),
+    )
     write_llm_evidence_supplement(result)
+
+
+def _llm_metadata_from_config_path(
+    llm_config_path: Path,
+) -> tuple[str | None, str | None]:
+    payload = json.loads(llm_config_path.read_text(encoding="utf-8"))
+    provider = _non_empty_string(payload.get("provider"))
+    model = _non_empty_string(payload.get("model"))
+    return provider, model
+
+
+def _non_empty_string(value: object) -> str | None:
+    text = str(value).strip() if value is not None else ""
+    return text or None
 
 
 def _evaluation_to_dict(

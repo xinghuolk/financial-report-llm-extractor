@@ -47,6 +47,43 @@ def test_index_run_inserts_extractions_row(tmp_path: Path) -> None:
     assert rows[0][:5] == ("600519", "2024-12-31", "CN", "annual", "2026-05-02")
 
 
+def test_index_run_persists_llm_metadata_from_supplement(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "extracted.db"
+    init_db(db_path)
+    run_dir = tmp_path / "run_with_llm_metadata"
+    run_dir.mkdir()
+    (run_dir / "evaluation.json").write_text(
+        (FIXTURE_DIR / "evaluation.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    supplement_payload = json.loads(
+        (FIXTURE_DIR / "llm_evidence_supplement.json").read_text(encoding="utf-8")
+    )
+    supplement_payload["llm_provider"] = "codex"
+    supplement_payload["llm_model"] = "gpt-5.5"
+    (run_dir / "llm_evidence_supplement.json").write_text(
+        json.dumps(supplement_payload), encoding="utf-8",
+    )
+
+    index_run(
+        run_dir=run_dir,
+        db_path=db_path,
+        catalog_version="2026-05-02",
+        priority_map=PRIORITY_MAP,
+    )
+
+    conn = sqlite3.connect(db_path)
+    try:
+        row = conn.execute(
+            "SELECT llm_provider, llm_model FROM extractions"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row == ("codex", "gpt-5.5")
+
+
 def test_index_run_clean_present_value_from_evaluation(tmp_path: Path) -> None:
     """clean_present bucket: value comes from evaluation.json directly."""
     db_path = tmp_path / "extracted.db"

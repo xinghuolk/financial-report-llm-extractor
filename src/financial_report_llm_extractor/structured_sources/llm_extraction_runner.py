@@ -155,6 +155,8 @@ class LlmExtractionRunResult:
     fields_not_found: tuple[str, ...]
     fields_failed: tuple[str, ...]
     artifact_path: Path
+    llm_provider: str | None = None
+    llm_model: str | None = None
     items: dict[str, FieldExtractionResult] = field(default_factory=dict)
 
 
@@ -297,6 +299,8 @@ def write_llm_evidence_supplement(result: LlmExtractionRunResult) -> Path:
       "schema_version": "llm-evidence-supplement-v1",
       "company_id": str,
       "pdf_path": str,
+      "llm_provider": str | null,
+      "llm_model": str | null,
       "extracted_at": ISO8601 string,
       "summary": {fields_attempted, fields_present, fields_not_found,
                   fields_failed, chunk_count},
@@ -309,6 +313,8 @@ def write_llm_evidence_supplement(result: LlmExtractionRunResult) -> Path:
         "schema_version": SCHEMA_VERSION,
         "company_id": result.company_id,
         "pdf_path": str(result.pdf_path),
+        "llm_provider": result.llm_provider,
+        "llm_model": result.llm_model,
         "extracted_at": datetime.now(timezone.utc).isoformat(),
         "summary": {
             "chunk_count": result.chunk_count,

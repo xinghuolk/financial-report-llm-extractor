@@ -446,6 +446,82 @@ def test_render_markdown_shows_candidate_values_for_clean_present_with_multi_sou
     assert "akshare" in md
 
 
+def test_run_llm_supplement_step_persists_metadata_from_config(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    import json
+
+    from financial_report_llm_extractor.structured_sources import (
+        company_evaluation,
+        llm_extraction_runner,
+    )
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        LlmExtractionRunResult,
+    )
+
+    chunks_path = tmp_path / "ingest" / "chunks.jsonl"
+    chunks_path.parent.mkdir()
+    chunks_path.write_text(
+        '{"chunk_id": "c1", "page": 1, "text": "revenue 100"}\n',
+        encoding="utf-8",
+    )
+    llm_config_path = tmp_path / "llm.json"
+    llm_config_path.write_text(
+        json.dumps(
+            {
+                "provider": "codex",
+                "model": "gpt-5.5",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    captured: dict[str, str | None] = {}
+
+    def fake_extract_for_chunks(**kwargs: Any) -> LlmExtractionRunResult:
+        return LlmExtractionRunResult(
+            pdf_path=kwargs["pdf_path"],
+            company_id=kwargs["company_id"],
+            chunk_count=len(kwargs["chunks"]),
+            fields_attempted=(),
+            fields_present=(),
+            fields_not_found=(),
+            fields_failed=(),
+            artifact_path=kwargs["out_dir"] / "llm_evidence_supplement.json",
+        )
+
+    def fake_write_llm_evidence_supplement(result: LlmExtractionRunResult) -> Path:
+        captured["llm_provider"] = result.llm_provider
+        captured["llm_model"] = result.llm_model
+        return result.artifact_path
+
+    monkeypatch.setattr(
+        llm_extraction_runner, "extract_for_chunks", fake_extract_for_chunks
+    )
+    monkeypatch.setattr(
+        llm_extraction_runner,
+        "write_llm_evidence_supplement",
+        fake_write_llm_evidence_supplement,
+    )
+
+    company_evaluation._run_llm_supplement_step(
+        company="TEST",
+        pdf_path=Path("test.pdf"),
+        llm_config_path=llm_config_path,
+        catalog=_build_minimal_catalog(),
+        taxonomy=_build_minimal_taxonomy(),
+        priorities=("P0",),
+        out_dir=tmp_path,
+        json_client=object(),  # type: ignore[arg-type]
+    )
+
+    assert captured == {
+        "llm_provider": "codex",
+        "llm_model": "gpt-5.5",
+    }
+
+
 def test_orchestrator_with_fake_stack_writes_all_artifacts(
     tmp_path: Path,
 ) -> None:

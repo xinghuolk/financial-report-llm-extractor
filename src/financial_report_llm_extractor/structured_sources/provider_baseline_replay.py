@@ -713,8 +713,15 @@ def _merge_llm_evidence_supplement(
         profile=export.profile,
         catalog_id=export.catalog_id,
         catalog_version=export.catalog_version,
+        llm_provider=_optional_text(payload.get("llm_provider")) or export.llm_provider,
+        llm_model=_optional_text(payload.get("llm_model")) or export.llm_model,
         items=new_items,
     )
+
+
+def _optional_text(value: object) -> str | None:
+    text = str(value).strip() if value is not None else ""
+    return text or None
 
 
 def _export_coverage(export: SourceFirstExportResult) -> dict[str, object]:
