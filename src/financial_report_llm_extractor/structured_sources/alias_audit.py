@@ -172,7 +172,7 @@ def audit_chunks(
     prepared_blocks: list[tuple[dict[str, object], PreparedText]] = [
         (c, prepare_text(str(c.get("text", "") or ""))) for c in blocks
     ]
-    section_pages = statement_section_pages(blocks)
+    section_pages = statement_section_pages(chunks)
     # Shared across fields so flag-on selection doesn't re-fold every chunk
     # per field; seeded with the block folds already computed above.
     prepared_cache: dict[str, PreparedText] = {
