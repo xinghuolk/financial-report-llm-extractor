@@ -17,7 +17,7 @@ resolves the rule-ordering asymmetry flagged in spec review.
 from __future__ import annotations
 
 _STOP_TOKENS = frozenset({"the", "a", "an"})
-_APOSTROPHES = ("'", "'")
+_APOSTROPHES = ("'", "’")
 _EDGE_PUNCT = ",.;:()\""
 
 

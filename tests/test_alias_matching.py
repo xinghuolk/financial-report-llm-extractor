@@ -14,7 +14,7 @@ def test_normalize_folds_apostrophes() -> None:
     # ASCII and U+2019; apostrophe fold happens before plural fold,
     # so auditor's -> auditors -> auditor.
     assert normalize_phrase("auditor's opinion") == "auditor opinion"
-    assert normalize_phrase("auditor's opinion") == "auditor opinion"
+    assert normalize_phrase("auditor’s opinion") == "auditor opinion"
 
 
 def test_normalize_folds_hyphens_to_spaces() -> None:
