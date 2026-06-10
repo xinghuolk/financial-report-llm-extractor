@@ -234,7 +234,18 @@ uv run pytest -v && uv run ruff check . && uv run mypy src tests
 
 5. 写 recon doc（如果是新 phase）：`docs/phase_hk_b_X_recon.md` 记录 PDF
    samples + 决策 + 例外情况
-6. Commit 按项目惯例：`feat: phase hk-b.X - <field> <action> (<n-issuer> promotion)`
+6. 更新别名命中台账（run + 审计跑完后）：
+
+   ```bash
+   financial-report-llm-extractor index-alias-matches \
+     --runs tmp/runs/<run-dir> --audits tmp/runs/<audit-dir>
+   ```
+
+   写入 `field_catalog/alias_match_ledger.{json,md}`（derived view，可重建）。
+   catalog 加别名时引用台账证据；转正建议用 `--emit-promotion-review <dir>`
+   产出 review 工件（与 provider 侧 expansion review 同格式）。
+   注意：审计要进台账必须带 `--company/--market/--year` 元数据。
+7. Commit 按项目惯例：`feat: phase hk-b.X - <field> <action> (<n-issuer> promotion)`
 
 ## 常见陷阱（按出现频率）
 

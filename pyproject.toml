@@ -33,5 +33,15 @@ disallow_untyped_defs = true
 warn_return_any = true
 warn_unused_configs = true
 
+# Per-file force-include: hatchling does NOT honor `exclude` against
+# force-include, so the derived alias_match_ledger.{json,md} (run-history
+# data, regenerable) is kept out of the wheel by listing the real catalog
+# files explicitly. New catalog files must be added here.
 [tool.hatch.build.targets.wheel.force-include]
-"field_catalog" = "financial_report_llm_extractor/_catalog_data"
+"field_catalog/hk_yahoo_trust_policy.json" = "financial_report_llm_extractor/_catalog_data/hk_yahoo_trust_policy.json"
+"field_catalog/provider_raw_semantics_cn.json" = "financial_report_llm_extractor/_catalog_data/provider_raw_semantics_cn.json"
+"field_catalog/provider_raw_semantics_hk.json" = "financial_report_llm_extractor/_catalog_data/provider_raw_semantics_hk.json"
+"field_catalog/turtle_v015_coverage_matrix.json" = "financial_report_llm_extractor/_catalog_data/turtle_v015_coverage_matrix.json"
+"field_catalog/turtle_v015_field_taxonomy.json" = "financial_report_llm_extractor/_catalog_data/turtle_v015_field_taxonomy.json"
+"field_catalog/turtle_v015_priority_fields.json" = "financial_report_llm_extractor/_catalog_data/turtle_v015_priority_fields.json"
+"field_catalog/turtle_v015_source_mapping_minimal.json" = "financial_report_llm_extractor/_catalog_data/turtle_v015_source_mapping_minimal.json"
