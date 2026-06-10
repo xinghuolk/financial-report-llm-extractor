@@ -147,6 +147,74 @@ def select_chunks(
     return selected
 
 
+# Bilingual (EN + 中文) anchor phrases that identify a statement section, used
+# by the absence_means_zero fallback. Phrases are pre-lowercased; matching is
+# case-insensitive and whitespace-normalized. Kept deliberately specific
+# ("statement of cash flows", not bare "cash flow") so an incidental mention in
+# prose does not masquerade as the section itself.
+_STATEMENT_SECTION_ANCHORS: dict[str, tuple[str, ...]] = {
+    "income_statement": (
+        "income statement",
+        "statement of profit or loss",
+        "statement of comprehensive income",
+        "综合损益表",
+        "利润表",
+        "损益表",
+    ),
+    "balance_sheet": (
+        "balance sheet",
+        "statement of financial position",
+        "资产负债表",
+        "财务状况表",
+    ),
+    "cash_flow": (
+        "statement of cash flows",
+        "cash flow statement",
+        "financing activities",
+        "现金流量表",
+        "筹资活动",
+        "融资活动",
+    ),
+}
+
+
+def select_statement_section_chunks(
+    chunks: list[dict[str, object]],
+    target: LlmExtractionTarget,
+    *,
+    top_k: int = 8,
+) -> list[dict[str, object]]:
+    """Fallback chunk selection for ``absence_means_zero`` fields.
+
+    When a field's own aliases match no chunk, the line is plausibly a genuine
+    zero rather than missing — but the LLM can only confirm that if it sees the
+    enclosing statement section. This selects chunks belonging to
+    ``target.statement_type``, preferring explicit ``statement_type`` chunk
+    metadata when present, otherwise matching the section's anchor phrases in
+    chunk text (bilingual EN/中文). Returns an empty list when the section is
+    not represented at all, which the runner treats as a real not_found.
+    """
+    anchors = _STATEMENT_SECTION_ANCHORS.get(target.statement_type, ())
+    if not anchors:
+        return []
+    anchors_norm = [_normalize_whitespace(a) for a in anchors]
+    scored: list[tuple[int, dict[str, object]]] = []
+    for chunk in chunks:
+        st = chunk.get("statement_type")
+        if st is not None and str(st) == target.statement_type:
+            # Explicit metadata match dominates anchor-text scoring.
+            scored.append((1_000_000, chunk))
+            continue
+        text_norm = _normalize_whitespace(
+            str(chunk.get("text", "") or "").lower()
+        )
+        score = sum(text_norm.count(a) for a in anchors_norm)
+        if score > 0:
+            scored.append((score, chunk))
+    scored.sort(key=lambda x: -x[0])
+    return [c for _, c in scored[:top_k]]
+
+
 @dataclass(frozen=True)
 class LlmExtractionRunResult:
     pdf_path: Path
@@ -215,6 +283,14 @@ def extract_for_chunks(
         field_dir.mkdir(parents=True, exist_ok=True)
 
         selected = select_chunks(chunks, target)
+
+        if not selected and target.absence_means_zero:
+            # The line (and its aliases) is absent. For absence_means_zero
+            # fields that can be a genuine 0, fall back to the enclosing
+            # statement section so the LLM's zero_inference can fire — an empty
+            # alias match would otherwise bail to not_found before the request
+            # is ever built.
+            selected = select_statement_section_chunks(chunks, target)
 
         if not selected:
             item = FieldExtractionResult(

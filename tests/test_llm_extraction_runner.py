@@ -28,6 +28,7 @@ from financial_report_llm_extractor.structured_sources.llm_extraction_runner imp
     extract_for_chunks,
     load_chunks_jsonl,
     select_chunks,
+    select_statement_section_chunks,
     write_llm_evidence_supplement,
 )
 
@@ -168,6 +169,128 @@ def test_extract_for_chunks_threads_absence_means_zero_into_prompt(
     )
 
     assert "zero_inference" in captured
+
+
+def test_extract_for_chunks_absence_zero_falls_back_to_statement_section(
+    tmp_path: Path,
+) -> None:
+    """The genuine absence_means_zero case: the buyback line (and its aliases)
+    is absent from the PDF, so alias selection matches nothing. The runner must
+    fall back to the field's statement section so the LLM still receives the
+    zero_inference instruction and can return a real 0 — instead of bailing to
+    not_found before the request is ever built.
+    """
+    catalog = _catalog([
+        _entry(
+            "repurchase_of_stock",
+            pdf_aliases=("repurchase of capital stock", "share buyback"),
+            statement_type="cash_flow",
+            absence_means_zero=True,
+        ),
+    ])
+    taxonomy = _taxonomy([
+        _tax_entry("repurchase_of_stock", statement_type="cash_flow"),
+    ])
+    # Cash-flow section IS present, but it lists no buyback line / alias.
+    chunks = [
+        _chunk(
+            "c1", 240,
+            "Consolidated statement of cash flows. "
+            "Net cash used in financing activities (33,434)",
+        ),
+        _chunk("c2", 10, "Unrelated note about segment revenue 507,297"),
+    ]
+
+    captured: dict[str, object] = {}
+
+    class _CapturingClient:
+        def complete_json(
+            self, *, system_prompt: str, user_payload: dict[str, object],
+        ) -> dict[str, object]:
+            captured.update(user_payload)
+            return {"field_id": "repurchase_of_stock", "found": True, "value": "0"}
+
+    result = extract_for_chunks(
+        chunks=chunks,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        client=_CapturingClient(),
+        company_id="TEST",
+        pdf_path=Path("test.pdf"),
+        out_dir=tmp_path,
+    )
+
+    # Fallback fired: the LLM was invoked with zero_inference on the section,
+    # and the field resolved to a real 0 rather than not_found.
+    assert "zero_inference" in captured
+    assert "repurchase_of_stock" in result.fields_present
+    assert result.items["repurchase_of_stock"].value == "0"
+
+
+def test_extract_for_chunks_absence_zero_stays_not_found_without_section(
+    tmp_path: Path,
+) -> None:
+    """If the statement section itself is absent from the chunks, the fallback
+    finds nothing and the field stays not_found — the LLM is never invoked
+    (no section means no basis to infer a zero)."""
+    catalog = _catalog([
+        _entry(
+            "repurchase_of_stock",
+            pdf_aliases=("repurchase of capital stock",),
+            statement_type="cash_flow",
+            absence_means_zero=True,
+        ),
+    ])
+    taxonomy = _taxonomy([
+        _tax_entry("repurchase_of_stock", statement_type="cash_flow"),
+    ])
+    # No cash-flow section anchor and no alias anywhere.
+    chunks = [_chunk("c1", 10, "Notes to inventory valuation 1,234")]
+
+    class _NeverClient:
+        def complete_json(
+            self, *, system_prompt: str, user_payload: dict[str, object],
+        ) -> dict[str, object]:
+            raise AssertionError("LLM must not be called without a section")
+
+    result = extract_for_chunks(
+        chunks=chunks,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        client=_NeverClient(),
+        company_id="TEST",
+        pdf_path=Path("test.pdf"),
+        out_dir=tmp_path,
+    )
+
+    assert "repurchase_of_stock" in result.fields_not_found
+
+
+def test_select_statement_section_chunks_matches_anchors() -> None:
+    """The section fallback selects chunks by bilingual statement anchors and
+    by explicit chunk statement_type metadata when present."""
+    target = LlmExtractionTarget(
+        field_id="repurchase_of_stock",
+        field_description="d",
+        statement_type="cash_flow",
+        value_type="money",
+        aliases=("repurchase of capital stock",),
+        chunk_strategy="alias_top_k",
+        absence_means_zero=True,
+    )
+    chunks = [
+        _chunk("en", 1, "Consolidated statement of cash flows ... financing activities"),
+        _chunk("zh", 2, "综合现金流量表 筹资活动产生的现金流量"),
+        _chunk("meta", 3, "tabular numbers only", statement_type="cash_flow"),
+        _chunk("other", 4, "Consolidated balance sheet: total assets"),
+    ]
+
+    selected_ids = {
+        c["chunk_id"]
+        for c in select_statement_section_chunks(chunks, target)
+    }
+
+    assert selected_ids == {"en", "zh", "meta"}
 
 
 def test_derive_targets_skips_fields_without_pdf_aliases() -> None:
