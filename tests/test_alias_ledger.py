@@ -142,3 +142,36 @@ def test_save_load_roundtrip_byte_stable(tmp_path: Path) -> None:
     assert data["schema_version"] == "alias_ledger_v1"
     assert "regenerable" in data["note"]
     assert "generated_at" not in data  # timestamp-free by design
+
+
+def test_load_ledger_schema_drift_returns_fresh(tmp_path: Path) -> None:
+    p = tmp_path / "ledger.json"
+    p.write_text(json.dumps({"schema_version": "alias_ledger_v0",
+                              "fields": {"x": {}}}))
+    ledger = load_ledger(p)
+    assert ledger["fields"] == {}
+    assert ledger["schema_version"] == "alias_ledger_v1"
+
+
+def test_byte_stable_with_audit_entries(tmp_path: Path) -> None:
+    run = _write_run_dir(tmp_path)
+    audit = _write_audit_dir(tmp_path)
+    ledger = new_ledger()
+    index_run_dir(ledger, run)
+    index_audit_dir(ledger, audit)
+    p = tmp_path / "ledger.json"
+    save_ledger(ledger, p)
+    first = p.read_bytes()
+    ledger2 = load_ledger(p)
+    index_run_dir(ledger2, run)
+    index_audit_dir(ledger2, audit)
+    save_ledger(ledger2, p)
+    assert p.read_bytes() == first
+
+
+def test_index_run_dir_warns_on_bad_period_end(tmp_path: Path) -> None:
+    run = _write_run_dir(tmp_path, period_end="")
+    ledger = new_ledger()
+    warnings = index_run_dir(ledger, run)
+    assert len(warnings) == 1 and "period_end" in warnings[0]
+    assert ledger["fields"] == {}

@@ -99,9 +99,20 @@ def index_run_dir(ledger: Ledger, run_dir: Path) -> list[str]:
     ev = json.loads(eval_path.read_text(encoding="utf-8"))
     company = str(ev["company"])
     market = str(ev["market"])
-    year = int(str(ev["period_end"])[:4])
+    try:
+        year = int(str(ev["period_end"])[:4])
+    except (ValueError, TypeError):
+        return [
+            f"{run_dir}: period_end {ev.get('period_end')!r} not parseable "
+            f"as year, skipped"
+        ]
     supp = json.loads(supp_path.read_text(encoding="utf-8"))
-    for field_id, item in supp.get("items", {}).items():
+    raw_items = supp.get("items")
+    if not isinstance(raw_items, dict):
+        return [f"{run_dir}: supplement 'items' is not a dict, skipped"]
+    for field_id, item in raw_items.items():
+        if not isinstance(item, dict):
+            continue
         if item.get("status") != "present":
             continue
         _upsert(ledger, field_id, LLM_KEY, {
@@ -132,6 +143,9 @@ def index_audit_dir(ledger: Ledger, audit_dir: Path) -> list[str]:
             str(s).lower(): str(s) for s in fr.get("suggested_aliases", [])
         }
         for hit in fr.get("hits", []):
+            alias = hit.get("alias")
+            if alias is None:
+                continue
             entry: dict[str, Any] = {
                 "company": str(company), "year": int(year),
                 "page": hit.get("page"),
@@ -145,7 +159,7 @@ def index_audit_dir(ledger: Ledger, audit_dir: Path) -> list[str]:
                     _EDGE_PUNCT).lower()
                 if stripped in suggested_by_text:
                     entry["suggested"] = stripped
-            _upsert(ledger, field_id, str(hit.get("alias")), entry)
+            _upsert(ledger, field_id, str(alias), entry)
         ledger["audit_statuses"].setdefault(field_id, {}).setdefault(
             str(market), {},
         )[str(company)] = str(fr.get("status"))
