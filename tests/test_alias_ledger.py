@@ -449,3 +449,20 @@ def test_terminal_excluded_when_llm_extracts_field() -> None:
         min_companies=2,
     )
     assert signals["terminal_candidates"] == []
+
+
+def test_provider_only_run_populates_provider_resolved(tmp_path: Path) -> None:
+    """Re-review finding 4: a provider-only run (evaluation.json, no LLM
+    supplement) must still record provider_resolved — otherwise PDF no_hit
+    audits create false terminal candidates for provider-clean fields."""
+    run = _write_run_dir(tmp_path)
+    (run / "llm_evidence_supplement.json").unlink()
+    ev = json.loads((run / "evaluation.json").read_text())
+    ev["fields"] = {"revenue": {"bucket": "clean_present"}}
+    (run / "evaluation.json").write_text(json.dumps(ev))
+
+    ledger = new_ledger()
+    warnings = index_run_dir(ledger, run)
+    assert warnings == []
+    assert ledger["provider_resolved"] == {"revenue": {"HK": ["00001"]}}
+    assert ledger["fields"] == {}

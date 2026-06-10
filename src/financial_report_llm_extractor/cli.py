@@ -1229,9 +1229,12 @@ def main(argv: list[str] | None = None) -> int:
         warnings: list[str] = []
 
         def _candidates(root: Path) -> list[Path]:
-            if (root / "alias_audit.json").exists() or (
-                root / "llm_evidence_supplement.json"
-            ).exists():
+            sentinels = (
+                "alias_audit.json",
+                "llm_evidence_supplement.json",
+                "evaluation.json",  # provider-only runs have no supplement
+            )
+            if any((root / name).exists() for name in sentinels):
                 return [root]
             return sorted(
                 p for p in root.iterdir()

@@ -96,16 +96,22 @@ def _upsert(ledger: Ledger, field_id: str, alias: str,
 
 
 def index_run_dir(ledger: Ledger, run_dir: Path) -> list[str]:
-    """Index one run dir's LLM supplement. Returns warnings."""
+    """Index one run dir: provider_resolved from evaluation.json, then the
+    LLM supplement when present. Returns warnings.
+
+    Provider-only runs (evaluation.json without a supplement) are a valid
+    source-first shape and MUST still populate provider_resolved — the
+    terminal-candidate gate depends on it.
+    """
     supp_path = run_dir / "llm_evidence_supplement.json"
     eval_path = run_dir / "evaluation.json"
-    if not supp_path.exists():
-        return [f"{run_dir}: no llm_evidence_supplement.json, skipped"]
     if not eval_path.exists():
-        return [
-            f"{run_dir}: supplement without evaluation.json "
-            f"(company/year/market join impossible), skipped"
-        ]
+        if supp_path.exists():
+            return [
+                f"{run_dir}: supplement without evaluation.json "
+                f"(company/year/market join impossible), skipped"
+            ]
+        return [f"{run_dir}: no evaluation.json, skipped"]
     ev = json.loads(eval_path.read_text(encoding="utf-8"))
     company = str(ev["company"])
     market = str(ev["market"])
@@ -128,6 +134,9 @@ def index_run_dir(ledger: Ledger, run_dir: Path) -> list[str]:
             ).setdefault(market, [])
             if company not in cos:
                 cos.append(company)
+    if not supp_path.exists():
+        # provider-only run: provider_resolved recorded above, no LLM hits
+        return []
     supp = json.loads(supp_path.read_text(encoding="utf-8"))
     raw_items = supp.get("items")
     if not isinstance(raw_items, dict):

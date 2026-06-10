@@ -502,3 +502,36 @@ def test_cli_audit_accepts_chunks_matching_pdf_hash(tmp_path: Path) -> None:
     rc = main(["audit-pdf-aliases", "--pdf", str(pdf), "--out", str(out)])
     assert rc == 0
     assert (out / "alias_audit.json").exists()
+
+
+def test_continuation_page_hits_stay_exact_not_prose(tmp_path: Path) -> None:
+    """Review F2 regression: an exact hit on a statement continuation page
+    (title not repeated) must classify exact_hit when an anchored
+    statement-table range covers the page; unanchored chunker-noise ranges
+    must not extend sections."""
+    catalog = _catalog([
+        _entry("c_paid_for_taxes", pdf_aliases=("tax paid",),
+               statement_type="cash_flow"),
+    ])
+    taxonomy = _taxonomy([
+        _tax("c_paid_for_taxes", statement_type="cash_flow"),
+    ])
+    chunks: list[dict[str, object]] = [
+        _block("b1", 141, "Consolidated statement of cash flows"),
+        _block("b2", 142, "Tax paid (5,571) continuation rows, no title"),
+        {"chunk_id": "stmt_cash_flow_p0141_p0142", "record_type": "chunk",
+         "statement_kind": "cash_flow", "page_start": "141",
+         "page_end": "142", "text": "..."},
+        # chunker noise: unanchored balance_sheet range must NOT extend
+        {"chunk_id": "stmt_balance_sheet_p0003_p0009", "record_type": "chunk",
+         "statement_kind": "balance_sheet", "page_start": "3",
+         "page_end": "9", "text": "..."},
+    ]
+    r = audit_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        priorities=("P0",), pdf_path=Path("f.pdf"),
+    )
+    fr = r.fields["c_paid_for_taxes"]
+    assert fr.status == "exact_hit"
+    assert r.section_anchor_coverage["cash_flow"] == (141, 142)
+    assert r.section_anchor_coverage["balance_sheet"] == ()
