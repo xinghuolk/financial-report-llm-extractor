@@ -299,3 +299,60 @@ def test_promotion_not_fired_across_markets() -> None:
         min_companies=2,
     )
     assert signals["promotion_candidates"] == []
+
+
+def test_emit_promotion_review_compatible_shape(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.structured_sources.alias_ledger import (
+        emit_promotion_review,
+    )
+    ledger = _signal_ledger()
+    emit_promotion_review(
+        ledger,
+        catalog_aliases={"receivables_aging": (
+            "ageing analysis of trade receivables",)},
+        output_dir=tmp_path,
+        min_companies=2,
+    )
+    data = json.loads((tmp_path / "alias_promotion_review.json").read_text())
+    assert data["report_id"] == "alias_promotion_review"
+    promoted = data["promoted"]
+    assert promoted == [{
+        "field_id": "receivables_aging",
+        "source": "pdf",
+        "raw_field_name": "ageing analysis of the trade receivables",
+        "raw_field_code": None,
+        "action": "promote",
+        "reason": "normalized phrase hit in 2 HK companies (00001, 01113)",
+        "aliases": ["ageing analysis of the trade receivables"],
+    }]
+    assert (tmp_path / "alias_promotion_review.md").exists()
+
+
+def test_cli_index_alias_matches_end_to_end(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    runs = tmp_path / "runs"
+    _write_run_dir(runs)
+    audits = tmp_path / "audits"
+    _write_audit_dir(audits)
+    ledger_path = tmp_path / "ledger.json"
+
+    rc = main([
+        "index-alias-matches",
+        "--runs", str(runs),
+        "--audits", str(audits),
+        "--ledger", str(ledger_path),
+        "--emit-promotion-review", str(tmp_path / "promo"),
+    ])
+    assert rc == 0
+    data = json.loads(ledger_path.read_text())
+    assert "bond_payable" in data["fields"]
+    assert "receivables_aging" in data["fields"]
+    assert (ledger_path.with_suffix(".md")).exists()
+    # idempotent rerun: byte-identical ledger
+    first = ledger_path.read_bytes()
+    rc2 = main([
+        "index-alias-matches", "--runs", str(runs),
+        "--audits", str(audits), "--ledger", str(ledger_path),
+    ])
+    assert rc2 == 0 and ledger_path.read_bytes() == first

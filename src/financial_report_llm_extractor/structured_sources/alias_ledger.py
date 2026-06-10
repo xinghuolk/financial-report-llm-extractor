@@ -277,3 +277,53 @@ def write_ledger_views(
                      f"{', '.join(t['no_hit_companies'])} |")
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def emit_promotion_review(
+    ledger: Ledger,
+    *,
+    catalog_aliases: dict[str, tuple[str, ...]],
+    output_dir: Path,
+    min_companies: int = 2,
+) -> None:
+    """Emit alias_promotion_review.json + .md, shape-compatible with
+    source_mapping_expansion.CandidateDecision."""
+    signals = compute_signals(
+        ledger, catalog_aliases=catalog_aliases, min_companies=min_companies,
+    )
+    promoted = [
+        {
+            "field_id": p["field_id"],
+            "source": "pdf",
+            "raw_field_name": p["suggested_alias"],
+            "raw_field_code": None,
+            "action": "promote",
+            "reason": (
+                f"normalized phrase hit in {len(p['companies'])} "
+                f"{p['market']} companies ({', '.join(p['companies'])})"
+            ),
+            "aliases": [p["suggested_alias"]],
+        }
+        for p in signals["promotion_candidates"]
+    ]
+    payload = {
+        "report_id": "alias_promotion_review",
+        "ledger_note": ledger["note"],
+        "promoted": promoted,
+        "deferred": [],
+        "blocked": [],
+        "summary": {"promoted": len(promoted), "deferred": 0, "blocked": 0},
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "alias_promotion_review.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    lines = ["# Alias promotion review (review-gated)", "",
+             "| Field | Suggested alias | Reason |", "|---|---|---|"]
+    for p in promoted:
+        lines.append(f"| `{p['field_id']}` | {p['raw_field_name']} | "
+                     f"{p['reason']} |")
+    (output_dir / "alias_promotion_review.md").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8",
+    )
