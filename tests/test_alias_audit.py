@@ -344,3 +344,80 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
     assert r.fields["time_deposits_or_wealth_products"].status == "no_hit"
     # healthy field stays exact
     assert r.fields["revenue"].status == "exact_hit"
+
+
+def test_cli_audit_rejects_chunks_from_different_pdf(tmp_path: Path) -> None:
+    """Review F1: cached chunks built from another PDF must hard-fail, not
+    silently emit an audit attributed to the requested PDF."""
+    from financial_report_llm_extractor.cli import main
+
+    pdf = tmp_path / "real.pdf"
+    pdf.write_bytes(b"%PDF-1.4 fake content for hashing")
+    out = tmp_path / "audit_stale"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            rec = dict(c)
+            rec["source_pdf_hash"] = "deadbeef" * 8
+            f.write(_json.dumps(rec) + "\n")
+
+    rc = main([
+        "audit-pdf-aliases", "--pdf", str(pdf), "--out", str(out),
+    ])
+    assert rc == 2
+    assert not (out / "alias_audit.json").exists()
+
+
+def test_cli_audit_accepts_chunks_matching_pdf_hash(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cli import main
+    from financial_report_llm_extractor.ingestion import compute_sha256
+
+    pdf = tmp_path / "real.pdf"
+    pdf.write_bytes(b"%PDF-1.4 fake content for hashing")
+    out = tmp_path / "audit_match"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    h = compute_sha256(pdf)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            rec = dict(c)
+            rec["source_pdf_hash"] = h
+            f.write(_json.dumps(rec) + "\n")
+
+    rc = main(["audit-pdf-aliases", "--pdf", str(pdf), "--out", str(out)])
+    assert rc == 0
+    assert (out / "alias_audit.json").exists()
+
+
+def test_continuation_page_hits_stay_exact_not_prose(tmp_path: Path) -> None:
+    """Review F2 regression: an exact hit on a statement continuation page
+    (title not repeated) must classify exact_hit when an anchored
+    statement-table range covers the page; unanchored chunker-noise ranges
+    must not extend sections."""
+    catalog = _catalog([
+        _entry("c_paid_for_taxes", pdf_aliases=("tax paid",),
+               statement_type="cash_flow"),
+    ])
+    taxonomy = _taxonomy([
+        _tax("c_paid_for_taxes", statement_type="cash_flow"),
+    ])
+    chunks: list[dict[str, object]] = [
+        _block("b1", 141, "Consolidated statement of cash flows"),
+        _block("b2", 142, "Tax paid (5,571) continuation rows, no title"),
+        {"chunk_id": "stmt_cash_flow_p0141_p0142", "record_type": "chunk",
+         "statement_kind": "cash_flow", "page_start": "141",
+         "page_end": "142", "text": "..."},
+        # chunker noise: unanchored balance_sheet range must NOT extend
+        {"chunk_id": "stmt_balance_sheet_p0003_p0009", "record_type": "chunk",
+         "statement_kind": "balance_sheet", "page_start": "3",
+         "page_end": "9", "text": "..."},
+    ]
+    r = audit_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        priorities=("P0",), pdf_path=Path("f.pdf"),
+    )
+    fr = r.fields["c_paid_for_taxes"]
+    assert fr.status == "exact_hit"
+    assert r.section_anchor_coverage["cash_flow"] == (141, 142)
+    assert r.section_anchor_coverage["balance_sheet"] == ()

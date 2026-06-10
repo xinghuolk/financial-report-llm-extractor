@@ -97,12 +97,29 @@ def _chunk_id_of(chunk: dict[str, object]) -> str:
     return str(chunk.get("chunk_id") or chunk.get("block_id") or "")
 
 
+# Statements run a handful of pages; an anchored statement-table range longer
+# than this is chunker noise (its loose detection can span MD&A sections) and
+# must not flood the section map.
+_MAX_ANCHORED_RANGE_PAGES = 8
+
+
 def _section_pages(
-    blocks: list[dict[str, object]],
+    chunks: list[dict[str, object]],
 ) -> dict[str, tuple[int, ...]]:
-    """Pages whose block text matches a statement-type anchor phrase."""
+    """Pages belonging to each statement section.
+
+    Two passes. (1) Anchor pages: block-record text matching a statement
+    anchor phrase. (2) Continuation pages: a statement-table chunk range
+    whose START page is an anchor page of the same type extends the
+    section across the whole range — multi-page statements rarely repeat
+    the title on continuation pages. The start-page-anchored requirement
+    filters the chunker's loose statement detection (it can label MD&A
+    spans as statements), and ranges longer than
+    _MAX_ANCHORED_RANGE_PAGES are ignored as noise.
+    """
+    blocks = [c for c in chunks if c.get("record_type") == "block"]
     out: dict[str, set[int]] = {k: set() for k in _STATEMENT_SECTION_ANCHORS}
-    for chunk in blocks:
+    for chunk in blocks or chunks:
         text = " ".join(str(chunk.get("text", "") or "").lower().split())
         page = _page_of(chunk)
         if page is None:
@@ -110,6 +127,25 @@ def _section_pages(
         for stype, anchors in _STATEMENT_SECTION_ANCHORS.items():
             if any(" ".join(a.split()) in text for a in anchors):
                 out[stype].add(page)
+
+    for chunk in chunks:
+        if chunk.get("record_type") != "chunk":
+            continue
+        kind = str(chunk.get("statement_kind") or "")
+        if kind not in out:
+            continue
+        try:
+            start = int(str(chunk.get("page_start")))
+            end = int(str(chunk.get("page_end")))
+        except (TypeError, ValueError):
+            continue
+        if (
+            start in out[kind]
+            and start <= end
+            and end - start < _MAX_ANCHORED_RANGE_PAGES
+        ):
+            out[kind].update(range(start, end + 1))
+
     return {k: tuple(sorted(v)) for k, v in out.items()}
 
 
@@ -185,7 +221,7 @@ def audit_chunks(
     prepared_blocks: list[tuple[dict[str, object], PreparedText]] = [
         (c, prepare_text(str(c.get("text", "") or ""))) for c in blocks
     ]
-    section_pages = _section_pages(blocks)
+    section_pages = _section_pages(chunks)
     targets = derive_targets(catalog, taxonomy, priorities=priorities)
     fields = {
         t.field_id: _audit_field(t, prepared_blocks, chunks, section_pages)
