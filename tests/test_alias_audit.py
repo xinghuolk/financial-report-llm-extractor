@@ -267,3 +267,55 @@ def test_exact_hit_when_no_cash_flow_anchor_present() -> None:
     fr = r.fields["c_paid_for_taxes"]
     assert fr.status == "exact_hit"
     assert all(h.in_statement_section is None for h in fr.hits)
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_MINI_FIXTURE = (
+    _REPO_ROOT / "tests/fixtures/pdf_chunks/alias_audit_mini_00001.jsonl"
+)
+
+
+def test_acceptance_00001_known_states_with_real_catalog() -> None:
+    """Spec PR-1 acceptance: real catalog + real FY2025 phrasings must
+    reproduce the four documented failure classes."""
+    from financial_report_llm_extractor.field_metadata import (
+        load_field_taxonomy,
+    )
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        load_source_mapping_catalog,
+    )
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        load_chunks_jsonl,
+    )
+
+    chunks = load_chunks_jsonl(_MINI_FIXTURE)
+    catalog = load_source_mapping_catalog(
+        _REPO_ROOT / "field_catalog/turtle_v015_source_mapping_minimal.json",
+        priorities=("P0", "P1", "P2", "P3", "P4"),
+    )
+    taxonomy = load_field_taxonomy(
+        _REPO_ROOT / "field_catalog/turtle_v015_field_taxonomy.json",
+    )
+    r = audit_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        priorities=("P0", "P1", "P2", "P3", "P4"),
+        pdf_path=Path("00001_2025_mini.pdf"),
+    )
+
+    # class ② wrong-page: 'taxes paid' hits p56 prose, statement line
+    # 'Tax paid' p141 is NOT an exact alias match
+    assert r.fields["c_paid_for_taxes"].status == "prose_only_hit"
+    # class ① alias gap healed by normalization, suggestion recovered
+    aging = r.fields["receivables_aging"]
+    assert aging.status == "normalized_only_hit"
+    assert any(
+        "ageing analysis of the trade receivables" in s
+        for s in aging.suggested_aliases
+    )
+    related = r.fields["related_party_receivables_payables"]
+    assert related.status == "normalized_only_hit"
+    # class ⑤ genuinely absent
+    assert r.fields["rd_exp"].status == "no_hit"
+    assert r.fields["time_deposits_or_wealth_products"].status == "no_hit"
+    # healthy field stays exact
+    assert r.fields["revenue"].status == "exact_hit"
