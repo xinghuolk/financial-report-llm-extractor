@@ -4,7 +4,9 @@
 
 ## Project Context
 
-`financial-report-llm-extractor` 是一个独立的财报抽取器。它与 deterministic `financial-report-analysis` 架构保持隔离。项目最早从 LLM/PDF-first 原型开始，但当前主线已经转为 source-first：先使用 AKShare/Yahoo 等结构化 provider artifacts 建立 Turtle v0.15 字段映射、单位/币种证明、source policy 和 reviewable JSON；PDF/LLM 只作为 selected-field evidence supplement、provider semantics sample proof 和 ambiguity review。
+`financial-report-llm-extractor` 是一个独立的财报抽取器，与 deterministic `financial-report-analysis` 管线完全隔离。项目最早从 LLM/PDF-first 原型开始，但当前主线是 **source-first**：
+
+Provider artifacts（AKShare/Yahoo）→ reconciliation & semantics proof → source policy → PDF/LLM fallback evidence supplement。
 
 核心目标：
 - 使用 Turtle v0.15 字段目录、taxonomy、coverage matrix 和 source mapping catalog 定义目标字段语义。
@@ -13,291 +15,109 @@
 - 对 provider raw field 语义进行显式证明；PDF samples 只能作为 provider policy proof，不等于最终逐公司 PDF evidence。
 - 对 selected fields 复用 PDF ingestion/chunking/retrieval/LLM 作为 fallback 或 final evidence supplement。
 - 每个 `present` money 值必须有 source evidence、显式币种/单位/倍率；需要 PDF profile 时再补 page/block/snippet evidence。
-- 显式标记 missing、ambiguous、not_applicable、extraction_failed、definition_unverified、pdf_required、source_unavailable 等状态。
-
-当前验证切片：
-- 使用 captured AKShare/Yahoo provider baseline replay `600519`、`00001`、`01113`。
-- 先稳定 HK 15-field denominator，再扩 full P0/P1 33 fields。
-- 每个 HK 字段必须 clean present 或进入稳定 terminal bucket。
-- `net_profit` 当前应被视为 Yahoo raw field semantics sampled proof，不是最终逐公司 PDF evidence。
-- `gross_profit` 在 HK provider raw semantics 未证明前保持 non-clean / definition-unverified / pdf-required。
-- 缺失或歧义字段必须显式表达，不能通过找一个 PDF 近似值硬凑 clean。
+- 显式标记 `missing`、`ambiguous`、`not_applicable`、`extraction_failed`、`definition_unverified`、`pdf_required`、`source_unavailable` 等状态。
 
 ## Read First
 
-开始实现前先阅读：
-- `README.md`
+开始实现前先看：
+- `docs/2026-05-11-phase-summary.md`：当前分支入口快照，含 7 waves、coverage 表、未决项、onboarding artifact map。
+- `docs/new-company-analysis-workflow.md`：新公司 6 阶段标准工作流。关键陷阱：`evaluate-company` 必须带 `PDF_PATH` + `LLM_CONFIG`，否则 P3/P4 `pdf_only` 字段会假性 unresolved。
+- `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`：历史 roadmap 与已落地 phases。
+- `docs/design/2026-05-07-source-first-architecture-drift-analysis.zh.md`：source-first drift analysis，仍是关键架构参考。
 - `docs/requirements/2026-04-30-llm-first-financial-report-extractor-requirements.md`
 - `docs/design/2026-04-30-llm-first-turtle-financial-extraction-design.md`
 - `docs/design/2026-05-01-structured-data-source-first-financial-extraction-design.md`
-- `docs/design/2026-05-07-source-first-architecture-drift-analysis.zh.md`
-- `docs/roadmap/2026-04-30-llm-first-financial-report-extractor-roadmap.md`
 - `docs/2026-04-30-codex-claude-handoff-prompt.md`
 
-已完成计划可参考：
-- `docs/superpowers/plans/2026-04-30-phase-0-contracts.md`
-- `docs/superpowers/plans/2026-04-30-phase-1-pdf-probe-page-store.md`
-- `docs/superpowers/specs/2026-05-07-phase-m4-provider-semantics-correction.md`
-- `docs/superpowers/plans/2026-05-07-phase-m4-provider-semantics-correction.md`
-
-字段目录：
+字段目录与 policy：
 - `field_catalog/turtle_v015_priority_fields.json`
 - `field_catalog/turtle_v015_source_mapping_minimal.json`
 - `field_catalog/provider_raw_semantics_hk.json`
+- `field_catalog/provider_raw_semantics_cn.json`
 - `field_catalog/hk_yahoo_trust_policy.json`
 
-## Current State
+## Current Architecture
 
-Phase 0 已完成：
-- `src/financial_report_llm_extractor/models.py`
-- `tests/test_models.py`
-- 核心合同包括 `Evidence`、`MoneyAmount`、`ExtractedItem`、`Chunk`、`ExtractionRun`。
-- `Evidence` 必须包含 `page`、`chunk_id`、`block_id`、`snippet`。
-- `present` money item 必须包含 `MoneyAmount`。
-- `MoneyAmount.normalized_value` 必须等于 `value * unit_multiplier`。
+所有源码在 `src/financial_report_llm_extractor/`，测试在 `tests/`，字段定义在 `field_catalog/`。
 
-Phase 1 已完成：
-- `src/financial_report_llm_extractor/ingestion.py`
-- `src/financial_report_llm_extractor/cli.py`
-- `tests/test_ingestion.py`
-- `tests/test_cli.py`
-- 已支持 `pdftotext -layout` 文本分页、PDF SHA-256、`pages.jsonl`、`run_metadata.json`。
-- CLI 命令：`financial-report-llm-extractor ingest --pdf <path> --out <dir>`。
+| 阶段 | 模块 | 状态与职责 |
+| --- | --- | --- |
+| 0 | `models.py` | Frozen dataclass 核心合同：`Evidence`、`MoneyAmount`、`ExtractedItem`、`Chunk`、`ExtractionRun` |
+| 1 | `ingestion.py` | PDF → `pages.jsonl` + `run_metadata.json`，通过 `pdftotext -layout` |
+| 2 | `chunking.py` | `pages.jsonl` → `chunks.jsonl` + stable `BlockRecord` |
+| 3 | `retrieval.py` | Field-first evidence 检索，alias 评分排序 |
+| 4 | `money.py` | 确定性金额解析与单位/币种归一化 |
+| 5 | `extraction.py` | LLM 抽取管线，支持 fake + real |
+| 6 | `llm_transport.py` | OpenAI-compatible + Gemini transport，测试用注入 transport |
+| 7 | `evaluation.py` | 抽取结果审核与汇总 |
+| M4 | `structured_sources/` | Provider 语义验证、HK Yahoo trust policy |
+| M5 | `field_catalog/*.json` | `defer_tax_liab` Yahoo 证明 + `gross_profit` 终态降级 |
+| N0 | `tests/test_catalog_consistency.py` | 5 个 JSON catalog 跨文件一致性 gate |
+| N1-N4 | `field_catalog/turtle_v015_source_mapping_minimal.json` | P0/P1/P2/P3 扩展，曾达 44/56 字段阶段 |
+| I-A/I-C | `structured_sources/llm_extraction_runner.py`、`llm_extraction_batch.py`、`llm_field_extraction.py` | HK notes-level LLM 抽取、text-mode `value_type` 门控、alias 空白归一化 |
+| EC/H2/H2.2 | `company_evaluation.py`、`source_policy.py`、catalogs | `evaluate-company` orchestrator、CN/HK conflict surgical resolution、多公司 sample verification |
+| R1-R5 | `cache/`、`cli.py`、`company_evaluation.py` | Two-level extraction cache：SQLite index、provider cache、LLM cache、pipeline orchestration、market-scoped schema v2 |
+| 1a | `client.py`、`pipeline_core.py` | Public productization API for downstream consumers，`FinancialReportClient` + in-process fresh-run pipeline |
 
-Phase 2 foundation 已完成：
-- `src/financial_report_llm_extractor/chunking.py`
-- `tests/test_chunking.py`
-- 已支持从 `pages.jsonl` 生成稳定 `BlockRecord`。
-- 已支持中英文主表标题识别：balance sheet、income statement、cash flow。
-- 已支持 page chunks 和 statement chunks，并写出 `chunks.jsonl`。
-- CLI 命令：`financial-report-llm-extractor chunk --pages <pages.jsonl> --metadata <run_metadata.json> --out <chunks.jsonl>`。
+当前 catalog 覆盖：**68 mapped fields**（P0:22 + P1:11 + P2:12 + P3:21 + P4:2）+ 4 个未映射 P4 字段仍在 taxonomy/coverage_matrix 内但不被 `source_mapping_minimal` 引用。
 
-Phase 3 foundation 已完成：
-- `src/financial_report_llm_extractor/retrieval.py`
-- `tests/test_retrieval.py`
-- 已支持加载字段目录并为核心 P0/P1 字段补充 seed aliases 和 statement hints。
-- 已支持从 `chunks.jsonl` 检索候选 chunk/evidence，并写出 `retrieval_probe.json`。
-- 缺少候选的字段会显式标记为 `missing`。
-- CLI 命令：`financial-report-llm-extractor retrieve --catalog <catalog.json> --chunks <chunks.jsonl> --out <retrieval_probe.json> --priorities P0,P1`。
+## Product/API State
 
-Phase 4 foundation 已完成：
-- `src/financial_report_llm_extractor/money.py`
-- `tests/test_money.py`
-- 已支持 raw numeric strings、commas、parentheses negatives、minus signs、dash missing values。
-- 已支持 CNY/HKD/USD 与常见中英文 scale units，例如 `人民币百万元`、`HKD million`、`US$ thousand`。
-- `normalize_money()` 返回并校验现有 `MoneyAmount` 合同。
+Two-level extraction cache 已完成：
+- R1：SQLite DB at `data/extracted.db`，由 `tmp/runs/*/{evaluation,llm_evidence_supplement}.json` index；CLI `index` + `query`。
+- R2：Provider cache at `tmp/.cache/{akshare,yahoo}/<cid>_<period>.json`，24h default TTL，支持 `--cache-ttl-hours`、`--no-cache`、`--skip-if-cached`。
+- R3：LLM cache at `tmp/.cache/llm/<sha256>.json`，hash key = model + system prompt + user payload，支持 `--no-llm-cache`。
+- R4：CLI `pipeline` 串联 fetch + evaluate + auto-index；DB pre-check 命中时返回 `cache_hit` JSON；`--force` bypass；`--no-cache` bypass R2+R3。
+- R5：`field_values` schema v2，primary key 加入 `market`；`query --market {CN,HK}` 必选。v1 schema 会被 drop + recreate，`tmp/runs` 是 source of truth。
 
-Phase 5 foundation 已完成：
-- `src/financial_report_llm_extractor/extraction.py`
-- `tests/test_extraction.py`
-- 已支持 PromptRequest、LlmExtractedField、LlmResponse 和 fixture-backed `FakeLlmClient`。
-- 已支持 `retrieval_probe.json` -> fake LLM response -> money normalizer -> `ExtractedItem.validate()` -> `extraction_result.json`。
-- `present` without evidence 会降级为 `extraction_failed` 并保留 errors。
-- CLI 命令：`financial-report-llm-extractor extract-fake --retrieval-probe <retrieval_probe.json> --out <extraction_result.json>`。
+Public client API 已完成：
+- `src/financial_report_llm_extractor/client.py`：`FinancialReportClient`、6 个 frozen dataclass、3 个 enum、1 个 exception。
+- `src/financial_report_llm_extractor/pipeline_core.py`：从 CLI 抽出的 in-process pipeline。
+- Backend = R1 DB query cache + R4 fresh-run pipeline。
+- 使用 `importlib.resources` 读取 catalog；`$FR_LLM_CACHE_ROOT` 控制 cache root。
+- Bucket → `ConfidenceLevel` translation；`raw_bucket` 保留审计。
+- `include_llm_supplement` 同时控制 field filter 与 LLM step toggle。
+- Decimal precision 通过 `str()` detour；`extraction_id` 使用 sha256 prefix 方便下游 dedup。
+- 设计文档：`docs/superpowers/specs/2026-05-13-financial-report-client-productization-design.md`。
 
-Phase 6 foundation 已完成：
-- `src/financial_report_llm_extractor/llm_transport.py`
-- `tests/test_llm_transport.py`
-- 已支持 JSON LLM config、OpenAI-compatible chat-completions transport、timeout、limited retry、raw response artifacts。
-- 测试通过 injected transport，不需要真实网络。
-- CLI 命令：`financial-report-llm-extractor extract --retrieval-probe <retrieval_probe.json> --config <llm_config.json> --out <extraction_result.json> --raw-response-dir <dir>`。
+## Current Evaluation Snapshot
 
-Phase 7 foundation 已完成：
-- `src/financial_report_llm_extractor/evaluation.py`
-- `tests/test_evaluation.py`
-- 已定义真实报告评估矩阵：`600519_2025`、`00001_2025_en`、`01113_2025_en`。
-- 已支持 extraction result review summary：status counts、present without evidence、present money without normalized value。
-- CLI 命令：`financial-report-llm-extractor evaluate --root <repo-root> --out <evaluation_summary.json>`。
+G4-C 已落地：
+- `audit_opinion` + `dividend_policy_text` 加入 P4 `pdf_only`，进入 text-mode pipeline。
+- `mda_business_review`、`mda_forward_guidance`、`mda_risk_factors`、`auditor_change_history` 保持 `source_mode=llm_review`，当前 pipeline 未消费，等价于显式 out-of-project-scope。
+- `llm_review.py` 当前用于 conflict adjudication，不是段落抽取模块。
 
-Phase 8 foundation 已完成：
-- `docs/skills/financial-report-extractor/SKILL.md`
-- `docs/skills/financial-report-extractor/references/review-checklist.md`
-- `tests/test_skill_wrapper.py`
-- 已提供 repo-contained optional skill wrapper，指导 Codex/Claude 调用 CLI。
-- Skill wrapper 明确不得解析 PDF、归一化金额、验证合同或存储最终事实。
+G4-C catalog 实测（DeepSeek baseline 2026-05-12 / Codex `gpt-5.5` validation 2026-05-13）：
+- CN `600519`/2024：source-first 42/68 → DS +LLM 54/68；Codex 52/68。Codex 正确拒绝 2 个 DS false positive。
+- CN `300750`/2024：source-first 42/68 → DS +LLM 55/68。
+- HK `01810`/2024：source-first 35/68 + 2 terminal → DS 49/68；Codex 53/68。
+- HK `02498`/2024：source-first 35/68 + 2 terminal → DS 49/68。
+- HK `06862`/2024：source-first 35/68 + 1 terminal → DS 48/68。
+- HK `00001`/2025：source-first 32/68 + 1 terminal → Codex G4-C 47/68。
+- HK `01113`/2025：source-first 33/68 → Codex G4-C 44/68。
+- HK `09987`/2024：source-first 34/68 + 1 terminal → Codex G4-C 43/68；Phase Q audit 显示 DS 丢失/差异中的两个是 shallow false positive。
 
-推荐下一步继续 Phase 7/8 follow-up：对三份真实 PDF 跑完整 artifacts，沉淀 hard-case regression fixtures，并决定是否安装 repo skill 到 `$CODEX_HOME/skills`。
+Phase Q（2026-05-13）：
+- 5 cohort 共 56 个 DS LLM hits 中，4 个被 Codex 拒绝。
+- PDF/reasoning audit 显示 4/4 都是 DS shallow false positive。
+- 失败模式：散文当数据、合规声明当 policy、上期值当本期、total 当 current。
+- 详情见 `docs/2026-05-13-subscription-llm-validation.md`。
 
-## Architecture Guardrails
-
-必须保持：
-- 独立应用优先；skills 只作为薄封装。
-- ingestion、chunking、retrieval、LLM transport、validation/export 保持边界清晰。
-- Source-first 是当前主线：AKShare/Yahoo provider artifacts 先于 PDF/LLM fallback。
-- Provider raw field semantics proof 是 source policy 的信任边界；不要用逐公司 PDF 值匹配替代 provider 语义证明。
-- PDF samples 只能作为 sampled provider policy proof；它们不等于最终 per-export `pdf_evidence`。
-- `source_evidence`、`trust_policy_evidence`、`pdf_evidence` 必须分开建模和报告。
-- Replay/report artifacts 应显式区分 `provider_semantics_verified_fields`、`sampled_pdf_policy_proof_fields`、`final_pdf_evidence_fields`、`provider_semantics_unverified_fields`。
-- LLM 输出必须 evidence-grounded。
-- present 值缺证据时不能静默接受。
-- 金额、币种、单位、倍率必须显式建模。
-- 缺失、歧义、不可用、抽取失败必须状态化。
-- artifact ID 要稳定、可复现，避免运行时随机数。
+重要认知：
+- `scope_expectation` 是纯 metadata 标签；`src/` 内无业务逻辑读它做 filtering。G3 只是给 4 个 `pdf_only` 字段贴 `parent` 标签，不需要 schema 维度扩展。
+- G2/G3/G4-C 纯 `pdf_only` 字段走 LLM supplement。
+- HK issuer financial currency 已闭环：`HK_ISSUER_FINANCIAL_CURRENCY` + fixture backfill + `HkYahooTrustRule.additional_trusted_currencies`。非 HKD reporter 不应触发 HKD-only trust rules。
 - HK `gross_profit` 在 Yahoo/AKShare raw semantics 未证明前不能 clean；不得因为某个 PDF 样本值匹配就 promote。
 - HK `net_profit` 可以保留 Yahoo `Net Income Common Stockholders` raw field 判断，但必须表述为 sampled provider semantics proof，不是最终 PDF evidence。
 
-不要引入：
-- canonical fact promotion。
-- metric lifecycle governance。
-- recompute decision engine。
-- 对现有 P5/Turtle export pipeline 的依赖。
-- 第一阶段之外的 UI 或异步 workflow。
+## Core Contracts
 
-## Development Rules
-
-默认工作方式：
-- 修改前先运行 `git status --short`，避免覆盖用户未提交修改。
-- 先看现有测试风格，再改代码。
-- 新增行为必须有聚焦测试。
-- 尽量使用 Python 3.11 标准库。
-- 暂时不要引入重量级依赖，除非文档、测试或用户明确要求。
-- 保持 dataclass 合同简单、可序列化、可验证。
-- 不要大范围重构已通过的 Phase 0/1，除非新阶段确实需要。
-- 不要把 retrieval 或 LLM 逻辑提前塞进 ingestion 层。
-- 不要把 broad PDF retrieval 当作解决 provider semantics 的默认办法。
-- 不要为了提高 clean coverage 而把 `definition_unverified`、`pdf_required`、`source_unavailable` 混成一个 missing/warning bucket。
-
-代码风格：
-- Python package 位于 `src/financial_report_llm_extractor/`。
-- 测试位于 `tests/`。
-- 使用 frozen dataclass 表达稳定合同。
-- 使用显式 `validate()` 方法表达业务不变量。
-- 保持函数小而可测试。
-
-本地命令环境：
-- 当前仓库在 Windows + PowerShell 环境下工作时，Codex 内部标准命令应优先使用 PowerShell，并显式进入 UTF-8 模式，避免中文文档、JSON artifact、测试输出乱码。
-- Windows PowerShell 建议在读取/写入文本前设置：`[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()`，并对 `Get-Content` / `Set-Content` 显式使用 `-Encoding UTF8`。
-- 需要生成无 BOM UTF-8 测试 fixture 或 JSONL 时，优先使用 .NET `System.Text.UTF8Encoding($false)` 写入。
-- 以上 PowerShell UTF-8 约定仅适用于 Windows/PowerShell 场景；如果代理运行在 Linux、macOS、WSL 或其他 UTF-8 shell 中，不要照搬 PowerShell 专用初始化。
-- Codex 沙箱内不要默认使用 Git Bash；本机 Git Bash/MSYS2 可能因 Windows 沙箱限制无法创建 signal pipe。除非用户明确要求并验证可用，否则以 PowerShell UTF-8 模式作为默认命令环境。
-
-## Verification
-
-常用验证命令：
-
-```bash
-uv run pytest -v
-uv run ruff check .
-uv run mypy src tests
-```
-
-如果只改某一阶段，可先运行相关测试，例如：
-
-```bash
-uv run pytest tests/test_models.py -v
-uv run pytest tests/test_ingestion.py tests/test_cli.py -v
-```
-
-最终完成实现型任务前，尽量运行完整验证。若本地缺少 `uv` 或外部工具不可用，请在最终回复中说明。
-
-## Phase 2 Direction
-
-Phase 2 foundation 已经实现 statement/evidence-block logical chunks：
-- 从 `pages.jsonl` 生成稳定 block records。
-- 构造 `block_id` 并服务于 `Evidence.block_id`。
-- 生成 page chunks 和 statement chunks。
-- 每个 chunk 包含 `chunk_id`、`kind`、`page_start`、`page_end`、`block_ids`、text。
-- artifact 可追溯到 `source_pdf_hash` 并更新 `run_metadata`。
-
-后续增强优先考虑：
-- 更丰富的 layout-line metadata。
-- statement continuation/end heuristics。
-- HK side-by-side statement splitting。
-- candidate row label、period、unit-context 提取。
-
-## Phase 3 Direction
-
-Phase 3 foundation 已经实现 retrieval probe：
-- 读取 Turtle priority field catalog。
-- 为部分核心字段提供 seed aliases 和 statement hints。
-- 对 `chunks.jsonl` 的 chunk records 做 alias/scoring。
-- 输出 `retrieval_probe.json`，包含 field status、candidate chunk、matched aliases 和 evidence。
-
-后续增强优先考虑：
-- 把 aliases/hints 移入更丰富的 catalog artifact。
-- 补全全部 P0/P1 字段和 HK wording variants。
-- 将 block-level evidence scoring 与 chunk-level scoring 分开。
-- 对 derived fields 使用显式状态，而不只是 `missing`。
-- 用真实 `600519`、`00001`、`01113` 报告评估召回质量。
-
-## Phase 4 Direction
-
-Phase 4 foundation 已经实现 deterministic money normalization：
-- `parse_numeric_value()` 解析 commas、minus signs、parentheses negatives。
-- dash-like values 被视为 missing numeric value。
-- `resolve_money_unit()` 解析 CNY/HKD/USD 和基础 scale multipliers。
-- `normalize_money()` 输出 `MoneyAmount` 并复用 `MoneyAmount.validate()`。
-
-后续增强优先考虑：
-- 补充 yuan、RMB yuan、HK$'000、RMB'000、万元、亿元等单位。
-- 为多币种上下文提供结构化 ambiguity errors。
-- 明确 row/header/report metadata 的 currency/unit precedence。
-- 增加 derived value engine，并传播所有输入 evidence。
-- 在 fake extraction pipeline 中接入 money normalizer。
-
-## Phase 5 Direction
-
-Phase 5 foundation 已经实现 fake extraction pipeline：
-- `FakeLlmClient` 可按 field id 返回 fixture response。
-- `run_fake_extraction()` 消费 `retrieval_probe.json`。
-- present money outputs 会调用 `normalize_money()` 并生成 `MoneyAmount`。
-- 每个 item 会经过 `ExtractedItem.validate()`。
-- 无 evidence 的 present 输出不会通过，会变成 `extraction_failed`。
-
-后续增强优先考虑：
-- 从 JSON fixture 文件加载 fake LLM responses。
-- 支持 text/number value types。
-- 保存 raw LLM request/response artifacts。
-- 加强 fake response schema validation。
-- 在 derived value engine 完成后接入 derived fields。
-
-## Phase 6 Direction
-
-Phase 6 foundation 已经实现 real LLM transport boundary：
-- `LlmTransportConfig.from_json()` 读取 provider/model/base URL/API key env/timeout/retry。
-- `OpenAiCompatibleClient` 构造 `/chat/completions` 请求并解析 JSON object response。
-- Transport 可注入，测试不依赖真实网络。
-- `run_real_transport_probe()` 复用 extraction pipeline，并写 raw response artifacts。
-- `extract` CLI 命令调用 real transport layer。
-
-后续增强优先考虑：
-- 添加 `llm_config.example.json`。
-- 记录 latency、usage 和 structured transport errors。
-- provider fallback 保持显式且默认关闭。
-- 支持更多 provider adapter。
-- 增加 opt-in integration smoke test。
-
-## Phase 7 Direction
-
-Phase 7 foundation 已经实现 evaluation harness：
-- `DEFAULT_EVALUATION_FIXTURES` 包含 roadmap 指定的三份真实报告。
-- `build_evaluation_matrix()` 检查 PDF 是否可用。
-- `summarize_extraction_result()` 统计 present/missing/ambiguous/extraction_failed 等状态。
-- summary 会显式列出 present without evidence 和 present money without normalized value。
-- `write_review_summary()` 写出 `evaluation_summary.json`。
-
-后续增强优先考虑：
-- 对 `600519`、`00001`、`01113` 跑真实 artifacts。
-- 明确真实评估输出目录约定。
-- 增加 Markdown review summary。
-- 从真实输出中提取 known hard cases 加回归测试。
-- 可选真实 LLM evaluation 必须显式配置，默认测试不能依赖外网。
-
-## Phase 8 Direction
-
-Phase 8 foundation 已经实现 thin skill wrapper：
-- Skill 文件位于 `docs/skills/financial-report-extractor/SKILL.md`。
-- Review checklist 位于 `docs/skills/financial-report-extractor/references/review-checklist.md`。
-- Wrapper 只指导调用 CLI，不承载业务逻辑。
-- Tests 确认 frontmatter、CLI 命令、guardrails 和 checklist link。
-
-后续增强优先考虑：
-- 决定是否安装到 `$CODEX_HOME/skills`。
-- 如果要作为一等 Codex skill 安装，再添加 `agents/openai.yaml`。
-- CLI 参数变化时同步更新 wrapper。
-- 真实 Phase 7 artifacts 存在后补充 example prompts。
-
-## Output Contract Reminders
+所有关键数据使用 frozen dataclass 并带显式 `validate()` 方法。关键不变量：
+- `Evidence` 必须包含 `page`、`chunk_id`、`block_id`、`snippet`。
+- `MoneyAmount.normalized_value` 必须等于 `value * unit_multiplier`。
+- `ExtractedItem.status == "present"` 时必须有 evidence。
+- money 类型的 present item 必须有 `MoneyAmount`。
+- 状态枚举至少包括 `present`、`missing`、`ambiguous`、`not_applicable`、`extraction_failed`；source-first pipeline 还使用 terminal bucket 表达 `definition_unverified`、`pdf_required`、`source_unavailable` 等。
 
 抽取结果必须表达：
 - `field_id`
@@ -309,14 +129,103 @@ Phase 8 foundation 已经实现 thin skill wrapper：
 - `confidence`
 - `evidence`
 
-对 `status == "present"`：
-- 必须有 evidence。
-- money 字段必须有 `MoneyAmount`。
-- evidence snippet 应能支持抽取值。
-
 对 `status != "present"`：
 - 不要伪造值。
 - 用状态和错误/说明表达原因。
+
+## Architecture Guardrails
+
+必须保持：
+- 独立应用优先；skills 只作为薄封装。
+- ingestion、chunking、retrieval、LLM transport、validation/export、structured source policy 保持边界清晰。
+- Source-first 是当前主线：AKShare/Yahoo provider artifacts 先于 PDF/LLM fallback。
+- Provider raw field semantics proof 是 source policy 的信任边界；不要用逐公司 PDF 值匹配替代 provider 语义证明。
+- PDF samples 只能作为 sampled provider policy proof；它们不等于最终 per-export `pdf_evidence`。
+- `source_evidence`、`trust_policy_evidence`、`pdf_evidence` 必须分开建模和报告。
+- Replay/report artifacts 应显式区分 `provider_semantics_verified_fields`、`sampled_pdf_policy_proof_fields`、`final_pdf_evidence_fields`、`provider_semantics_unverified_fields`。
+- LLM 输出必须 evidence-grounded。
+- present 值缺证据时不能静默接受。
+- 金额、币种、单位、倍率必须显式建模。
+- 缺失、歧义、不可用、抽取失败必须状态化。
+- Artifact ID 要稳定、可复现，避免运行时随机数。
+- 测试中禁止真实网络调用；使用 fake client 或 protocol 注入。
+
+不要引入：
+- canonical fact promotion。
+- metric lifecycle governance。
+- recompute decision engine。
+- 对现有 P5/Turtle export pipeline 的依赖。
+- 第一阶段之外的 UI 或异步 workflow。
+- broad PDF retrieval 作为 provider semantics 的默认解决办法。
+
+## Development Rules
+
+默认工作方式：
+- 修改前先运行 `git status --short`，避免覆盖用户未提交修改。
+- 先看现有测试风格，再改代码。
+- 新增行为必须有聚焦测试。
+- 尽量使用 Python 3.11 标准库。
+- 暂时不要引入重量级依赖，除非文档、测试或用户明确要求。
+- 保持 dataclass 合同简单、可序列化、可验证。
+- 不要大范围重构已通过的早期阶段，除非新阶段确实需要。
+- 不要把 retrieval 或 LLM 逻辑提前塞进 ingestion 层。
+- 不要为了提高 clean coverage 而把 `definition_unverified`、`pdf_required`、`source_unavailable` 混成一个 missing/warning bucket。
+
+代码风格：
+- Python package 位于 `src/financial_report_llm_extractor/`。
+- 测试位于 `tests/`。
+- 使用 frozen dataclass 表达稳定合同。
+- 使用显式 `validate()` 方法表达业务不变量。
+- 保持函数小而可测试。
+- mypy `disallow_untyped_defs = true`，ruff line-length 88，target py311。
+
+本地命令环境：
+- 当前环境是 macOS/zsh；使用常规 UTF-8 shell 命令即可。
+- 若在 Windows + PowerShell 环境工作，优先使用 PowerShell，并显式进入 UTF-8 模式：`[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()`；`Get-Content` / `Set-Content` 显式使用 `-Encoding UTF8`。
+- 需要生成无 BOM UTF-8 fixture 或 JSONL 时，Windows 下优先使用 `.NET System.Text.UTF8Encoding($false)` 写入。
+- Codex 沙箱内不要默认使用 Git Bash；本机 Git Bash/MSYS2 可能因 Windows 沙箱限制无法创建 signal pipe。
+
+## Common Commands
+
+包管理器为 `uv`。运行时零外部 Python 依赖（仅 stdlib）。开发依赖：pytest、ruff、mypy。外部 CLI 依赖：`pdftotext -layout`（poppler）。
+
+```bash
+uv run pytest -v
+uv run ruff check .
+uv run mypy src tests
+```
+
+单文件或单测试：
+
+```bash
+uv run pytest tests/test_models.py -v
+uv run pytest tests/test_models.py::test_present_item_requires_evidence -v
+```
+
+完整验证：
+
+```bash
+uv run pytest -v && uv run ruff check . && uv run mypy src tests
+```
+
+重要 CLI：
+- `financial-report-llm-extractor ingest --pdf <path> --out <dir>`
+- `financial-report-llm-extractor chunk --pages <pages.jsonl> --metadata <run_metadata.json> --out <chunks.jsonl>`
+- `financial-report-llm-extractor retrieve --catalog <catalog.json> --chunks <chunks.jsonl> --out <retrieval_probe.json> --priorities P0,P1`
+- `financial-report-llm-extractor extract-fake --retrieval-probe <retrieval_probe.json> --out <extraction_result.json>`
+- `financial-report-llm-extractor extract --retrieval-probe <retrieval_probe.json> --config <llm_config.json> --out <extraction_result.json> --raw-response-dir <dir>`
+- `financial-report-llm-extractor evaluate --root <repo-root> --out <evaluation_summary.json>`
+- `financial-report-llm-extractor fetch-source-inventory ...`
+- `financial-report-llm-extractor evaluate-company ...`
+- `financial-report-llm-extractor index --runs tmp/runs ...`
+- `financial-report-llm-extractor query --market {CN,HK} ...`
+- `financial-report-llm-extractor pipeline ...`
+
+真实 LLM 使用：
+- API key 模板在 `env.example`。
+- 本地常用 LLM config 在 `tmp/llm_configs/deepseek.json`。
+- HK 6 公司 manifest 在 `tmp/llm_configs/n4b_manifest.json`。
+- 默认测试不能依赖外网；真实 LLM evaluation 必须显式配置。
 
 ## Agent Handoff
 

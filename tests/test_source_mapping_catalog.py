@@ -63,6 +63,32 @@ def test_minimal_source_mapping_fixture_loads_core_fields() -> None:
     assert catalog.entries["revenue"].source_aliases["yahoo"]
 
 
+def test_minimal_source_mapping_repurchase_declares_absence_means_zero() -> None:
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1", "P2", "P3", "P4"),
+    )
+
+    entry = catalog.entries["repurchase_of_stock"]
+    assert entry.absence_means_zero is True
+
+
+def test_source_mapping_entry_rejects_absence_means_zero_for_non_money() -> None:
+    entry = SourceMappingEntry(
+        field_id="dividend_plan",
+        priority="P3",
+        value_type="text",
+        statement_type="cash_flow",
+        currency_requirement="optional",
+        unit_requirement="optional",
+        source_aliases={"yahoo": ("x",)},
+        absence_means_zero=True,
+    )
+
+    with pytest.raises(ValueError, match="absence_means_zero"):
+        entry.validate()
+
+
 def test_source_mapping_entry_allows_default_unknown_domain_for_in_memory_catalogs() -> None:
     entry = SourceMappingEntry(
         field_id="revenue",

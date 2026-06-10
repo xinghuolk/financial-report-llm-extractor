@@ -33,6 +33,7 @@ class FieldExtractionRequest:
     chunks: tuple[dict[str, object], ...]
     expected_currency: str | None = None
     expected_unit: str | None = None
+    absence_means_zero: bool = False
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ def build_field_extraction_prompt(
     request: FieldExtractionRequest,
 ) -> dict[str, object]:
     """Build a deterministic JSON-serializable LLM prompt payload."""
-    return {
+    payload: dict[str, object] = {
         "prompt_version": PROMPT_VERSION,
         "schema_version": SCHEMA_VERSION,
         "task": "extract_field_value",
@@ -94,6 +95,22 @@ def build_field_extraction_prompt(
             },
         },
     }
+    if request.absence_means_zero:
+        payload["zero_inference"] = {
+            "enabled": True,
+            "instruction": (
+                f"This field is a sparse {request.statement_type} line item. "
+                f"If the {request.statement_type} section IS present in the "
+                "chunks (other line items of that section are visible) but it "
+                "contains NO line for this field, the value is genuinely zero "
+                "for the period: return found=true with value='0' and cite the "
+                "section's completeness in reasoning (e.g. 'financing "
+                "activities fully listed, no share repurchase line'). Only "
+                "return found=false if the relevant statement section itself is "
+                "absent from the chunks."
+            ),
+        }
+    return payload
 
 
 SYSTEM_PROMPT = (

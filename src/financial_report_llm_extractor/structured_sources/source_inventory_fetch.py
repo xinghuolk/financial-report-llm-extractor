@@ -11,6 +11,7 @@ import json
 import sys
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
@@ -25,7 +26,12 @@ from financial_report_llm_extractor.structured_sources.artifacts import (
 from financial_report_llm_extractor.structured_sources.field_inventory_summary import (
     write_provider_field_inventory_summary,
 )
+from financial_report_llm_extractor.structured_sources.catalog import (
+    SourceMappingCatalog,
+    load_source_mapping_catalog,
+)
 from financial_report_llm_extractor.structured_sources.models import (
+    SourceEvidence,
     SourceInventoryRecord,
 )
 from financial_report_llm_extractor.structured_sources.real_source_validation import (
@@ -86,6 +92,121 @@ def select_records_for_period(
             f"available periods: {sorted({r.period for r in records if r.period})}"
         )
     return matching
+
+
+def _preferred_provider_first(
+    providers: tuple[str, ...], primary_route: str
+) -> tuple[str, ...]:
+    """Order providers so the primary_route provider is tried first."""
+    if "yahoo" in primary_route and "yahoo" in providers:
+        return ("yahoo",) + tuple(p for p in providers if p != "yahoo")
+    if "akshare" in primary_route and "akshare" in providers:
+        return ("akshare",) + tuple(p for p in providers if p != "akshare")
+    return providers
+
+
+def synthesize_absence_zero_records(
+    all_records: tuple[SourceInventoryRecord, ...],
+    period: PeriodSpec,
+    catalog: SourceMappingCatalog,
+) -> list[SourceInventoryRecord]:
+    """Emit verified-0 records for sparse lines absent in the target period.
+
+    Standardized-template providers encode statements sparsely: a non-zero
+    line is emitted, a zero/none year is omitted entirely. For a field flagged
+    ``absence_means_zero``, an absent target-period row is a genuine zero —
+    but ONLY when the provider demonstrably tracks the line for THIS issuer
+    (it reported the line in some other period) and the statement itself is
+    present for the target period. This multi-period gate distinguishes
+    "tracked but zero this year" (synthesize 0) from "provider never tracks
+    this line" (leave missing — avoids false zeros for issuers that did buy
+    back but whose provider schema lacks the line).
+
+    Operates on the full multi-period ``all_records`` BEFORE period filtering,
+    which is the only layer where the historical evidence is visible.
+    """
+    target = period.period_end.isoformat()
+    synthesized: list[SourceInventoryRecord] = []
+    for entry in catalog.entries.values():
+        if not entry.absence_means_zero:
+            continue
+        providers = _preferred_provider_first(
+            tuple(entry.source_aliases.keys()), entry.primary_route
+        )
+        for provider in providers:
+            aliases = entry.source_aliases.get(provider, ())
+            if not aliases:
+                continue
+            tracked = tuple(
+                r
+                for r in all_records
+                if r.source == provider
+                and r.source_status == "present"
+                and (
+                    r.raw_field_name in aliases
+                    or (r.raw_field_code is not None and r.raw_field_code in aliases)
+                )
+            )
+            if not tracked:
+                continue
+            if any(r.period is not None and r.period.startswith(target) for r in tracked):
+                # Provider reported a real value this period — use it, no synth.
+                break
+            siblings = tuple(
+                r
+                for r in all_records
+                if r.source == provider
+                and r.source_status == "present"
+                and r.statement_type == entry.statement_type
+                and r.period is not None
+                and r.period.startswith(target)
+            )
+            if not siblings:
+                continue
+            sibling = siblings[0]
+            template = tracked[0]
+            synthesized.append(
+                SourceInventoryRecord(
+                    source=template.source,
+                    market=sibling.market,
+                    ticker=sibling.ticker,
+                    statement_type=entry.statement_type,
+                    period=target,
+                    raw_field_name=template.raw_field_name,
+                    raw_value="0",
+                    parsed_numeric_value=Decimal("0"),
+                    value_type=entry.value_type,
+                    source_status="present",
+                    report_type=sibling.report_type,
+                    fiscal_year=sibling.fiscal_year,
+                    scope=sibling.scope,
+                    account_standard=sibling.account_standard,
+                    currency=sibling.currency,
+                    unit=sibling.unit,
+                    raw_field_code=template.raw_field_code,
+                    source_evidence=(
+                        SourceEvidence(
+                            source=template.source,
+                            adapter=template.source,
+                            function="absence_means_zero",
+                            artifact_id=(
+                                sibling.source_evidence[0].artifact_id
+                                if sibling.source_evidence
+                                else f"{provider}_{entry.statement_type}"
+                            ),
+                            raw_record_id=(
+                                f"{sibling.ticker}:{sibling.market}:"
+                                f"{entry.statement_type}:{target}:"
+                                f"{template.raw_field_name}:absence_zero"
+                            ),
+                            raw_field_name=template.raw_field_name,
+                            raw_field_code=template.raw_field_code,
+                        ),
+                    ),
+                )
+            )
+            break
+    return synthesized
 
 
 _STATEMENT_TYPES: tuple[str, ...] = ("income_statement", "balance_sheet", "cash_flow")
@@ -152,6 +273,16 @@ def fetch_source_inventory(
             ttl_hours=ttl_hours,
         )
         all_records.extend(yahoo_records)
+
+    # Sparse buyback / absence-means-zero synthesis: emit verified-0 records for
+    # fields whose provider tracks the line historically but omits it this
+    # period. Runs on the multi-period all_records BEFORE filtering.
+    catalog = load_source_mapping_catalog(
+        catalog_path, priorities=("P0", "P1", "P2", "P3", "P4")
+    )
+    all_records.extend(
+        synthesize_absence_zero_records(tuple(all_records), period, catalog)
+    )
 
     filtered = select_records_for_period(tuple(all_records), period)
 

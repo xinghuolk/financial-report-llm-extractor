@@ -1409,6 +1409,7 @@
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
+      "absence_means_zero": true,
       "source_aliases": {
         "yahoo": [
           "Repurchase Of Capital Stock"
@@ -1418,7 +1419,8 @@
         "repurchase of capital stock",
         "share buyback",
         "stock repurchase",
-        "回购股票"
+        "回购股票",
+        "回购股份"
       ]
     },
     "dividends_paid": {
