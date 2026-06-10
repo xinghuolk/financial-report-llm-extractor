@@ -458,3 +458,47 @@ def test_cli_audit_company_metadata_flags(tmp_path: Path) -> None:
     assert rc == 0
     data = _json.loads((out / "alias_audit.json").read_text())
     assert (data["company"], data["market"], data["year"]) == ("00001", "HK", 2025)
+
+
+def test_cli_audit_rejects_chunks_from_different_pdf(tmp_path: Path) -> None:
+    """Review F1: cached chunks built from another PDF must hard-fail, not
+    silently emit an audit attributed to the requested PDF."""
+    from financial_report_llm_extractor.cli import main
+
+    pdf = tmp_path / "real.pdf"
+    pdf.write_bytes(b"%PDF-1.4 fake content for hashing")
+    out = tmp_path / "audit_stale"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            rec = dict(c)
+            rec["source_pdf_hash"] = "deadbeef" * 8
+            f.write(_json.dumps(rec) + "\n")
+
+    rc = main([
+        "audit-pdf-aliases", "--pdf", str(pdf), "--out", str(out),
+    ])
+    assert rc == 2
+    assert not (out / "alias_audit.json").exists()
+
+
+def test_cli_audit_accepts_chunks_matching_pdf_hash(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cli import main
+    from financial_report_llm_extractor.ingestion import compute_sha256
+
+    pdf = tmp_path / "real.pdf"
+    pdf.write_bytes(b"%PDF-1.4 fake content for hashing")
+    out = tmp_path / "audit_match"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    h = compute_sha256(pdf)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            rec = dict(c)
+            rec["source_pdf_hash"] = h
+            f.write(_json.dumps(rec) + "\n")
+
+    rc = main(["audit-pdf-aliases", "--pdf", str(pdf), "--out", str(out)])
+    assert rc == 0
+    assert (out / "alias_audit.json").exists()
