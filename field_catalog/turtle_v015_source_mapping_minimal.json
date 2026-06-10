@@ -3,6 +3,7 @@
   "version": "2026-05-01",
   "taxonomy_catalog": "turtle_v015_field_taxonomy",
   "coverage_matrix": "turtle_v015_coverage_matrix",
+  "alias_normalization": true,
   "priorities": [
     {
       "priority": "P0",

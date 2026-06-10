@@ -309,7 +309,7 @@ _P4_INTENTIONALLY_UNMAPPED: tuple[str, ...] = (
 
 # Greppable flip-point: set True (together with the catalog flag) after the
 # PR-3 cohort gate (selection diff + paid revalidation) passes.
-ALIAS_NORMALIZATION_ROLLED_OUT = False
+ALIAS_NORMALIZATION_ROLLED_OUT = True
 
 
 def test_alias_normalization_rollout_state() -> None:
