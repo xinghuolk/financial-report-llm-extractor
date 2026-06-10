@@ -27,6 +27,7 @@ from financial_report_llm_extractor.structured_sources.catalog import (
 )
 from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
     LlmExtractionTarget,
+    _chunk_page,
     derive_targets,
     select_chunks,
     select_statement_section_chunks,
@@ -85,14 +86,6 @@ class AuditReport:
         return out
 
 
-def _page_of(chunk: dict[str, object]) -> int | None:
-    raw = chunk.get("page")
-    try:
-        return int(str(raw))
-    except (TypeError, ValueError):
-        return None
-
-
 def _chunk_id_of(chunk: dict[str, object]) -> str:
     return str(chunk.get("chunk_id") or chunk.get("block_id") or "")
 
@@ -102,6 +95,7 @@ def _audit_field(
     prepared_blocks: list[tuple[dict[str, object], PreparedText]],
     all_chunks: list[dict[str, object]],
     section_pages: dict[str, tuple[int, ...]],
+    prepared_cache: dict[str, PreparedText],
 ) -> FieldAuditResult:
     hits: list[AliasHit] = []
     pages_for_type = section_pages.get(target.statement_type)
@@ -112,7 +106,7 @@ def _audit_field(
                             prepared=ptext)
             if m is None:
                 continue
-            page = _page_of(chunk)
+            page = _chunk_page(chunk)
             in_section: bool | None = None
             if in_section_pages is not None:
                 in_section = page in in_section_pages
@@ -139,7 +133,11 @@ def _audit_field(
         for h in normalized
     ))
 
-    selected = select_chunks(all_chunks, target, section_pages=section_pages)
+    selected = select_chunks(
+        all_chunks, target,
+        section_pages=section_pages,
+        prepared_cache=prepared_cache,
+    )
     via: Literal["alias_top_k", "broad_keyword", "section_fallback"]
     if not selected and target.absence_means_zero:
         selected = select_statement_section_chunks(all_chunks, target)
@@ -147,7 +145,7 @@ def _audit_field(
     else:
         via = target.chunk_strategy
     selected_chunks = tuple(
-        SelectedChunk(chunk_id=_chunk_id_of(c), page=_page_of(c), via=via)
+        SelectedChunk(chunk_id=_chunk_id_of(c), page=_chunk_page(c), via=via)
         for c in selected
     )
 
@@ -175,9 +173,16 @@ def audit_chunks(
         (c, prepare_text(str(c.get("text", "") or ""))) for c in blocks
     ]
     section_pages = statement_section_pages(blocks)
+    # Shared across fields so flag-on selection doesn't re-fold every chunk
+    # per field; seeded with the block folds already computed above.
+    prepared_cache: dict[str, PreparedText] = {
+        _chunk_id_of(c): p for c, p in prepared_blocks if _chunk_id_of(c)
+    }
     targets = derive_targets(catalog, taxonomy, priorities=priorities)
     fields = {
-        t.field_id: _audit_field(t, prepared_blocks, chunks, section_pages)
+        t.field_id: _audit_field(
+            t, prepared_blocks, chunks, section_pages, prepared_cache,
+        )
         for t in targets
     }
     return AuditReport(
