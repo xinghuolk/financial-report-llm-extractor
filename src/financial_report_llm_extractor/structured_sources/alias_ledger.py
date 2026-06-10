@@ -322,8 +322,9 @@ def emit_promotion_review(
     lines = ["# Alias promotion review (review-gated)", "",
              "| Field | Suggested alias | Reason |", "|---|---|---|"]
     for p in promoted:
-        lines.append(f"| `{p['field_id']}` | {p['raw_field_name']} | "
-                     f"{p['reason']} |")
+        lines.append(
+            f"| `{p['field_id']}` | {_md_escape(str(p['raw_field_name']))} | "
+            f"{_md_escape(str(p['reason']))} |")
     (output_dir / "alias_promotion_review.md").write_text(
         "\n".join(lines) + "\n", encoding="utf-8",
     )

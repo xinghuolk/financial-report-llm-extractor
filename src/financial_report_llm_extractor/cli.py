@@ -1191,7 +1191,10 @@ def main(argv: list[str] | None = None) -> int:
                 root / "llm_evidence_supplement.json"
             ).exists():
                 return [root]
-            return sorted(p for p in root.iterdir() if p.is_dir())
+            return sorted(
+                p for p in root.iterdir()
+                if p.is_dir() and not p.name.startswith(".")
+            )
 
         for root in args.runs:
             for d in _candidates(root):
