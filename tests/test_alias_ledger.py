@@ -272,3 +272,30 @@ def test_write_ledger_views_md(tmp_path: Path) -> None:
     assert "ageing analysis of the trade receivables" in md
     assert "营业收入" in md  # dead-alias table
     assert "rd_exp" in md  # terminal table
+
+
+def test_promotion_not_fired_across_markets() -> None:
+    """Cross-market NEGATIVE: same suggested phrase in 1 HK + 1 CN company
+    must NOT promote — market scoping is load-bearing (mixed-language alias
+    lists would otherwise cross-contaminate)."""
+    ledger = new_ledger()
+    ledger["fields"]["receivables_aging"] = {
+        "ageing analysis of trade receivables": [
+            {"company": "00001", "year": 2025, "page": 1,
+             "match_kind": "normalized", "market": "HK",
+             "catalog_version": "v",
+             "suggested": "ageing analysis of the trade receivables"},
+            {"company": "600519", "year": 2024, "page": 1,
+             "match_kind": "normalized", "market": "CN",
+             "catalog_version": "v",
+             "suggested": "ageing analysis of the trade receivables"},
+        ],
+    }
+    signals = compute_signals(
+        ledger,
+        catalog_aliases={
+            "receivables_aging": ("ageing analysis of trade receivables",),
+        },
+        min_companies=2,
+    )
+    assert signals["promotion_candidates"] == []
