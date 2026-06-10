@@ -1074,6 +1074,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "audit-pdf-aliases":
+        import subprocess
         import sys
         from financial_report_llm_extractor.field_metadata import load_field_taxonomy
         from financial_report_llm_extractor.structured_sources.alias_audit import (
@@ -1097,7 +1098,11 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 ingest_dir.mkdir(parents=True, exist_ok=True)
                 ingest_result = ingest_pdf(args.pdf, ingest_dir)
-            except (RuntimeError, FileNotFoundError) as exc:
+            except (
+                RuntimeError,
+                FileNotFoundError,
+                subprocess.CalledProcessError,
+            ) as exc:
                 print(f"error: {exc}", file=sys.stderr)
                 return 2
             build_chunk_store(
@@ -1119,7 +1124,7 @@ def main(argv: list[str] | None = None) -> int:
             emit_catalog_patch(audit_report, args.out)
         print(json.dumps(
             {"out": str(args.out), "summary": audit_report.summary},
-            ensure_ascii=False, indent=2,
+            ensure_ascii=False, indent=2, sort_keys=True,
         ))
         return 0
 
