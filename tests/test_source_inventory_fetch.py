@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 if TYPE_CHECKING:
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        SourceMappingCatalog,
+    )
     from financial_report_llm_extractor.structured_sources.models import (
         SourceInventoryRecord,
     )
@@ -171,6 +175,71 @@ def test_fetch_source_inventory_writes_period_filtered_artifacts(
     assert "2023-12-31" not in contents
 
 
+class _RepurchaseHistoryYahooClient:
+    """Yahoo client whose cash flow tracks 'Repurchase Of Capital Stock' in
+    2022 but NOT in 2024 — plus a present 2024 cash-flow line so the statement
+    is present for the target period."""
+
+    def get_financial_statement(
+        self, *, ticker: str, statement_type: str
+    ) -> dict[str, object]:
+        if statement_type != "cash_flow":
+            return {"metadata": {}, "rows": []}
+        return {
+            "metadata": {"report_type": "annual"},
+            "rows": [
+                {
+                    "field": "Repurchase Of Capital Stock",
+                    "period": "2022-12-31",
+                    "value": "-197000000",
+                },
+                {  # statement present in target period (a different line)
+                    "field": "Cash Dividends Paid",
+                    "period": "2024-12-31",
+                    "value": "-9433000000",
+                },
+            ],
+        }
+
+
+def test_fetch_source_inventory_synthesizes_zero_for_tracked_absent_field(
+    tmp_path: Path,
+) -> None:
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+        fetch_source_inventory,
+    )
+
+    catalog_path = Path("field_catalog/turtle_v015_source_mapping_minimal.json")
+
+    fetch_source_inventory(
+        company="00001",
+        period=PeriodSpec.from_year(2024),
+        market="HK",
+        providers=("yahoo",),
+        akshare_client=None,
+        yahoo_client=_RepurchaseHistoryYahooClient(),
+        out_dir=tmp_path,
+        catalog_path=catalog_path,
+    )
+
+    import json as _json
+
+    rows = [
+        _json.loads(line)
+        for line in (tmp_path / "source_inventory.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
+    repurchase = [
+        r for r in rows if r.get("raw_field_name") == "Repurchase Of Capital Stock"
+    ]
+    assert len(repurchase) == 1, "expected one synthesized repurchase=0 record"
+    rec = repurchase[0]
+    assert rec["period"].startswith("2024-12-31")
+    assert rec["parsed_numeric_value"] == "0"
+    assert rec["source_status"] == "present"
+
+
 def test_yahoo_hk_ticker_strips_leading_zeroes_and_keeps_four_digit_minimum() -> None:
     from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
         _yahoo_hk_ticker,
@@ -206,3 +275,136 @@ def test_hk_issuer_financial_currency_maps_known_reporters() -> None:
 
     # Unknown HK ticker → HKD default (preserves pre-Phase-HK-B.5.1 behavior).
     assert hk_issuer_financial_currency("99999") == "HKD"
+
+
+# ---------------------------------------------------------------------------
+# Inventory-layer absence-means-zero synthesis (sparse buyback verified 0)
+# ---------------------------------------------------------------------------
+
+
+def _repurchase_catalog() -> "SourceMappingCatalog":
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        SourceMappingCatalog,
+        SourceMappingEntry,
+    )
+    return SourceMappingCatalog(
+        catalog_id="test",
+        version="1",
+        entries={
+            "repurchase_of_stock": SourceMappingEntry(
+                field_id="repurchase_of_stock",
+                priority="P2",
+                value_type="money",
+                statement_type="cash_flow",
+                currency_requirement="required",
+                unit_requirement="required",
+                source_aliases={"yahoo": ("Repurchase Of Capital Stock",)},
+                primary_route="yahoo_direct",
+                absence_means_zero=True,
+            )
+        },
+    )
+
+
+def _cf_record(
+    raw_field_name: str,
+    period: str,
+    *,
+    source: str = "yahoo",
+    statement_type: str = "cash_flow",
+    value: str = "-8518000000",
+) -> "SourceInventoryRecord":
+    from financial_report_llm_extractor.structured_sources.models import (
+        SourceEvidence,
+        SourceInventoryRecord,
+    )
+    return SourceInventoryRecord(
+        source=source,  # type: ignore[arg-type]
+        market="HK",
+        ticker="00001",
+        statement_type=statement_type,
+        period=period,
+        raw_field_name=raw_field_name,
+        raw_value=value,
+        currency="HKD",
+        unit="HKD",
+        source_status="present",
+        source_evidence=(
+            SourceEvidence(
+                source=source,  # type: ignore[arg-type]
+                adapter=source,
+                function="fixture",
+                artifact_id=f"{source}_hk_00001_{statement_type}",
+                raw_record_id=f"{source}:{raw_field_name}:{period}",
+                raw_field_name=raw_field_name,
+            ),
+        ),
+    )
+
+
+def _synthesize(
+    all_records: list["SourceInventoryRecord"], period_year: int = 2025
+) -> list["SourceInventoryRecord"]:
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+        synthesize_absence_zero_records,
+    )
+    return synthesize_absence_zero_records(
+        tuple(all_records), PeriodSpec.from_year(period_year), _repurchase_catalog()
+    )
+
+
+def test_synthesize_zero_when_tracked_but_absent_in_target_period() -> None:
+    """Provider tracked the line historically + statement present + absent this
+    period → synthesize a present 0 for the target period (00001 case)."""
+    records = [
+        _cf_record("Repurchase Of Capital Stock", "2021-12-31", value="-1239000000"),
+        _cf_record("Repurchase Of Capital Stock", "2022-12-31", value="-197000000"),
+        _cf_record("Cash Dividends Paid", "2025-12-31"),  # statement present 2025
+    ]
+
+    synth = _synthesize(records)
+
+    assert len(synth) == 1
+    rec = synth[0]
+    assert rec.source == "yahoo"
+    assert rec.statement_type == "cash_flow"
+    assert rec.raw_field_name == "Repurchase Of Capital Stock"
+    assert rec.period == "2025-12-31"
+    assert rec.source_status == "present"
+    assert rec.parsed_numeric_value == Decimal("0")
+    assert rec.currency == "HKD"
+    assert rec.unit == "HKD"
+    rec.validate()  # must be a structurally valid present money record
+
+
+def test_no_synthesis_when_provider_never_tracked_the_line() -> None:
+    """Provider has no repurchase row in ANY period → absence is 'not tracked',
+    not zero. Must NOT synthesize (600519 / Moutai false-zero guard)."""
+    records = [
+        _cf_record("Cash Dividends Paid", "2024-12-31"),
+        _cf_record("Cash Dividends Paid", "2025-12-31"),
+    ]
+
+    assert _synthesize(records) == []
+
+
+def test_no_synthesis_when_value_present_in_target_period() -> None:
+    """Provider reported a real repurchase value this period → use it, no synth."""
+    records = [
+        _cf_record("Repurchase Of Capital Stock", "2025-12-31", value="-500000000"),
+        _cf_record("Cash Dividends Paid", "2025-12-31"),
+    ]
+
+    assert _synthesize(records) == []
+
+
+def test_no_synthesis_when_statement_absent_in_target_period() -> None:
+    """Tracked historically, but the cash_flow statement itself is absent this
+    period → cannot assert zero (no completeness evidence)."""
+    records = [
+        _cf_record("Repurchase Of Capital Stock", "2021-12-31", value="-1239000000"),
+        # No 2025 cash_flow records at all.
+    ]
+
+    assert _synthesize(records) == []

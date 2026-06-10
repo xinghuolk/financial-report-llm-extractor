@@ -144,6 +144,7 @@ class SourceMappingEntry:
     fallback_policy: str = "pdf_allowed"
     source_policy: SourcePolicy | None = None
     null_means_zero: bool = False
+    absence_means_zero: bool = False
     by_market_aliases: dict[str, dict[str, tuple[str, ...]]] = field(
         default_factory=dict
     )
@@ -185,6 +186,11 @@ class SourceMappingEntry:
         if self.null_means_zero and self.value_type != "money":
             raise ValueError(
                 f"null_means_zero is only supported for value_type='money' "
+                f"(field {self.field_id} has value_type={self.value_type})"
+            )
+        if self.absence_means_zero and self.value_type != "money":
+            raise ValueError(
+                f"absence_means_zero is only supported for value_type='money' "
                 f"(field {self.field_id} has value_type={self.value_type})"
             )
         if self.source_policy is not None:
@@ -300,6 +306,7 @@ def load_source_mapping_catalog(
             fallback_policy=mapping.get("fallback_policy", "pdf_allowed"),
             source_policy=_parse_source_policy(mapping.get("source_policy")),
             null_means_zero=bool(mapping.get("null_means_zero", False)),
+            absence_means_zero=bool(mapping.get("absence_means_zero", False)),
             by_market_aliases=by_market_aliases,
             industry_not_applicable=_parse_industry_not_applicable(
                 mapping.get("industry_not_applicable")

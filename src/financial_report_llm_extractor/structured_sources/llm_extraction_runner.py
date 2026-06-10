@@ -53,6 +53,7 @@ class LlmExtractionTarget:
     chunk_strategy: ChunkStrategy
     expected_currency: str | None = None
     expected_unit: str | None = None
+    absence_means_zero: bool = False
 
 
 def derive_targets(
@@ -86,6 +87,7 @@ def derive_targets(
             value_type=entry.value_type,
             aliases=entry.pdf_aliases,
             chunk_strategy=chunk_strategy,
+            absence_means_zero=entry.absence_means_zero,
         ))
     targets.sort(key=lambda t: t.field_id)
     return targets
@@ -236,6 +238,7 @@ def extract_for_chunks(
             chunks=trimmed,
             expected_currency=target.expected_currency,
             expected_unit=target.expected_unit,
+            absence_means_zero=target.absence_means_zero,
         )
 
         try:

@@ -38,7 +38,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 def _entry(field_id: str, *, pdf_aliases: tuple[str, ...] = (),
            statement_type: str = "balance_sheet",
            value_type: str = "money",
-           priority: str = "P0") -> SourceMappingEntry:
+           priority: str = "P0",
+           absence_means_zero: bool = False) -> SourceMappingEntry:
     return SourceMappingEntry(
         field_id=field_id,
         priority=priority,
@@ -48,6 +49,7 @@ def _entry(field_id: str, *, pdf_aliases: tuple[str, ...] = (),
         unit_requirement="required",
         source_aliases={"akshare": ("X",)},
         pdf_aliases=pdf_aliases,
+        absence_means_zero=absence_means_zero,
     )
 
 
@@ -106,6 +108,66 @@ def test_derive_targets_uses_taxonomy_description() -> None:
     assert t.field_id == "revenue"
     assert t.field_description == "operating revenue"
     assert t.aliases == ("revenue", "营业收入")
+
+
+def test_derive_targets_propagates_absence_means_zero() -> None:
+    catalog = _catalog([
+        _entry(
+            "repurchase_of_stock",
+            pdf_aliases=("repurchase of capital stock",),
+            statement_type="cash_flow",
+            absence_means_zero=True,
+        ),
+        _entry("revenue", pdf_aliases=("revenue",)),
+    ])
+    taxonomy = _taxonomy([
+        _tax_entry("repurchase_of_stock", statement_type="cash_flow"),
+        _tax_entry("revenue"),
+    ])
+
+    targets = {t.field_id: t for t in
+               derive_targets(catalog, taxonomy, priorities=("P0",))}
+
+    assert targets["repurchase_of_stock"].absence_means_zero is True
+    assert targets["revenue"].absence_means_zero is False
+
+
+def test_extract_for_chunks_threads_absence_means_zero_into_prompt(
+    tmp_path: Path,
+) -> None:
+    catalog = _catalog([
+        _entry(
+            "repurchase_of_stock",
+            pdf_aliases=("repurchase of capital stock",),
+            statement_type="cash_flow",
+            absence_means_zero=True,
+        ),
+    ])
+    taxonomy = _taxonomy([
+        _tax_entry("repurchase_of_stock", statement_type="cash_flow"),
+    ])
+    chunks = [_chunk("c1", 139, "financing activities repurchase of capital stock")]
+
+    captured: dict[str, object] = {}
+
+    class _CapturingClient:
+        def complete_json(
+            self, *, system_prompt: str, user_payload: dict[str, object],
+        ) -> dict[str, object]:
+            captured.update(user_payload)
+            return {"field_id": "repurchase_of_stock", "found": True, "value": "0"}
+
+    extract_for_chunks(
+        chunks=chunks,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        client=_CapturingClient(),
+        company_id="TEST",
+        pdf_path=Path("test.pdf"),
+        out_dir=tmp_path,
+    )
+
+    assert "zero_inference" in captured
 
 
 def test_derive_targets_skips_fields_without_pdf_aliases() -> None:

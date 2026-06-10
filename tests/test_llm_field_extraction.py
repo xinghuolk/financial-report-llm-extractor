@@ -81,6 +81,46 @@ def test_build_prompt_includes_field_metadata_and_chunks() -> None:
     assert "found" in payload["response_schema"]["properties"]  # type: ignore[index]
 
 
+def test_build_prompt_omits_zero_inference_by_default() -> None:
+    req = FieldExtractionRequest(
+        field_id="revenue",
+        field_description="operating revenue",
+        statement_type="income_statement",
+        value_type="money",
+        chunks=({"chunk_id": "c1", "page_start": 4, "page_end": 4, "text": "..."},),
+    )
+    payload = build_field_extraction_prompt(req)
+    assert "zero_inference" not in payload
+
+
+def test_build_prompt_includes_zero_inference_when_flag_set() -> None:
+    req = FieldExtractionRequest(
+        field_id="repurchase_of_stock",
+        field_description="repurchase of capital stock",
+        statement_type="cash_flow",
+        value_type="money",
+        chunks=(
+            {
+                "chunk_id": "c1",
+                "page_start": 139,
+                "page_end": 139,
+                "text": "Financing activities ... Dividends paid ...",
+            },
+        ),
+        absence_means_zero=True,
+    )
+    payload = build_field_extraction_prompt(req)
+    assert "zero_inference" in payload
+    block = payload["zero_inference"]  # type: ignore[index]
+    assert block["enabled"] is True  # type: ignore[index]
+    # The instruction must tell the LLM that an absent line in a present
+    # statement section means a genuine zero (found=true, value='0').
+    instruction = str(block["instruction"]).lower()  # type: ignore[index]
+    assert "found=true" in instruction
+    assert "0" in instruction
+    assert "cash_flow" in instruction
+
+
 # ---------------------------------------------------------------------------
 # Task 4: Runner with FakeJsonClient
 # ---------------------------------------------------------------------------

@@ -229,7 +229,7 @@ def test_fetch_source_inventory_cache_hit_orchestrator_integration(
             return []
 
     period = PeriodSpec(period_end=date(2024, 12, 31), report_type="annual")
-    catalog_path = Path("field_catalog/turtle_v015_field_taxonomy.json")
+    catalog_path = Path("field_catalog/turtle_v015_source_mapping_minimal.json")
 
     # Step 1: live fetch with cache to populate cache
     out_dir1 = tmp_path / "run1"
