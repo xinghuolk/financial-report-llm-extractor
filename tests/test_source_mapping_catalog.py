@@ -933,3 +933,28 @@ def test_minimal_source_mapping_entries_match_taxonomy_and_coverage() -> None:
         if taxonomy_entry.statement_type != "mixed":
             assert entry.statement_type == taxonomy_entry.statement_type
         assert entry.source_mode not in {"pdf_only", "llm_review"}
+
+
+def test_alias_normalization_flag_defaults_false_and_loads(tmp_path: Path) -> None:
+    base: dict[str, object] = {
+        "catalog_id": "t", "version": "1",
+        "priorities": [{"priority": "P0", "fields": ["revenue"]}],
+        "source_mappings": {
+            "revenue": {
+                "value_type": "money", "statement_type": "income_statement",
+                "currency_requirement": "required",
+                "unit_requirement": "required",
+                "source_aliases": {"yahoo": ["Total Revenue"]},
+                "pdf_aliases": ["revenue"],
+            }
+        },
+    }
+    p = tmp_path / "cat.json"
+    p.write_text(json.dumps(base))
+    cat = load_source_mapping_catalog(p, priorities=("P0",))
+    assert cat.alias_normalization is False
+
+    base["alias_normalization"] = True
+    p.write_text(json.dumps(base))
+    cat2 = load_source_mapping_catalog(p, priorities=("P0",))
+    assert cat2.alias_normalization is True

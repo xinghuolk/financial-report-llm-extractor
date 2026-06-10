@@ -54,6 +54,7 @@ class LlmExtractionTarget:
     expected_currency: str | None = None
     expected_unit: str | None = None
     absence_means_zero: bool = False
+    alias_normalization: bool = False
 
 
 def derive_targets(
@@ -88,6 +89,7 @@ def derive_targets(
             aliases=entry.pdf_aliases,
             chunk_strategy=chunk_strategy,
             absence_means_zero=entry.absence_means_zero,
+            alias_normalization=catalog.alias_normalization,
         ))
     targets.sort(key=lambda t: t.field_id)
     return targets

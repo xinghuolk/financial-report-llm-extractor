@@ -879,3 +879,16 @@ def test_extract_for_chunks_unwraps_openai_wrapped_response(tmp_path: Path) -> N
     item = result.items["revenue"]
     assert item.value == "100"
     assert item.currency == "HKD"
+
+
+def test_derive_targets_stamps_alias_normalization() -> None:
+    catalog = _catalog([_entry("revenue", pdf_aliases=("a", "b", "c"))])
+    taxonomy = _taxonomy([_tax_entry("revenue")])
+
+    off = derive_targets(catalog, taxonomy, priorities=("P0",))[0]
+    assert off.alias_normalization is False
+
+    from dataclasses import replace
+    on_catalog = replace(catalog, alias_normalization=True)
+    on = derive_targets(on_catalog, taxonomy, priorities=("P0",))[0]
+    assert on.alias_normalization is True
