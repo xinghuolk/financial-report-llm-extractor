@@ -205,6 +205,48 @@ def test_write_alias_audit_warns_on_empty_anchor_types(tmp_path: Path) -> None:
     assert "balance_sheet" in data["warnings"]["empty_anchor_statement_types"]
 
 
+def test_cli_audit_pdf_aliases_reuses_existing_chunks(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    out = tmp_path / "audit"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            f.write(_json.dumps(c) + "\n")
+
+    rc = main([
+        "audit-pdf-aliases",
+        "--pdf", "does-not-exist.pdf",  # unused: chunks.jsonl present
+        "--out", str(out),
+        "--priorities", "P0,P1,P2,P3,P4",
+    ])
+    assert rc == 0
+    assert (out / "alias_audit.json").exists()
+    assert (out / "alias_audit.md").exists()
+    # default real catalog: revenue must be a key in the output
+    data = _json.loads((out / "alias_audit.json").read_text())
+    assert "revenue" in data["fields"]
+
+
+def test_cli_audit_emits_catalog_patch_when_flagged(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    out = tmp_path / "audit2"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            f.write(_json.dumps(c) + "\n")
+
+    rc = main([
+        "audit-pdf-aliases", "--pdf", "x.pdf", "--out", str(out),
+        "--emit-catalog-patch",
+    ])
+    assert rc == 0
+    assert (out / "catalog_patch.json").exists()
+
+
 def test_exact_hit_when_no_cash_flow_anchor_present() -> None:
     """Empty anchor coverage for a statement type → in_statement_section None,
     and an exact-hit alias must still classify as exact_hit (not prose_only)."""
