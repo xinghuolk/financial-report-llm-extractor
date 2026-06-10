@@ -5,11 +5,13 @@ import json
 from pathlib import Path
 
 from financial_report_llm_extractor.structured_sources.alias_ledger import (
+    compute_signals,
     index_audit_dir,
     index_run_dir,
     load_ledger,
     new_ledger,
     save_ledger,
+    write_ledger_views,
 )
 
 
@@ -175,3 +177,98 @@ def test_index_run_dir_warns_on_bad_period_end(tmp_path: Path) -> None:
     warnings = index_run_dir(ledger, run)
     assert len(warnings) == 1 and "period_end" in warnings[0]
     assert ledger["fields"] == {}
+
+
+def _signal_ledger() -> dict[str, object]:
+    ledger = new_ledger()
+    f = ledger["fields"]
+    # promotion candidate: same suggested phrase, 2 HK companies
+    f["receivables_aging"] = {
+        "ageing analysis of trade receivables": [
+            {"company": "00001", "year": 2025, "page": 229,
+             "match_kind": "normalized", "market": "HK",
+             "catalog_version": "v",
+             "suggested": "ageing analysis of the trade receivables"},
+            {"company": "01113", "year": 2025, "page": 80,
+             "match_kind": "normalized", "market": "HK",
+             "catalog_version": "v",
+             "suggested": "ageing analysis of the trade receivables"},
+        ],
+    }
+    # exact hits for one alias of revenue; its other alias is dead in HK
+    f["revenue"] = {
+        "revenue": [
+            {"company": "00001", "year": 2025, "page": 134,
+             "match_kind": "exact", "market": "HK", "catalog_version": "v"},
+        ],
+    }
+    ledger["audit_statuses"] = {
+        "rd_exp": {"HK": {"00001": "no_hit", "01113": "no_hit",
+                           "01810": "no_hit"}},
+        "revenue": {"HK": {"00001": "exact_hit"}},
+    }
+    return ledger
+
+
+def test_promotion_candidates_market_scoped() -> None:
+    signals = compute_signals(
+        _signal_ledger(),
+        catalog_aliases={"receivables_aging": ("ageing analysis of trade receivables",),
+                          "revenue": ("revenue", "营业收入"),
+                          "rd_exp": ("research and development",)},
+        min_companies=2,
+    )
+    promos = signals["promotion_candidates"]
+    assert promos == [{
+        "field_id": "receivables_aging",
+        "market": "HK",
+        "suggested_alias": "ageing analysis of the trade receivables",
+        "companies": ["00001", "01113"],
+    }]
+
+
+def test_dead_aliases_market_scoped() -> None:
+    signals = compute_signals(
+        _signal_ledger(),
+        catalog_aliases={"revenue": ("revenue", "营业收入"),
+                          "receivables_aging": ("ageing analysis of trade receivables",),
+                          "rd_exp": ("research and development",)},
+        min_companies=2,
+    )
+    dead = signals["dead_aliases"]
+    # 营业收入 never hit in HK; research and development never hit in HK.
+    assert {"field_id": "revenue", "market": "HK",
+            "alias": "营业收入"} in dead
+    assert {"field_id": "rd_exp", "market": "HK",
+            "alias": "research and development"} in dead
+    # 'revenue' (hit) and the normalized-hit aging alias are NOT dead
+    assert not any(d["alias"] == "revenue" for d in dead)
+
+
+def test_terminal_candidates_threshold() -> None:
+    signals = compute_signals(
+        _signal_ledger(),
+        catalog_aliases={"rd_exp": ("research and development",)},
+        min_companies=2,
+    )
+    terms = signals["terminal_candidates"]
+    assert terms == [{
+        "field_id": "rd_exp", "market": "HK",
+        "no_hit_companies": ["00001", "01113", "01810"],
+    }]
+
+
+def test_write_ledger_views_md(tmp_path: Path) -> None:
+    ledger = _signal_ledger()
+    write_ledger_views(
+        ledger,
+        catalog_aliases={"receivables_aging": ("ageing analysis of trade receivables",),
+                          "revenue": ("revenue", "营业收入"),
+                          "rd_exp": ("research and development",)},
+        out_md=tmp_path / "ledger.md",
+        min_companies=2,
+    )
+    md = (tmp_path / "ledger.md").read_text()
+    assert "ageing analysis of the trade receivables" in md
+    assert "营业收入" in md  # dead-alias table
+    assert "rd_exp" in md  # terminal table

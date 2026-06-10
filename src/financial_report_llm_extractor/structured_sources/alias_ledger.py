@@ -122,6 +122,11 @@ def index_run_dir(ledger: Ledger, run_dir: Path) -> list[str]:
     return []
 
 
+def _md_escape(s: str) -> str:
+    """Escape pipe characters for Markdown table cells."""
+    return s.replace("|", "\\|")
+
+
 def index_audit_dir(ledger: Ledger, audit_dir: Path) -> list[str]:
     """Index one audit dir's alias-level hits + field statuses."""
     audit_path = audit_dir / "alias_audit.json"
@@ -164,3 +169,111 @@ def index_audit_dir(ledger: Ledger, audit_dir: Path) -> list[str]:
             str(market), {},
         )[str(company)] = str(fr.get("status"))
     return []
+
+
+def compute_signals(
+    ledger: Ledger,
+    *,
+    catalog_aliases: dict[str, tuple[str, ...]],
+    min_companies: int = 2,
+) -> dict[str, list[dict[str, Any]]]:
+    """Market-scoped governance signals.
+
+    Market scoping is load-bearing: pdf_aliases mix EN + 中文 in one list,
+    so cross-market aggregation would mark the whole Chinese half dead on
+    an English cohort (and vice versa). Markets = those observed in the
+    ledger, per signal.
+    """
+    # markets observed anywhere in the ledger
+    markets: set[str] = set()
+    for aliases in ledger["fields"].values():
+        for entries in aliases.values():
+            markets.update(str(e["market"]) for e in entries)
+    for by_mkt in ledger["audit_statuses"].values():
+        markets.update(by_mkt.keys())
+
+    hit_by_market: dict[tuple[str, str, str], bool] = {}
+    for fid, aliases in ledger["fields"].items():
+        for alias, entries in aliases.items():
+            if alias == LLM_KEY:
+                continue
+            for e in entries:
+                hit_by_market[(fid, alias, str(e["market"]))] = True
+
+    dead: list[dict[str, Any]] = []
+    for fid, alias_list in sorted(catalog_aliases.items()):
+        for market in sorted(markets):
+            # only markets where this FIELD was audited at least once
+            audited = ledger["audit_statuses"].get(fid, {}).get(market)
+            if not audited:
+                continue
+            for alias in alias_list:
+                if not hit_by_market.get((fid, alias, market)):
+                    dead.append({"field_id": fid, "market": market,
+                                  "alias": alias})
+
+    promo_groups: dict[tuple[str, str, str], set[str]] = {}
+    for fid, aliases in ledger["fields"].items():
+        for alias, entries in aliases.items():
+            if alias == LLM_KEY:
+                continue
+            for e in entries:
+                sugg = e.get("suggested")
+                if e.get("match_kind") == "normalized" and sugg:
+                    promo_groups.setdefault(
+                        (fid, str(e["market"]), str(sugg)), set(),
+                    ).add(str(e["company"]))
+    promotions = [
+        {"field_id": fid, "market": market, "suggested_alias": sugg,
+         "companies": sorted(cos)}
+        for (fid, market, sugg), cos in sorted(promo_groups.items())
+        if len(cos) >= min_companies
+    ]
+
+    terminals = []
+    for fid, by_mkt in sorted(ledger["audit_statuses"].items()):
+        for market, by_co in sorted(by_mkt.items()):
+            no_hit = sorted(c for c, s in by_co.items() if s == "no_hit")
+            if len(no_hit) >= min_companies:
+                terminals.append({"field_id": fid, "market": market,
+                                   "no_hit_companies": no_hit})
+
+    return {"dead_aliases": dead, "promotion_candidates": promotions,
+            "terminal_candidates": terminals}
+
+
+def write_ledger_views(
+    ledger: Ledger,
+    *,
+    catalog_aliases: dict[str, tuple[str, ...]],
+    out_md: Path,
+    min_companies: int = 2,
+) -> None:
+    signals = compute_signals(
+        ledger, catalog_aliases=catalog_aliases, min_companies=min_companies,
+    )
+    lines = ["# Alias Match Ledger — governance view", "",
+             f"- note: {ledger['note']}", ""]
+    lines += ["## Promotion candidates (normalized phrase, "
+              f">= {min_companies} companies per market)", "",
+              "| Field | Market | Suggested alias | Companies |",
+              "|---|---|---|---|"]
+    for p in signals["promotion_candidates"]:
+        lines.append(
+            f"| `{p['field_id']}` | {p['market']} | "
+            f"{_md_escape(str(p['suggested_alias']))} | "
+            f"{', '.join(p['companies'])} |")
+    lines += ["", "## Dead aliases (zero hits in an audited market)", "",
+              "| Field | Market | Alias |", "|---|---|---|"]
+    for d in signals["dead_aliases"]:
+        lines.append(
+            f"| `{d['field_id']}` | {d['market']} | "
+            f"{_md_escape(str(d['alias']))} |")
+    lines += ["", f"## Terminal candidates (no_hit across >= {min_companies} "
+              "companies in a market)", "",
+              "| Field | Market | Companies |", "|---|---|---|"]
+    for t in signals["terminal_candidates"]:
+        lines.append(f"| `{t['field_id']}` | {t['market']} | "
+                     f"{', '.join(t['no_hit_companies'])} |")
+    out_md.parent.mkdir(parents=True, exist_ok=True)
+    out_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
