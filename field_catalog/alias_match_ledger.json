@@ -28230,5 +28230,177 @@
         "09987": "exact_hit"
       }
     }
+  },
+  "provider_resolved": {
+    "accounts_receiv": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "acct_payable": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "bad_debt_provision": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "capital_expenditures": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "cash": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "change_in_inventory": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "change_in_payables": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "change_in_receivables": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "contract_liabilities_non_current": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "defer_tax_assets": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "defer_tax_liab": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "depreciation_amortization": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "dividends_paid": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "equity_attributable_to_owners": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "financing_cash_flow": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "fix_assets": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "interest_paid_cash": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "inventories": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "investing_cash_flow": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "lt_borr": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "lt_eqt_invest": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "minority_int": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "money_cap": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "net_profit": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "operating_cash_flow": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "operating_cost": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "operating_profit": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "repurchase_of_stock": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "revenue": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "st_borr": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "total_assets": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "total_cur_assets": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "total_cur_liab": {
+      "HK": [
+        "00001"
+      ]
+    },
+    "total_liabilities": {
+      "HK": [
+        "00001"
+      ]
+    }
   }
 }

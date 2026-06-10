@@ -441,7 +441,7 @@ def _signal_ledger() -> dict[str, object]:
         "ageing analysis of trade receivables": [
             {"company": "00001", "year": 2025, "page": 229,
              "match_kind": "normalized", "market": "HK",
-             "catalog_version": "v", 
+             "catalog_version": "v",
              "suggested": "ageing analysis of the trade receivables"},
             {"company": "01113", "year": 2025, "page": 80,
              "match_kind": "normalized", "market": "HK",

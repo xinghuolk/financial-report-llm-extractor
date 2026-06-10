@@ -324,7 +324,12 @@ def test_emit_promotion_review_compatible_shape(tmp_path: Path) -> None:
         "action": "promote",
         "reason": "normalized phrase hit in 2 HK companies (00001, 01113)",
         "aliases": ["ageing analysis of the trade receivables"],
+        "market": "HK",
     }]
+    # summary key names align with source_mapping_expansion_review so the
+    # same review-gate tooling can consume either artifact
+    assert data["summary"] == {"promoted_count": 1, "deferred_count": 0,
+                                "blocked_count": 0}
     assert (tmp_path / "alias_promotion_review.md").exists()
 
 
@@ -356,3 +361,91 @@ def test_cli_index_alias_matches_end_to_end(tmp_path: Path) -> None:
         "--audits", str(audits), "--ledger", str(ledger_path),
     ])
     assert rc2 == 0 and ledger_path.read_bytes() == first
+
+
+def test_terminal_excluded_when_provider_resolves_field() -> None:
+    """Review F3 (PR #15 finding 3): a PDF-alias miss is NOT terminal for
+    fields any company in the market resolves cleanly from providers."""
+    ledger = new_ledger()
+    ledger["audit_statuses"] = {
+        "revenue": {"HK": {"00001": "no_hit", "01113": "no_hit"}},
+        "rd_exp": {"HK": {"00001": "no_hit", "01113": "no_hit"}},
+    }
+    # revenue is provider-clean for at least one HK company
+    ledger["provider_resolved"] = {"revenue": {"HK": ["00001"]}}
+    signals = compute_signals(
+        ledger,
+        catalog_aliases={"revenue": ("revenue",),
+                          "rd_exp": ("research and development",)},
+        min_companies=2,
+    )
+    terms = {t["field_id"] for t in signals["terminal_candidates"]}
+    assert terms == {"rd_exp"}
+
+
+def test_index_run_dir_records_provider_resolved(tmp_path: Path) -> None:
+    run = _write_run_dir(tmp_path)
+    ev = json.loads((run / "evaluation.json").read_text())
+    ev["fields"] = {
+        "revenue": {"bucket": "clean_present"},
+        "rd_exp": {"bucket": "unresolved_conflict"},
+    }
+    (run / "evaluation.json").write_text(json.dumps(ev))
+    ledger = new_ledger()
+    index_run_dir(ledger, run)
+    assert ledger["provider_resolved"] == {"revenue": {"HK": ["00001"]}}
+
+
+def test_cli_index_rebuilds_by_default_dropping_stale(tmp_path: Path) -> None:
+    """Review F1 (PR #15 finding 1): default rebuild reflects current
+    artifacts; --append opts into accumulation."""
+    from financial_report_llm_extractor.cli import main
+
+    runs = tmp_path / "runs"
+    run = _write_run_dir(runs)
+    ledger_path = tmp_path / "ledger.json"
+    rc = main(["index-alias-matches", "--runs", str(runs),
+               "--ledger", str(ledger_path)])
+    assert rc == 0
+    assert "bond_payable" in json.loads(ledger_path.read_text())["fields"]
+
+    # artifact removed -> default rebuild drops the stale entry
+    import shutil
+    shutil.rmtree(run)
+    audits = tmp_path / "audits"
+    _write_audit_dir(audits)
+    rc = main(["index-alias-matches", "--audits", str(audits),
+               "--ledger", str(ledger_path)])
+    assert rc == 0
+    data = json.loads(ledger_path.read_text())
+    assert "bond_payable" not in data["fields"]
+    assert "receivables_aging" in data["fields"]
+
+    # --append keeps accumulating instead
+    runs2 = tmp_path / "runs2"
+    _write_run_dir(runs2)
+    rc = main(["index-alias-matches", "--runs", str(runs2),
+               "--ledger", str(ledger_path), "--append"])
+    assert rc == 0
+    data = json.loads(ledger_path.read_text())
+    assert "bond_payable" in data["fields"]
+    assert "receivables_aging" in data["fields"]
+
+
+def test_terminal_excluded_when_llm_extracts_field() -> None:
+    """A field the LLM extracts in the market is evidently applicable —
+    not a terminal candidate even when all PDF aliases miss."""
+    ledger = new_ledger()
+    ledger["audit_statuses"] = {
+        "bond_payable": {"HK": {"00001": "no_hit", "01113": "no_hit"}},
+    }
+    ledger["fields"]["bond_payable"] = {
+        "_llm": [{"company": "00001", "year": 2025, "page": 232,
+                   "market": "HK"}],
+    }
+    signals = compute_signals(
+        ledger,
+        catalog_aliases={"bond_payable": ("bonds payable",)},
+        min_companies=2,
+    )
+    assert signals["terminal_candidates"] == []

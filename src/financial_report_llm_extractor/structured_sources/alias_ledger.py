@@ -36,6 +36,7 @@ def new_ledger() -> Ledger:
         "note": LEDGER_NOTE,
         "fields": {},
         "audit_statuses": {},
+        "provider_resolved": {},
     }
 
 
@@ -70,6 +71,15 @@ def save_ledger(ledger: Ledger, path: Path) -> None:
                 for mkt, by_co in sorted(by_mkt.items())
             }
             for fid, by_mkt in sorted(ledger["audit_statuses"].items())
+        },
+        "provider_resolved": {
+            fid: {
+                mkt: sorted(set(cos))
+                for mkt, cos in sorted(by_mkt.items())
+            }
+            for fid, by_mkt in sorted(
+                ledger.get("provider_resolved", {}).items()
+            )
         },
     }
     path.write_text(
@@ -106,6 +116,18 @@ def index_run_dir(ledger: Ledger, run_dir: Path) -> list[str]:
             f"{run_dir}: period_end {ev.get('period_end')!r} not parseable "
             f"as year, skipped"
         ]
+    ev_fields = ev.get("fields")
+    if isinstance(ev_fields, dict):
+        for field_id, frec in ev_fields.items():
+            if not isinstance(frec, dict):
+                continue
+            if frec.get("bucket") != "clean_present":
+                continue
+            cos = ledger.setdefault("provider_resolved", {}).setdefault(
+                field_id, {},
+            ).setdefault(market, [])
+            if company not in cos:
+                cos.append(company)
     supp = json.loads(supp_path.read_text(encoding="utf-8"))
     raw_items = supp.get("items")
     if not isinstance(raw_items, dict):
@@ -230,9 +252,22 @@ def compute_signals(
         if len(cos) >= min_companies
     ]
 
+    # Terminal candidates are a WEAK, PDF-only diagnostic: an alias miss
+    # says nothing about provider coverage. Excluded per (field, market):
+    # provider-clean fields (source-first by design) and fields with LLM
+    # presents (extractable => evidently applicable).
+    provider_resolved = ledger.get("provider_resolved", {})
+    llm_markets: dict[str, set[str]] = {}
+    for fid, aliases in ledger["fields"].items():
+        for e in aliases.get(LLM_KEY, []):
+            llm_markets.setdefault(fid, set()).add(str(e["market"]))
     terminals = []
     for fid, by_mkt in sorted(ledger["audit_statuses"].items()):
         for market, by_co in sorted(by_mkt.items()):
+            if provider_resolved.get(fid, {}).get(market):
+                continue
+            if market in llm_markets.get(fid, set()):
+                continue
             no_hit = sorted(c for c, s in by_co.items() if s == "no_hit")
             if len(no_hit) >= min_companies:
                 terminals.append({"field_id": fid, "market": market,
@@ -270,7 +305,9 @@ def write_ledger_views(
             f"| `{d['field_id']}` | {d['market']} | "
             f"{_md_escape(str(d['alias']))} |")
     lines += ["", f"## Terminal candidates (no_hit across >= {min_companies} "
-              "companies in a market)", "",
+              "companies in a market; PDF-only diagnostic — provider-clean "
+              "fields excluded, verify against source policy before acting)",
+              "",
               "| Field | Market | Companies |", "|---|---|---|"]
     for t in signals["terminal_candidates"]:
         lines.append(f"| `{t['field_id']}` | {t['market']} | "
@@ -303,6 +340,9 @@ def emit_promotion_review(
                 f"{p['market']} companies ({', '.join(p['companies'])})"
             ),
             "aliases": [p["suggested_alias"]],
+            # alias-only extension over CandidateDecision: the evidence
+            # threshold is market-scoped, so the market rides along.
+            "market": p["market"],
         }
         for p in signals["promotion_candidates"]
     ]
@@ -312,7 +352,11 @@ def emit_promotion_review(
         "promoted": promoted,
         "deferred": [],
         "blocked": [],
-        "summary": {"promoted": len(promoted), "deferred": 0, "blocked": 0},
+        "summary": {
+            "promoted_count": len(promoted),
+            "deferred_count": 0,
+            "blocked_count": 0,
+        },
     }
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "alias_promotion_review.json").write_text(

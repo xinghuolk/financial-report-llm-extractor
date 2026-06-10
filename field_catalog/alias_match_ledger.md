@@ -450,55 +450,39 @@
 | `total_liabilities` | CN | total liabilities |
 | `total_liabilities` | HK | 负债合计 |
 
-## Terminal candidates (no_hit across >= 2 companies in a market)
+## Terminal candidates (no_hit across >= 2 companies in a market; PDF-only diagnostic — provider-clean fields excluded, verify against source policy before acting)
 
 | Field | Market | Companies |
 |---|---|---|
 | `bond_payable` | CN | 300750, 600519 |
-| `bond_payable` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `buyback_cancellation_progress` | HK | 00001, 01113, 02498, 06862, 09987 |
 | `c_pay_to_staff` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `capitalized_interest` | CN | 300750, 600519 |
-| `capitalized_interest` | HK | 01113, 01810, 02498, 06862, 09987 |
 | `capitalized_rd` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `change_in_inventory` | CN | 300750, 600519 |
-| `change_in_inventory` | HK | 00001, 01113, 01810 |
 | `change_in_payables` | CN | 300750, 600519 |
-| `change_in_payables` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `change_in_receivables` | CN | 300750, 600519 |
-| `change_in_receivables` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `cip` | CN | 300750, 600519 |
-| `cip` | HK | 00001, 01113, 06862 |
-| `contract_liabilities_non_current` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `defer_tax_assets` | CN | 300750, 600519 |
 | `defer_tax_liab` | CN | 300750, 600519 |
 | `depreciation_amortization` | CN | 300750, 600519 |
 | `dps` | CN | 300750, 600519 |
-| `dps` | HK | 01810, 02498, 06862, 09987 |
 | `equity_attributable_to_owners` | CN | 300750, 600519 |
-| `equity_attributable_to_owners` | HK | 01113, 01810, 02498, 06862 |
 | `financing_cash_flow` | CN | 300750, 600519 |
-| `financing_cash_flow` | HK | 01113, 01810, 06862 |
 | `gross_profit` | HK | 00001, 01113, 06862, 09987 |
-| `interest_paid_cash` | HK | 01113, 09987 |
 | `invest_income` | CN | 300750, 600519 |
 | `investing_cash_flow` | CN | 300750, 600519 |
-| `investing_cash_flow` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `lease_liability_maturity` | CN | 300750, 600519 |
 | `lease_liability_maturity` | HK | 00001, 02498, 06862 |
-| `lt_borr` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `non_oper_exp` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `non_oper_income` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `non_recurring_items_breakdown` | HK | 01113, 02498, 06862 |
-| `operating_cost` | HK | 02498, 06862 |
 | `other_cur_assets` | HK | 01810, 06862 |
 | `rd_exp` | HK | 01113, 06862 |
 | `receiv_tax_refund` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `receivables_aging` | HK | 01113, 06862, 09987 |
-| `repurchase_of_stock` | HK | 00001, 01113, 01810, 02498, 06862 |
 | `restricted_cash` | CN | 300750, 600519 |
 | `restricted_cash` | HK | 00001, 01113, 06862 |
 | `segment_revenue_profit` | CN | 300750, 600519 |
 | `selling_general_administrative` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `st_borr` | HK | 00001, 01113, 01810, 02498, 06862 |
 | `time_deposits_or_wealth_products` | HK | 00001, 01113 |

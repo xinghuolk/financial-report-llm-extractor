@@ -434,6 +434,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ledger_parser.add_argument("--min-companies", type=int, default=2)
     ledger_parser.add_argument(
+        "--append", action="store_true",
+        help="Upsert into the existing ledger instead of rebuilding from "
+             "the given roots (default rebuilds: the ledger is a derived "
+             "view of the artifacts you pass).",
+    )
+    ledger_parser.add_argument(
         "--emit-promotion-review", type=Path, default=None, metavar="DIR",
     )
 
@@ -1208,6 +1214,7 @@ def main(argv: list[str] | None = None) -> int:
             index_audit_dir,
             index_run_dir,
             load_ledger,
+            new_ledger,
             save_ledger,
             write_ledger_views,
         )
@@ -1215,7 +1222,10 @@ def main(argv: list[str] | None = None) -> int:
             load_source_mapping_catalog,
         )
 
-        ledger = load_ledger(args.ledger)
+        # Default REBUILDS from the given roots: load-and-upsert would keep
+        # stale entries from corrected/removed artifacts forever, breaking
+        # the derived-view contract. --append opts into accumulation.
+        ledger = load_ledger(args.ledger) if args.append else new_ledger()
         warnings: list[str] = []
 
         def _candidates(root: Path) -> list[Path]:
