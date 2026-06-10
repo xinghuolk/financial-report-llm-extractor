@@ -26,11 +26,11 @@ from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
 )
 from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
-    _STATEMENT_SECTION_ANCHORS,
     LlmExtractionTarget,
     derive_targets,
     select_chunks,
     select_statement_section_chunks,
+    statement_section_pages,
 )
 
 FieldAuditStatus = Literal[
@@ -95,22 +95,6 @@ def _page_of(chunk: dict[str, object]) -> int | None:
 
 def _chunk_id_of(chunk: dict[str, object]) -> str:
     return str(chunk.get("chunk_id") or chunk.get("block_id") or "")
-
-
-def _section_pages(
-    blocks: list[dict[str, object]],
-) -> dict[str, tuple[int, ...]]:
-    """Pages whose block text matches a statement-type anchor phrase."""
-    out: dict[str, set[int]] = {k: set() for k in _STATEMENT_SECTION_ANCHORS}
-    for chunk in blocks:
-        text = " ".join(str(chunk.get("text", "") or "").lower().split())
-        page = _page_of(chunk)
-        if page is None:
-            continue
-        for stype, anchors in _STATEMENT_SECTION_ANCHORS.items():
-            if any(" ".join(a.split()) in text for a in anchors):
-                out[stype].add(page)
-    return {k: tuple(sorted(v)) for k, v in out.items()}
 
 
 def _audit_field(
@@ -185,7 +169,7 @@ def audit_chunks(
     prepared_blocks: list[tuple[dict[str, object], PreparedText]] = [
         (c, prepare_text(str(c.get("text", "") or ""))) for c in blocks
     ]
-    section_pages = _section_pages(blocks)
+    section_pages = statement_section_pages(blocks)
     targets = derive_targets(catalog, taxonomy, priorities=priorities)
     fields = {
         t.field_id: _audit_field(t, prepared_blocks, chunks, section_pages)

@@ -881,6 +881,21 @@ def test_extract_for_chunks_unwraps_openai_wrapped_response(tmp_path: Path) -> N
     assert item.currency == "HKD"
 
 
+def test_statement_section_pages_maps_anchor_pages() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        statement_section_pages,
+    )
+    chunks = [
+        _chunk("a", 141, "Consolidated statement of cash flows ..."),
+        _chunk("b", 134, "Consolidated income statement. Revenue"),
+        _chunk("c", 10, "no anchors here"),
+    ]
+    pages = statement_section_pages(chunks)
+    assert 141 in pages["cash_flow"]
+    assert 134 in pages["income_statement"]
+    assert pages["balance_sheet"] == ()
+
+
 def test_derive_targets_stamps_alias_normalization() -> None:
     catalog = _catalog([_entry("revenue", pdf_aliases=("a", "b", "c"))])
     taxonomy = _taxonomy([_tax_entry("revenue")])

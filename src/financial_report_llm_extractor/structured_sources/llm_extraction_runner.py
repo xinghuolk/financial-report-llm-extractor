@@ -180,6 +180,34 @@ _STATEMENT_SECTION_ANCHORS: dict[str, tuple[str, ...]] = {
 }
 
 
+def _chunk_page(chunk: dict[str, object]) -> int | None:
+    try:
+        return int(str(chunk.get("page")))
+    except (TypeError, ValueError):
+        return None
+
+
+def statement_section_pages(
+    chunks: list[dict[str, object]],
+) -> dict[str, tuple[int, ...]]:
+    """Pages whose text matches a statement-type anchor phrase.
+
+    Operates on whatever records it is given; callers that need page
+    precision should pass block records only (chunks.jsonl stores each
+    text three ways).
+    """
+    out: dict[str, set[int]] = {k: set() for k in _STATEMENT_SECTION_ANCHORS}
+    for chunk in chunks:
+        text = " ".join(str(chunk.get("text", "") or "").lower().split())
+        page = _chunk_page(chunk)
+        if page is None:
+            continue
+        for stype, anchors in _STATEMENT_SECTION_ANCHORS.items():
+            if any(" ".join(a.split()) in text for a in anchors):
+                out[stype].add(page)
+    return {k: tuple(sorted(v)) for k, v in out.items()}
+
+
 def select_statement_section_chunks(
     chunks: list[dict[str, object]],
     target: LlmExtractionTarget,
