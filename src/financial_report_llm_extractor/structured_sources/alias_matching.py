@@ -6,13 +6,16 @@ into live retrieval (that is PR-3, gated).
 Fold pipeline (applied symmetrically to alias and text):
   1. lowercase            2. whitespace fold
   3. apostrophe removal   4. hyphen -> space
-  5. edge-punctuation strip (PDF tokens carry ",.;:()" — must strip
+  5. edge-punctuation strip (PDF tokens carry ",.;:()“”" — must strip
      BEFORE plural fold or "receivables," never folds)
   6. plural fold (token: ies->y; strip trailing s when len > 3)
   7. stop-token drop (the/a/an)
 
 The len>3 guard on s-stripping keeps short tokens (as/is) stable, which
 resolves the rule-ordering asymmetry flagged in spec review.
+
+Limitations:
+  CJK line-wrap is out of scope: 应收\\n账款 cannot match alias 应收账款 in either tier (token model).
 """
 from __future__ import annotations
 
@@ -21,7 +24,8 @@ from typing import Literal
 
 _STOP_TOKENS = frozenset({"the", "a", "an"})
 _APOSTROPHES = ("'", "’")
-_EDGE_PUNCT = ",.;:()\""
+_EDGE_PUNCT = ",.;:()\"“”"
+_HYPHENS = ("-", "‐", "‑", "–")
 
 
 def _fold_token(token: str) -> list[str]:
@@ -29,6 +33,8 @@ def _fold_token(token: str) -> list[str]:
     t = token.lower()
     for ch in _APOSTROPHES:
         t = t.replace(ch, "")
+    for ch in _HYPHENS[1:]:
+        t = t.replace(ch, "-")
     out: list[str] = []
     for part in t.split("-"):
         part = part.strip(_EDGE_PUNCT)

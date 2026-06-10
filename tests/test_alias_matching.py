@@ -105,3 +105,22 @@ def test_exact_preempts_normalized() -> None:
     # the normalized form also matches.
     m = match_alias("treasury shares", "did not hold any treasury shares")
     assert m is not None and m.kind == "exact"
+
+
+def test_match_normalized_recovers_through_hyphen_split() -> None:
+    m = match_alias("one time item", "certain one-time items in the year")
+    assert m is not None and m.kind == "normalized"
+    assert m.matched_text == "one-time items"
+
+
+def test_match_normalized_first_span_with_multiple_occurrences() -> None:
+    text = "related parties transactions; more related parties transactions"
+    m = match_alias("related party transactions", text)
+    assert m is not None and m.count == 2
+    assert m.matched_text == "related parties transactions;"
+
+
+def test_match_unicode_hyphen_folds_like_ascii() -> None:
+    # U+2011 non-breaking hyphen, as pdftotext emits
+    m = match_alias("non-current liabilities", "Non‑current liabilities total")
+    assert m is not None
