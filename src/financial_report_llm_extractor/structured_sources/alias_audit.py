@@ -9,6 +9,7 @@ pages and avoid double counting).
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -196,4 +197,90 @@ def audit_chunks(
         generated_at=datetime.now(timezone.utc).isoformat(),
         section_anchor_coverage=section_pages,
         fields=fields,
+    )
+
+
+def write_alias_audit(report: AuditReport, out_dir: Path) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    empty_anchor_types = sorted(
+        k for k, v in report.section_anchor_coverage.items() if not v
+    )
+    payload = {
+        "schema_version": "alias_audit_v1",
+        "pdf_path": report.pdf_path,
+        "catalog_version": report.catalog_version,
+        "generated_at": report.generated_at,
+        "section_anchor_coverage": {
+            k: list(v) for k, v in report.section_anchor_coverage.items()
+        },
+        "warnings": {
+            # spec: every statement_type must resolve >=1 page, else the
+            # absence_means_zero fallback is silently dead for this PDF
+            "empty_anchor_statement_types": empty_anchor_types,
+        },
+        "fields": {
+            fid: {
+                "status": r.status,
+                "selected_chunks": [
+                    {"chunk_id": c.chunk_id, "page": c.page, "via": c.via}
+                    for c in r.selected_chunks
+                ],
+                "hits": [
+                    {"alias": h.alias, "kind": h.kind, "page": h.page,
+                     "count": h.count,
+                     "in_statement_section": h.in_statement_section,
+                     "matched_text": h.matched_text}
+                    for h in r.hits
+                ],
+                "suggested_aliases": list(r.suggested_aliases),
+            }
+            for fid, r in sorted(report.fields.items())
+        },
+        "summary": report.summary,
+    }
+    (out_dir / "alias_audit.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    lines = [
+        "# PDF Alias Audit", "",
+        f"- PDF: `{report.pdf_path}`",
+        f"- Catalog: {report.catalog_version}",
+        f"- Summary: {report.summary}",
+    ]
+    if empty_anchor_types:
+        lines.append(
+            f"- ⚠️ No anchor pages found for: {', '.join(empty_anchor_types)}"
+        )
+    lines += [
+        "",
+        "| Field | Status | Hits (alias@page) | Suggested |",
+        "|---|---|---|---|",
+    ]
+    for fid, r in sorted(report.fields.items()):
+        hits = "; ".join(f"{h.alias}@p{h.page}[{h.kind}]" for h in r.hits)
+        sugg = "; ".join(r.suggested_aliases)
+        lines.append(f"| `{fid}` | {r.status} | {hits} | {sugg} |")
+    (out_dir / "alias_audit.md").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8",
+    )
+
+
+def emit_catalog_patch(report: AuditReport, out_dir: Path) -> None:
+    adds = {
+        fid: list(r.suggested_aliases)
+        for fid, r in sorted(report.fields.items())
+        if r.suggested_aliases
+    }
+    payload = {
+        "schema_version": "alias_catalog_patch_v1",
+        "note": "review-gated suggestions; apply manually to "
+                "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "add_pdf_aliases": adds,
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "catalog_patch.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
     )

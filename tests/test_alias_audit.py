@@ -1,6 +1,7 @@
 """Tests for alias_audit (spec PR-1, component 2)."""
 from __future__ import annotations
 
+import json as _json
 from pathlib import Path
 from typing import cast
 
@@ -14,6 +15,8 @@ from financial_report_llm_extractor.field_metadata import (
 from financial_report_llm_extractor.structured_sources.alias_audit import (
     AuditReport,
     audit_chunks,
+    emit_catalog_patch,
+    write_alias_audit,
 )
 from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
@@ -164,6 +167,41 @@ def test_summary_counts() -> None:
     r = _make()
     assert r.summary == {"exact_hit": 1, "prose_only_hit": 1,
                          "normalized_only_hit": 1, "no_hit": 1}
+
+
+def test_write_alias_audit_json_and_md(tmp_path: Path) -> None:
+    r = _make()
+    write_alias_audit(r, tmp_path)
+    data = _json.loads((tmp_path / "alias_audit.json").read_text())
+    assert data["schema_version"] == "alias_audit_v1"
+    assert data["fields"]["c_paid_for_taxes"]["status"] == "prose_only_hit"
+    assert data["summary"]["no_hit"] == 1
+    md = (tmp_path / "alias_audit.md").read_text()
+    assert "prose_only_hit" in md and "receivables_aging" in md
+
+
+def test_emit_catalog_patch_lists_suggested_adds(tmp_path: Path) -> None:
+    r = _make()
+    emit_catalog_patch(r, tmp_path)
+    patch = _json.loads((tmp_path / "catalog_patch.json").read_text())
+    assert patch == {
+        "schema_version": "alias_catalog_patch_v1",
+        "note": "review-gated suggestions; apply manually to "
+                "field_catalog/turtle_v015_source_mapping_minimal.json",
+        "add_pdf_aliases": {
+            "receivables_aging": [
+                "ageing analysis of the trade receivables"
+            ],
+        },
+    }
+
+
+def test_write_alias_audit_warns_on_empty_anchor_types(tmp_path: Path) -> None:
+    r = _make()
+    write_alias_audit(r, tmp_path)
+    data = _json.loads((tmp_path / "alias_audit.json").read_text())
+    # balance_sheet anchors matched zero pages in the fixture
+    assert "balance_sheet" in data["warnings"]["empty_anchor_statement_types"]
 
 
 def test_exact_hit_when_no_cash_flow_anchor_present() -> None:
