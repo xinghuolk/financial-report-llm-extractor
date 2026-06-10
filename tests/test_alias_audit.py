@@ -360,6 +360,9 @@ def test_audit_chunks_normalization_override() -> None:
     ])
     chunks = [_block("c3", 229,
                      "The ageing analysis of the trade receivables, presented")]
+    # Exact tier fails here by design: the alias lacks the text's "the"
+    # (stop-word) — only the normalized fold bridges it. If exact matching
+    # is ever relaxed, this test's off-branch premise changes.
     off = audit_chunks(chunks=chunks, catalog=catalog, taxonomy=taxonomy,
                        priorities=("P0",), pdf_path=Path("f.pdf"))
     on = audit_chunks(chunks=chunks, catalog=catalog, taxonomy=taxonomy,
@@ -390,4 +393,25 @@ def test_cli_audit_alias_normalization_flag(tmp_path: Path) -> None:
     data = _json.loads((out / "alias_audit.json").read_text())
     # with normalization on, receivables_aging's selection simulation
     # now selects the normalized chunk
-    assert data["fields"]["receivables_aging"]["selected_chunks"] != []
+    assert [c["chunk_id"] for c in
+            data["fields"]["receivables_aging"]["selected_chunks"]] == ["c3"]
+
+
+def test_cli_audit_alias_normalization_off(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    out = tmp_path / "audit_off"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            f.write(_json.dumps(c) + "\n")
+
+    rc = main([
+        "audit-pdf-aliases", "--pdf", "x.pdf", "--out", str(out),
+        "--alias-normalization", "off",
+    ])
+    assert rc == 0
+    data = _json.loads((out / "alias_audit.json").read_text())
+    # exact tier misses the "the"-bridged phrasing -> nothing selected
+    assert data["fields"]["receivables_aging"]["selected_chunks"] == []

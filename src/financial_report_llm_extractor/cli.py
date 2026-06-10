@@ -403,8 +403,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit_parser.add_argument(
         "--alias-normalization", choices=["catalog", "on", "off"],
         default="catalog",
-        help="Override the catalog's alias_normalization flag for this "
-             "audit (gate diffing).",
+        help="Override the catalog's alias_normalization flag for this audit; 'catalog' = use catalog setting (default). Gate-diffing tool.",
     )
     audit_parser.add_argument("--out", type=Path, required=True)
 
