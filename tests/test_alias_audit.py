@@ -276,8 +276,19 @@ _MINI_FIXTURE = (
 
 
 def test_acceptance_00001_known_states_with_real_catalog() -> None:
-    """Spec PR-1 acceptance: real catalog + real FY2025 phrasings must
-    reproduce the four documented failure classes."""
+    """Spec PR-1 acceptance canary against the LIVE production catalog.
+
+    Reproduces three documented failure-class statuses (② prose_only,
+    ① normalized_only, ⑤ no_hit) plus the healthy exact_hit path using
+    real FY2025 00001 phrasings. Catalog alias edits to the asserted
+    fields are EXPECTED to trip this test — that is its job.
+
+    Fixture decoys p0059/p0076/p0007 (pledged-as-security, treasury
+    shares, one-time loss) hit no catalog alias and are deliberately
+    unasserted; restricted_cash's "pledged deposits" alias shares no
+    full-token window with "pledged as security" (synonym, not
+    normalization-reachable).
+    """
     from financial_report_llm_extractor.field_metadata import (
         load_field_taxonomy,
     )
@@ -302,8 +313,10 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
         pdf_path=Path("00001_2025_mini.pdf"),
     )
 
-    # class ② wrong-page: 'taxes paid' hits p56 prose, statement line
-    # 'Tax paid' p141 is NOT an exact alias match
+    # class ② wrong-page: the ONLY hit is 'taxes paid' exact on p56,
+    # which is not a cash-flow anchor page -> prose_only. p141's real
+    # line 'Tax paid' matches no alias at all, not even normalized
+    # (naive es-strip: taxes->taxe != tax).
     assert r.fields["c_paid_for_taxes"].status == "prose_only_hit"
     # class ① alias gap healed by normalization, suggestion recovered
     aging = r.fields["receivables_aging"]
