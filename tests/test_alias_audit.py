@@ -415,3 +415,46 @@ def test_cli_audit_alias_normalization_off(tmp_path: Path) -> None:
     data = _json.loads((out / "alias_audit.json").read_text())
     # exact tier misses the "the"-bridged phrasing -> nothing selected
     assert data["fields"]["receivables_aging"]["selected_chunks"] == []
+
+
+def test_audit_report_embeds_company_metadata(tmp_path: Path) -> None:
+    catalog = _catalog([
+        _entry("revenue", pdf_aliases=("revenue",),
+               statement_type="income_statement"),
+    ])
+    taxonomy = _taxonomy([_tax("revenue", statement_type="income_statement")])
+    r = audit_chunks(
+        chunks=list(_CHUNKS), catalog=catalog, taxonomy=taxonomy,
+        priorities=("P0",), pdf_path=Path("f.pdf"),
+        company="00001", market="HK", year=2025,
+    )
+    write_alias_audit(r, tmp_path)
+    data = _json.loads((tmp_path / "alias_audit.json").read_text())
+    assert data["company"] == "00001"
+    assert data["market"] == "HK"
+    assert data["year"] == 2025
+
+
+def test_audit_metadata_defaults_to_null(tmp_path: Path) -> None:
+    r = _make()
+    write_alias_audit(r, tmp_path)
+    data = _json.loads((tmp_path / "alias_audit.json").read_text())
+    assert data["company"] is None and data["market"] is None
+
+
+def test_cli_audit_company_metadata_flags(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    out = tmp_path / "audit_meta"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            f.write(_json.dumps(c) + "\n")
+    rc = main([
+        "audit-pdf-aliases", "--pdf", "x.pdf", "--out", str(out),
+        "--company", "00001", "--market", "HK", "--year", "2025",
+    ])
+    assert rc == 0
+    data = _json.loads((out / "alias_audit.json").read_text())
+    assert (data["company"], data["market"], data["year"]) == ("00001", "HK", 2025)

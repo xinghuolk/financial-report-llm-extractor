@@ -405,6 +405,9 @@ def build_parser() -> argparse.ArgumentParser:
         default="catalog",
         help="Override the catalog's alias_normalization flag for this audit; 'catalog' = use catalog setting (default). Gate-diffing tool.",
     )
+    audit_parser.add_argument("--company", default=None)
+    audit_parser.add_argument("--market", choices=["CN", "HK"], default=None)
+    audit_parser.add_argument("--year", type=int, default=None)
     audit_parser.add_argument("--out", type=Path, required=True)
 
     return parser
@@ -1125,6 +1128,9 @@ def main(argv: list[str] | None = None) -> int:
             chunks=chunks, catalog=catalog, taxonomy=taxonomy,
             priorities=priorities, pdf_path=args.pdf,
             alias_normalization_override=override_map[args.alias_normalization],
+            company=args.company,
+            market=args.market,
+            year=args.year,
         )
         write_alias_audit(audit_report, args.out)
         if args.emit_catalog_patch:
