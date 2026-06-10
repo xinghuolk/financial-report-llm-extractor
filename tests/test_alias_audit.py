@@ -247,6 +247,18 @@ def test_cli_audit_emits_catalog_patch_when_flagged(tmp_path: Path) -> None:
     assert (out / "catalog_patch.json").exists()
 
 
+def test_cli_audit_returns_2_when_pdf_missing(tmp_path: Path) -> None:
+    """No reusable chunks + nonexistent PDF → documented exit code 2."""
+    from financial_report_llm_extractor.cli import main
+
+    rc = main([
+        "audit-pdf-aliases",
+        "--pdf", str(tmp_path / "missing.pdf"),
+        "--out", str(tmp_path / "audit3"),
+    ])
+    assert rc == 2
+
+
 def test_exact_hit_when_no_cash_flow_anchor_present() -> None:
     """Empty anchor coverage for a statement type → in_statement_section None,
     and an exact-hit alias must still classify as exact_hit (not prose_only)."""

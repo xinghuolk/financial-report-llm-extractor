@@ -1098,6 +1098,11 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 ingest_dir.mkdir(parents=True, exist_ok=True)
                 ingest_result = ingest_pdf(args.pdf, ingest_dir)
+                build_chunk_store(
+                    ingest_result.pages_path,
+                    ingest_result.metadata_path,
+                    chunks_path=chunks_path,
+                )
             except (
                 RuntimeError,
                 FileNotFoundError,
@@ -1105,11 +1110,6 @@ def main(argv: list[str] | None = None) -> int:
             ) as exc:
                 print(f"error: {exc}", file=sys.stderr)
                 return 2
-            build_chunk_store(
-                ingest_result.pages_path,
-                ingest_result.metadata_path,
-                chunks_path=chunks_path,
-            )
         chunks = load_chunks_jsonl(chunks_path)
         catalog = load_source_mapping_catalog(
             args.catalog, priorities=priorities
