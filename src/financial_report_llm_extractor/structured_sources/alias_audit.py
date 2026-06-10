@@ -10,7 +10,7 @@ pages and avoid double counting).
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -139,7 +139,7 @@ def _audit_field(
         for h in normalized
     ))
 
-    selected = select_chunks(all_chunks, target)
+    selected = select_chunks(all_chunks, target, section_pages=section_pages)
     via: Literal["alias_top_k", "broad_keyword", "section_fallback"]
     if not selected and target.absence_means_zero:
         selected = select_statement_section_chunks(all_chunks, target)
@@ -164,7 +164,12 @@ def audit_chunks(
     taxonomy: FieldTaxonomyCatalog,
     priorities: tuple[str, ...],
     pdf_path: Path,
+    alias_normalization_override: bool | None = None,
 ) -> AuditReport:
+    if alias_normalization_override is not None:
+        catalog = replace(
+            catalog, alias_normalization=alias_normalization_override,
+        )
     blocks = [c for c in chunks if c.get("record_type") == "block"]
     prepared_blocks: list[tuple[dict[str, object], PreparedText]] = [
         (c, prepare_text(str(c.get("text", "") or ""))) for c in blocks

@@ -400,6 +400,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     audit_parser.add_argument("--priorities", default="P0,P1,P2,P3,P4")
     audit_parser.add_argument("--emit-catalog-patch", action="store_true")
+    audit_parser.add_argument(
+        "--alias-normalization", choices=["catalog", "on", "off"],
+        default="catalog",
+        help="Override the catalog's alias_normalization flag for this "
+             "audit (gate diffing).",
+    )
     audit_parser.add_argument("--out", type=Path, required=True)
 
     return parser
@@ -1115,9 +1121,11 @@ def main(argv: list[str] | None = None) -> int:
             args.catalog, priorities=priorities
         )
         taxonomy = load_field_taxonomy(args.taxonomy)
+        override_map = {"catalog": None, "on": True, "off": False}
         audit_report = audit_chunks(
             chunks=chunks, catalog=catalog, taxonomy=taxonomy,
             priorities=priorities, pdf_path=args.pdf,
+            alias_normalization_override=override_map[args.alias_normalization],
         )
         write_alias_audit(audit_report, args.out)
         if args.emit_catalog_patch:

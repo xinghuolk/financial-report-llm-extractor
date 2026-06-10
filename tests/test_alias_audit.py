@@ -344,3 +344,50 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
     assert r.fields["time_deposits_or_wealth_products"].status == "no_hit"
     # healthy field stays exact
     assert r.fields["revenue"].status == "exact_hit"
+
+
+def test_audit_chunks_normalization_override() -> None:
+    # Use aliases that cannot accidentally substring-match the chunk text.
+    # "zzz_dummy_*" are inert; only the primary alias participates.
+    catalog = _catalog([
+        _entry("receivables_aging",
+               pdf_aliases=("ageing analysis of trade receivables",
+                            "zzz_dummy_1", "zzz_dummy_2"),
+               statement_type="notes", value_type="text"),
+    ])
+    taxonomy = _taxonomy([
+        _tax("receivables_aging", statement_type="notes", value_type="text"),
+    ])
+    chunks = [_block("c3", 229,
+                     "The ageing analysis of the trade receivables, presented")]
+    off = audit_chunks(chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+                       priorities=("P0",), pdf_path=Path("f.pdf"))
+    on = audit_chunks(chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+                      priorities=("P0",), pdf_path=Path("f.pdf"),
+                      alias_normalization_override=True)
+    # selection simulation differs: off -> no selected chunks (exact miss),
+    # on -> the normalized chunk is selected
+    assert off.fields["receivables_aging"].selected_chunks == ()
+    assert [c.chunk_id for c in
+            on.fields["receivables_aging"].selected_chunks] == ["c3"]
+
+
+def test_cli_audit_alias_normalization_flag(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cli import main
+
+    out = tmp_path / "audit_on"
+    ingest = out / "ingest"
+    ingest.mkdir(parents=True)
+    with (ingest / "chunks.jsonl").open("w") as f:
+        for c in _CHUNKS:
+            f.write(_json.dumps(c) + "\n")
+
+    rc = main([
+        "audit-pdf-aliases", "--pdf", "x.pdf", "--out", str(out),
+        "--alias-normalization", "on",
+    ])
+    assert rc == 0
+    data = _json.loads((out / "alias_audit.json").read_text())
+    # with normalization on, receivables_aging's selection simulation
+    # now selects the normalized chunk
+    assert data["fields"]["receivables_aging"]["selected_chunks"] != []
