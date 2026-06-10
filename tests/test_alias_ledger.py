@@ -1,0 +1,144 @@
+"""Tests for alias_ledger (spec PR-2, component 3 — reduced scope)."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from financial_report_llm_extractor.structured_sources.alias_ledger import (
+    index_audit_dir,
+    index_run_dir,
+    load_ledger,
+    new_ledger,
+    save_ledger,
+)
+
+
+def _write_run_dir(root: Path, *, company: str = "00001",
+                   period_end: str = "2025-12-31", market: str = "HK",
+                   items: dict[str, dict[str, object]] | None = None) -> Path:
+    d = root / f"{company}_run"
+    d.mkdir(parents=True)
+    (d / "evaluation.json").write_text(json.dumps({
+        "company": company, "period_end": period_end, "market": market,
+        "fields": {}, "summary": {},
+    }))
+    (d / "llm_evidence_supplement.json").write_text(json.dumps({
+        "company_id": company,
+        "items": items if items is not None else {
+            "bond_payable": {"status": "present", "value": "165366",
+                              "page": 232},
+            "rd_exp": {"status": "not_found", "value": None, "page": None},
+        },
+    }))
+    return d
+
+
+def _write_audit_dir(root: Path, *, company: str | None = "00001",
+                     market: str | None = "HK", year: int | None = 2025) -> Path:
+    d = root / "audit"
+    d.mkdir(parents=True)
+    (d / "alias_audit.json").write_text(json.dumps({
+        "schema_version": "alias_audit_v1",
+        "pdf_path": "x.pdf", "catalog_version": "2026-05-01",
+        "company": company, "market": market, "year": year,
+        "section_anchor_coverage": {},
+        "warnings": {"empty_anchor_statement_types": []},
+        "fields": {
+            "receivables_aging": {
+                "status": "normalized_only_hit",
+                "selected_chunks": [],
+                "hits": [{"alias": "ageing analysis of trade receivables",
+                           "kind": "normalized", "page": 229, "count": 1,
+                           "in_statement_section": None,
+                           "matched_text": "ageing analysis of the trade receivables,"}],
+                "suggested_aliases": ["ageing analysis of the trade receivables"],
+            },
+            "revenue": {
+                "status": "exact_hit", "selected_chunks": [],
+                "hits": [{"alias": "revenue", "kind": "exact", "page": 134,
+                           "count": 2, "in_statement_section": True,
+                           "matched_text": "revenue"}],
+                "suggested_aliases": [],
+            },
+            "rd_exp": {"status": "no_hit", "selected_chunks": [],
+                        "hits": [], "suggested_aliases": []},
+        },
+        "summary": {},
+    }))
+    return d
+
+
+def test_index_run_dir_llm_hits_under_reserved_key(tmp_path: Path) -> None:
+    run = _write_run_dir(tmp_path)
+    ledger = new_ledger()
+    warnings = index_run_dir(ledger, run)
+    assert warnings == []
+    entries = ledger["fields"]["bond_payable"]["_llm"]
+    assert entries == [{"company": "00001", "year": 2025,
+                         "page": 232, "market": "HK"}]
+    # not_found items are not indexed
+    assert "rd_exp" not in ledger["fields"]
+
+
+def test_index_run_dir_skips_without_evaluation(tmp_path: Path) -> None:
+    run = _write_run_dir(tmp_path)
+    (run / "evaluation.json").unlink()
+    ledger = new_ledger()
+    warnings = index_run_dir(ledger, run)
+    assert len(warnings) == 1 and "evaluation.json" in warnings[0]
+    assert ledger["fields"] == {}
+
+
+def test_index_audit_dir_alias_entries_and_statuses(tmp_path: Path) -> None:
+    audit = _write_audit_dir(tmp_path)
+    ledger = new_ledger()
+    warnings = index_audit_dir(ledger, audit)
+    assert warnings == []
+    aging = ledger["fields"]["receivables_aging"][
+        "ageing analysis of trade receivables"]
+    assert aging == [{
+        "company": "00001", "year": 2025, "page": 229,
+        "match_kind": "normalized", "market": "HK",
+        "catalog_version": "2026-05-01",
+        "suggested": "ageing analysis of the trade receivables",
+    }]
+    rev = ledger["fields"]["revenue"]["revenue"]
+    assert rev[0]["match_kind"] == "exact" and "suggested" not in rev[0]
+    # field-level audit statuses for the terminal signal
+    assert ledger["audit_statuses"]["rd_exp"]["HK"]["00001"] == "no_hit"
+
+
+def test_index_audit_dir_skips_without_metadata(tmp_path: Path) -> None:
+    audit = _write_audit_dir(tmp_path, company=None, market=None, year=None)
+    ledger = new_ledger()
+    warnings = index_audit_dir(ledger, audit)
+    assert len(warnings) == 1 and "metadata" in warnings[0]
+    assert ledger["fields"] == {}
+
+
+def test_indexing_is_idempotent(tmp_path: Path) -> None:
+    run = _write_run_dir(tmp_path)
+    audit = _write_audit_dir(tmp_path)
+    ledger = new_ledger()
+    for _ in range(2):
+        index_run_dir(ledger, run)
+        index_audit_dir(ledger, audit)
+    assert len(ledger["fields"]["bond_payable"]["_llm"]) == 1
+    assert len(ledger["fields"]["revenue"]["revenue"]) == 1
+
+
+def test_save_load_roundtrip_byte_stable(tmp_path: Path) -> None:
+    run = _write_run_dir(tmp_path)
+    ledger = new_ledger()
+    index_run_dir(ledger, run)
+    p = tmp_path / "ledger.json"
+    save_ledger(ledger, p)
+    first = p.read_bytes()
+    ledger2 = load_ledger(p)
+    index_run_dir(ledger2, run)  # idempotent re-index
+    save_ledger(ledger2, p)
+    assert p.read_bytes() == first
+    data = json.loads(first)
+    assert data["schema_version"] == "alias_ledger_v1"
+    assert "regenerable" in data["note"]
+    assert "generated_at" not in data  # timestamp-free by design

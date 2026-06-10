@@ -1,0 +1,152 @@
+"""Derived match ledger (spec PR-2, component 3 — reduced scope).
+
+Aggregates which alias actually hit, per (company, year, field), from two
+sources: LLM evidence supplements (joined to the run's evaluation.json for
+company/year/market — supplements carry NO alias attribution, so their
+hits live under the reserved field-level key "_llm") and alias audits
+(which carry alias-level kind/page plus optional company metadata).
+
+The ledger is a DERIVED VIEW: regenerable from artifacts, timestamp-free
+(idempotent rerun is byte-identical), safe to rm + re-index. It must NOT
+ship in the wheel (pyproject excludes it from the catalog force-include).
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from financial_report_llm_extractor.structured_sources.alias_matching import (
+    _EDGE_PUNCT,
+)
+
+LEDGER_SCHEMA = "alias_ledger_v1"
+LEDGER_NOTE = (
+    "derived view; regenerable from run artifacts + audits; "
+    "rm + re-index is safe"
+)
+LLM_KEY = "_llm"
+
+Ledger = dict[str, Any]
+
+
+def new_ledger() -> Ledger:
+    return {
+        "schema_version": LEDGER_SCHEMA,
+        "note": LEDGER_NOTE,
+        "fields": {},
+        "audit_statuses": {},
+    }
+
+
+def load_ledger(path: Path) -> Ledger:
+    if not path.exists():
+        return new_ledger()
+    data: Ledger = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("schema_version") != LEDGER_SCHEMA:
+        # schema drift: treat as fresh (derived view, nothing is lost)
+        return new_ledger()
+    return data
+
+
+def save_ledger(ledger: Ledger, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    canon = {
+        "schema_version": ledger["schema_version"],
+        "note": ledger["note"],
+        "fields": {
+            fid: {
+                alias: sorted(
+                    entries,
+                    key=lambda e: (e["company"], e["year"], e.get("page") or 0),
+                )
+                for alias, entries in sorted(aliases.items())
+            }
+            for fid, aliases in sorted(ledger["fields"].items())
+        },
+        "audit_statuses": {
+            fid: {
+                mkt: dict(sorted(by_co.items()))
+                for mkt, by_co in sorted(by_mkt.items())
+            }
+            for fid, by_mkt in sorted(ledger["audit_statuses"].items())
+        },
+    }
+    path.write_text(
+        json.dumps(canon, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _upsert(ledger: Ledger, field_id: str, alias: str,
+            entry: dict[str, Any]) -> None:
+    entries = ledger["fields"].setdefault(field_id, {}).setdefault(alias, [])
+    if entry not in entries:
+        entries.append(entry)
+
+
+def index_run_dir(ledger: Ledger, run_dir: Path) -> list[str]:
+    """Index one run dir's LLM supplement. Returns warnings."""
+    supp_path = run_dir / "llm_evidence_supplement.json"
+    eval_path = run_dir / "evaluation.json"
+    if not supp_path.exists():
+        return [f"{run_dir}: no llm_evidence_supplement.json, skipped"]
+    if not eval_path.exists():
+        return [
+            f"{run_dir}: supplement without evaluation.json "
+            f"(company/year/market join impossible), skipped"
+        ]
+    ev = json.loads(eval_path.read_text(encoding="utf-8"))
+    company = str(ev["company"])
+    market = str(ev["market"])
+    year = int(str(ev["period_end"])[:4])
+    supp = json.loads(supp_path.read_text(encoding="utf-8"))
+    for field_id, item in supp.get("items", {}).items():
+        if item.get("status") != "present":
+            continue
+        _upsert(ledger, field_id, LLM_KEY, {
+            "company": company, "year": year,
+            "page": item.get("page"), "market": market,
+        })
+    return []
+
+
+def index_audit_dir(ledger: Ledger, audit_dir: Path) -> list[str]:
+    """Index one audit dir's alias-level hits + field statuses."""
+    audit_path = audit_dir / "alias_audit.json"
+    if not audit_path.exists():
+        return [f"{audit_dir}: no alias_audit.json, skipped"]
+    data = json.loads(audit_path.read_text(encoding="utf-8"))
+    company, market, year = (
+        data.get("company"), data.get("market"), data.get("year"),
+    )
+    if not (company and market and year):
+        return [
+            f"{audit_dir}: audit lacks company/market/year metadata "
+            f"(re-run audit-pdf-aliases with --company/--market/--year), "
+            f"skipped"
+        ]
+    catalog_version = str(data.get("catalog_version", ""))
+    for field_id, fr in data.get("fields", {}).items():
+        suggested_by_text = {
+            str(s).lower(): str(s) for s in fr.get("suggested_aliases", [])
+        }
+        for hit in fr.get("hits", []):
+            entry: dict[str, Any] = {
+                "company": str(company), "year": int(year),
+                "page": hit.get("page"),
+                "match_kind": str(hit.get("kind")),
+                "market": str(market),
+                "catalog_version": catalog_version,
+            }
+            if hit.get("kind") == "normalized":
+                # recover the suggestion phrase this hit produced
+                stripped = str(hit.get("matched_text", "")).strip(
+                    _EDGE_PUNCT).lower()
+                if stripped in suggested_by_text:
+                    entry["suggested"] = stripped
+            _upsert(ledger, field_id, str(hit.get("alias")), entry)
+        ledger["audit_statuses"].setdefault(field_id, {}).setdefault(
+            str(market), {},
+        )[str(company)] = str(fr.get("status"))
+    return []
