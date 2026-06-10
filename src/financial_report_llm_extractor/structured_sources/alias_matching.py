@@ -85,32 +85,60 @@ def _norm_tokens_with_origin(text: str) -> tuple[list[str], list[int]]:
     return norm, origin
 
 
-def match_alias(alias: str, text: str) -> AliasMatch | None:
+@dataclass(frozen=True)
+class PreparedText:
+    """Pre-folded text for repeated match_alias calls against many aliases."""
+    text_ws: str
+    norm_tokens: tuple[str, ...]
+    origin: tuple[int, ...]
+    orig_tokens: tuple[str, ...]
+
+
+def prepare_text(text: str) -> PreparedText:
+    norm, origin = _norm_tokens_with_origin(text)
+    return PreparedText(
+        text_ws=_ws_fold(text),
+        norm_tokens=tuple(norm),
+        origin=tuple(origin),
+        orig_tokens=tuple(text.split()),
+    )
+
+
+def match_alias(
+    alias: str,
+    text: str,
+    *,
+    prepared: PreparedText | None = None,
+) -> AliasMatch | None:
     """Exact (current select_chunks semantics) else normalized (fold
-    pipeline, token-window match with original-text recovery)."""
+    pipeline, token-window match with original-text recovery).
+
+    Pass ``prepared`` (built via :func:`prepare_text`) to avoid
+    re-tokenizing the same block text on every alias in a loop.
+    """
+    if prepared is None:
+        prepared = prepare_text(text)
+
     alias_ws = _ws_fold(alias)
-    text_ws = _ws_fold(text)
-    if alias_ws and alias_ws in text_ws:
+    if alias_ws and alias_ws in prepared.text_ws:
         return AliasMatch(
             alias=alias, kind="exact",
-            matched_text=alias_ws, count=text_ws.count(alias_ws),
+            matched_text=alias_ws, count=prepared.text_ws.count(alias_ws),
         )
 
     alias_norm = [t for tok in alias.split() for t in _fold_token(tok)]
     if not alias_norm:
         return None
-    text_norm, origin = _norm_tokens_with_origin(text)
-    orig_tokens = text.split()
     n, count, first_span = len(alias_norm), 0, None
-    for i in range(len(text_norm) - n + 1):
-        if text_norm[i:i + n] == alias_norm:
+    for i in range(len(prepared.norm_tokens) - n + 1):
+        if list(prepared.norm_tokens[i:i + n]) == alias_norm:
             count += 1
             if first_span is None:
-                first_span = (origin[i], origin[i + n - 1])
+                first_span = (prepared.origin[i], prepared.origin[i + n - 1])
     if count == 0:
         return None
     assert first_span is not None
-    matched = " ".join(orig_tokens[first_span[0]:first_span[1] + 1])
+    matched = " ".join(prepared.orig_tokens[first_span[0]:first_span[1] + 1])
     return AliasMatch(
         alias=alias, kind="normalized", matched_text=matched, count=count,
     )

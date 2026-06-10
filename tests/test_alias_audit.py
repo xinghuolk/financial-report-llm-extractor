@@ -150,8 +150,7 @@ def test_selected_chunks_use_production_selection() -> None:
     # broad_keyword path (single alias < 3 -> broad strategy per
     # derive_targets); chunk c4 contains the token 'revenue'
     assert any(c.chunk_id == "c4" for c in sel)
-    assert all(c.via in ("alias_top_k", "broad_keyword",
-                         "section_fallback") for c in sel)
+    assert all(c.via == "broad_keyword" for c in sel)
 
 
 def test_section_anchor_coverage_reported() -> None:
@@ -165,3 +164,25 @@ def test_summary_counts() -> None:
     r = _make()
     assert r.summary == {"exact_hit": 1, "prose_only_hit": 1,
                          "normalized_only_hit": 1, "no_hit": 1}
+
+
+def test_exact_hit_when_no_cash_flow_anchor_present() -> None:
+    """Empty anchor coverage for a statement type → in_statement_section None,
+    and an exact-hit alias must still classify as exact_hit (not prose_only)."""
+    catalog = _catalog([
+        _entry("c_paid_for_taxes", pdf_aliases=("taxes paid",),
+               statement_type="cash_flow"),
+    ])
+    taxonomy = _taxonomy([
+        _tax("c_paid_for_taxes", statement_type="cash_flow"),
+    ])
+    # Only chunk: exact match on p56 but NO cash-flow section anchor block
+    chunks = [_block("c1", 56, "partly offset by higher taxes paid in the year")]
+    r = audit_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        priorities=("P0",), pdf_path=Path("fake.pdf"),
+    )
+    assert r.section_anchor_coverage["cash_flow"] == ()
+    fr = r.fields["c_paid_for_taxes"]
+    assert fr.status == "exact_hit"
+    assert all(h.in_statement_section is None for h in fr.hits)

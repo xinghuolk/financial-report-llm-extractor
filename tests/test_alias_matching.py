@@ -5,6 +5,7 @@ from financial_report_llm_extractor.structured_sources.alias_matching import (
     AliasMatch,
     match_alias,
     normalize_phrase,
+    prepare_text,
 )
 
 
@@ -124,3 +125,11 @@ def test_match_unicode_hyphen_folds_like_ascii() -> None:
     # U+2011 non-breaking hyphen, as pdftotext emits
     m = match_alias("non-current liabilities", "Non‑current liabilities total")
     assert m is not None
+
+
+def test_match_alias_with_prepared_text_equivalent() -> None:
+    text = "The ageing analysis of the trade receivables, presented"
+    p = prepare_text(text)
+    a = match_alias("ageing analysis of trade receivables", text)
+    b = match_alias("ageing analysis of trade receivables", text, prepared=p)
+    assert a == b

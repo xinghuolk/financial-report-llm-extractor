@@ -12,17 +12,20 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 from financial_report_llm_extractor.field_metadata import FieldTaxonomyCatalog
 from financial_report_llm_extractor.structured_sources.alias_matching import (
+    PreparedText,
+    _EDGE_PUNCT,
     match_alias,
+    prepare_text,
 )
 from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
 )
 from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
-    _STATEMENT_SECTION_ANCHORS,  # noqa: PLC2701
+    _STATEMENT_SECTION_ANCHORS,
     LlmExtractionTarget,
     derive_targets,
     select_chunks,
@@ -109,20 +112,19 @@ def _section_pages(
     return {k: tuple(sorted(v)) for k, v in out.items()}
 
 
-_SUGGESTION_STRIP = ",.;:"
-
-
 def _audit_field(
     target: LlmExtractionTarget,
-    blocks: list[dict[str, object]],
+    prepared_blocks: list[tuple[dict[str, object], PreparedText]],
     all_chunks: list[dict[str, object]],
     section_pages: dict[str, tuple[int, ...]],
 ) -> FieldAuditResult:
     hits: list[AliasHit] = []
-    in_section_pages = section_pages.get(target.statement_type)
+    pages_for_type = section_pages.get(target.statement_type)
+    in_section_pages = pages_for_type if pages_for_type else None
     for alias in target.aliases:
-        for chunk in blocks:
-            m = match_alias(alias, str(chunk.get("text", "") or ""))
+        for chunk, ptext in prepared_blocks:
+            m = match_alias(alias, str(chunk.get("text", "") or ""),
+                            prepared=ptext)
             if m is None:
                 continue
             page = _page_of(chunk)
@@ -148,18 +150,17 @@ def _audit_field(
         status = "no_hit"
 
     suggested = tuple(dict.fromkeys(
-        h.matched_text.strip(_SUGGESTION_STRIP).lower()
+        h.matched_text.strip(_EDGE_PUNCT).lower()
         for h in normalized
     ))
 
     selected = select_chunks(all_chunks, target)
-    via: Literal["alias_top_k", "broad_keyword", "section_fallback"] = cast(
-        Literal["alias_top_k", "broad_keyword", "section_fallback"],
-        target.chunk_strategy,
-    )
+    via: Literal["alias_top_k", "broad_keyword", "section_fallback"]
     if not selected and target.absence_means_zero:
         selected = select_statement_section_chunks(all_chunks, target)
         via = "section_fallback"
+    else:
+        via = target.chunk_strategy
     selected_chunks = tuple(
         SelectedChunk(chunk_id=_chunk_id_of(c), page=_page_of(c), via=via)
         for c in selected
@@ -180,10 +181,13 @@ def audit_chunks(
     pdf_path: Path,
 ) -> AuditReport:
     blocks = [c for c in chunks if c.get("record_type") == "block"]
+    prepared_blocks: list[tuple[dict[str, object], PreparedText]] = [
+        (c, prepare_text(str(c.get("text", "") or ""))) for c in blocks
+    ]
     section_pages = _section_pages(blocks)
     targets = derive_targets(catalog, taxonomy, priorities=priorities)
     fields = {
-        t.field_id: _audit_field(t, blocks, chunks, section_pages)
+        t.field_id: _audit_field(t, prepared_blocks, chunks, section_pages)
         for t in targets
     }
     return AuditReport(
