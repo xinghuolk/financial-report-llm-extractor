@@ -115,6 +115,7 @@ def match_alias(
 
     Pass ``prepared`` (built via :func:`prepare_text`) to avoid
     re-tokenizing the same block text on every alias in a loop.
+    When ``prepared`` is given, ``text`` is ignored — callers must pass the PreparedText built from the same text.
     """
     if prepared is None:
         prepared = prepare_text(text)
@@ -130,8 +131,9 @@ def match_alias(
     if not alias_norm:
         return None
     n, count, first_span = len(alias_norm), 0, None
+    alias_norm_t = tuple(alias_norm)
     for i in range(len(prepared.norm_tokens) - n + 1):
-        if list(prepared.norm_tokens[i:i + n]) == alias_norm:
+        if prepared.norm_tokens[i:i + n] == alias_norm_t:
             count += 1
             if first_span is None:
                 first_span = (prepared.origin[i], prepared.origin[i + n - 1])

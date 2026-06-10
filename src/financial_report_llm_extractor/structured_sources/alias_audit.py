@@ -211,7 +211,7 @@ def write_alias_audit(report: AuditReport, out_dir: Path) -> None:
         "catalog_version": report.catalog_version,
         "generated_at": report.generated_at,
         "section_anchor_coverage": {
-            k: list(v) for k, v in report.section_anchor_coverage.items()
+            k: list(v) for k, v in sorted(report.section_anchor_coverage.items())
         },
         "warnings": {
             # spec: every statement_type must resolve >=1 page, else the
@@ -259,8 +259,12 @@ def write_alias_audit(report: AuditReport, out_dir: Path) -> None:
         "|---|---|---|---|",
     ]
     for fid, r in sorted(report.fields.items()):
-        hits = "; ".join(f"{h.alias}@p{h.page}[{h.kind}]" for h in r.hits)
-        sugg = "; ".join(r.suggested_aliases)
+        escaped_pipe = "\\|"
+        hits = "; ".join(
+            f"{h.alias.replace('|', escaped_pipe)}@p{h.page}[{h.kind}]"
+            for h in r.hits
+        )
+        sugg = "; ".join(a.replace("|", escaped_pipe) for a in r.suggested_aliases)
         lines.append(f"| `{fid}` | {r.status} | {hits} | {sugg} |")
     (out_dir / "alias_audit.md").write_text(
         "\n".join(lines) + "\n", encoding="utf-8",

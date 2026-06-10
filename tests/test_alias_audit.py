@@ -176,6 +176,7 @@ def test_write_alias_audit_json_and_md(tmp_path: Path) -> None:
     assert data["schema_version"] == "alias_audit_v1"
     assert data["fields"]["c_paid_for_taxes"]["status"] == "prose_only_hit"
     assert data["summary"]["no_hit"] == 1
+    assert list(data["fields"].keys()) == sorted(data["fields"].keys())
     md = (tmp_path / "alias_audit.md").read_text()
     assert "prose_only_hit" in md and "receivables_aging" in md
 
