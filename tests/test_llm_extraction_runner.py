@@ -972,8 +972,8 @@ def test_select_chunks_inventories_collision_ranked_below_in_section() -> None:
     target = _norm_target(("inventories", "x1", "x2"),
                           statement_type="balance_sheet")
     chunks = [
-        _chunk("bs", 136, "Inventories 26,690"),
         _chunk("cf", 141, "Decrease in inventories (685)"),
+        _chunk("bs", 136, "Inventories 26,690"),
     ]
     section_pages = {"balance_sheet": (136,), "cash_flow": (141,)}
     selected = select_chunks(chunks, target, section_pages=section_pages)
@@ -1003,9 +1003,11 @@ def test_extract_for_chunks_normalized_preempts_section_fallback(
     taxonomy = _taxonomy([
         _tax_entry("repurchase_of_stock", statement_type="cash_flow"),
     ])
-    # No exact alias hit; 'Share Buybacks' normalized-matches 'share buyback'.
+    # No exact hit: 'Repurchases' is not a substring match for any alias;
+    # plural fold (repurchases->repurchase) normalized-matches
+    # 'repurchase of capital stock'.
     chunks = [
-        _chunk("c1", 112, "Codes on Takeovers and Mergers and Share Buybacks"),
+        _chunk("c1", 112, "Repurchases of Capital Stock during the year"),
         _chunk("c2", 141, "Consolidated statement of cash flows financing"),
     ]
     captured: dict[str, object] = {}

@@ -139,7 +139,7 @@ def select_chunks(
             if use_norm:
                 cid = str(chunk.get("chunk_id") or chunk.get("block_id") or "")
                 prepared: PreparedText | None = None
-                if prepared_cache is not None:
+                if prepared_cache is not None and cid:
                     prepared = prepared_cache.get(cid)
                     if prepared is None:
                         prepared = prepare_text(text)
@@ -151,6 +151,9 @@ def select_chunks(
                     if m is not None and m.kind == "normalized":
                         norm_score += m.count
             if exact > 0 or norm_score > 0:
+                # Section bonus is block-record-scoped: aggregated records
+                # carry page_start/page_end (no 'page') so _chunk_page is
+                # None for them — exact-count dominance covers those.
                 in_sec = 1 if (
                     use_norm and _chunk_page(chunk) in type_pages
                 ) else 0
