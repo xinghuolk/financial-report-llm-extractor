@@ -27295,7 +27295,7 @@
     "acct_payable": {
       "CN": {
         "300750": "exact_hit",
-        "600519": "prose_only_hit"
+        "600519": "exact_hit"
       },
       "HK": {
         "00001": "exact_hit",
@@ -27546,7 +27546,7 @@
     },
     "contract_liabilities_current": {
       "CN": {
-        "300750": "prose_only_hit",
+        "300750": "exact_hit",
         "600519": "exact_hit"
       },
       "HK": {
@@ -27841,7 +27841,7 @@
     "lt_borr": {
       "CN": {
         "300750": "exact_hit",
-        "600519": "prose_only_hit"
+        "600519": "exact_hit"
       },
       "HK": {
         "00001": "no_hit",
@@ -27961,7 +27961,7 @@
         "01810": "prose_only_hit",
         "02498": "exact_hit",
         "06862": "exact_hit",
-        "09987": "prose_only_hit"
+        "09987": "exact_hit"
       }
     },
     "operating_cost": {
@@ -28134,8 +28134,8 @@
     },
     "st_borr": {
       "CN": {
-        "300750": "prose_only_hit",
-        "600519": "prose_only_hit"
+        "300750": "exact_hit",
+        "600519": "exact_hit"
       },
       "HK": {
         "00001": "no_hit",
@@ -28152,7 +28152,7 @@
         "600519": "prose_only_hit"
       },
       "HK": {
-        "00001": "prose_only_hit",
+        "00001": "exact_hit",
         "01113": "no_hit",
         "01810": "prose_only_hit",
         "02498": "prose_only_hit",
@@ -28176,12 +28176,12 @@
     },
     "total_assets": {
       "CN": {
-        "300750": "prose_only_hit",
-        "600519": "prose_only_hit"
+        "300750": "exact_hit",
+        "600519": "exact_hit"
       },
       "HK": {
         "00001": "exact_hit",
-        "01113": "prose_only_hit",
+        "01113": "exact_hit",
         "01810": "exact_hit",
         "02498": "exact_hit",
         "06862": "exact_hit",
@@ -28205,7 +28205,7 @@
     "total_cur_liab": {
       "CN": {
         "300750": "exact_hit",
-        "600519": "prose_only_hit"
+        "600519": "exact_hit"
       },
       "HK": {
         "00001": "exact_hit",
@@ -28219,7 +28219,7 @@
     "total_liabilities": {
       "CN": {
         "300750": "exact_hit",
-        "600519": "prose_only_hit"
+        "600519": "exact_hit"
       },
       "HK": {
         "00001": "prose_only_hit",
