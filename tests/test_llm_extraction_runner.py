@@ -879,3 +879,157 @@ def test_extract_for_chunks_unwraps_openai_wrapped_response(tmp_path: Path) -> N
     item = result.items["revenue"]
     assert item.value == "100"
     assert item.currency == "HKD"
+
+
+def test_statement_section_pages_maps_anchor_pages() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        statement_section_pages,
+    )
+    chunks = [
+        _chunk("a", 141, "Consolidated statement of cash flows ..."),
+        _chunk("b", 134, "Consolidated income statement. Revenue"),
+        _chunk("c", 10, "no anchors here"),
+    ]
+    pages = statement_section_pages(chunks)
+    assert 141 in pages["cash_flow"]
+    assert 134 in pages["income_statement"]
+    assert pages["balance_sheet"] == ()
+
+
+def test_derive_targets_stamps_alias_normalization() -> None:
+    catalog = _catalog([_entry("revenue", pdf_aliases=("a", "b", "c"))])
+    taxonomy = _taxonomy([_tax_entry("revenue")])
+
+    off = derive_targets(catalog, taxonomy, priorities=("P0",))[0]
+    assert off.alias_normalization is False
+
+    from dataclasses import replace
+    on_catalog = replace(catalog, alias_normalization=True)
+    on = derive_targets(on_catalog, taxonomy, priorities=("P0",))[0]
+    assert on.alias_normalization is True
+
+
+# ---------------------------------------------------------------------------
+# Task 3: flag-gated section-aware scoring in select_chunks
+# ---------------------------------------------------------------------------
+
+def _norm_target(aliases: tuple[str, ...],
+                 statement_type: str = "balance_sheet",
+                 alias_normalization: bool = True) -> LlmExtractionTarget:
+    return LlmExtractionTarget(
+        field_id="f", field_description="d",
+        statement_type=cast(StatementType, statement_type),
+        value_type="money", aliases=aliases,
+        chunk_strategy="alias_top_k",
+        alias_normalization=alias_normalization,
+    )
+
+
+def test_select_chunks_flag_off_ignores_normalized_matches() -> None:
+    target = _norm_target(
+        ("ageing analysis of trade receivables", "x1", "x2"),
+        alias_normalization=False,
+    )
+    chunks = [_chunk("c1", 229,
+                     "The ageing analysis of the trade receivables, presented")]
+    assert select_chunks(chunks, target) == []
+
+
+def test_select_chunks_flag_on_picks_up_normalized_only_chunk() -> None:
+    target = _norm_target(("ageing analysis of trade receivables", "x1", "x2"))
+    chunks = [_chunk("c1", 229,
+                     "The ageing analysis of the trade receivables, presented")]
+    selected = select_chunks(chunks, target)
+    assert [c["chunk_id"] for c in selected] == ["c1"]
+
+
+def test_select_chunks_exact_dominates_normalized() -> None:
+    target = _norm_target(("related party transactions", "x1", "x2"))
+    chunks = [
+        _chunk("norm", 269, "Related parties transactions Except"),
+        _chunk("exact", 87, "related party transactions of the Group"),
+    ]
+    selected = select_chunks(chunks, target)
+    assert [c["chunk_id"] for c in selected][0] == "exact"
+
+
+def test_select_chunks_in_section_breaks_exact_ties() -> None:
+    target = _norm_target(("tax paid", "x1", "x2"),
+                          statement_type="cash_flow")
+    chunks = [
+        _chunk("prose", 56, "higher tax paid this year"),
+        _chunk("stmt", 141, "tax paid (5,571)"),
+    ]
+    section_pages = {"cash_flow": (141,)}
+    selected = select_chunks(chunks, target, section_pages=section_pages)
+    assert [c["chunk_id"] for c in selected][0] == "stmt"
+
+
+def test_select_chunks_inventories_collision_ranked_below_in_section() -> None:
+    # Known rule-5 collision: alias 'inventories' also scores cash-flow
+    # 'change in inventories' text. Section-aware key keeps the genuine
+    # balance-sheet chunk first.
+    target = _norm_target(("inventories", "x1", "x2"),
+                          statement_type="balance_sheet")
+    chunks = [
+        _chunk("cf", 141, "Decrease in inventories (685)"),
+        _chunk("bs", 136, "Inventories 26,690"),
+    ]
+    section_pages = {"balance_sheet": (136,), "cash_flow": (141,)}
+    selected = select_chunks(chunks, target, section_pages=section_pages)
+    assert [c["chunk_id"] for c in selected][0] == "bs"
+
+
+def test_extract_for_chunks_normalized_preempts_section_fallback(
+    tmp_path: Path,
+) -> None:
+    """absence_means_zero interplay (spec gate fixture): when normalization
+    finds candidate chunks, the section fallback is preempted — the LLM
+    sees real candidates instead. Documented, deliberate."""
+    catalog_entries = [
+        _entry(
+            "repurchase_of_stock",
+            pdf_aliases=("repurchase of capital stock", "share buyback",
+                          "stock repurchase"),
+            statement_type="cash_flow",
+            absence_means_zero=True,
+        ),
+    ]
+    catalog = SourceMappingCatalog(
+        catalog_id="test", version="1",
+        entries={e.field_id: e for e in catalog_entries},
+        alias_normalization=True,
+    )
+    taxonomy = _taxonomy([
+        _tax_entry("repurchase_of_stock", statement_type="cash_flow"),
+    ])
+    # No exact hit: 'Repurchases' is not a substring match for any alias;
+    # plural fold (repurchases->repurchase) normalized-matches
+    # 'repurchase of capital stock'.
+    chunks = [
+        _chunk("c1", 112, "Repurchases of Capital Stock during the year"),
+        _chunk("c2", 141, "Consolidated statement of cash flows financing"),
+    ]
+    captured: dict[str, object] = {}
+
+    class _CapturingClient:
+        def complete_json(
+            self, *, system_prompt: str, user_payload: dict[str, object],
+        ) -> dict[str, object]:
+            captured.update(user_payload)
+            return {"field_id": "repurchase_of_stock", "found": False}
+
+    extract_for_chunks(
+        chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+        client=_CapturingClient(), company_id="T",
+        pdf_path=Path("t.pdf"), out_dir=tmp_path,
+    )
+    # chunks key in the payload (see build_field_extraction_prompt in
+    # llm_field_extraction.py — top-level "chunks" list of dicts with chunk_id).
+    raw_chunks = captured["chunks"]
+    assert isinstance(raw_chunks, list)
+    sent_ids = [
+        c.get("chunk_id") for c in raw_chunks
+        if isinstance(c, dict)
+    ]
+    assert sent_ids == ["c1"]  # normalized candidate, NOT the c2 fallback

@@ -10,7 +10,7 @@ pages and avoid double counting).
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -26,11 +26,12 @@ from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
 )
 from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
-    _STATEMENT_SECTION_ANCHORS,
     LlmExtractionTarget,
+    _chunk_page,
     derive_targets,
     select_chunks,
     select_statement_section_chunks,
+    statement_section_pages,
 )
 
 FieldAuditStatus = Literal[
@@ -85,68 +86,8 @@ class AuditReport:
         return out
 
 
-def _page_of(chunk: dict[str, object]) -> int | None:
-    raw = chunk.get("page")
-    try:
-        return int(str(raw))
-    except (TypeError, ValueError):
-        return None
-
-
 def _chunk_id_of(chunk: dict[str, object]) -> str:
     return str(chunk.get("chunk_id") or chunk.get("block_id") or "")
-
-
-# Statements run a handful of pages; an anchored statement-table range longer
-# than this is chunker noise (its loose detection can span MD&A sections) and
-# must not flood the section map.
-_MAX_ANCHORED_RANGE_PAGES = 8
-
-
-def _section_pages(
-    chunks: list[dict[str, object]],
-) -> dict[str, tuple[int, ...]]:
-    """Pages belonging to each statement section.
-
-    Two passes. (1) Anchor pages: block-record text matching a statement
-    anchor phrase. (2) Continuation pages: a statement-table chunk range
-    whose START page is an anchor page of the same type extends the
-    section across the whole range — multi-page statements rarely repeat
-    the title on continuation pages. The start-page-anchored requirement
-    filters the chunker's loose statement detection (it can label MD&A
-    spans as statements), and ranges longer than
-    _MAX_ANCHORED_RANGE_PAGES are ignored as noise.
-    """
-    blocks = [c for c in chunks if c.get("record_type") == "block"]
-    out: dict[str, set[int]] = {k: set() for k in _STATEMENT_SECTION_ANCHORS}
-    for chunk in blocks or chunks:
-        text = " ".join(str(chunk.get("text", "") or "").lower().split())
-        page = _page_of(chunk)
-        if page is None:
-            continue
-        for stype, anchors in _STATEMENT_SECTION_ANCHORS.items():
-            if any(" ".join(a.split()) in text for a in anchors):
-                out[stype].add(page)
-
-    for chunk in chunks:
-        if chunk.get("record_type") != "chunk":
-            continue
-        kind = str(chunk.get("statement_kind") or "")
-        if kind not in out:
-            continue
-        try:
-            start = int(str(chunk.get("page_start")))
-            end = int(str(chunk.get("page_end")))
-        except (TypeError, ValueError):
-            continue
-        if (
-            start in out[kind]
-            and start <= end
-            and end - start < _MAX_ANCHORED_RANGE_PAGES
-        ):
-            out[kind].update(range(start, end + 1))
-
-    return {k: tuple(sorted(v)) for k, v in out.items()}
 
 
 def _audit_field(
@@ -154,6 +95,7 @@ def _audit_field(
     prepared_blocks: list[tuple[dict[str, object], PreparedText]],
     all_chunks: list[dict[str, object]],
     section_pages: dict[str, tuple[int, ...]],
+    prepared_cache: dict[str, PreparedText],
 ) -> FieldAuditResult:
     hits: list[AliasHit] = []
     pages_for_type = section_pages.get(target.statement_type)
@@ -164,7 +106,7 @@ def _audit_field(
                             prepared=ptext)
             if m is None:
                 continue
-            page = _page_of(chunk)
+            page = _chunk_page(chunk)
             in_section: bool | None = None
             if in_section_pages is not None:
                 in_section = page in in_section_pages
@@ -191,7 +133,11 @@ def _audit_field(
         for h in normalized
     ))
 
-    selected = select_chunks(all_chunks, target)
+    selected = select_chunks(
+        all_chunks, target,
+        section_pages=section_pages,
+        prepared_cache=prepared_cache,
+    )
     via: Literal["alias_top_k", "broad_keyword", "section_fallback"]
     if not selected and target.absence_means_zero:
         selected = select_statement_section_chunks(all_chunks, target)
@@ -199,7 +145,7 @@ def _audit_field(
     else:
         via = target.chunk_strategy
     selected_chunks = tuple(
-        SelectedChunk(chunk_id=_chunk_id_of(c), page=_page_of(c), via=via)
+        SelectedChunk(chunk_id=_chunk_id_of(c), page=_chunk_page(c), via=via)
         for c in selected
     )
 
@@ -216,15 +162,27 @@ def audit_chunks(
     taxonomy: FieldTaxonomyCatalog,
     priorities: tuple[str, ...],
     pdf_path: Path,
+    alias_normalization_override: bool | None = None,
 ) -> AuditReport:
+    if alias_normalization_override is not None:
+        catalog = replace(
+            catalog, alias_normalization=alias_normalization_override,
+        )
     blocks = [c for c in chunks if c.get("record_type") == "block"]
     prepared_blocks: list[tuple[dict[str, object], PreparedText]] = [
         (c, prepare_text(str(c.get("text", "") or ""))) for c in blocks
     ]
-    section_pages = _section_pages(chunks)
+    section_pages = statement_section_pages(chunks)
+    # Shared across fields so flag-on selection doesn't re-fold every chunk
+    # per field; seeded with the block folds already computed above.
+    prepared_cache: dict[str, PreparedText] = {
+        _chunk_id_of(c): p for c, p in prepared_blocks if _chunk_id_of(c)
+    }
     targets = derive_targets(catalog, taxonomy, priorities=priorities)
     fields = {
-        t.field_id: _audit_field(t, prepared_blocks, chunks, section_pages)
+        t.field_id: _audit_field(
+            t, prepared_blocks, chunks, section_pages, prepared_cache,
+        )
         for t in targets
     }
     return AuditReport(

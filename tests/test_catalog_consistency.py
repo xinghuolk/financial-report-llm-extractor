@@ -307,6 +307,22 @@ _P4_INTENTIONALLY_UNMAPPED: tuple[str, ...] = (
 )
 
 
+# Greppable flip-point: set True (together with the catalog flag) after the
+# PR-3 cohort gate (selection diff + paid revalidation) passes.
+ALIAS_NORMALIZATION_ROLLED_OUT = True
+
+
+def test_alias_normalization_rollout_state() -> None:
+    """N0 gate: the live catalog's alias_normalization flag must match the
+    gated rollout state. Flip BOTH together after the PR-3 cohort gate
+    (selection diff + paid revalidation) passes."""
+    catalog = load_source_mapping_catalog(
+        SOURCE_MAPPING,
+        priorities=("P0", "P1", "P2", "P3", "P4"),
+    )
+    assert catalog.alias_normalization is ALIAS_NORMALIZATION_ROLLED_OUT
+
+
 def test_p4_intentionally_unmapped_fields_stay_unmapped() -> None:
     """Regression lock: the 4 P4 fields documented as out-of-project-scope
     must remain unmapped in source_mapping_minimal but present in taxonomy

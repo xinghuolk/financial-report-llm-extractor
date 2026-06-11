@@ -1,0 +1,330 @@
+{
+  "00001": {
+    "diffed": [
+      "acct_payable",
+      "amounts_due_from_subsidiaries",
+      "audit_opinion",
+      "capital_expenditures",
+      "cash_parent_company",
+      "equity_attributable_to_owners",
+      "equity_investment_in_subsidiaries",
+      "interest_bearing_debt_parent_company",
+      "inventories",
+      "invest_income",
+      "minority_int",
+      "operating_cost",
+      "receivables_aging",
+      "related_party_receivables_payables",
+      "segment_revenue_profit"
+    ],
+    "lost": [],
+    "changed": [],
+    "gained": [
+      "equity_attributable_to_owners",
+      "receivables_aging"
+    ]
+  },
+  "01113": {
+    "diffed": [
+      "accounts_receiv",
+      "acct_payable",
+      "audit_opinion",
+      "dividends_paid",
+      "inventories",
+      "invest_income",
+      "lease_liability_maturity",
+      "net_profit"
+    ],
+    "lost": [],
+    "changed": [
+      {
+        "field": "invest_income",
+        "off": [
+          "1905",
+          70
+        ],
+        "on": [
+          "2841",
+          70
+        ]
+      }
+    ],
+    "gained": []
+  },
+  "01810": {
+    "diffed": [
+      "audit_opinion",
+      "contingent_liabilities_commitments",
+      "dividends_paid",
+      "equity_investment_in_subsidiaries",
+      "fix_assets",
+      "invest_income",
+      "operating_profit"
+    ],
+    "lost": [],
+    "changed": [
+      {
+        "field": "contingent_liabilities_commitments",
+        "off": [
+          "As of December 31, 2024, we had not entered into any significant off-balance sheet arrangements. We did not have any material contingent liabilities as of December 31, 2024. Capital commitments: RMB2,558,378 thousand (2024) and RMB1,931,874 thousand (2023). Operating lease commitments: RMB45,990 thousand (2024) and RMB1,653,600 thousand (2023).",
+          33
+        ],
+        "on": [
+          "Capital commitments: RMB 2,558,378 thousand as of Dec 31, 2024 (RMB 1,931,874 thousand as of Dec 31, 2023). Operating lease commitments: RMB 45,990 thousand as of Dec 31, 2024 (RMB 1,653,600 thousand as of Dec 31, 2023). No material contingent liabilities as of Dec 31, 2024.",
+          365
+        ]
+      },
+      {
+        "field": "invest_income",
+        "off": [
+          "276.8",
+          27
+        ],
+        "on": [
+          "276.8",
+          19
+        ]
+      }
+    ],
+    "gained": [
+      "fix_assets"
+    ]
+  },
+  "02498": {
+    "diffed": [
+      "acct_payable",
+      "audit_opinion",
+      "capital_expenditures",
+      "change_in_inventory",
+      "equity_investment_in_subsidiaries",
+      "fix_assets",
+      "invest_income",
+      "lt_eqt_invest",
+      "minority_int",
+      "net_profit",
+      "rd_exp",
+      "receivables_aging",
+      "segment_revenue_profit"
+    ],
+    "lost": [],
+    "changed": [
+      {
+        "field": "capital_expenditures",
+        "off": [
+          "109.1",
+          21
+        ],
+        "on": [
+          "109100000",
+          21
+        ]
+      },
+      {
+        "field": "rd_exp",
+        "off": [
+          "615434",
+          14
+        ],
+        "on": [
+          "615434",
+          135
+        ]
+      }
+    ],
+    "gained": [
+      "fix_assets",
+      "lt_eqt_invest",
+      "receivables_aging"
+    ]
+  },
+  "06862": {
+    "diffed": [
+      "accounts_receiv",
+      "acct_payable",
+      "audit_opinion",
+      "capital_expenditures",
+      "change_in_inventory",
+      "depreciation_amortization",
+      "equity_investment_in_subsidiaries",
+      "fix_assets",
+      "inventories",
+      "minority_int"
+    ],
+    "lost": [],
+    "changed": [
+      {
+        "field": "acct_payable",
+        "off": [
+          "1796362",
+          145
+        ],
+        "on": [
+          "1796362",
+          229
+        ]
+      },
+      {
+        "field": "minority_int",
+        "off": [
+          "16298",
+          146
+        ],
+        "on": [
+          "-16298",
+          146
+        ]
+      }
+    ],
+    "gained": [
+      "capital_expenditures",
+      "depreciation_amortization",
+      "fix_assets"
+    ]
+  },
+  "09987": {
+    "diffed": [
+      "amounts_due_from_subsidiaries",
+      "capital_expenditures",
+      "change_in_inventory",
+      "contingent_liabilities_commitments",
+      "equity_attributable_to_owners",
+      "equity_investment_in_subsidiaries",
+      "fix_assets",
+      "inventories",
+      "lease_liability_maturity",
+      "minority_int",
+      "st_borr"
+    ],
+    "lost": [],
+    "changed": [
+      {
+        "field": "lease_liability_maturity",
+        "off": [
+          "Maturities of lease liabilities as of December 31, 2025 were as follows: Amount of Operating Leases Amount of Finance Leases Total 2026 $516 $8 $524 2027 444 8 452 2028 381 7 388 2029 311 7 318 2030 254 7 261 Thereafter 686 34 720 Total undiscounted lease payment 2,592 71 2,663 Less: imputed interest 331 14 345 Present value of lease liabilities $2,261 $57 $2,318",
+          185
+        ],
+        "on": [
+          "Maturities of lease liabilities as of December 31, 2025 were as follows: Amount of Operating Leases and Finance Leases by year from 2026 to 2030 and thereafter, with total undiscounted lease payment of $2,592 million for operating and $71 million for finance, total $2,663 million; less imputed interest $331 million and $14 million, total $345 million; present value of lease liabilities $2,261 million and $57 million, total $2,318 million. Additionally, there are signed but not yet commenced leases with total undiscounted minimum lease payments of $68 million.",
+          185
+        ]
+      },
+      {
+        "field": "st_borr",
+        "off": [
+          "30",
+          94
+        ],
+        "on": [
+          "30",
+          156
+        ]
+      }
+    ],
+    "gained": [
+      "capital_expenditures",
+      "change_in_inventory",
+      "equity_attributable_to_owners",
+      "fix_assets"
+    ]
+  },
+  "600519": {
+    "diffed": [
+      "accounts_receiv",
+      "contract_liabilities_current",
+      "equity_investment_in_subsidiaries",
+      "fix_assets",
+      "lt_eqt_invest",
+      "minority_int",
+      "money_cap",
+      "operating_profit",
+      "rd_exp"
+    ],
+    "lost": [],
+    "changed": [
+      {
+        "field": "money_cap",
+        "off": [
+          "59295822956.89",
+          58
+        ],
+        "on": [
+          "59295822956.89",
+          86
+        ]
+      }
+    ],
+    "gained": []
+  },
+  "300750": {
+    "diffed": [
+      "contract_liabilities_current",
+      "contract_liabilities_non_current",
+      "lt_borr",
+      "minority_int",
+      "money_cap",
+      "operating_profit",
+      "rd_exp",
+      "selling_general_administrative",
+      "st_borr"
+    ],
+    "lost": [],
+    "changed": [
+      {
+        "field": "contract_liabilities_current",
+        "off": [
+          "27834446",
+          26
+        ],
+        "on": [
+          "27834446",
+          115
+        ]
+      },
+      {
+        "field": "money_cap",
+        "off": [
+          "303511993",
+          166
+        ],
+        "on": [
+          "303511993",
+          114
+        ]
+      },
+      {
+        "field": "rd_exp",
+        "off": [
+          "18606756",
+          24
+        ],
+        "on": [
+          "18606756",
+          119
+        ]
+      },
+      {
+        "field": "selling_general_administrative",
+        "off": [
+          "13252636",
+          24
+        ],
+        "on": [
+          "13252636",
+          119
+        ]
+      },
+      {
+        "field": "st_borr",
+        "off": [
+          "19696282",
+          26
+        ],
+        "on": [
+          "19696282",
+          211
+        ]
+      }
+    ],
+    "gained": []
+  }
+}

@@ -202,6 +202,7 @@ class SourceMappingCatalog:
     catalog_id: str
     version: str
     entries: dict[str, SourceMappingEntry]
+    alias_normalization: bool = False
 
     def validate(self) -> None:
         if not self.catalog_id:
@@ -319,6 +320,7 @@ def load_source_mapping_catalog(
         catalog_id=str(raw.get("catalog_id", "")),
         version=str(raw.get("version", "")),
         entries=entries,
+        alias_normalization=bool(raw.get("alias_normalization", False)),
     )
     catalog.validate()
     return catalog

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,11 @@ from financial_report_llm_extractor.llm_field_extraction import (
     FieldExtractionResult,
     JsonClient,
     run_field_extraction,
+)
+from financial_report_llm_extractor.structured_sources.alias_matching import (
+    PreparedText,
+    match_alias,
+    prepare_text,
 )
 from financial_report_llm_extractor.structured_sources.catalog import (
     SourceMappingCatalog,
@@ -54,6 +60,7 @@ class LlmExtractionTarget:
     expected_currency: str | None = None
     expected_unit: str | None = None
     absence_means_zero: bool = False
+    alias_normalization: bool = False
 
 
 def derive_targets(
@@ -88,6 +95,7 @@ def derive_targets(
             aliases=entry.pdf_aliases,
             chunk_strategy=chunk_strategy,
             absence_means_zero=entry.absence_means_zero,
+            alias_normalization=catalog.alias_normalization,
         ))
     targets.sort(key=lambda t: t.field_id)
     return targets
@@ -99,30 +107,59 @@ def select_chunks(
     *,
     top_k_standard: int = 8,
     broad_limit: int = 30,
+    section_pages: Mapping[str, tuple[int, ...]] | None = None,
+    prepared_cache: dict[str, PreparedText] | None = None,
 ) -> list[dict[str, object]]:
     """Select PDF chunks for an extraction target.
 
     alias_top_k: count alias occurrences (case-insensitive), keep top-k.
-    broad_keyword: include any chunk where any alias-token appears, up to
-    broad_limit. Tokens are derived by lowercasing aliases and splitting on
-    whitespace, so 'research and development' tokens become {'research',
-    'and', 'development'} — but stop-words are excluded.
+    With target.alias_normalization on, ranking becomes the spec PR-3 key
+    (exact_score, in_statement_section, normalized_score) — normalized
+    token-window matches let near-miss phrasings enter the candidate set,
+    and section membership demotes prose pages. Flag off → identical to
+    the historical exact-only behavior (key reduces to (exact, 0, 0) and
+    stable sort preserves tie order).
+    broad_keyword: unchanged (normalization out of scope per spec PR-3).
     """
     if target.chunk_strategy == "alias_top_k":
-        scored: list[tuple[int, dict[str, object]]] = []
         # Normalize whitespace so multi-word aliases survive PDF-layout
         # line wrapping ("trade and notes\nreceivables" → "trade and notes
         # receivables").
         aliases_norm = [_normalize_whitespace(a.lower()) for a in target.aliases]
+        use_norm = target.alias_normalization
+        type_pages: tuple[int, ...] = ()
+        if use_norm and section_pages is not None:
+            type_pages = section_pages.get(target.statement_type, ())
+        ranked: list[tuple[tuple[int, int, int], dict[str, object]]] = []
         for chunk in chunks:
-            text_norm = _normalize_whitespace(
-                str(chunk.get("text", "") or "").lower()
-            )
-            score = sum(text_norm.count(a) for a in aliases_norm)
-            if score > 0:
-                scored.append((score, chunk))
-        scored.sort(key=lambda x: -x[0])
-        return [c for _, c in scored[:top_k_standard]]
+            text = str(chunk.get("text", "") or "")
+            text_norm = _normalize_whitespace(text.lower())
+            exact = sum(text_norm.count(a) for a in aliases_norm)
+            norm_score = 0
+            if use_norm:
+                cid = str(chunk.get("chunk_id") or chunk.get("block_id") or "")
+                prepared: PreparedText | None = None
+                if prepared_cache is not None and cid:
+                    prepared = prepared_cache.get(cid)
+                    if prepared is None:
+                        prepared = prepare_text(text)
+                        prepared_cache[cid] = prepared
+                else:
+                    prepared = prepare_text(text)
+                for alias in target.aliases:
+                    m = match_alias(alias, text, prepared=prepared)
+                    if m is not None and m.kind == "normalized":
+                        norm_score += m.count
+            if exact > 0 or norm_score > 0:
+                # Section bonus is block-record-scoped: aggregated records
+                # carry page_start/page_end (no 'page') so _chunk_page is
+                # None for them — exact-count dominance covers those.
+                in_sec = 1 if (
+                    use_norm and _chunk_page(chunk) in type_pages
+                ) else 0
+                ranked.append(((exact, in_sec, norm_score), chunk))
+        ranked.sort(key=lambda x: x[0], reverse=True)
+        return [c for _, c in ranked[:top_k_standard]]
 
     # broad_keyword
     stop_words = {"and", "or", "of", "the", "in", "for", "to", "a", "an"}
@@ -176,6 +213,66 @@ _STATEMENT_SECTION_ANCHORS: dict[str, tuple[str, ...]] = {
         "融资活动",
     ),
 }
+
+
+def _chunk_page(chunk: dict[str, object]) -> int | None:
+    try:
+        return int(str(chunk.get("page")))
+    except (TypeError, ValueError):
+        return None
+
+
+# Statements run a handful of pages; an anchored statement-table range longer
+# than this is chunker noise (its loose detection can span MD&A sections) and
+# must not flood the section map.
+_MAX_ANCHORED_RANGE_PAGES = 8
+
+
+def statement_section_pages(
+    chunks: list[dict[str, object]],
+) -> dict[str, tuple[int, ...]]:
+    """Pages belonging to each statement section.
+
+    Two passes. (1) Anchor pages: block-record text matching a statement
+    anchor phrase (when no block records are present — synthetic tests —
+    all given records are scanned). (2) Continuation pages: a
+    statement-table chunk range whose START page is an anchor page of the
+    same type extends the section across the whole range — multi-page
+    statements rarely repeat the title on continuation pages. The
+    start-page-anchored requirement filters the chunker's loose statement
+    detection (it can label MD&A spans as statements), and ranges longer
+    than _MAX_ANCHORED_RANGE_PAGES are ignored as noise.
+    """
+    blocks = [c for c in chunks if c.get("record_type") == "block"]
+    out: dict[str, set[int]] = {k: set() for k in _STATEMENT_SECTION_ANCHORS}
+    for chunk in blocks or chunks:
+        text = " ".join(str(chunk.get("text", "") or "").lower().split())
+        page = _chunk_page(chunk)
+        if page is None:
+            continue
+        for stype, anchors in _STATEMENT_SECTION_ANCHORS.items():
+            if any(" ".join(a.split()) in text for a in anchors):
+                out[stype].add(page)
+
+    for chunk in chunks:
+        if chunk.get("record_type") != "chunk":
+            continue
+        kind = str(chunk.get("statement_kind") or "")
+        if kind not in out:
+            continue
+        try:
+            start = int(str(chunk.get("page_start")))
+            end = int(str(chunk.get("page_end")))
+        except (TypeError, ValueError):
+            continue
+        if (
+            start in out[kind]
+            and start <= end
+            and end - start < _MAX_ANCHORED_RANGE_PAGES
+        ):
+            out[kind].update(range(start, end + 1))
+
+    return {k: tuple(sorted(v)) for k, v in out.items()}
 
 
 def select_statement_section_chunks(
@@ -278,11 +375,23 @@ def extract_for_chunks(
     fields_not_found: list[str] = []
     fields_failed: list[str] = []
 
+    section_pages: dict[str, tuple[int, ...]] | None = None
+    prepared_cache: dict[str, PreparedText] | None = None
+    if catalog.alias_normalization:
+        # statement_section_pages filters block records internally and
+        # extends with anchored statement-table ranges (continuation pages).
+        section_pages = statement_section_pages(chunks)
+        prepared_cache = {}
+
     for target in targets:
         field_dir = out_dir / target.field_id
         field_dir.mkdir(parents=True, exist_ok=True)
 
-        selected = select_chunks(chunks, target)
+        selected = select_chunks(
+            chunks, target,
+            section_pages=section_pages,
+            prepared_cache=prepared_cache,
+        )
 
         if not selected and target.absence_means_zero:
             # The line (and its aliases) is absent. For absence_means_zero
