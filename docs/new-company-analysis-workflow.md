@@ -16,9 +16,11 @@ COMPANY=<ticker> YEAR=<year> MARKET=<CN|HK> PROVIDERS=akshare,yahoo \
 # Step 1.5: 零成本 PDF 别名预检（先于花钱的 LLM 评估）
 financial-report-llm-extractor audit-pdf-aliases \
   --pdf downloads/<market>_stocks/<ticker>/annual/<year>_annual_en.pdf \
+  --company <ticker> --market <CN|HK> --year <year> \
   --emit-catalog-patch \
   --out tmp/runs/<ticker>_<year>_alias_audit
 # 读 alias_audit.md：normalized_only/prose_only 字段先补 catalog 别名再进 Step 2
+# （--company/--market/--year 是 Step 6 台账索引的必要元数据）
 
 # Step 2: 全流程评估（⚠️ 必须带 PDF + LLM_CONFIG）
 COMPANY=<ticker> YEAR=<year> MARKET=<CN|HK> \
@@ -86,9 +88,12 @@ grep -nE "(HK\\\$ million|RMB.{0,3}('|million|thousand)|US\\\$ million|functiona
 ```bash
 financial-report-llm-extractor audit-pdf-aliases \
   --pdf downloads/<market>_stocks/<ticker>/annual/<year>_annual_en.pdf \
+  --company <ticker> --market <CN|HK> --year <year> \
   --emit-catalog-patch \
   --out tmp/runs/<ticker>_<year>_alias_audit
 ```
+
+元数据三参可选，但**不带则该审计无法进 Step 6 的台账**（索引时会被跳过并告警）。
 
 输出 `alias_audit.{json,md}` + `catalog_patch.json`，每字段四态：
 
@@ -234,7 +239,18 @@ uv run pytest -v && uv run ruff check . && uv run mypy src tests
 
 5. 写 recon doc（如果是新 phase）：`docs/phase_hk_b_X_recon.md` 记录 PDF
    samples + 决策 + 例外情况
-6. Commit 按项目惯例：`feat: phase hk-b.X - <field> <action> (<n-issuer> promotion)`
+6. 更新别名命中台账（run + 审计跑完后）：
+
+   ```bash
+   financial-report-llm-extractor index-alias-matches \
+     --runs tmp/runs/<run-dir> --audits tmp/runs/<audit-dir>
+   ```
+
+   写入 `field_catalog/alias_match_ledger.{json,md}`（derived view，可重建）。
+   catalog 加别名时引用台账证据；转正建议用 `--emit-promotion-review <dir>`
+   产出 review 工件（与 provider 侧 expansion review 同格式）。
+   注意：审计要进台账必须带 `--company/--market/--year` 元数据。
+7. Commit 按项目惯例：`feat: phase hk-b.X - <field> <action> (<n-issuer> promotion)`
 
 ## 常见陷阱（按出现频率）
 

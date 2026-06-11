@@ -405,7 +405,43 @@ def build_parser() -> argparse.ArgumentParser:
         default="catalog",
         help="Override the catalog's alias_normalization flag for this audit; 'catalog' = use catalog setting (default). Gate-diffing tool.",
     )
+    audit_parser.add_argument("--company", default=None)
+    audit_parser.add_argument("--market", choices=["CN", "HK"], default=None)
+    audit_parser.add_argument("--year", type=int, default=None)
     audit_parser.add_argument("--out", type=Path, required=True)
+
+    ledger_parser = subparsers.add_parser(
+        "index-alias-matches",
+        help="Aggregate alias hits from runs + audits into the match ledger.",
+    )
+    ledger_parser.add_argument(
+        "--runs", type=Path, action="append", default=[],
+        help="Run roots; each immediate subdir with llm_evidence_supplement"
+             ".json + evaluation.json is indexed.",
+    )
+    ledger_parser.add_argument(
+        "--audits", type=Path, action="append", default=[],
+        help="Audit roots; each immediate subdir (or the dir itself) with "
+             "alias_audit.json is indexed.",
+    )
+    ledger_parser.add_argument(
+        "--ledger", type=Path,
+        default=Path("field_catalog/alias_match_ledger.json"),
+    )
+    ledger_parser.add_argument(
+        "--catalog", type=Path,
+        default=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+    )
+    ledger_parser.add_argument("--min-companies", type=int, default=2)
+    ledger_parser.add_argument(
+        "--append", action="store_true",
+        help="Upsert into the existing ledger instead of rebuilding from "
+             "the given roots (default rebuilds: the ledger is a derived "
+             "view of the artifacts you pass).",
+    )
+    ledger_parser.add_argument(
+        "--emit-promotion-review", type=Path, default=None, metavar="DIR",
+    )
 
     return parser
 
@@ -1157,6 +1193,9 @@ def main(argv: list[str] | None = None) -> int:
             chunks=chunks, catalog=catalog, taxonomy=taxonomy,
             priorities=priorities, pdf_path=args.pdf,
             alias_normalization_override=override_map[args.alias_normalization],
+            company=args.company,
+            market=args.market,
+            year=args.year,
         )
         write_alias_audit(audit_report, args.out)
         if args.emit_catalog_patch:
@@ -1165,6 +1204,77 @@ def main(argv: list[str] | None = None) -> int:
             {"out": str(args.out), "summary": audit_report.summary},
             ensure_ascii=False, indent=2, sort_keys=True,
         ))
+        return 0
+
+    if args.command == "index-alias-matches":
+        import sys as _sys
+
+        from financial_report_llm_extractor.structured_sources.alias_ledger import (
+            emit_promotion_review,
+            index_audit_dir,
+            index_run_dir,
+            load_ledger,
+            new_ledger,
+            save_ledger,
+            write_ledger_views,
+        )
+        from financial_report_llm_extractor.structured_sources.catalog import (
+            load_source_mapping_catalog,
+        )
+
+        # Default REBUILDS from the given roots: load-and-upsert would keep
+        # stale entries from corrected/removed artifacts forever, breaking
+        # the derived-view contract. --append opts into accumulation.
+        ledger = load_ledger(args.ledger) if args.append else new_ledger()
+        warnings: list[str] = []
+
+        def _candidates(root: Path) -> list[Path]:
+            sentinels = (
+                "alias_audit.json",
+                "llm_evidence_supplement.json",
+                "evaluation.json",  # provider-only runs have no supplement
+            )
+            if any((root / name).exists() for name in sentinels):
+                return [root]
+            return sorted(
+                p for p in root.iterdir()
+                if p.is_dir() and not p.name.startswith(".")
+            )
+
+        for root in args.runs:
+            for d in _candidates(root):
+                warnings += index_run_dir(ledger, d)
+        for root in args.audits:
+            for d in _candidates(root):
+                warnings += index_audit_dir(ledger, d)
+        for w in warnings:
+            print(f"warning: {w}", file=_sys.stderr)
+
+        catalog = load_source_mapping_catalog(
+            args.catalog, priorities=("P0", "P1", "P2", "P3", "P4"),
+        )
+        catalog_aliases = {
+            fid: entry.pdf_aliases
+            for fid, entry in catalog.entries.items()
+            if entry.pdf_aliases
+        }
+        save_ledger(ledger, args.ledger)
+        write_ledger_views(
+            ledger, catalog_aliases=catalog_aliases,
+            out_md=args.ledger.with_suffix(".md"),
+            min_companies=args.min_companies,
+        )
+        if args.emit_promotion_review is not None:
+            emit_promotion_review(
+                ledger, catalog_aliases=catalog_aliases,
+                output_dir=args.emit_promotion_review,
+                min_companies=args.min_companies,
+            )
+        print(json.dumps({
+            "ledger": str(args.ledger),
+            "fields": len(ledger["fields"]),
+            "warnings": len(warnings),
+        }, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
 
     raise ValueError(f"unknown command: {args.command}")

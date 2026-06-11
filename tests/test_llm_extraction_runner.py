@@ -1033,3 +1033,46 @@ def test_extract_for_chunks_normalized_preempts_section_fallback(
         if isinstance(c, dict)
     ]
     assert sent_ids == ["c1"]  # normalized candidate, NOT the c2 fallback
+
+
+def test_statement_section_pages_extends_anchored_ranges() -> None:
+    """Review F2 regression: a multi-page statement's continuation page
+    (no repeated title) joins the section when an anchored statement-table
+    range covers it; un-anchored ranges (chunker noise over MD&A) do not."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        statement_section_pages,
+    )
+    chunks: list[dict[str, object]] = [
+        {"chunk_id": "b1", "page": "141", "record_type": "block",
+         "text": "Consolidated statement of cash flows"},
+        {"chunk_id": "b2", "page": "142", "record_type": "block",
+         "text": "Tax paid (5,571) continuation rows, no title here"},
+        # anchored range: starts on the anchor page -> extends to 142
+        {"chunk_id": "stmt_cash_flow_p0141_p0142", "record_type": "chunk",
+         "statement_kind": "cash_flow", "page_start": "141",
+         "page_end": "142", "text": "..."},
+        # chunker noise: balance_sheet-labeled MD&A span NOT starting on a
+        # balance-sheet anchor page -> must NOT extend
+        {"chunk_id": "stmt_balance_sheet_p0003_p0009", "record_type": "chunk",
+         "statement_kind": "balance_sheet", "page_start": "3",
+         "page_end": "9", "text": "..."},
+    ]
+    pages = statement_section_pages(chunks)
+    assert pages["cash_flow"] == (141, 142)
+    assert pages["balance_sheet"] == ()
+
+
+def test_statement_section_pages_caps_runaway_anchored_range() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        statement_section_pages,
+    )
+    chunks: list[dict[str, object]] = [
+        {"chunk_id": "b1", "page": "100", "record_type": "block",
+         "text": "Consolidated income statement"},
+        {"chunk_id": "stmt_income_statement_p0100_p0150",
+         "record_type": "chunk", "statement_kind": "income_statement",
+         "page_start": "100", "page_end": "150", "text": "..."},
+    ]
+    pages = statement_section_pages(chunks)
+    # 51-page anchored range is noise: only the anchor page survives
+    assert pages["income_statement"] == (100,)

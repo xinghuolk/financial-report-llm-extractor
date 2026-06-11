@@ -72,6 +72,9 @@ class AuditReport:
     generated_at: str
     section_anchor_coverage: dict[str, tuple[int, ...]]
     fields: dict[str, FieldAuditResult] = field(default_factory=dict)
+    company: str | None = None
+    market: str | None = None
+    year: int | None = None
 
     @property
     def summary(self) -> dict[str, int]:
@@ -163,6 +166,9 @@ def audit_chunks(
     priorities: tuple[str, ...],
     pdf_path: Path,
     alias_normalization_override: bool | None = None,
+    company: str | None = None,
+    market: str | None = None,
+    year: int | None = None,
 ) -> AuditReport:
     if alias_normalization_override is not None:
         catalog = replace(
@@ -191,6 +197,9 @@ def audit_chunks(
         generated_at=datetime.now(timezone.utc).isoformat(),
         section_anchor_coverage=section_pages,
         fields=fields,
+        company=company,
+        market=market,
+        year=year,
     )
 
 
@@ -202,6 +211,9 @@ def write_alias_audit(report: AuditReport, out_dir: Path) -> None:
     payload = {
         "schema_version": "alias_audit_v1",
         "pdf_path": report.pdf_path,
+        "company": report.company,
+        "market": report.market,
+        "year": report.year,
         "catalog_version": report.catalog_version,
         "generated_at": report.generated_at,
         "section_anchor_coverage": {

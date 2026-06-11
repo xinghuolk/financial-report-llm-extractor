@@ -1,0 +1,383 @@
+"""Derived match ledger (spec PR-2, component 3 — reduced scope).
+
+Aggregates which alias actually hit, per (company, year, field), from two
+sources: LLM evidence supplements (joined to the run's evaluation.json for
+company/year/market — supplements carry NO alias attribution, so their
+hits live under the reserved field-level key "_llm") and alias audits
+(which carry alias-level kind/page plus optional company metadata).
+
+The ledger is a DERIVED VIEW: regenerable from artifacts, timestamp-free
+(idempotent rerun is byte-identical), safe to rm + re-index. It must NOT
+ship in the wheel (pyproject excludes it from the catalog force-include).
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from financial_report_llm_extractor.structured_sources.alias_matching import (
+    _EDGE_PUNCT,
+)
+
+LEDGER_SCHEMA = "alias_ledger_v1"
+LEDGER_NOTE = (
+    "derived view; regenerable from run artifacts + audits; "
+    "rm + re-index is safe"
+)
+LLM_KEY = "_llm"
+
+Ledger = dict[str, Any]
+
+
+def new_ledger() -> Ledger:
+    return {
+        "schema_version": LEDGER_SCHEMA,
+        "note": LEDGER_NOTE,
+        "fields": {},
+        "audit_statuses": {},
+        "provider_resolved": {},
+    }
+
+
+def load_ledger(path: Path) -> Ledger:
+    if not path.exists():
+        return new_ledger()
+    data: Ledger = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("schema_version") != LEDGER_SCHEMA:
+        # schema drift: treat as fresh (derived view, nothing is lost)
+        return new_ledger()
+    return data
+
+
+def save_ledger(ledger: Ledger, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    canon = {
+        "schema_version": ledger["schema_version"],
+        "note": ledger["note"],
+        "fields": {
+            fid: {
+                alias: sorted(
+                    entries,
+                    key=lambda e: (e["company"], e["year"], e.get("page") or 0),
+                )
+                for alias, entries in sorted(aliases.items())
+            }
+            for fid, aliases in sorted(ledger["fields"].items())
+        },
+        "audit_statuses": {
+            fid: {
+                mkt: dict(sorted(by_co.items()))
+                for mkt, by_co in sorted(by_mkt.items())
+            }
+            for fid, by_mkt in sorted(ledger["audit_statuses"].items())
+        },
+        "provider_resolved": {
+            fid: {
+                mkt: sorted(set(cos))
+                for mkt, cos in sorted(by_mkt.items())
+            }
+            for fid, by_mkt in sorted(
+                ledger.get("provider_resolved", {}).items()
+            )
+        },
+    }
+    path.write_text(
+        json.dumps(canon, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _upsert(ledger: Ledger, field_id: str, alias: str,
+            entry: dict[str, Any]) -> None:
+    entries = ledger["fields"].setdefault(field_id, {}).setdefault(alias, [])
+    if entry not in entries:
+        entries.append(entry)
+
+
+def index_run_dir(ledger: Ledger, run_dir: Path) -> list[str]:
+    """Index one run dir: provider_resolved from evaluation.json, then the
+    LLM supplement when present. Returns warnings.
+
+    Provider-only runs (evaluation.json without a supplement) are a valid
+    source-first shape and MUST still populate provider_resolved — the
+    terminal-candidate gate depends on it.
+    """
+    supp_path = run_dir / "llm_evidence_supplement.json"
+    eval_path = run_dir / "evaluation.json"
+    if not eval_path.exists():
+        if supp_path.exists():
+            return [
+                f"{run_dir}: supplement without evaluation.json "
+                f"(company/year/market join impossible), skipped"
+            ]
+        return [f"{run_dir}: no evaluation.json, skipped"]
+    ev = json.loads(eval_path.read_text(encoding="utf-8"))
+    company = str(ev["company"])
+    market = str(ev["market"])
+    try:
+        year = int(str(ev["period_end"])[:4])
+    except (ValueError, TypeError):
+        return [
+            f"{run_dir}: period_end {ev.get('period_end')!r} not parseable "
+            f"as year, skipped"
+        ]
+    ev_fields = ev.get("fields")
+    if isinstance(ev_fields, dict):
+        for field_id, frec in ev_fields.items():
+            if not isinstance(frec, dict):
+                continue
+            if frec.get("bucket") != "clean_present":
+                continue
+            cos = ledger.setdefault("provider_resolved", {}).setdefault(
+                field_id, {},
+            ).setdefault(market, [])
+            if company not in cos:
+                cos.append(company)
+    if not supp_path.exists():
+        # provider-only run: provider_resolved recorded above, no LLM hits
+        return []
+    supp = json.loads(supp_path.read_text(encoding="utf-8"))
+    raw_items = supp.get("items")
+    if not isinstance(raw_items, dict):
+        return [f"{run_dir}: supplement 'items' is not a dict, skipped"]
+    for field_id, item in raw_items.items():
+        if not isinstance(item, dict):
+            continue
+        if item.get("status") != "present":
+            continue
+        _upsert(ledger, field_id, LLM_KEY, {
+            "company": company, "year": year,
+            "page": item.get("page"), "market": market,
+        })
+    return []
+
+
+def _md_escape(s: str) -> str:
+    """Escape pipe characters for Markdown table cells."""
+    return s.replace("|", "\\|")
+
+
+def index_audit_dir(ledger: Ledger, audit_dir: Path) -> list[str]:
+    """Index one audit dir's alias-level hits + field statuses."""
+    audit_path = audit_dir / "alias_audit.json"
+    if not audit_path.exists():
+        return [f"{audit_dir}: no alias_audit.json, skipped"]
+    data = json.loads(audit_path.read_text(encoding="utf-8"))
+    company, market, year = (
+        data.get("company"), data.get("market"), data.get("year"),
+    )
+    if not (company and market and year):
+        return [
+            f"{audit_dir}: audit lacks company/market/year metadata "
+            f"(re-run audit-pdf-aliases with --company/--market/--year), "
+            f"skipped"
+        ]
+    catalog_version = str(data.get("catalog_version", ""))
+    for field_id, fr in data.get("fields", {}).items():
+        suggested_by_text = {
+            str(s).lower(): str(s) for s in fr.get("suggested_aliases", [])
+        }
+        for hit in fr.get("hits", []):
+            alias = hit.get("alias")
+            if alias is None:
+                continue
+            entry: dict[str, Any] = {
+                "company": str(company), "year": int(year),
+                "page": hit.get("page"),
+                "match_kind": str(hit.get("kind")),
+                "market": str(market),
+                "catalog_version": catalog_version,
+            }
+            if hit.get("kind") == "normalized":
+                # recover the suggestion phrase this hit produced
+                stripped = str(hit.get("matched_text", "")).strip(
+                    _EDGE_PUNCT).lower()
+                if stripped in suggested_by_text:
+                    entry["suggested"] = stripped
+            _upsert(ledger, field_id, str(alias), entry)
+        ledger["audit_statuses"].setdefault(field_id, {}).setdefault(
+            str(market), {},
+        )[str(company)] = str(fr.get("status"))
+    return []
+
+
+def compute_signals(
+    ledger: Ledger,
+    *,
+    catalog_aliases: dict[str, tuple[str, ...]],
+    min_companies: int = 2,
+) -> dict[str, list[dict[str, Any]]]:
+    """Market-scoped governance signals.
+
+    Market scoping is load-bearing: pdf_aliases mix EN + 中文 in one list,
+    so cross-market aggregation would mark the whole Chinese half dead on
+    an English cohort (and vice versa). Markets = those observed in the
+    ledger, per signal.
+    """
+    # markets observed anywhere in the ledger
+    markets: set[str] = set()
+    for aliases in ledger["fields"].values():
+        for entries in aliases.values():
+            markets.update(str(e["market"]) for e in entries)
+    for by_mkt in ledger["audit_statuses"].values():
+        markets.update(by_mkt.keys())
+
+    hit_by_market: dict[tuple[str, str, str], bool] = {}
+    for fid, aliases in ledger["fields"].items():
+        for alias, entries in aliases.items():
+            if alias == LLM_KEY:
+                continue
+            for e in entries:
+                hit_by_market[(fid, alias, str(e["market"]))] = True
+
+    dead: list[dict[str, Any]] = []
+    for fid, alias_list in sorted(catalog_aliases.items()):
+        for market in sorted(markets):
+            # only markets where this FIELD was audited at least once
+            audited = ledger["audit_statuses"].get(fid, {}).get(market)
+            if not audited:
+                continue
+            for alias in alias_list:
+                if not hit_by_market.get((fid, alias, market)):
+                    dead.append({"field_id": fid, "market": market,
+                                  "alias": alias})
+
+    promo_groups: dict[tuple[str, str, str], set[str]] = {}
+    for fid, aliases in ledger["fields"].items():
+        for alias, entries in aliases.items():
+            if alias == LLM_KEY:
+                continue
+            for e in entries:
+                sugg = e.get("suggested")
+                if e.get("match_kind") == "normalized" and sugg:
+                    promo_groups.setdefault(
+                        (fid, str(e["market"]), str(sugg)), set(),
+                    ).add(str(e["company"]))
+    promotions = [
+        {"field_id": fid, "market": market, "suggested_alias": sugg,
+         "companies": sorted(cos)}
+        for (fid, market, sugg), cos in sorted(promo_groups.items())
+        if len(cos) >= min_companies
+    ]
+
+    # Terminal candidates are a WEAK, PDF-only diagnostic: an alias miss
+    # says nothing about provider coverage. Excluded per (field, market):
+    # provider-clean fields (source-first by design) and fields with LLM
+    # presents (extractable => evidently applicable).
+    provider_resolved = ledger.get("provider_resolved", {})
+    llm_markets: dict[str, set[str]] = {}
+    for fid, aliases in ledger["fields"].items():
+        for e in aliases.get(LLM_KEY, []):
+            llm_markets.setdefault(fid, set()).add(str(e["market"]))
+    terminals = []
+    for fid, by_mkt in sorted(ledger["audit_statuses"].items()):
+        for market, by_co in sorted(by_mkt.items()):
+            if provider_resolved.get(fid, {}).get(market):
+                continue
+            if market in llm_markets.get(fid, set()):
+                continue
+            no_hit = sorted(c for c, s in by_co.items() if s == "no_hit")
+            if len(no_hit) >= min_companies:
+                terminals.append({"field_id": fid, "market": market,
+                                   "no_hit_companies": no_hit})
+
+    return {"dead_aliases": dead, "promotion_candidates": promotions,
+            "terminal_candidates": terminals}
+
+
+def write_ledger_views(
+    ledger: Ledger,
+    *,
+    catalog_aliases: dict[str, tuple[str, ...]],
+    out_md: Path,
+    min_companies: int = 2,
+) -> None:
+    signals = compute_signals(
+        ledger, catalog_aliases=catalog_aliases, min_companies=min_companies,
+    )
+    lines = ["# Alias Match Ledger — governance view", "",
+             f"- note: {ledger['note']}", ""]
+    lines += ["## Promotion candidates (normalized phrase, "
+              f">= {min_companies} companies per market)", "",
+              "| Field | Market | Suggested alias | Companies |",
+              "|---|---|---|---|"]
+    for p in signals["promotion_candidates"]:
+        lines.append(
+            f"| `{p['field_id']}` | {p['market']} | "
+            f"{_md_escape(str(p['suggested_alias']))} | "
+            f"{', '.join(p['companies'])} |")
+    lines += ["", "## Dead aliases (zero hits in an audited market)", "",
+              "| Field | Market | Alias |", "|---|---|---|"]
+    for d in signals["dead_aliases"]:
+        lines.append(
+            f"| `{d['field_id']}` | {d['market']} | "
+            f"{_md_escape(str(d['alias']))} |")
+    lines += ["", f"## Terminal candidates (no_hit across >= {min_companies} "
+              "companies in a market; PDF-only diagnostic — provider-clean "
+              "fields excluded, verify against source policy before acting)",
+              "",
+              "| Field | Market | Companies |", "|---|---|---|"]
+    for t in signals["terminal_candidates"]:
+        lines.append(f"| `{t['field_id']}` | {t['market']} | "
+                     f"{', '.join(t['no_hit_companies'])} |")
+    out_md.parent.mkdir(parents=True, exist_ok=True)
+    out_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def emit_promotion_review(
+    ledger: Ledger,
+    *,
+    catalog_aliases: dict[str, tuple[str, ...]],
+    output_dir: Path,
+    min_companies: int = 2,
+) -> None:
+    """Emit alias_promotion_review.json + .md, shape-compatible with
+    source_mapping_expansion.CandidateDecision."""
+    signals = compute_signals(
+        ledger, catalog_aliases=catalog_aliases, min_companies=min_companies,
+    )
+    promoted = [
+        {
+            "field_id": p["field_id"],
+            "source": "pdf",
+            "raw_field_name": p["suggested_alias"],
+            "raw_field_code": None,
+            "action": "promote",
+            "reason": (
+                f"normalized phrase hit in {len(p['companies'])} "
+                f"{p['market']} companies ({', '.join(p['companies'])})"
+            ),
+            "aliases": [p["suggested_alias"]],
+            # alias-only extension over CandidateDecision: the evidence
+            # threshold is market-scoped, so the market rides along.
+            "market": p["market"],
+        }
+        for p in signals["promotion_candidates"]
+    ]
+    payload = {
+        "report_id": "alias_promotion_review",
+        "ledger_note": ledger["note"],
+        "promoted": promoted,
+        "deferred": [],
+        "blocked": [],
+        "summary": {
+            "promoted_count": len(promoted),
+            "deferred_count": 0,
+            "blocked_count": 0,
+        },
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "alias_promotion_review.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    lines = ["# Alias promotion review (review-gated)", "",
+             "| Field | Suggested alias | Reason |", "|---|---|---|"]
+    for p in promoted:
+        lines.append(
+            f"| `{p['field_id']}` | {_md_escape(str(p['raw_field_name']))} | "
+            f"{_md_escape(str(p['reason']))} |")
+    (output_dir / "alias_promotion_review.md").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8",
+    )
