@@ -330,9 +330,13 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
     # line 'Tax paid' matches no alias at all, not even normalized
     # (naive es-strip: taxes->taxe != tax).
     assert r.fields["c_paid_for_taxes"].status == "prose_only_hit"
-    # class ① alias gap healed by normalization, suggestion recovered
+    # class ① CLOSED by promotion batch 2: the ledger-evidenced phrase
+    # "ageing analysis of the trade receivables" (00001+00392) is now a
+    # catalog alias, so the original motivating miss is an exact hit.
+    # The remaining no-"the" aliases still normalized-match, keeping the
+    # suggestion visible in diagnostics.
     aging = r.fields["receivables_aging"]
-    assert aging.status == "normalized_only_hit"
+    assert aging.status == "exact_hit"
     assert any(
         "ageing analysis of the trade receivables" in s
         for s in aging.suggested_aliases
@@ -398,8 +402,27 @@ def test_cli_audit_alias_normalization_flag(tmp_path: Path) -> None:
 
 
 def test_cli_audit_alias_normalization_off(tmp_path: Path) -> None:
+    """--alias-normalization off must disable normalized selection. Uses an
+    inline catalog (alias WITHOUT "the") so the off/on discrimination stays
+    pinned regardless of real-catalog alias promotions (batch 2 promoted
+    the "the"-variant into the real catalog, which would exact-match)."""
     from financial_report_llm_extractor.cli import main
 
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(_json.dumps({
+        "catalog_id": "t", "version": "1",
+        "priorities": [{"priority": "P0", "fields": ["receivables_aging"]}],
+        "source_mappings": {
+            "receivables_aging": {
+                "value_type": "text", "statement_type": "notes",
+                "currency_requirement": "not_applicable",
+                "unit_requirement": "not_applicable",
+                "source_aliases": {"yahoo": ["X"]},
+                "pdf_aliases": ["ageing analysis of trade receivables",
+                                 "zzz_dummy_1", "zzz_dummy_2"],
+            }
+        },
+    }))
     out = tmp_path / "audit_off"
     ingest = out / "ingest"
     ingest.mkdir(parents=True)
@@ -409,6 +432,7 @@ def test_cli_audit_alias_normalization_off(tmp_path: Path) -> None:
 
     rc = main([
         "audit-pdf-aliases", "--pdf", "x.pdf", "--out", str(out),
+        "--catalog", str(catalog_path),
         "--alias-normalization", "off",
     ])
     assert rc == 0

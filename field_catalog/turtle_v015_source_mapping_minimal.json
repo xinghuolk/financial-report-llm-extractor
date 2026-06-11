@@ -1090,7 +1090,8 @@
       "pdf_aliases": [
         "operating costs",
         "cost of revenue",
-        "营业成本"
+        "营业成本",
+        "operating cost"
       ]
     },
     "operating_profit": {
@@ -1384,7 +1385,8 @@
         "change in inventory",
         "decrease in inventory",
         "存货减少",
-        "changes in inventories"
+        "changes in inventories",
+        "decrease in inventories"
       ]
     },
     "receiv_tax_refund": {
@@ -1754,7 +1756,8 @@
         "aging analysis of receivables",
         "trade receivables aging",
         "trade receivables ageing",
-        "应收账款账龄"
+        "应收账款账龄",
+        "ageing analysis of the trade receivables"
       ]
     },
     "related_party_receivables_payables": {
@@ -1776,7 +1779,8 @@
         "related party transactions",
         "amounts due from related parties",
         "amounts due to related parties",
-        "关联方"
+        "关联方",
+        "amounts due to the related parties"
       ]
     },
     "contingent_liabilities_commitments": {
@@ -2032,7 +2036,8 @@
         "long-term equity investment",
         "investments in associates",
         "investments in joint ventures",
-        "investment in an associate"
+        "investment in an associate",
+        "investments in the associates"
       ]
     },
     "contract_liabilities_current": {
