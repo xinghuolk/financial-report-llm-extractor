@@ -13,6 +13,13 @@
 COMPANY=<ticker> YEAR=<year> MARKET=<CN|HK> PROVIDERS=akshare,yahoo \
   scripts/run-fetch-source-inventory.sh
 
+# Step 1.5: 零成本 PDF 别名预检（先于花钱的 LLM 评估）
+financial-report-llm-extractor audit-pdf-aliases \
+  --pdf downloads/<market>_stocks/<ticker>/annual/<year>_annual_en.pdf \
+  --emit-catalog-patch \
+  --out tmp/runs/<ticker>_<year>_alias_audit
+# 读 alias_audit.md：normalized_only/prose_only 字段先补 catalog 别名再进 Step 2
+
 # Step 2: 全流程评估（⚠️ 必须带 PDF + LLM_CONFIG）
 COMPANY=<ticker> YEAR=<year> MARKET=<CN|HK> \
   PDF_PATH=downloads/<market>_stocks/<ticker>/annual/<year>_annual_en.pdf \
@@ -71,6 +78,31 @@ grep -nE "(HK\\\$ million|RMB.{0,3}('|million|thousand)|US\\\$ million|functiona
 
 加入 `src/financial_report_llm_extractor/structured_sources/source_inventory_fetch.py`
 的 `HK_ISSUER_FINANCIAL_CURRENCY` dict。CN 公司跳过本步（AKShare CN 已用 yuan）。
+
+## Step 1.5: PDF 别名预检（audit-pdf-aliases，零 LLM 成本）
+
+新 PDF 在进付费 LLM 评估前先跑一遍审计（秒级，纯本地）：
+
+```bash
+financial-report-llm-extractor audit-pdf-aliases \
+  --pdf downloads/<market>_stocks/<ticker>/annual/<year>_annual_en.pdf \
+  --emit-catalog-patch \
+  --out tmp/runs/<ticker>_<year>_alias_audit
+```
+
+输出 `alias_audit.{json,md}` + `catalog_patch.json`，每字段四态：
+
+| 状态 | 含义 | 动作 |
+|---|---|---|
+| `exact_hit` | 别名精确命中且落在对应报表 section | 无需动作 |
+| `prose_only_hit` | 命中但全在 section 外（散文/MD&A）——付费 run 大概率仍 miss | 查 `alias_audit.md` 的命中页，决定是否补报表行措辞 |
+| `normalized_only_hit` | 仅归一化命中（the/复数/连字符差异） | 把 `suggested_aliases`（PDF 原文措辞）经人工 review 后补进 catalog |
+| `no_hit` | 全 miss | 大概率 issuer 不披露；勿盲目加词 |
+
+`catalog_patch.json` 是 **review-gated 建议**，必须人工审核后手动应用——建议可能错误
+（token 窗口可能落在更长短语内，如 "non-current asset" 被建议给 total_cur_assets）。
+`warnings.empty_anchor_statement_types` 非空时表示该 PDF 的某报表 section 锚点全失效
+（absence_means_zero 兜底对该 PDF 静默失效），需要补锚点。
 
 ## Step 1: 拉取 source inventory（live fetch）
 
@@ -206,6 +238,9 @@ uv run pytest -v && uv run ruff check . && uv run mypy src tests
 
 ## 常见陷阱（按出现频率）
 
+0. **跳过 Step 1.5 直接进 LLM 评估**
+   → 别名缺口（the/复数/措辞差异）要花一次付费 run 才暴露，然后人肉翻 PDF 定位；
+   预检 7 秒就能给出 suggested_aliases
 1. **漏 PDF_PATH + LLM_CONFIG**（最常见，本文档诞生的直接原因）
    → P3 pdf_only 字段全部 unresolved；coverage 表面低
 2. **没 source .env**（仅次于上面，Phase HK-B.9 中曾踩）

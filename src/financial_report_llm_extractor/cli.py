@@ -385,6 +385,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Bypass provider + LLM caches.",
     )
 
+    audit_parser = subparsers.add_parser(
+        "audit-pdf-aliases",
+        help="Zero-LLM pre-flight: audit catalog pdf_aliases against a PDF.",
+    )
+    audit_parser.add_argument("--pdf", type=Path, required=True)
+    audit_parser.add_argument(
+        "--catalog", type=Path,
+        default=Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+    )
+    audit_parser.add_argument(
+        "--taxonomy", type=Path,
+        default=Path("field_catalog/turtle_v015_field_taxonomy.json"),
+    )
+    audit_parser.add_argument("--priorities", default="P0,P1,P2,P3,P4")
+    audit_parser.add_argument("--emit-catalog-patch", action="store_true")
+    audit_parser.add_argument("--out", type=Path, required=True)
+
     return parser
 
 
@@ -1054,6 +1071,93 @@ def main(argv: list[str] | None = None) -> int:
             no_cache=args.no_cache,
         )
         print(_json.dumps(pipeline_result, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "audit-pdf-aliases":
+        import subprocess
+        import sys
+        from financial_report_llm_extractor.field_metadata import load_field_taxonomy
+        from financial_report_llm_extractor.structured_sources.alias_audit import (
+            audit_chunks,
+            emit_catalog_patch,
+            write_alias_audit,
+        )
+        from financial_report_llm_extractor.structured_sources.catalog import (
+            load_source_mapping_catalog,
+        )
+        from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+            load_chunks_jsonl,
+        )
+
+        priorities = tuple(
+            p.strip() for p in args.priorities.split(",") if p.strip()
+        )
+        ingest_dir = args.out / "ingest"
+        chunks_path = ingest_dir / "chunks.jsonl"
+        if not chunks_path.exists():
+            try:
+                ingest_dir.mkdir(parents=True, exist_ok=True)
+                ingest_result = ingest_pdf(args.pdf, ingest_dir)
+                build_chunk_store(
+                    ingest_result.pages_path,
+                    ingest_result.metadata_path,
+                    chunks_path=chunks_path,
+                )
+            except (
+                RuntimeError,
+                FileNotFoundError,
+                subprocess.CalledProcessError,
+            ) as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
+        else:
+            # Cached chunks may belong to a DIFFERENT PDF (the dir is
+            # operator-chosen). Verify the embedded source_pdf_hash against
+            # the requested --pdf; a silent mismatch would emit a misleading
+            # audit attributed to the wrong document.
+            from financial_report_llm_extractor.ingestion import compute_sha256
+
+            cached_hash: str | None = None
+            with chunks_path.open(encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip():
+                        cached_hash = json.loads(line).get("source_pdf_hash")
+                        break
+            if args.pdf.exists() and cached_hash:
+                pdf_hash = compute_sha256(args.pdf)
+                if not (
+                    pdf_hash.startswith(cached_hash)
+                    or cached_hash.startswith(pdf_hash)
+                ):
+                    print(
+                        f"error: cached chunks in {chunks_path} were built "
+                        f"from a different PDF (hash {cached_hash[:12]}... "
+                        f"!= {pdf_hash[:12]}...); use a fresh --out",
+                        file=sys.stderr,
+                    )
+                    return 2
+            elif not args.pdf.exists():
+                print(
+                    f"warning: reusing cached chunks {chunks_path}; --pdf "
+                    f"not readable so provenance cannot be verified",
+                    file=sys.stderr,
+                )
+        chunks = load_chunks_jsonl(chunks_path)
+        catalog = load_source_mapping_catalog(
+            args.catalog, priorities=priorities
+        )
+        taxonomy = load_field_taxonomy(args.taxonomy)
+        audit_report = audit_chunks(
+            chunks=chunks, catalog=catalog, taxonomy=taxonomy,
+            priorities=priorities, pdf_path=args.pdf,
+        )
+        write_alias_audit(audit_report, args.out)
+        if args.emit_catalog_patch:
+            emit_catalog_patch(audit_report, args.out)
+        print(json.dumps(
+            {"out": str(args.out), "summary": audit_report.summary},
+            ensure_ascii=False, indent=2, sort_keys=True,
+        ))
         return 0
 
     raise ValueError(f"unknown command: {args.command}")
