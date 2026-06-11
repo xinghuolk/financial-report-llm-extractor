@@ -435,3 +435,50 @@ def test_extract_text_field_skips_decimal_parse() -> None:
     assert result.value == canned["value"]
     assert result.parsed_numeric_value is None
     assert result.errors == ()
+
+
+def test_parenthesized_negative_value_parses() -> None:
+    """Accounting notation: '(21)' means -21. The 00001 FY2025 run lost
+    capitalized_interest to 'unparseable numeric value' on exactly this."""
+    from financial_report_llm_extractor.llm_field_extraction import run_field_extraction
+
+    client = FakeJsonClient({
+        "field_id": "revenue",
+        "found": True,
+        "value": "(21)",
+        "currency": "HK$",
+        "unit": "million",
+        "period": "2025-12-31",
+        "page": 205,
+        "statement_line": "less: amounts capitalised (21)",
+        "confidence": 0.9,
+        "reasoning": "parenthesized negative on the statement line",
+    })
+
+    result = run_field_extraction(_sample_request(), client)
+
+    assert result.status == "present"
+    assert result.parsed_numeric_value == Decimal("-21")
+    assert result.errors == ()
+
+
+def test_parenthesized_negative_with_commas_parses() -> None:
+    from financial_report_llm_extractor.llm_field_extraction import run_field_extraction
+
+    client = FakeJsonClient({
+        "field_id": "revenue",
+        "found": True,
+        "value": "(1,234.5)",
+        "currency": "HK$",
+        "unit": "million",
+        "period": "2025-12-31",
+        "page": 1,
+        "statement_line": "x",
+        "confidence": 0.9,
+        "reasoning": "r",
+    })
+
+    result = run_field_extraction(_sample_request(), client)
+
+    assert result.status == "present"
+    assert result.parsed_numeric_value == Decimal("-1234.5")

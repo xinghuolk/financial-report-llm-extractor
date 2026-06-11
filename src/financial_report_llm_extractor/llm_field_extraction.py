@@ -245,8 +245,13 @@ def _parse_response(
     # narrative content where Decimal parsing is meaningless.
     is_numeric_field = request.value_type in ("money", "number")
     if value_raw is not None and is_numeric_field:
+        cleaned = value_raw.replace(",", "").strip()
+        # Accounting notation: "(21)" means -21 (statement lines print
+        # negatives parenthesized; LLMs echo them verbatim).
+        if cleaned.startswith("(") and cleaned.endswith(")"):
+            cleaned = "-" + cleaned[1:-1].strip()
         try:
-            parsed_numeric_value = Decimal(value_raw.replace(",", "").strip())
+            parsed_numeric_value = Decimal(cleaned)
         except (InvalidOperation, ValueError):
             errors.append(f"unparseable numeric value: {value_raw!r}")
 

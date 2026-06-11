@@ -589,3 +589,122 @@ def test_orchestrator_with_fake_stack_writes_all_artifacts(
     eval_payload = _json.loads((tmp_path / "evaluation.json").read_text(encoding="utf-8"))
     expected_version = _json.loads(taxonomy_path.read_text(encoding="utf-8"))["version"]
     assert eval_payload["catalog_version"] == expected_version
+
+
+def _na_mapping_entry(specs: list[dict[str, str]]) -> Any:
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        IndustryNotApplicableSpec,
+        SourceMappingEntry,
+    )
+    return SourceMappingEntry(
+        field_id="c_pay_to_staff",
+        priority="P2",
+        value_type="money",
+        statement_type="cash_flow",
+        domain="cash_flow",
+        source_mode="source_optional",
+        primary_route="akshare_direct",
+        verification_status="expected",
+        currency_requirement="required",
+        unit_requirement="required",
+        fallback_policy="pdf_allowed",
+        source_aliases={},
+        pdf_aliases=(),
+        industry_not_applicable=tuple(
+            IndustryNotApplicableSpec(**s) for s in specs
+        ),
+    )
+
+
+def test_wildcard_na_spec_matches_whole_market() -> None:
+    from financial_report_llm_extractor.structured_sources.catalog import (
+        IndustryNotApplicableSpec,
+    )
+    spec = IndustryNotApplicableSpec(market="HK", ticker="*", reason="r")
+    assert spec.matches("HK", "00001")
+    assert spec.matches("HK", "99999")
+    assert not spec.matches("CN", "00001")
+    # per-ticker spec unchanged
+    narrow = IndustryNotApplicableSpec(market="HK", ticker="01113", reason="r")
+    assert narrow.matches("HK", "01113")
+    assert not narrow.matches("HK", "00001")
+
+
+def test_classify_missing_only_with_market_na_is_not_in_scope() -> None:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        classify_field,
+    )
+    bucket, reason = classify_field(
+        export_item=_make_export_item(
+            status="missing", selected_source=None,
+            conflict_classifications=("missing_source_candidate",),
+        ),
+        warning_item=None,
+        mapping_entry=_na_mapping_entry(
+            [{"market": "HK", "ticker": "*", "reason": "HK indirect method"}]
+        ),
+        pdf_provided=True,
+        market="HK",
+        company_id="00001",
+    )
+    assert bucket == "not_in_scope"
+    assert reason == "HK indirect method"
+
+
+def test_classify_missing_only_na_other_market_stays_unresolved() -> None:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        classify_field,
+    )
+    bucket, _ = classify_field(
+        export_item=_make_export_item(
+            status="missing", selected_source=None,
+            conflict_classifications=("missing_source_candidate",),
+        ),
+        warning_item=None,
+        mapping_entry=_na_mapping_entry(
+            [{"market": "HK", "ticker": "*", "reason": "r"}]
+        ),
+        pdf_provided=True,
+        market="CN",
+        company_id="600519",
+    )
+    assert bucket == "unresolved_conflict"
+
+
+def test_classify_real_conflict_never_masked_by_na() -> None:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        classify_field,
+    )
+    bucket, _ = classify_field(
+        export_item=_make_export_item(
+            status="missing", selected_source=None,
+            conflict_classifications=(
+                "missing_source_candidate", "provider_value_mismatch",
+            ),
+        ),
+        warning_item=None,
+        mapping_entry=_na_mapping_entry(
+            [{"market": "HK", "ticker": "*", "reason": "r"}]
+        ),
+        pdf_provided=True,
+        market="HK",
+        company_id="00001",
+    )
+    assert bucket == "unresolved_conflict"
+
+
+def test_classify_llm_present_unaffected_by_na() -> None:
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        classify_field,
+    )
+    bucket, _ = classify_field(
+        export_item=_make_export_item(selected_source="llm"),
+        warning_item=None,
+        mapping_entry=_na_mapping_entry(
+            [{"market": "HK", "ticker": "*", "reason": "r"}]
+        ),
+        pdf_provided=True,
+        market="HK",
+        company_id="00001",
+    )
+    assert bucket == "llm_supplement_present"

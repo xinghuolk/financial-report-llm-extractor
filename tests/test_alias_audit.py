@@ -295,11 +295,10 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
     real FY2025 00001 phrasings. Catalog alias edits to the asserted
     fields are EXPECTED to trip this test — that is its job.
 
-    Fixture decoys p0059/p0076/p0007 (pledged-as-security, treasury
-    shares, one-time loss) hit no catalog alias and are deliberately
-    unasserted; restricted_cash's "pledged deposits" alias shares no
-    full-token window with "pledged as security" (synonym, not
-    normalization-reachable).
+    The gap-closure alias batch (one-time/treasury shares/pledged as
+    security/undiscounted/tax paid) means the former decoy blocks
+    p0059/p0076/p0007 now hit their fields by design; they stay
+    unasserted here (covered by per-field assertions where relevant).
     """
     from financial_report_llm_extractor.field_metadata import (
         load_field_taxonomy,
@@ -325,11 +324,10 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
         pdf_path=Path("00001_2025_mini.pdf"),
     )
 
-    # class ② wrong-page: the ONLY hit is 'taxes paid' exact on p56,
-    # which is not a cash-flow anchor page -> prose_only. p141's real
-    # line 'Tax paid' matches no alias at all, not even normalized
-    # (naive es-strip: taxes->taxe != tax).
-    assert r.fields["c_paid_for_taxes"].status == "prose_only_hit"
+    # class ② CLOSED by the gap-closure alias batch: 'tax paid' now
+    # exact-matches the p141 statement line inside the cash-flow section
+    # (the p56 prose hit no longer dominates classification).
+    assert r.fields["c_paid_for_taxes"].status == "exact_hit"
     # class ① CLOSED by promotion batch 2: the ledger-evidenced phrase
     # "ageing analysis of the trade receivables" (00001+00392) is now a
     # catalog alias, so the original motivating miss is an exact hit.

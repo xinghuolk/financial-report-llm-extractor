@@ -1408,6 +1408,13 @@
         "receipts of tax refunds",
         "tax refund received",
         "收到的税费返还"
+      ],
+      "industry_not_applicable": [
+        {
+          "market": "HK",
+          "ticker": "*",
+          "reason": "CN cash-flow concept (收到的税费返还); HK/IFRS statements have no tax-refund-received line; ledger: no_hit across all 7 audited HK issuers."
+        }
       ]
     },
     "repurchase_of_stock": {
@@ -1729,7 +1736,8 @@
         "share repurchase progress",
         "cancellation of shares",
         "回购进展",
-        "注销"
+        "注销",
+        "treasury shares"
       ]
     },
     "receivables_aging": {
@@ -1825,7 +1833,8 @@
         "lease liabilities maturity",
         "lease liability analysis",
         "minimum lease payments",
-        "租赁负债到期"
+        "租赁负债到期",
+        "undiscounted"
       ]
     },
     "segment_revenue_profit": {
@@ -1872,6 +1881,13 @@
         "development costs capitalized",
         "research costs capitalized",
         "资本化研发"
+      ],
+      "industry_not_applicable": [
+        {
+          "market": "HK",
+          "ticker": "*",
+          "reason": "HK annual reports do not disclose a capitalized-R&D line (CN disclosure concept); ledger: no_hit across all 7 audited HK issuers."
+        }
       ]
     },
     "capitalized_interest": {
@@ -1916,7 +1932,8 @@
         "pledged deposits",
         "cash held as collateral",
         "受限制现金",
-        "受限制存款"
+        "受限制存款",
+        "pledged as security"
       ]
     },
     "time_deposits_or_wealth_products": {
@@ -1984,6 +2001,13 @@
         "支付给职工以及为职工支付的现金",
         "cash paid to employees",
         "cash paid to and on behalf of employees"
+      ],
+      "industry_not_applicable": [
+        {
+          "market": "HK",
+          "ticker": "*",
+          "reason": "HK/IFRS cash-flow statements use the indirect method without a cash-paid-to-employees line (CN direct-method concept); ledger: no_hit across all 7 audited HK issuers; 00001 350-page full-text scan negative."
+        }
       ]
     },
     "c_paid_for_taxes": {
@@ -2007,7 +2031,8 @@
         "支付的各项税费",
         "income tax paid",
         "cash paid for taxes",
-        "taxes paid"
+        "taxes paid",
+        "tax paid"
       ]
     },
     "lt_eqt_invest": {
@@ -2117,7 +2142,9 @@
         "non-recurring profit or loss",
         "exceptional items",
         "items affecting comparability",
-        "one-off items"
+        "one-off items",
+        "one-time",
+        "one-off"
       ]
     },
     "cash_parent_company": {
