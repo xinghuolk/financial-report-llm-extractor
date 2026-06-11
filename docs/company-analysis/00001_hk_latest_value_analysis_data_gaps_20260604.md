@@ -161,7 +161,11 @@
 | `related_party_receivables_payables`（P1） | **已解决** | p269 关联方注释文本进入 present |
 | `non_oper_exp`（P2） | **已解决** | gpt-5.5 抽出 12,327 @利润表 |
 | `dps` 跨抽取器冲突 | **已裁决** | gpt-5.5 = 1.602 @p17（与历史 Codex 一致；DS 2.312 为误） |
-| `buyback_cancellation_progress`（P0） | 未解决 | p76/89 "did not hold any treasury shares" 可终态化，别名（treasury shares）未入 catalog |
-| `restricted_cash` / `time_deposits` / `lease_liability_maturity`（P1） | 未解决 | restricted_cash 的 "pledged as security" 别名仍未加；time_deposits 真不披露 |
-| `c_paid_for_taxes` / `rd_exp` / `c_pay_to_staff` 等（P2） | 部分仍缺 | HK 报表结构性缺失为主；c_paid_for_taxes 的 "tax paid" 别名未入 catalog |
+| `buyback_cancellation_progress`（P0） | **已解决** | `treasury shares` 别名已入 catalog → "no treasury shares" 文本 @p89 进入 present |
+| `c_paid_for_taxes`（P2） | **已解决** | `tax paid` 别名已入 → (5,571) @p141（含括号负数解析修复） |
+| `lease_liability_maturity`（P1） | **已解决** | `undiscounted` 别名已入 → 完整到期表 @p280 |
+| `restricted_cash`（P1） | **判定为非缺口** | p59 实为质押资产非受限现金，"pledged as security" 别名经 review 撤销（语义错配）；00001 大概率无受限现金披露 |
+| `non_recurring_items_breakdown`（P2） | 检索已修，抽取待调 | `one-time`/`one-off` 别名已入（chunks 到位），gpt-5.5 判 highlights 页不构成结构化 breakdown → 仍 not_found；owner_earnings 正常化的剩余阻碍 |
+| `c_pay_to_staff` / `capitalized_rd` / `receiv_tax_refund`（P2） | **已终态化** | HK market-wide 结构性 NA（not_in_scope），停止假性缺口与 LLM 空转 |
+| `time_deposits_or_wealth_products`（P1） | 真不披露 | 维持缺失（00001 不披露） |
 | `gross_profit` 冲突 / SGA 终态 | 未变 | 口径仲裁/PDF 佐证仍待决 |

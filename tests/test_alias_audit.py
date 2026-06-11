@@ -344,6 +344,12 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
     # class ⑤ genuinely absent
     assert r.fields["rd_exp"].status == "no_hit"
     assert r.fields["time_deposits_or_wealth_products"].status == "no_hit"
+    # GUARD (PR-18 review): p0059 "pledged as security" is ASSET pledging,
+    # not a restricted-cash balance — a generic pledged alias would rank
+    # the wrong-concept chunk into the LLM's input (misattribution risk:
+    # 1,571 of pledged assets read as restricted cash). restricted_cash
+    # must NOT hit this fixture.
+    assert r.fields["restricted_cash"].status == "no_hit"
     # healthy field stays exact
     assert r.fields["revenue"].status == "exact_hit"
 

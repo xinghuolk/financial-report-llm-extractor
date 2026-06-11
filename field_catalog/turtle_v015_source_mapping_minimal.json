@@ -1932,8 +1932,7 @@
         "pledged deposits",
         "cash held as collateral",
         "受限制现金",
-        "受限制存款",
-        "pledged as security"
+        "受限制存款"
       ]
     },
     "time_deposits_or_wealth_products": {

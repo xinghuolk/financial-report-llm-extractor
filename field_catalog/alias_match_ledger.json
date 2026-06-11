@@ -44094,48 +44094,6 @@
           "market": "HK"
         }
       ],
-      "pledged as security": [
-        {
-          "company": "00001",
-          "year": 2025,
-          "page": 59,
-          "match_kind": "exact",
-          "market": "HK",
-          "catalog_version": "2026-05-01"
-        },
-        {
-          "company": "00001",
-          "year": 2025,
-          "page": 269,
-          "match_kind": "exact",
-          "market": "HK",
-          "catalog_version": "2026-05-01"
-        },
-        {
-          "company": "01810",
-          "year": 2024,
-          "page": 254,
-          "match_kind": "exact",
-          "market": "HK",
-          "catalog_version": "2026-05-01"
-        },
-        {
-          "company": "02498",
-          "year": 2024,
-          "page": 156,
-          "match_kind": "exact",
-          "market": "HK",
-          "catalog_version": "2026-05-01"
-        },
-        {
-          "company": "03320",
-          "year": 2024,
-          "page": 65,
-          "match_kind": "exact",
-          "market": "HK",
-          "catalog_version": "2026-05-01"
-        }
-      ],
       "pledged deposits": [
         {
           "company": "00392",
@@ -56994,7 +56952,7 @@
         "688008": "no_hit"
       },
       "HK": {
-        "00001": "exact_hit",
+        "00001": "no_hit",
         "00392": "exact_hit",
         "01113": "no_hit",
         "01810": "exact_hit",

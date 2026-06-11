@@ -441,7 +441,6 @@
 | `restricted_cash` | CN | cash held as collateral |
 | `restricted_cash` | CN | 受限制现金 |
 | `restricted_cash` | CN | 受限制存款 |
-| `restricted_cash` | CN | pledged as security |
 | `restricted_cash` | HK | cash held as collateral |
 | `restricted_cash` | HK | 受限制现金 |
 | `revenue` | CN | revenue |
