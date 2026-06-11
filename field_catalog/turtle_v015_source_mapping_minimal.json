@@ -362,7 +362,8 @@
       },
       "pdf_aliases": [
         "cash and cash equivalents",
-        "货币资金"
+        "货币资金",
+        "cash and cash equivalent"
       ]
     },
     "operating_cash_flow": {
@@ -669,7 +670,8 @@
         "verification_requirement": "pdf_required_on_conflict"
       },
       "pdf_aliases": [
-        "deferred tax liabilities"
+        "deferred tax liabilities",
+        "deferred tax liability"
       ]
     },
     "inventories": {
@@ -746,7 +748,8 @@
       "pdf_aliases": [
         "cash and cash equivalents",
         "bank balances and deposits",
-        "货币资金"
+        "货币资金",
+        "cash and cash equivalent"
       ]
     },
     "defer_tax_assets": {
@@ -768,7 +771,8 @@
         ]
       },
       "pdf_aliases": [
-        "deferred tax assets"
+        "deferred tax assets",
+        "deferred tax asset"
       ]
     },
     "minority_int": {
@@ -792,7 +796,8 @@
       "pdf_aliases": [
         "non-controlling interests",
         "minority interest",
-        "少数股东权益"
+        "少数股东权益",
+        "non-controlling interest"
       ]
     },
     "fix_assets": {
@@ -816,7 +821,9 @@
       "pdf_aliases": [
         "fixed assets",
         "property plant and equipment",
-        "固定资产"
+        "固定资产",
+        "fixed asset",
+        "property, plant and equipment"
       ],
       "source_policy": {
         "semantic_concept": "fixed assets including right-of-use (Yahoo Net PPE aggregation: PP&E + ROU per HKFRS 16)",
@@ -1376,7 +1383,8 @@
       "pdf_aliases": [
         "change in inventory",
         "decrease in inventory",
-        "存货减少"
+        "存货减少",
+        "changes in inventories"
       ]
     },
     "receiv_tax_refund": {
@@ -1470,7 +1478,8 @@
       "pdf_aliases": [
         "dividends paid",
         "cash dividends paid",
-        "分配股利"
+        "分配股利",
+        "dividend paid"
       ]
     },
     "capital_expenditures": {
@@ -1519,7 +1528,9 @@
       "pdf_aliases": [
         "capital expenditures",
         "purchase of property plant and equipment",
-        "购建固定资产"
+        "购建固定资产",
+        "capital expenditure",
+        "purchase of property, plant and equipment"
       ]
     },
     "depreciation_amortization": {
@@ -1833,7 +1844,8 @@
         "segment revenue",
         "segment profit",
         "operating segments",
-        "分部信息"
+        "分部信息",
+        "operating segment"
       ]
     },
     "capitalized_rd": {
@@ -2019,7 +2031,8 @@
         "长期股权投资",
         "long-term equity investment",
         "investments in associates",
-        "investments in joint ventures"
+        "investments in joint ventures",
+        "investment in an associate"
       ]
     },
     "contract_liabilities_current": {
@@ -2044,7 +2057,8 @@
         "合同负债",
         "contract liabilities",
         "deferred revenue",
-        "advance from customers"
+        "advance from customers",
+        "contract liability"
       ]
     },
     "contract_liabilities_non_current": {
@@ -2271,7 +2285,8 @@
         "disclaimer of opinion",
         "emphasis of matter",
         "give a true and fair view",
-        "present fairly"
+        "present fairly",
+        "independent auditor’s report"
       ]
     },
     "dividend_policy_text": {

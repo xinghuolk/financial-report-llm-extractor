@@ -15,10 +15,13 @@
 | `change_in_inventory` | HK | changes in inventories | 02498, 09987 |
 | `contingent_liabilities_commitments` | HK | commitment | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `contingent_liabilities_commitments` | HK | guarantee | 00001, 01113, 01810, 02498, 06862, 09987 |
+| `contract_liabilities_current` | HK | contract liabilities | 00001, 01810, 02498, 06862, 09987 |
 | `contract_liabilities_current` | HK | contract liability | 02498, 06862 |
 | `defer_tax_assets` | HK | deferred tax asset | 00001, 01113, 02498, 06862, 09987 |
+| `defer_tax_liab` | HK | deferred tax liabilities | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `defer_tax_liab` | HK | deferred tax liability | 01810, 06862 |
 | `dividends_paid` | HK | dividend paid | 00001, 01113, 01810 |
+| `dividends_paid` | HK | dividends paid | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `dps` | HK | dividends per share | 00001, 01113 |
 | `equity_investment_in_subsidiaries` | HK | interests in subsidiaries | 01810, 06862 |
 | `equity_investment_in_subsidiaries` | HK | investment in subsidiaries | 01810, 02498, 09987 |
@@ -27,6 +30,7 @@
 | `fix_assets` | HK | property, plant and equipment | 01810, 02498, 06862, 09987 |
 | `inventories` | HK | inventory | 00001, 01113, 01810, 02498, 06862, 09987 |
 | `lt_eqt_invest` | HK | investment in an associate | 01113, 02498 |
+| `lt_eqt_invest` | HK | investments in associates | 00001, 01113, 01810, 02498, 06862 |
 | `minority_int` | HK | non-controlling interest | 00001, 01810, 09987 |
 | `money_cap` | HK | cash and cash equivalent | 02498, 09987 |
 | `segment_revenue_profit` | HK | operating segment | 00001, 01810, 02498, 06862, 09987 |
@@ -88,6 +92,7 @@
 | `audit_opinion` | CN | emphasis of matter |
 | `audit_opinion` | CN | give a true and fair view |
 | `audit_opinion` | CN | present fairly |
+| `audit_opinion` | CN | independent auditor’s report |
 | `audit_opinion` | HK | 审计意见 |
 | `audit_opinion` | HK | 审计报告 |
 | `audit_opinion` | HK | 审计意见类型 |
@@ -137,6 +142,8 @@
 | `c_pay_to_staff` | HK | cash paid to and on behalf of employees |
 | `capital_expenditures` | CN | capital expenditures |
 | `capital_expenditures` | CN | purchase of property plant and equipment |
+| `capital_expenditures` | CN | capital expenditure |
+| `capital_expenditures` | CN | purchase of property, plant and equipment |
 | `capital_expenditures` | HK | 购建固定资产 |
 | `capitalized_interest` | CN | capitalized borrowing costs |
 | `capitalized_interest` | CN | capitalized interest |
@@ -153,6 +160,7 @@
 | `capitalized_rd` | HK | research costs capitalized |
 | `capitalized_rd` | HK | 资本化研发 |
 | `cash` | CN | cash and cash equivalents |
+| `cash` | CN | cash and cash equivalent |
 | `cash` | HK | 货币资金 |
 | `cash_parent_company` | CN | 母公司现金及现金等价物 |
 | `cash_parent_company` | CN | 母公司货币资金 |
@@ -176,6 +184,7 @@
 | `change_in_inventory` | CN | change in inventory |
 | `change_in_inventory` | CN | decrease in inventory |
 | `change_in_inventory` | CN | 存货减少 |
+| `change_in_inventory` | CN | changes in inventories |
 | `change_in_inventory` | HK | 存货减少 |
 | `change_in_payables` | CN | change in payables |
 | `change_in_payables` | CN | increase in payables |
@@ -198,6 +207,7 @@
 | `contract_liabilities_current` | CN | contract liabilities |
 | `contract_liabilities_current` | CN | deferred revenue |
 | `contract_liabilities_current` | CN | advance from customers |
+| `contract_liabilities_current` | CN | contract liability |
 | `contract_liabilities_current` | HK | 合同负债 |
 | `contract_liabilities_non_current` | CN | non current deferred revenue |
 | `contract_liabilities_non_current` | CN | long-term deferred revenue |
@@ -207,7 +217,9 @@
 | `contract_liabilities_non_current` | HK | long-term deferred revenue |
 | `contract_liabilities_non_current` | HK | non-current contract liabilities |
 | `defer_tax_assets` | CN | deferred tax assets |
+| `defer_tax_assets` | CN | deferred tax asset |
 | `defer_tax_liab` | CN | deferred tax liabilities |
+| `defer_tax_liab` | CN | deferred tax liability |
 | `depreciation_amortization` | CN | depreciation and amortization |
 | `depreciation_amortization` | CN | depreciation |
 | `depreciation_amortization` | CN | amortization |
@@ -243,6 +255,7 @@
 | `dividend_policy_text` | HK | policy on dividend |
 | `dividends_paid` | CN | dividends paid |
 | `dividends_paid` | CN | cash dividends paid |
+| `dividends_paid` | CN | dividend paid |
 | `dividends_paid` | HK | 分配股利 |
 | `dps` | CN | dividends per share |
 | `dps` | CN | dividend per share |
@@ -271,6 +284,8 @@
 | `financing_cash_flow` | CN | financing cash flow |
 | `fix_assets` | CN | fixed assets |
 | `fix_assets` | CN | property plant and equipment |
+| `fix_assets` | CN | fixed asset |
+| `fix_assets` | CN | property, plant and equipment |
 | `fix_assets` | HK | 固定资产 |
 | `fv_value_chg_gain` | CN | fair value change |
 | `fv_value_chg_gain` | HK | 公允价值变动收益 |
@@ -329,13 +344,16 @@
 | `lt_eqt_invest` | CN | long-term equity investment |
 | `lt_eqt_invest` | CN | investments in associates |
 | `lt_eqt_invest` | CN | investments in joint ventures |
+| `lt_eqt_invest` | CN | investment in an associate |
 | `lt_eqt_invest` | HK | 长期股权投资 |
 | `minority_int` | CN | non-controlling interests |
 | `minority_int` | CN | minority interest |
+| `minority_int` | CN | non-controlling interest |
 | `minority_int` | HK | minority interest |
 | `minority_int` | HK | 少数股东权益 |
 | `money_cap` | CN | cash and cash equivalents |
 | `money_cap` | CN | bank balances and deposits |
+| `money_cap` | CN | cash and cash equivalent |
 | `money_cap` | HK | 货币资金 |
 | `net_profit` | CN | net profit |
 | `net_profit` | CN | profit attributable |
@@ -420,6 +438,7 @@
 | `segment_revenue_profit` | CN | segment profit |
 | `segment_revenue_profit` | CN | operating segments |
 | `segment_revenue_profit` | CN | 分部信息 |
+| `segment_revenue_profit` | CN | operating segment |
 | `segment_revenue_profit` | HK | segment profit |
 | `segment_revenue_profit` | HK | 分部信息 |
 | `selling_general_administrative` | CN | selling general and administrative |
