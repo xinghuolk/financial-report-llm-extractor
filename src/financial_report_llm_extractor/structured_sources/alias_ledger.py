@@ -337,6 +337,19 @@ def emit_promotion_review(
     signals = compute_signals(
         ledger, catalog_aliases=catalog_aliases, min_companies=min_companies,
     )
+    # Promotion echo filter: singular/plural cross-matching keeps producing
+    # suggestions that are ALREADY catalog aliases (e.g. plural alias
+    # normalized-matching singular text suggests the singular that batch-1
+    # just promoted). Those are noise for the reviewer.
+    already = {
+        (fid, a.lower())
+        for fid, aliases in catalog_aliases.items()
+        for a in aliases
+    }
+    candidates = [
+        p for p in signals["promotion_candidates"]
+        if (p["field_id"], str(p["suggested_alias"]).lower()) not in already
+    ]
     promoted = [
         {
             "field_id": p["field_id"],
@@ -353,7 +366,7 @@ def emit_promotion_review(
             # threshold is market-scoped, so the market rides along.
             "market": p["market"],
         }
-        for p in signals["promotion_candidates"]
+        for p in candidates
     ]
     payload = {
         "report_id": "alias_promotion_review",
