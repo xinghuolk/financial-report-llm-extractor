@@ -9,6 +9,7 @@
 | `amounts_due_from_subsidiaries` | HK | amounts due from subsidiaries | 02498, 06862 |
 | `amounts_due_from_subsidiaries` | HK | due from subsidiaries | 02498, 02669, 06862, 09987 |
 | `audit_opinion` | HK | independent auditor’s report | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `buyback_cancellation_progress` | HK | treasury share | 01810, 02498 |
 | `capital_expenditures` | HK | capital expenditure | 00001, 00392, 01810, 02498, 06862, 09987 |
 | `capital_expenditures` | HK | purchase of property, plant and equipment | 01810, 02498, 06862 |
 | `cash` | HK | cash and cash equivalent | 02498, 09987 |
@@ -134,6 +135,7 @@
 | `buyback_cancellation_progress` | CN | share repurchase progress |
 | `buyback_cancellation_progress` | CN | cancellation of shares |
 | `buyback_cancellation_progress` | CN | 回购进展 |
+| `buyback_cancellation_progress` | CN | treasury shares |
 | `buyback_cancellation_progress` | HK | share buyback |
 | `buyback_cancellation_progress` | HK | share repurchase progress |
 | `buyback_cancellation_progress` | HK | 回购进展 |
@@ -141,6 +143,7 @@
 | `c_paid_for_taxes` | CN | income tax paid |
 | `c_paid_for_taxes` | CN | cash paid for taxes |
 | `c_paid_for_taxes` | CN | taxes paid |
+| `c_paid_for_taxes` | CN | tax paid |
 | `c_paid_for_taxes` | HK | 支付的各项税费 |
 | `c_paid_for_taxes` | HK | cash paid for taxes |
 | `c_pay_to_staff` | CN | cash paid to employees |
@@ -338,6 +341,7 @@
 | `lease_liability_maturity` | CN | lease liability analysis |
 | `lease_liability_maturity` | CN | minimum lease payments |
 | `lease_liability_maturity` | CN | 租赁负债到期 |
+| `lease_liability_maturity` | CN | undiscounted |
 | `lease_liability_maturity` | HK | lease liabilities maturity |
 | `lease_liability_maturity` | HK | lease liability analysis |
 | `lease_liability_maturity` | HK | 租赁负债到期 |
@@ -375,6 +379,8 @@
 | `non_recurring_items_breakdown` | CN | exceptional items |
 | `non_recurring_items_breakdown` | CN | items affecting comparability |
 | `non_recurring_items_breakdown` | CN | one-off items |
+| `non_recurring_items_breakdown` | CN | one-time |
+| `non_recurring_items_breakdown` | CN | one-off |
 | `non_recurring_items_breakdown` | HK | 非经常性损益 |
 | `non_recurring_items_breakdown` | HK | 非经常性损益项目 |
 | `non_recurring_items_breakdown` | HK | 非经常性损益明细 |
@@ -435,6 +441,7 @@
 | `restricted_cash` | CN | cash held as collateral |
 | `restricted_cash` | CN | 受限制现金 |
 | `restricted_cash` | CN | 受限制存款 |
+| `restricted_cash` | CN | pledged as security |
 | `restricted_cash` | HK | cash held as collateral |
 | `restricted_cash` | HK | 受限制现金 |
 | `revenue` | CN | revenue |

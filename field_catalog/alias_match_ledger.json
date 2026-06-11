@@ -7,7 +7,19 @@
         {
           "company": "00001",
           "year": 2023,
+          "page": 146,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2023,
           "page": 195,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
+          "page": 140,
           "market": "HK"
         },
         {
@@ -5904,6 +5916,12 @@
         {
           "company": "00001",
           "year": 2023,
+          "page": 196,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2023,
           "page": 197,
           "market": "HK"
         },
@@ -7196,6 +7214,12 @@
         {
           "company": "00001",
           "year": 2024,
+          "page": 189,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
           "page": 219,
           "market": "HK"
         },
@@ -7379,6 +7403,12 @@
     "buyback_cancellation_progress": {
       "_llm": [
         {
+          "company": "00001",
+          "year": 2025,
+          "page": 89,
+          "market": "HK"
+        },
+        {
           "company": "01810",
           "year": 2024,
           "page": 235,
@@ -7440,6 +7470,399 @@
           "company": "02669",
           "year": 2025,
           "page": 135,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        }
+      ],
+      "treasury shares": [
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 12,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 76,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 83,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 89,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 90,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01113",
+          "year": 2025,
+          "page": 7,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01113",
+          "year": 2025,
+          "page": 26,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01113",
+          "year": 2025,
+          "page": 27,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01113",
+          "year": 2025,
+          "page": 30,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01113",
+          "year": 2025,
+          "page": 54,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 37,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 38,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 51,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 86,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 234,
+          "match_kind": "normalized",
+          "market": "HK",
+          "catalog_version": "2026-05-01",
+          "suggested": "treasury share"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 235,
+          "match_kind": "normalized",
+          "market": "HK",
+          "catalog_version": "2026-05-01",
+          "suggested": "treasury share"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 236,
+          "match_kind": "normalized",
+          "market": "HK",
+          "catalog_version": "2026-05-01",
+          "suggested": "treasury share"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 261,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 341,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 342,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 343,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 370,
+          "match_kind": "normalized",
+          "market": "HK",
+          "catalog_version": "2026-05-01",
+          "suggested": "treasury share"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 371,
+          "match_kind": "normalized",
+          "market": "HK",
+          "catalog_version": "2026-05-01",
+          "suggested": "treasury share"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 373,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 376,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 24,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 26,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 33,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 37,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 41,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 46,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 139,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 164,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 210,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 211,
+          "match_kind": "normalized",
+          "market": "HK",
+          "catalog_version": "2026-05-01",
+          "suggested": "treasury share"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 211,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 223,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 238,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 239,
+          "match_kind": "normalized",
+          "market": "HK",
+          "catalog_version": "2026-05-01",
+          "suggested": "treasury share"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 245,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "03320",
+          "year": 2024,
+          "page": 119,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 123,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 124,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 126,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 128,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 132,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 133,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 234,
           "match_kind": "exact",
           "market": "HK",
           "catalog_version": "2026-05-01"
@@ -7651,6 +8074,12 @@
     "c_paid_for_taxes": {
       "_llm": [
         {
+          "company": "00001",
+          "year": 2025,
+          "page": 141,
+          "market": "HK"
+        },
+        {
           "company": "01810",
           "year": 2024,
           "page": 237,
@@ -7704,6 +8133,128 @@
           "company": "01810",
           "year": 2024,
           "page": 237,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "03320",
+          "year": 2024,
+          "page": 143,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        }
+      ],
+      "tax paid": [
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 141,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 192,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 194,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 196,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 262,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 263,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 337,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 342,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00392",
+          "year": 2025,
+          "page": 104,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01113",
+          "year": 2025,
+          "page": 72,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 28,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 29,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 237,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02669",
+          "year": 2025,
+          "page": 134,
           "match_kind": "exact",
           "market": "HK",
           "catalog_version": "2026-05-01"
@@ -8886,6 +9437,18 @@
           "company": "00001",
           "year": 2023,
           "page": 62,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2023,
+          "page": 140,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
+          "page": 135,
           "market": "HK"
         },
         {
@@ -21095,6 +21658,26 @@
       ]
     },
     "equity_attributable_to_owners": {
+      "_llm": [
+        {
+          "company": "00001",
+          "year": 2023,
+          "page": 65,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
+          "page": 158,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 137,
+          "market": "HK"
+        }
+      ],
       "stockholders equity": [
         {
           "company": "09987",
@@ -28281,6 +28864,12 @@
         },
         {
           "company": "00001",
+          "year": 2024,
+          "page": 128,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
           "year": 2025,
           "page": 134,
           "market": "HK"
@@ -29348,6 +29937,12 @@
     "lease_liability_maturity": {
       "_llm": [
         {
+          "company": "00001",
+          "year": 2025,
+          "page": 280,
+          "market": "HK"
+        },
+        {
           "company": "00392",
           "year": 2024,
           "page": 172,
@@ -29394,6 +29989,240 @@
           "company": "09987",
           "year": 2025,
           "page": 185,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        }
+      ],
+      "undiscounted": [
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 210,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 280,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 281,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 282,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 283,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00392",
+          "year": 2025,
+          "page": 126,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00392",
+          "year": 2025,
+          "page": 172,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00392",
+          "year": 2025,
+          "page": 175,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00392",
+          "year": 2025,
+          "page": 226,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01113",
+          "year": 2025,
+          "page": 87,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01113",
+          "year": 2025,
+          "page": 88,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 283,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 174,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02669",
+          "year": 2025,
+          "page": 194,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02669",
+          "year": 2025,
+          "page": 228,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "03320",
+          "year": 2024,
+          "page": 217,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "03320",
+          "year": 2024,
+          "page": 271,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "03320",
+          "year": 2024,
+          "page": 272,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 214,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 246,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 247,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 248,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 97,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 98,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 147,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 164,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 171,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 185,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 216,
           "match_kind": "exact",
           "market": "HK",
           "catalog_version": "2026-05-01"
@@ -33836,6 +34665,18 @@
     "money_cap": {
       "_llm": [
         {
+          "company": "00001",
+          "year": 2023,
+          "page": 140,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
+          "page": 135,
+          "market": "HK"
+        },
+        {
           "company": "01113",
           "year": 2025,
           "page": 73,
@@ -36084,6 +36925,12 @@
         {
           "company": "00001",
           "year": 2024,
+          "page": 16,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
           "page": 128,
           "market": "HK"
         },
@@ -37416,6 +38263,18 @@
       "_llm": [
         {
           "company": "00001",
+          "year": 2023,
+          "page": 134,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
+          "page": 128,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
           "year": 2025,
           "page": 134,
           "market": "HK"
@@ -37542,6 +38401,18 @@
     },
     "non_oper_income": {
       "_llm": [
+        {
+          "company": "00001",
+          "year": 2023,
+          "page": 134,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
+          "page": 128,
+          "market": "HK"
+        },
         {
           "company": "00001",
           "year": 2025,
@@ -37809,6 +38680,168 @@
           "catalog_version": "2026-05-01"
         }
       ],
+      "one-off": [
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 7,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 8,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 15,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 17,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 18,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 19,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 39,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 49,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 51,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 52,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 174,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 175,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 176,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 177,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 178,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 179,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 18,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "03320",
+          "year": 2024,
+          "page": 30,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "03320",
+          "year": 2024,
+          "page": 92,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "06862",
+          "year": 2024,
+          "page": 106,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        }
+      ],
       "one-off items": [
         {
           "company": "00001",
@@ -37973,6 +39006,136 @@
           "company": "03320",
           "year": 2024,
           "page": 30,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        }
+      ],
+      "one-time": [
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 7,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 8,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 12,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 14,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 17,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 18,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 19,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 42,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 43,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 51,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 55,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 116,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 20,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 100,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 166,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "09987",
+          "year": 2025,
+          "page": 196,
           "match_kind": "exact",
           "market": "HK",
           "catalog_version": "2026-05-01"
@@ -41274,6 +42437,18 @@
     "receivables_aging": {
       "_llm": [
         {
+          "company": "00001",
+          "year": 2024,
+          "page": 186,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 229,
+          "market": "HK"
+        },
+        {
           "company": "00392",
           "year": 2024,
           "page": 190,
@@ -41413,6 +42588,24 @@
     },
     "related_party_receivables_payables": {
       "_llm": [
+        {
+          "company": "00001",
+          "year": 2023,
+          "page": 222,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2024,
+          "page": 212,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 269,
+          "market": "HK"
+        },
         {
           "company": "02498",
           "year": 2024,
@@ -42899,6 +44092,48 @@
           "year": 2024,
           "page": 230,
           "market": "HK"
+        }
+      ],
+      "pledged as security": [
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 59,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 269,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "01810",
+          "year": 2024,
+          "page": 254,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "02498",
+          "year": 2024,
+          "page": 156,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
+        },
+        {
+          "company": "03320",
+          "year": 2024,
+          "page": 65,
+          "match_kind": "exact",
+          "market": "HK",
+          "catalog_version": "2026-05-01"
         }
       ],
       "pledged deposits": [
@@ -46675,6 +47910,12 @@
         {
           "company": "00001",
           "year": 2023,
+          "page": 148,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2023,
           "page": 155,
           "market": "HK"
         },
@@ -46682,6 +47923,12 @@
           "company": "00001",
           "year": 2024,
           "page": 147,
+          "market": "HK"
+        },
+        {
+          "company": "00001",
+          "year": 2025,
+          "page": 153,
           "market": "HK"
         },
         {
@@ -54778,14 +56025,14 @@
         "688008": "exact_hit"
       },
       "HK": {
-        "00001": "no_hit",
+        "00001": "exact_hit",
         "00392": "no_hit",
-        "01113": "no_hit",
+        "01113": "exact_hit",
         "01810": "exact_hit",
-        "02498": "no_hit",
+        "02498": "exact_hit",
         "02669": "exact_hit",
-        "03320": "no_hit",
-        "06862": "no_hit",
+        "03320": "exact_hit",
+        "06862": "exact_hit",
         "09987": "no_hit"
       }
     },
@@ -54797,9 +56044,9 @@
         "688008": "exact_hit"
       },
       "HK": {
-        "00001": "prose_only_hit",
+        "00001": "exact_hit",
         "00392": "exact_hit",
-        "01113": "no_hit",
+        "01113": "exact_hit",
         "01810": "exact_hit",
         "02498": "exact_hit",
         "02669": "exact_hit",
@@ -55405,14 +56652,14 @@
         "688008": "no_hit"
       },
       "HK": {
-        "00001": "no_hit",
-        "00392": "no_hit",
-        "01113": "normalized_only_hit",
+        "00001": "exact_hit",
+        "00392": "exact_hit",
+        "01113": "exact_hit",
         "01810": "exact_hit",
-        "02498": "no_hit",
-        "02669": "no_hit",
-        "03320": "no_hit",
-        "06862": "no_hit",
+        "02498": "exact_hit",
+        "02669": "exact_hit",
+        "03320": "exact_hit",
+        "06862": "exact_hit",
         "09987": "exact_hit"
       }
     },
@@ -55561,10 +56808,10 @@
         "00392": "no_hit",
         "01113": "no_hit",
         "01810": "exact_hit",
-        "02498": "no_hit",
+        "02498": "exact_hit",
         "02669": "no_hit",
         "03320": "exact_hit",
-        "06862": "no_hit",
+        "06862": "exact_hit",
         "09987": "exact_hit"
       }
     },
@@ -55747,7 +56994,7 @@
         "688008": "no_hit"
       },
       "HK": {
-        "00001": "no_hit",
+        "00001": "exact_hit",
         "00392": "exact_hit",
         "01113": "no_hit",
         "01810": "exact_hit",
