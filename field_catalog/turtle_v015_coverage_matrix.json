@@ -474,7 +474,7 @@
           "evidence_requirement": "source_only_allowed"
         }
       ],
-      "notes": "HK-B.4 (test_phase_hk_b_gross_profit.py) locks 4 unresolved_conflict + 2 terminal_unverified across 6 HK issuers. Yahoo Gross Profit + AKShare 毛利 semantics unproven; even exact provider-provider matches (01810, 02498) do not constitute HK annual-report gross-profit semantics proof per drift §177."
+      "notes": "Operator decision 2026-06-12 (supersedes the HK-B.4 non-clean lock): HK gross_profit accepts Yahoo's standardized derivation as clean_present via select_primary_standardized + the yahoo_standardized_accepted trust rule (gated on raw field / currency / unit shape; see hk_yahoo_trust_policy.json and docs/gates/2026-06-12-gross-profit-divergence-investigation.md). test_phase_hk_b_gross_profit.py now locks clean_present across 6 HK issuers with divergent AKShare candidates retained for audit. CN stays preserve_conflict; a lone CN Yahoo candidate lands single_source_unverified (primary route is akshare_direct)."
     },
     "selling_general_administrative": {
       "domain": "income_statement",

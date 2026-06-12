@@ -47,6 +47,7 @@ ClosureCategory = Literal[
     "clean_present",
     "selected_with_warnings",
     "yahoo_pdf_verified",
+    "standardized_derivation_accepted",
     "yahoo_definition_unverified",
     "pdf_required",
     "mapping_expansion_required",
@@ -57,6 +58,7 @@ ALL_CLOSURE_CATEGORIES: tuple[ClosureCategory, ...] = (
     "clean_present",
     "selected_with_warnings",
     "yahoo_pdf_verified",
+    "standardized_derivation_accepted",
     "yahoo_definition_unverified",
     "pdf_required",
     "mapping_expansion_required",
@@ -305,6 +307,7 @@ def _closure_item(
 def _closure_category_from_warning(category: WarningCategory) -> ClosureCategory:
     if category in {
         "yahoo_pdf_verified",
+        "standardized_derivation_accepted",
         "yahoo_definition_unverified",
         "pdf_required",
         "mapping_expansion_required",

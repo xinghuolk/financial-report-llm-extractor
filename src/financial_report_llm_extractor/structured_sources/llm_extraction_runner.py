@@ -61,6 +61,9 @@ class LlmExtractionTarget:
     expected_unit: str | None = None
     absence_means_zero: bool = False
     alias_normalization: bool = False
+    # Taxonomy scope_expectation (e.g. "parent" for parent-company-only
+    # fields); gates the absence_means_zero statement-section fallback.
+    scope_expectation: str = "unknown"
 
 
 def derive_targets(
@@ -96,6 +99,9 @@ def derive_targets(
             chunk_strategy=chunk_strategy,
             absence_means_zero=entry.absence_means_zero,
             alias_normalization=catalog.alias_normalization,
+            scope_expectation=(
+                tax.scope_expectation if tax is not None else "unknown"
+            ),
         ))
     targets.sort(key=lambda t: t.field_id)
     return targets
@@ -448,12 +454,23 @@ def extract_for_chunks(
             prepared_cache=prepared_cache,
         )
 
-        if not selected and target.absence_means_zero:
+        if (
+            not selected
+            and target.absence_means_zero
+            and target.scope_expectation != "parent"
+        ):
             # The line (and its aliases) is absent. For absence_means_zero
             # fields that can be a genuine 0, fall back to the enclosing
             # statement section so the LLM's zero_inference can fire — an empty
             # alias match would otherwise bail to not_found before the request
             # is ever built.
+            #
+            # Parent-scope fields are excluded: section anchors key on
+            # statement_type only, so this fallback would feed the
+            # CONSOLIDATED statement to a parent-company-only field and
+            # authorize a zero (or a consolidated value) from the wrong
+            # scope. For those fields zero inference fires only when the
+            # parent section itself was alias-retrieved.
             selected = select_statement_section_chunks(chunks, target)
 
         if not selected:

@@ -12,6 +12,7 @@ from typing import Callable, Literal, cast
 HkYahooRuleClassification = Literal[
     "yahoo_pdf_verified",
     "yahoo_definition_unverified",
+    "yahoo_standardized_accepted",
     "pdf_required",
 ]
 
@@ -127,6 +128,7 @@ class HkYahooTrustRule:
         if self.classification not in {
             "yahoo_pdf_verified",
             "yahoo_definition_unverified",
+            "yahoo_standardized_accepted",
             "pdf_required",
         }:
             raise ValueError("unsupported trust policy classification")
@@ -145,6 +147,11 @@ class HkYahooTrustRule:
                 raise ValueError("definition_status_reason is required")
             if not self.required_proof:
                 raise ValueError("required_proof is required")
+        if self.classification == "yahoo_standardized_accepted":
+            # Acceptance of a provider-standardized derivation is a
+            # deliberate judgment: the rationale must be recorded.
+            if not self.definition_status_reason:
+                raise ValueError("definition_status_reason is required")
         for sample in self.samples:
             sample.validate(
                 allowed_yahoo_raw_fields=self.allowed_yahoo_raw_fields,
@@ -318,6 +325,7 @@ def _parse_classification(payload: object) -> HkYahooRuleClassification:
     if classification not in {
         "yahoo_pdf_verified",
         "yahoo_definition_unverified",
+        "yahoo_standardized_accepted",
         "pdf_required",
     }:
         raise ValueError("unsupported trust policy classification")

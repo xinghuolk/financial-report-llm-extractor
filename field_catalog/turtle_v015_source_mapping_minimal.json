@@ -521,8 +521,8 @@
             "cross_check_routes": [
               "akshare_direct"
             ],
-            "on_conflict": "select_primary_require_pdf",
-            "single_source_requires_pdf": true
+            "on_conflict": "select_primary_standardized",
+            "single_source_requires_pdf": false
           },
           "CN": {
             "primary_route": "akshare_direct",
@@ -533,7 +533,7 @@
             "single_source_requires_pdf": false
           }
         },
-        "verification_requirement": "pdf_required_on_conflict"
+        "verification_requirement": "none"
       },
       "pdf_aliases": [
         "gross profit",
@@ -2186,6 +2186,7 @@
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
+      "absence_means_zero": true,
       "source_aliases": {
         "yahoo": [
           "Interest Bearing Debt Parent Company"
@@ -2204,7 +2205,9 @@
         "company long-term borrowings",
         "company bonds payable",
         "parent company borrowings",
-        "borrowings of the company"
+        "borrowings of the company",
+        "company statement of financial position",
+        "company balance sheet"
       ]
     },
     "equity_investment_in_subsidiaries": {

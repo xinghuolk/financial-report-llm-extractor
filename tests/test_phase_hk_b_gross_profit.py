@@ -58,7 +58,7 @@ CASES = [
         "00001",
         date(2025, 12, 31),
         BASELINE_FIXTURE,
-        "unresolved_conflict",
+        "clean_present",
         "yahoo",
         Decimal("139204000000.0"),
         (("akshare", "141671863440.0"), ("yahoo", "139204000000.0")),
@@ -67,7 +67,7 @@ CASES = [
         "01113",
         date(2025, 12, 31),
         BASELINE_FIXTURE,
-        "unresolved_conflict",
+        "clean_present",
         "yahoo",
         Decimal("25558000000.0"),
         (("akshare", "23084496760.0"), ("yahoo", "25558000000.0")),
@@ -76,7 +76,7 @@ CASES = [
         "01810",
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "01810" / "source_inventory.jsonl.gz",
-        "terminal_unverified",
+        "clean_present",
         "yahoo",
         Decimal("76560194000.0"),
         (("akshare", "76560194000.0"), ("yahoo", "76560194000.0")),
@@ -85,7 +85,7 @@ CASES = [
         "02498",
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "02498" / "source_inventory.jsonl.gz",
-        "terminal_unverified",
+        "clean_present",
         "yahoo",
         Decimal("283553000.0"),
         (("akshare", "283553000.0"), ("yahoo", "283553000.0")),
@@ -94,7 +94,7 @@ CASES = [
         "06862",
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "06862" / "source_inventory.jsonl.gz",
-        "unresolved_conflict",
+        "clean_present",
         "yahoo",
         Decimal("12108412000.0"),
         (("akshare", "26543610000.0"), ("yahoo", "12108412000.0")),
@@ -103,7 +103,7 @@ CASES = [
         "09987",
         date(2024, 12, 31),
         HK_LLM_6_FIXTURE / "09987" / "source_inventory.jsonl.gz",
-        "unresolved_conflict",
+        "clean_present",
         "yahoo",
         Decimal("1890000000.0"),
         (("akshare", "16756160400.0"), ("yahoo", "1890000000.0")),
@@ -133,7 +133,7 @@ def _inventory_for_company(
 
 
 @pytest.mark.parametrize("case", CASES, ids=[case[0] for case in CASES])
-def test_hk_b_gross_profit_non_clean_shape_is_locked(
+def test_hk_b_gross_profit_standardized_shape_is_locked(
     case: tuple,
     tmp_path: Path,
 ) -> None:
@@ -169,7 +169,14 @@ def test_hk_b_gross_profit_non_clean_shape_is_locked(
     )
     field = next(f for f in evaluation.fields if f.field_id == "gross_profit")
 
-    assert field.bucket != "clean_present"
+    # Operator decision 2026-06-12 (supersedes the HK-B non-clean lock):
+    # gross_profit for HK reporters is a standardized derivation — Yahoo's
+    # value is ACCEPTED as clean_present with provenance labeling
+    # (select_primary_standardized + yahoo_standardized_accepted), because
+    # it matches the PDF-disclosed Gross profit EXACTLY where checkable
+    # (01810 FY2024 three-way match, pinned below). Divergent candidates
+    # stay visible in turtle_mapping for audit.
+    assert field.bucket == "clean_present"
     assert field.bucket == expected_bucket
     assert field.selected_source == expected_selected_source
     assert field.value == expected_value

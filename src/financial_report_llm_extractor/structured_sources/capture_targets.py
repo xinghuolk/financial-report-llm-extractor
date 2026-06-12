@@ -66,12 +66,16 @@ DEFAULT_PROVIDER_FIELD_CAPTURE_TARGETS: tuple[ProviderCaptureTarget, ...] = (
         unit="yuan",
         exchange="SH",
     ),
+    # AKShare HK capture targets are stamped CNY — the EastMoney feed
+    # delivers CNY-converted values for every issuer regardless of its
+    # reporting currency (docs/gates/2026-06-12-gross-profit-divergence-
+    # investigation.md). The Yahoo HK targets below keep the issuer label.
     *_targets_for_company(
         provider="akshare",
         company_id="00001",
         provider_ticker="00001",
         market="HK",
-        currency="HKD",
+        currency="CNY",
         unit="raw",
     ),
     *_targets_for_company(
@@ -79,7 +83,7 @@ DEFAULT_PROVIDER_FIELD_CAPTURE_TARGETS: tuple[ProviderCaptureTarget, ...] = (
         company_id="01113",
         provider_ticker="01113",
         market="HK",
-        currency="HKD",
+        currency="CNY",
         unit="raw",
     ),
     *_targets_for_company(

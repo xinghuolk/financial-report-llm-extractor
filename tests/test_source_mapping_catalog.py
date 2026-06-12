@@ -73,6 +73,22 @@ def test_minimal_source_mapping_repurchase_declares_absence_means_zero() -> None
     assert entry.absence_means_zero is True
 
 
+def test_minimal_source_mapping_parent_debt_declares_absence_means_zero() -> None:
+    """Holding-company parents routinely carry zero debt (debt sits in the
+    operating subsidiaries): a complete parent-company balance sheet with
+    no borrowing line is a genuine 0, not a miss. 00001 p271 is the
+    documented case (LLM confirmed section completeness while reporting
+    not_found); 06862 is the positive control whose parent HAS real debt
+    and must keep extracting it."""
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1", "P2", "P3", "P4"),
+    )
+
+    entry = catalog.entries["interest_bearing_debt_parent_company"]
+    assert entry.absence_means_zero is True
+
+
 def test_source_mapping_entry_rejects_absence_means_zero_for_non_money() -> None:
     entry = SourceMappingEntry(
         field_id="dividend_plan",
@@ -340,8 +356,17 @@ def test_minimal_source_mapping_statement_line_market_policies(
         else "yahoo_direct"
     )
     assert hk_policy.cross_check_routes == (expected_cross_check_route,)
-    assert hk_policy.on_conflict == "select_primary_require_pdf"
-    assert hk_policy.single_source_requires_pdf is (field_id == "gross_profit")
+    # Operator decision 2026-06-12: gross_profit is a standardized
+    # derivation for by-nature HK reporters (no PDF line exists) — Yahoo's
+    # derivation is accepted (01810 three-way EXACT evidence) instead of
+    # demanding an impossible PDF verification.
+    expected_on_conflict = (
+        "select_primary_standardized"
+        if field_id == "gross_profit"
+        else "select_primary_require_pdf"
+    )
+    assert hk_policy.on_conflict == expected_on_conflict
+    assert hk_policy.single_source_requires_pdf is False
 
     cn_policy = policy.market_policies["CN"]
     assert cn_policy.primary_route == "akshare_direct"
