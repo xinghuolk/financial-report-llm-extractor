@@ -52,3 +52,27 @@ consumables used (16,211,077)；Staff costs (14,113,263)…
    A- 分歧将重新分类。
 2. 修正后重跑 cohort recon，复核 00001/01113 的 A- 分歧簇有多少属于折算
    artifact。
+
+## 补充：全 cohort 系统验证（AKShare HK feed 币种 = CNY，零例外）
+
+对 9 家 HK 公司的 revenue + total assets 双指标做 akshare/yahoo 比值分析：
+
+| 申报币种 | 公司 | ak/yh 比值 | 推断 |
+|---|---|---|---|
+| CNY ×6 | 00392/01810/02498/02669/03320/06862 | **1.0000（逐位一致）** | 两边同为 CNY |
+| HKD | 00001 | revenue **0.9032** = assets **0.9032** | CNY/HKD 汇率（两个独立科目同比值，排除口径巧合） |
+| USD | 09987 | 7.1006 / 7.1884 | CNY/USD 汇率 |
+
+**结论确认：东财 AKShare HK feed 下发的数值一律为 CNY 折算值**，与 issuer
+申报币种无关。issuer 币种章只应作用于 Yahoo 路径。
+
+## 重磅推论：00001 的 A- 分歧簇大半是同一 artifact
+
+| 字段 | ak/yh | 判定 |
+|---|---|---|
+| total_assets / total_liabilities / total_cur_assets / total_cur_liab / inventories | **全部恰为 0.9032** | **纯币种 artifact——两家数值实际一致**（同一数字的 CNY/HKD 两种表达） |
+| accounts_receiv (2.56) / acct_payable (3.24) / fix_assets (0.57) | 偏离汇率 | 币种之上叠加真实模板口径差 |
+| gross_profit 00001 (1.018) | 偏离汇率 | 币种修正后实际口径差 ~12.7%（非 8.9x/2.2x 级别） |
+
+修复 AKShare HK 币种章（统一 CNY）后：5 个 A- 字段从"源分歧"变为
+"同值异币"——若 recon 后续支持 FX 感知比较，可直接转 clean 一致。
