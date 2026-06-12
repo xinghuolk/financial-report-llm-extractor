@@ -2205,7 +2205,9 @@
         "company long-term borrowings",
         "company bonds payable",
         "parent company borrowings",
-        "borrowings of the company"
+        "borrowings of the company",
+        "company statement of financial position",
+        "company balance sheet"
       ]
     },
     "equity_investment_in_subsidiaries": {
