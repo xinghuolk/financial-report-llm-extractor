@@ -1368,3 +1368,48 @@ def test_evaluate_source_first_slice_passes_sign_normalize_fields_to_reconciliat
     assert "capital_expenditures" in hk_set
     assert "interest_paid_cash" in cn_set
     assert "interest_paid_cash" in hk_set
+
+
+def test_merge_llm_supplement_uses_parsed_value_for_paren_negatives(
+    tmp_path: Path,
+) -> None:
+    """PR-18 review P2: run_field_extraction accepts accounting '(21)' and
+    records parsed_numeric_value=-21, but the merge reparsed only the raw
+    value and silently dropped the amount (present with value=None — the
+    00001 FY2025 capitalized_interest run did exactly this). The merge must
+    prefer the supplement's parsed_numeric_value."""
+    from decimal import Decimal
+    from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+        _merge_llm_evidence_supplement,
+    )
+
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="catalog",
+        catalog_version="1",
+        items={
+            "capitalized_interest": SourceFirstExportItem(
+                field_id="capitalized_interest", status="missing",
+            ),
+        },
+    )
+    supplement_path = tmp_path / "llm_evidence_supplement.json"
+    supplement_path.write_text(json.dumps({
+        "schema_version": "llm-evidence-supplement-v1",
+        "company_id": "00001",
+        "items": {
+            "capitalized_interest": {
+                "status": "present",
+                "value": "(21)",
+                "parsed_numeric_value": "-21",
+                "currency": "HK$",
+                "unit": "million",
+            },
+        },
+    }), encoding="utf-8")
+
+    merged = _merge_llm_evidence_supplement(export, supplement_path)
+
+    item = merged.items["capitalized_interest"]
+    assert item.status == "present"
+    assert item.value == Decimal("-21")

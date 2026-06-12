@@ -681,13 +681,19 @@ def _merge_llm_evidence_supplement(
             # Don't override clean source values
             continue
 
-        # Build a present item from LLM evidence
+        # Build a present item from LLM evidence. Prefer the supplement's
+        # parsed_numeric_value: run_field_extraction already canonicalized
+        # accounting notation there (e.g. "(21)" -> -21), so reparsing only
+        # the raw value here would silently drop such amounts (present with
+        # value=None — PR-18 review P2).
         raw_value = llm_item.get("value")
+        parsed_raw = llm_item.get("parsed_numeric_value")
+        value: Decimal | None = None
         try:
-            value: Decimal | None = (
-                Decimal(str(raw_value).replace(",", ""))
-                if raw_value is not None else None
-            )
+            if parsed_raw is not None:
+                value = Decimal(str(parsed_raw))
+            elif raw_value is not None:
+                value = Decimal(str(raw_value).replace(",", ""))
         except (InvalidOperation, ValueError):
             value = None
 
