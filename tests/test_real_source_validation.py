@@ -749,12 +749,14 @@ def test_provider_field_capture_sample_set_builds_full_target_matrix() -> None:
         unit="yuan",
         exchange="SH",
     ) in samples
+    # AKShare HK samples carry CNY — the EastMoney feed's actual currency
+    # for every issuer; the Yahoo HK sample below keeps the issuer label.
     assert RealSourceValidationSample(
         provider="akshare",
         market="HK",
         ticker="00001",
         statement_type="income_statement",
-        currency="HKD",
+        currency="CNY",
         unit="raw",
     ) in samples
     assert RealSourceValidationSample(

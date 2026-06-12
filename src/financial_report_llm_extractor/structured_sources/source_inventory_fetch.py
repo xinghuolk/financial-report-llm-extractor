@@ -516,12 +516,17 @@ def _yahoo_hk_ticker(company: str) -> str:
     return stripped.zfill(4)
 
 
-# Phase HK-B.5.1: HK issuer-to-financial-currency map. Yahoo HK + AKShare HK
-# historically hardcoded currency=HKD on every HK record (the trading-market
-# currency for the listed share), but issuers report financials in their
-# functional reporting currency which often differs (Xiaomi → CNY,
-# Yum China → USD). This map stamps inventory records with the issuer's
-# reporting currency so downstream consumers get correct-currency claims.
+# Phase HK-B.5.1: HK issuer-to-financial-currency map. Yahoo HK historically
+# hardcoded currency=HKD on every HK record (the trading-market currency for
+# the listed share), but issuers report financials in their functional
+# reporting currency which often differs (Xiaomi → CNY, Yum China → USD).
+# This map stamps YAHOO inventory records with the issuer's reporting
+# currency so downstream consumers get correct-currency claims.
+#
+# 2026-06-12: the map must NOT be applied to the AKShare HK path — the
+# EastMoney feed delivers CNY-converted values for every issuer (full-cohort
+# verification in docs/gates/2026-06-12-gross-profit-divergence-
+# investigation.md), so AKShare HK records are stamped CNY.
 #
 # Source of truth: PDF spot-check from each issuer's most recent annual
 # report (see docs/phase_hk_b_5_recon.md).
