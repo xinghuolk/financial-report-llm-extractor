@@ -2186,6 +2186,7 @@
       "currency_requirement": "required",
       "unit_requirement": "required",
       "fallback_policy": "pdf_allowed",
+      "absence_means_zero": true,
       "source_aliases": {
         "yahoo": [
           "Interest Bearing Debt Parent Company"
