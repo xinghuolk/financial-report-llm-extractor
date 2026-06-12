@@ -327,13 +327,68 @@ class LlmExtractionRunResult:
     items: dict[str, FieldExtractionResult] = field(default_factory=dict)
 
 
-def _trim_chunk_text(chunk: dict[str, object], max_chars: int) -> dict[str, object]:
-    """Return a copy of chunk with text truncated to max_chars."""
+def _trim_chunk_text(
+    chunk: dict[str, object],
+    max_chars: int,
+    aliases: tuple[str, ...] = (),
+) -> dict[str, object]:
+    """Return a copy of chunk with text reduced to ~max_chars.
+
+    Head-truncation alone systematically drops bottom-of-page content:
+    the 00001 FY2025 one-off itemization sat at offset ~7.5k of a 7.9k
+    page-text chunk, so the LLM never received it. When the text
+    overflows, excerpt windows around alias matches instead; texts with
+    no alias match keep the historical head-truncate behavior.
+    """
     text = str(chunk.get("text", "") or "")
-    if len(text) > max_chars:
-        text = text[:max_chars] + "...[truncated]"
     out = dict(chunk)
-    out["text"] = text
+    if len(text) <= max_chars:
+        out["text"] = text
+        return out
+
+    lower = text.lower()
+    offsets: list[int] = []
+    for alias in aliases:
+        needle = alias.lower()
+        if not needle:
+            continue
+        start = 0
+        while len(offsets) < 32:
+            i = lower.find(needle, start)
+            if i < 0:
+                break
+            offsets.append(i)
+            start = i + 1
+
+    if not offsets:
+        out["text"] = text[:max_chars] + "...[truncated]"
+        return out
+
+    # Budget windows across (up to 8) match sites, merging overlaps so a
+    # dense cluster of matches becomes one excerpt.
+    sites = sorted(set(offsets))[:8]
+    per = max(max_chars // len(sites), 200)
+    spans: list[tuple[int, int]] = []
+    for i in sites:
+        s = max(0, i - per // 3)
+        e = min(len(text), i + per)
+        if spans and s <= spans[-1][1]:
+            spans[-1] = (spans[-1][0], max(spans[-1][1], e))
+        else:
+            spans.append((s, e))
+
+    pieces: list[str] = []
+    total = 0
+    for s, e in spans:
+        seg = text[s:e]
+        if total + len(seg) > max_chars:
+            seg = seg[: max(0, max_chars - total)]
+        if seg:
+            pieces.append(("" if s == 0 else "...") + seg)
+            total += len(seg)
+        if total >= max_chars:
+            break
+    out["text"] = "".join(pieces) + "...[truncated]"
     return out
 
 
@@ -413,7 +468,8 @@ def extract_for_chunks(
             continue
 
         trimmed = tuple(
-            _trim_chunk_text(c, max_chars_per_chunk) for c in selected
+            _trim_chunk_text(c, max_chars_per_chunk, aliases=target.aliases)
+            for c in selected
         )
         request = FieldExtractionRequest(
             field_id=target.field_id,

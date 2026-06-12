@@ -1076,3 +1076,54 @@ def test_statement_section_pages_caps_runaway_anchored_range() -> None:
     pages = statement_section_pages(chunks)
     # 51-page anchored range is noise: only the anchor page survives
     assert pages["income_statement"] == (100,)
+
+
+def test_trim_keeps_head_when_alias_in_head() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = "one-off items detail here. " + "x" * 5000
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("one-off items",))
+    assert "one-off items detail" in str(out["text"])
+    assert len(str(out["text"])) <= 2000 + 40  # marker slack
+
+
+def test_trim_windows_around_tail_alias_match() -> None:
+    """The 00001 FY2025 failure: the itemized one-off note sat at offset
+    ~7,500 of a 7,881-char page; head-truncation at 2,000 chars dropped it
+    and the LLM never saw the breakdown. Alias-aware trimming must include
+    a window around out-of-head matches."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    filler = "y" * 7000
+    note = ("Note 3: One-off item of HK$10,922 million represents one-time "
+            "losses included HK$9,915 million of non-cash disposal loss")
+    text = filler + " " + note + " trailing"
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("one-off item", "one-time"))
+    t = str(out["text"])
+    assert "9,915" in t
+    assert len(t) <= 2000 + 80  # windows + ellipsis markers slack
+
+
+def test_trim_no_alias_match_falls_back_to_head() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = "HEAD-CONTENT " + "z" * 5000
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("nothing matches",))
+    t = str(out["text"])
+    assert t.startswith("HEAD-CONTENT")
+    assert len(t) <= 2000 + 40
+
+
+def test_trim_short_text_untouched() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    out = _trim_chunk_text({"chunk_id": "c", "text": "short"}, 2000,
+                            aliases=("a",))
+    assert out["text"] == "short"

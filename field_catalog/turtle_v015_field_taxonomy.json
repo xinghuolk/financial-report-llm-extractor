@@ -953,7 +953,7 @@
       "unit_requirement": "not_applicable",
       "evidence_requirement": "pdf_required",
       "fallback_policy": "pdf_allowed",
-      "description": "Non-recurring items breakdown raw line items disclosed in notes (e.g., asset disposal gain, government subsidies, insurance proceeds, investment income one-offs). Feeds Turtle v0.15 phase3 factor3 step3 V1-V5 classification; classification judgment happens downstream."
+      "description": "Non-recurring / one-time items breakdown with amounts. Two disclosure styles qualify: (1) CN reports: the dedicated 非经常性损益 note table (asset disposal gains, government subsidies, insurance proceeds, one-off investment income) — preferred when present; (2) HK/IFRS reports have NO such note — one-time/one-off/exceptional items are itemized with amounts in the financial review, chairman's statement or earnings notes (e.g. 'one-time loss included HK$9,915 million non-cash disposal loss and HK$1,445 million impairment'); an itemized list of one-time items with amounts IS the breakdown — return it verbatim. Only report not_found when no itemized one-time amounts appear anywhere in the chunks. Feeds Turtle v0.15 phase3 factor3 step3 V1-V5 classification; classification judgment happens downstream."
     },
     "cash_parent_company": {
       "priority": "P3",
