@@ -1079,6 +1079,56 @@ def test_statement_section_pages_caps_runaway_anchored_range() -> None:
     assert pages["income_statement"] == (100,)
 
 
+def test_trim_keeps_head_when_alias_in_head() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = "one-off items detail here. " + "x" * 5000
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("one-off items",))
+    assert "one-off items detail" in str(out["text"])
+    assert len(str(out["text"])) <= 2000 + 40  # marker slack
+
+
+def test_trim_windows_around_tail_alias_match() -> None:
+    """The 00001 FY2025 failure: the itemized one-off note sat at offset
+    ~7,500 of a 7,881-char page; head-truncation at 2,000 chars dropped it
+    and the LLM never saw the breakdown. Alias-aware trimming must include
+    a window around out-of-head matches."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    filler = "y" * 7000
+    note = ("Note 3: One-off item of HK$10,922 million represents one-time "
+            "losses included HK$9,915 million of non-cash disposal loss")
+    text = filler + " " + note + " trailing"
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("one-off item", "one-time"))
+    t = str(out["text"])
+    assert "9,915" in t
+    assert len(t) <= 2000 + 80  # windows + ellipsis markers slack
+
+
+def test_trim_no_alias_match_falls_back_to_head() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = "HEAD-CONTENT " + "z" * 5000
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("nothing matches",))
+    t = str(out["text"])
+    assert t.startswith("HEAD-CONTENT")
+    assert len(t) <= 2000 + 40
+
+
+def test_trim_short_text_untouched() -> None:
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    out = _trim_chunk_text({"chunk_id": "c", "text": "short"}, 2000,
+                            aliases=("a",))
+    assert out["text"] == "short"
+
 def test_derive_targets_propagates_scope_expectation() -> None:
     catalog = _catalog([
         _entry(
@@ -1151,3 +1201,54 @@ def test_parent_scope_blocks_absence_zero_section_fallback(
         out_dir=tmp_path,
     )
     assert "interest_bearing_debt_parent_company" in result.fields_not_found
+
+
+def test_trim_budget_utilization_with_clustered_matches() -> None:
+    """2026-06-12 review B1: per-site budget was computed before overlap
+    merging and never redistributed — a dense early cluster of matches
+    yielded a 427-char excerpt out of a 2,000 budget (less evidence than
+    the head-truncation it replaced). Merged windows must grow back to
+    use the budget."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = ("Revenue from contracts with customers... revenue ... revenue\n" * 10
+            + "filler line of prose about segments and operations\n" * 120)
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("revenue",))
+    assert len(str(out["text"])) >= 1600  # ≥ 0.8 × budget
+
+
+def test_trim_tail_survives_generic_alias_flood() -> None:
+    """2026-06-12 review B2: the offset cap was global across aliases and
+    site selection kept the EARLIEST 8 — a generic alias dense in early
+    prose exhausted both, re-dropping the tail itemization (the exact
+    failure the trim exists to fix). Per-alias caps + even-spread site
+    selection must keep the tail anchor."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = ("one-time " * 40 + "\n" + "prose " * 1200
+            + "\nreal one-off item table 4,444 end")
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("one-time", "one-off item"))
+    assert "4,444" in str(out["text"])
+
+
+def test_trim_matches_line_wrapped_alias() -> None:
+    """2026-06-12 review: trim used raw `str.find` while select_chunks
+    matches whitespace-normalized — an alias wrapped across a pdftotext
+    line break selected the chunk but anchored no window, silently
+    falling back to head-truncation (Phase I-C.1 bug class)."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = "HEADER FY2024\n" + "z " * 3000 + "one-off\nitem disposal gain 7,777\n"
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("one-off item",))
+    t = str(out["text"])
+    assert "7,777" in t
+    # head slice keeps the period header (period-misattribution guard)
+    assert t.startswith("HEADER FY2024")
+    # interior gaps are explicit, not a bare ellipsis
+    assert "[...skipped" in t
