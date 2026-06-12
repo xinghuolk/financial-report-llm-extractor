@@ -1005,23 +1005,31 @@ def test_fetch_source_inventory_subcommand_rejects_year_and_period_end_together(
 @pytest.mark.parametrize(
     "company, expected_currency",
     [
+        # 2026-06-12 investigation (docs/gates/2026-06-12-gross-profit-
+        # divergence-investigation.md): the EastMoney AKShare HK feed
+        # delivers CNY-converted values for EVERY issuer regardless of its
+        # reporting currency (6 CNY reporters digit-identical to Yahoo;
+        # 00001 HKD reporter at exactly the CNY/HKD rate 0.9032 on two
+        # independent metrics; 09987 USD reporter at CNY/USD 7.10). The
+        # issuer financial-currency map applies to the YAHOO path only.
         ("01810", "CNY"),   # Xiaomi — RMB reporter
         ("06862", "CNY"),   # RMB reporter
         ("02498", "CNY"),   # RMB reporter
-        ("00001", "HKD"),   # HSBC / CK Hutchison — HK$ reporter
-        ("01113", "HKD"),   # CK Asset — HK$ reporter
-        ("09987", "USD"),   # Yum China — US$ reporter
-        ("99999", "HKD"),   # Unknown HK issuer → HKD default
+        ("00001", "CNY"),   # HK$ reporter — feed still CNY
+        ("01113", "CNY"),   # HK$ reporter — feed still CNY
+        ("09987", "CNY"),   # US$ reporter — feed still CNY
+        ("99999", "CNY"),   # Unknown HK issuer — feed still CNY
     ],
 )
-def test_fetch_source_inventory_hk_akshare_stamps_issuer_financial_currency(
+def test_fetch_source_inventory_hk_akshare_stamps_feed_currency_cny(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     company: str,
     expected_currency: str,
 ) -> None:
-    """Phase HK-B.5.1: AKShare HK records get stamped with the issuer's
-    financial reporting currency (not the HK trading market currency)."""
+    """AKShare HK records are stamped CNY — the feed's actual currency —
+    not the issuer's reporting currency (supersedes Phase HK-B.5.1 for
+    the AKShare path; the issuer map remains correct for Yahoo)."""
     from financial_report_llm_extractor.cli import _run_fetch_source_inventory
     from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
         PeriodSpec,
