@@ -73,6 +73,22 @@ def test_minimal_source_mapping_repurchase_declares_absence_means_zero() -> None
     assert entry.absence_means_zero is True
 
 
+def test_minimal_source_mapping_parent_debt_declares_absence_means_zero() -> None:
+    """Holding-company parents routinely carry zero debt (debt sits in the
+    operating subsidiaries): a complete parent-company balance sheet with
+    no borrowing line is a genuine 0, not a miss. 00001 p271 is the
+    documented case (LLM confirmed section completeness while reporting
+    not_found); 06862 is the positive control whose parent HAS real debt
+    and must keep extracting it."""
+    catalog = load_source_mapping_catalog(
+        Path("field_catalog/turtle_v015_source_mapping_minimal.json"),
+        priorities=("P0", "P1", "P2", "P3", "P4"),
+    )
+
+    entry = catalog.entries["interest_bearing_debt_parent_company"]
+    assert entry.absence_means_zero is True
+
+
 def test_source_mapping_entry_rejects_absence_means_zero_for_non_money() -> None:
     entry = SourceMappingEntry(
         field_id="dividend_plan",

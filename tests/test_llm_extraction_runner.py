@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from financial_report_llm_extractor.field_metadata import (
     FieldDomain,
@@ -57,7 +57,8 @@ def _entry(field_id: str, *, pdf_aliases: tuple[str, ...] = (),
 def _tax_entry(field_id: str, *, description: str = "desc",
                statement_type: str = "balance_sheet",
                value_type: str = "money",
-               priority: str = "P0") -> FieldTaxonomyEntry:
+               priority: str = "P0",
+               scope_expectation: str = "unknown") -> FieldTaxonomyEntry:
     return FieldTaxonomyEntry(
         field_id=field_id,
         priority=cast(Priority, priority),
@@ -66,7 +67,7 @@ def _tax_entry(field_id: str, *, description: str = "desc",
         value_type=cast(FieldValueType, value_type),
         source_mode="direct",
         period_type="duration",
-        scope_expectation="unknown",
+        scope_expectation=cast(Any, scope_expectation),
         currency_requirement="required",
         unit_requirement="required",
         evidence_requirement="source_only_allowed",
@@ -1076,3 +1077,77 @@ def test_statement_section_pages_caps_runaway_anchored_range() -> None:
     pages = statement_section_pages(chunks)
     # 51-page anchored range is noise: only the anchor page survives
     assert pages["income_statement"] == (100,)
+
+
+def test_derive_targets_propagates_scope_expectation() -> None:
+    catalog = _catalog([
+        _entry(
+            "interest_bearing_debt_parent_company",
+            pdf_aliases=("parent company borrowings",),
+            absence_means_zero=True,
+        ),
+        _entry("revenue", pdf_aliases=("revenue",)),
+    ])
+    taxonomy = _taxonomy([
+        _tax_entry(
+            "interest_bearing_debt_parent_company",
+            scope_expectation="parent",
+        ),
+        _tax_entry("revenue"),
+    ])
+    targets = {t.field_id: t for t in derive_targets(catalog, taxonomy, priorities=("P0",))}
+    assert targets["interest_bearing_debt_parent_company"].scope_expectation == "parent"
+    assert targets["revenue"].scope_expectation == "unknown"
+
+
+def test_parent_scope_blocks_absence_zero_section_fallback(
+    tmp_path: Path,
+) -> None:
+    """2026-06-12 review: the absence_means_zero statement-section fallback
+    keys on statement_type only, so for a parent-company-only field it
+    would feed the CONSOLIDATED balance sheet to the LLM and authorize a
+    false zero (or a consolidated value) from the wrong scope. Parent-scope
+    targets must bail to not_found when no alias matches — zero inference
+    fires only from alias-retrieved parent-section chunks."""
+    catalog = _catalog([
+        _entry(
+            "interest_bearing_debt_parent_company",
+            pdf_aliases=("parent company borrowings",
+                         "balance sheet of the company",
+                         "company bonds payable"),
+            absence_means_zero=True,
+        ),
+    ])
+    taxonomy = _taxonomy([
+        _tax_entry(
+            "interest_bearing_debt_parent_company",
+            scope_expectation="parent",
+        ),
+    ])
+    # A consolidated balance-sheet section WITH anchor text but no parent
+    # alias anywhere: pre-guard, select_statement_section_chunks would
+    # select this chunk and the zero_inference prompt would stamp 0.
+    chunks = [_chunk(
+        "c1", 100,
+        "Consolidated statement of financial position\n"
+        "Total assets 1,234,567\nBorrowings 999,999\nTotal equity 234,567",
+    )]
+
+    class _NeverClient:
+        def complete_json(
+            self, *, system_prompt: str, user_payload: dict[str, object],
+        ) -> dict[str, object]:
+            raise AssertionError(
+                "LLM must not see consolidated chunks for a parent-scope field"
+            )
+
+    result = extract_for_chunks(
+        chunks=chunks,
+        catalog=catalog,
+        taxonomy=taxonomy,
+        client=_NeverClient(),
+        company_id="TEST",
+        pdf_path=Path("test.pdf"),
+        out_dir=tmp_path,
+    )
+    assert "interest_bearing_debt_parent_company" in result.fields_not_found
