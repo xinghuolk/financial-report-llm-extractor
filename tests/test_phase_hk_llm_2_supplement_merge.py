@@ -75,18 +75,16 @@ CASES = [
     # (cl_non_current via Yahoo "Non Current Deferred Revenue").
     # 00001/01113/06862: no change (cl_current/cl_non_current land in
     # unresolved_conflict or source_unavailable).
-    # 2026-06-12 single-source primary gate: gross_profit CN drops from
-    # clean (-1). Its only candidate is Yahoo while the CN primary route is
-    # akshare_direct — the per-market single_source_requires_pdf=false
-    # waiver no longer applies to a cross-check-source-only candidate, so
-    # it lands single_source_unverified (honest: the Yahoo standardized
-    # derivation was never adjudicated for CN; the HK acceptance rides the
-    # yahoo_standardized_accepted trust rule, which is HK-scoped).
+    # 2026-06-12 (evening) CN standardized acceptance: gross_profit CN
+    # primary route flipped to yahoo_direct (operator decision — CN GAAP
+    # statements disclose no gross-profit line; AKShare has no 毛利 row for
+    # 600519), so the lone Yahoo candidate is the PRIMARY single source and
+    # the requires-pdf waiver applies again: clean stays 42 / with-LLM 47.
     (
         "600519", "CN", date(2024, 12, 31),
         REPO / "tmp" / "runs" / "600519_2024-12-31" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "600519_2024-12-31_llm" / "llm_evidence_supplement.json",
-        41, 46,
+        42, 47,
         ("buyback_cancellation_progress", "capitalized_rd",
          "contingent_liabilities_commitments", "dividend_plan",
          "related_party_receivables_payables"),

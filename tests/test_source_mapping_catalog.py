@@ -368,10 +368,21 @@ def test_minimal_source_mapping_statement_line_market_policies(
     assert hk_policy.on_conflict == expected_on_conflict
     assert hk_policy.single_source_requires_pdf is False
 
+    # Operator decision 2026-06-12 (evening): gross_profit CN follows the
+    # HK standardized acceptance — CN GAAP income statements disclose no
+    # gross-profit line either (600519: AKShare has no 毛利 row, the only
+    # candidate is Yahoo's standardized derivation), so Yahoo becomes the
+    # CN primary route for this field and conflicts resolve via the
+    # market-extended yahoo_standardized_accepted trust rule.
     cn_policy = policy.market_policies["CN"]
-    assert cn_policy.primary_route == "akshare_direct"
-    assert cn_policy.cross_check_routes == ("yahoo_direct",)
-    assert cn_policy.on_conflict == "preserve_conflict"
+    if field_id == "gross_profit":
+        assert cn_policy.primary_route == "yahoo_direct"
+        assert cn_policy.cross_check_routes == ("akshare_direct",)
+        assert cn_policy.on_conflict == "select_primary_standardized"
+    else:
+        assert cn_policy.primary_route == "akshare_direct"
+        assert cn_policy.cross_check_routes == ("yahoo_direct",)
+        assert cn_policy.on_conflict == "preserve_conflict"
     assert cn_policy.single_source_requires_pdf is False
 
 

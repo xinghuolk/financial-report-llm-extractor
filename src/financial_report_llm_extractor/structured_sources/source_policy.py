@@ -566,14 +566,19 @@ def _can_apply_standardized_acceptance(
     required — standardized acceptance exists precisely for lines the
     issuer does not disclose, where sample verification is impossible and
     the operator adjudication (recorded in definition_status_reason)
-    replaces it.
+    replaces it. Market coverage comes from the rule's applies_to_markets
+    (HK-only by default; gross_profit extends to CN per the 2026-06-12
+    operator decision — CN GAAP statements disclose no gross-profit line
+    either).
     """
-    if market != "HK" or hk_yahoo_trust_policy is None or candidate is None:
+    if hk_yahoo_trust_policy is None or candidate is None:
         return False
     if candidate.source != "yahoo":
         return False
     rule = hk_yahoo_trust_policy.rule_for_field(field_id)
     if rule is None or rule.classification != "yahoo_standardized_accepted":
+        return False
+    if not rule.applies_to_market(market):
         return False
     accepted_currencies = rule.accepted_currencies()
     return (
