@@ -1090,7 +1090,8 @@
       "pdf_aliases": [
         "operating costs",
         "cost of revenue",
-        "营业成本"
+        "营业成本",
+        "operating cost"
       ]
     },
     "operating_profit": {
@@ -1384,7 +1385,8 @@
         "change in inventory",
         "decrease in inventory",
         "存货减少",
-        "changes in inventories"
+        "changes in inventories",
+        "decrease in inventories"
       ]
     },
     "receiv_tax_refund": {
@@ -1406,6 +1408,13 @@
         "receipts of tax refunds",
         "tax refund received",
         "收到的税费返还"
+      ],
+      "industry_not_applicable": [
+        {
+          "market": "HK",
+          "ticker": "*",
+          "reason": "CN cash-flow concept (收到的税费返还); HK/IFRS statements have no tax-refund-received line; ledger: no_hit across all 7 audited HK issuers."
+        }
       ]
     },
     "repurchase_of_stock": {
@@ -1727,7 +1736,8 @@
         "share repurchase progress",
         "cancellation of shares",
         "回购进展",
-        "注销"
+        "注销",
+        "treasury shares"
       ]
     },
     "receivables_aging": {
@@ -1754,7 +1764,8 @@
         "aging analysis of receivables",
         "trade receivables aging",
         "trade receivables ageing",
-        "应收账款账龄"
+        "应收账款账龄",
+        "ageing analysis of the trade receivables"
       ]
     },
     "related_party_receivables_payables": {
@@ -1776,7 +1787,8 @@
         "related party transactions",
         "amounts due from related parties",
         "amounts due to related parties",
-        "关联方"
+        "关联方",
+        "amounts due to the related parties"
       ]
     },
     "contingent_liabilities_commitments": {
@@ -1821,7 +1833,8 @@
         "lease liabilities maturity",
         "lease liability analysis",
         "minimum lease payments",
-        "租赁负债到期"
+        "租赁负债到期",
+        "undiscounted"
       ]
     },
     "segment_revenue_profit": {
@@ -1868,6 +1881,13 @@
         "development costs capitalized",
         "research costs capitalized",
         "资本化研发"
+      ],
+      "industry_not_applicable": [
+        {
+          "market": "HK",
+          "ticker": "*",
+          "reason": "HK annual reports do not disclose a capitalized-R&D line (CN disclosure concept); ledger: no_hit across all 7 audited HK issuers."
+        }
       ]
     },
     "capitalized_interest": {
@@ -1980,6 +2000,13 @@
         "支付给职工以及为职工支付的现金",
         "cash paid to employees",
         "cash paid to and on behalf of employees"
+      ],
+      "industry_not_applicable": [
+        {
+          "market": "HK",
+          "ticker": "*",
+          "reason": "HK/IFRS cash-flow statements use the indirect method without a cash-paid-to-employees line (CN direct-method concept); ledger: no_hit across all 7 audited HK issuers; 00001 350-page full-text scan negative."
+        }
       ]
     },
     "c_paid_for_taxes": {
@@ -2003,7 +2030,8 @@
         "支付的各项税费",
         "income tax paid",
         "cash paid for taxes",
-        "taxes paid"
+        "taxes paid",
+        "tax paid"
       ]
     },
     "lt_eqt_invest": {
@@ -2032,7 +2060,8 @@
         "long-term equity investment",
         "investments in associates",
         "investments in joint ventures",
-        "investment in an associate"
+        "investment in an associate",
+        "investments in the associates"
       ]
     },
     "contract_liabilities_current": {
@@ -2112,7 +2141,9 @@
         "non-recurring profit or loss",
         "exceptional items",
         "items affecting comparability",
-        "one-off items"
+        "one-off items",
+        "one-time",
+        "one-off"
       ]
     },
     "cash_parent_company": {

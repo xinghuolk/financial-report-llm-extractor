@@ -466,3 +466,24 @@ def test_provider_only_run_populates_provider_resolved(tmp_path: Path) -> None:
     assert warnings == []
     assert ledger["provider_resolved"] == {"revenue": {"HK": ["00001"]}}
     assert ledger["fields"] == {}
+
+
+def test_promotion_review_filters_already_promoted_aliases(tmp_path: Path) -> None:
+    """Singular/plural cross-matching re-suggests aliases that are already
+    in the catalog; the review artifact must not echo them back."""
+    from financial_report_llm_extractor.structured_sources.alias_ledger import (
+        emit_promotion_review,
+    )
+    ledger = _signal_ledger()
+    emit_promotion_review(
+        ledger,
+        catalog_aliases={"receivables_aging": (
+            "ageing analysis of trade receivables",
+            "ageing analysis of the trade receivables",  # already promoted
+        )},
+        output_dir=tmp_path,
+        min_companies=2,
+    )
+    data = json.loads((tmp_path / "alias_promotion_review.json").read_text())
+    assert data["promoted"] == []
+    assert data["summary"]["promoted_count"] == 0

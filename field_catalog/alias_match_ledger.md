@@ -7,33 +7,43 @@
 | Field | Market | Suggested alias | Companies |
 |---|---|---|---|
 | `amounts_due_from_subsidiaries` | HK | amounts due from subsidiaries | 02498, 06862 |
-| `amounts_due_from_subsidiaries` | HK | due from subsidiaries | 02498, 06862, 09987 |
-| `audit_opinion` | HK | independent auditor’s report | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `capital_expenditures` | HK | capital expenditure | 00001, 01810, 02498, 06862, 09987 |
+| `amounts_due_from_subsidiaries` | HK | due from subsidiaries | 02498, 02669, 06862, 09987 |
+| `audit_opinion` | HK | independent auditor’s report | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `buyback_cancellation_progress` | HK | treasury share | 01810, 02498 |
+| `capital_expenditures` | HK | capital expenditure | 00001, 00392, 01810, 02498, 06862, 09987 |
 | `capital_expenditures` | HK | purchase of property, plant and equipment | 01810, 02498, 06862 |
 | `cash` | HK | cash and cash equivalent | 02498, 09987 |
 | `change_in_inventory` | HK | changes in inventories | 02498, 09987 |
-| `contingent_liabilities_commitments` | HK | commitment | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `contingent_liabilities_commitments` | HK | guarantee | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `contract_liabilities_current` | HK | contract liabilities | 00001, 01810, 02498, 06862, 09987 |
-| `contract_liabilities_current` | HK | contract liability | 02498, 06862 |
-| `defer_tax_assets` | HK | deferred tax asset | 00001, 01113, 02498, 06862, 09987 |
-| `defer_tax_liab` | HK | deferred tax liabilities | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `defer_tax_liab` | HK | deferred tax liability | 01810, 06862 |
-| `dividends_paid` | HK | dividend paid | 00001, 01113, 01810 |
-| `dividends_paid` | HK | dividends paid | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `dps` | HK | dividends per share | 00001, 01113 |
-| `equity_investment_in_subsidiaries` | HK | interests in subsidiaries | 01810, 06862 |
-| `equity_investment_in_subsidiaries` | HK | investment in subsidiaries | 01810, 02498, 09987 |
-| `equity_investment_in_subsidiaries` | HK | investments in subsidiaries | 00001, 01810, 02498, 06862 |
+| `change_in_inventory` | HK | decrease in inventories | 02669, 06862 |
+| `contingent_liabilities_commitments` | HK | commitment | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `contingent_liabilities_commitments` | HK | guarantee | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `contract_liabilities_current` | HK | contract liabilities | 00001, 00392, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `contract_liabilities_current` | HK | contract liability | 02498, 02669, 03320, 06862 |
+| `defer_tax_assets` | HK | deferred tax asset | 00001, 00392, 01113, 02498, 02669, 06862, 09987 |
+| `defer_tax_liab` | HK | deferred tax liabilities | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `defer_tax_liab` | HK | deferred tax liability | 00392, 01810, 02669, 06862 |
+| `dividends_paid` | HK | dividend paid | 00001, 01113, 01810, 03320 |
+| `dividends_paid` | HK | dividends paid | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `dps` | HK | dividend per share | 00001, 00392 |
+| `dps` | HK | dividends per share | 00001, 01113, 02669 |
+| `equity_investment_in_subsidiaries` | HK | interests in subsidiaries | 00392, 01810, 03320, 06862 |
+| `equity_investment_in_subsidiaries` | HK | investment in subsidiaries | 01810, 02498, 03320, 09987 |
+| `equity_investment_in_subsidiaries` | HK | investments in subsidiaries | 00001, 00392, 01810, 02498, 02669, 03320, 06862 |
 | `fix_assets` | HK | fixed asset | 00001, 06862 |
-| `fix_assets` | HK | property, plant and equipment | 01810, 02498, 06862, 09987 |
-| `inventories` | HK | inventory | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `lt_eqt_invest` | HK | investment in an associate | 01113, 02498 |
-| `lt_eqt_invest` | HK | investments in associates | 00001, 01113, 01810, 02498, 06862 |
-| `minority_int` | HK | non-controlling interest | 00001, 01810, 09987 |
+| `fix_assets` | HK | property, plant and equipment | 00392, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `inventories` | HK | inventory | 00001, 00392, 01113, 01810, 02498, 02669, 06862, 09987 |
+| `invest_income` | HK | investments and other | 01810, 02669, 03320 |
+| `lt_eqt_invest` | HK | investment in an associate | 00392, 01113, 02498, 02669, 03320 |
+| `lt_eqt_invest` | HK | investments in associates | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862 |
+| `lt_eqt_invest` | HK | investments in the associates | 00392, 03320 |
+| `minority_int` | HK | non-controlling interest | 00001, 01810, 02669, 03320, 09987 |
 | `money_cap` | HK | cash and cash equivalent | 02498, 09987 |
-| `segment_revenue_profit` | HK | operating segment | 00001, 01810, 02498, 06862, 09987 |
+| `operating_cost` | HK | operating cost | 00001, 00392 |
+| `receivables_aging` | HK | ageing analysis of the trade receivables | 00001, 00392 |
+| `related_party_receivables_payables` | HK | amounts due to related parties | 03320, 06862 |
+| `related_party_receivables_payables` | HK | amounts due to the related parties | 02669, 03320 |
+| `segment_revenue_profit` | HK | operating segment | 00001, 00392, 01810, 02498, 02669, 06862, 09987 |
+| `total_cur_assets` | HK | non-current asset | 00001, 00392 |
 
 ## Dead aliases (zero hits in an audited market)
 
@@ -121,11 +131,11 @@
 | `bad_debt_provision` | CN | bad debt provision |
 | `bad_debt_provision` | HK | 坏账准备 |
 | `bond_payable` | CN | bonds payable |
-| `bond_payable` | HK | bonds payable |
 | `buyback_cancellation_progress` | CN | share buyback |
 | `buyback_cancellation_progress` | CN | share repurchase progress |
 | `buyback_cancellation_progress` | CN | cancellation of shares |
 | `buyback_cancellation_progress` | CN | 回购进展 |
+| `buyback_cancellation_progress` | CN | treasury shares |
 | `buyback_cancellation_progress` | HK | share buyback |
 | `buyback_cancellation_progress` | HK | share repurchase progress |
 | `buyback_cancellation_progress` | HK | 回购进展 |
@@ -133,6 +143,7 @@
 | `c_paid_for_taxes` | CN | income tax paid |
 | `c_paid_for_taxes` | CN | cash paid for taxes |
 | `c_paid_for_taxes` | CN | taxes paid |
+| `c_paid_for_taxes` | CN | tax paid |
 | `c_paid_for_taxes` | HK | 支付的各项税费 |
 | `c_paid_for_taxes` | HK | cash paid for taxes |
 | `c_pay_to_staff` | CN | cash paid to employees |
@@ -185,6 +196,7 @@
 | `change_in_inventory` | CN | decrease in inventory |
 | `change_in_inventory` | CN | 存货减少 |
 | `change_in_inventory` | CN | changes in inventories |
+| `change_in_inventory` | CN | decrease in inventories |
 | `change_in_inventory` | HK | 存货减少 |
 | `change_in_payables` | CN | change in payables |
 | `change_in_payables` | CN | increase in payables |
@@ -195,7 +207,6 @@
 | `change_in_receivables` | CN | change in receivables |
 | `change_in_receivables` | CN | decrease in receivables |
 | `change_in_receivables` | CN | 应收账款减少 |
-| `change_in_receivables` | HK | change in receivables |
 | `change_in_receivables` | HK | decrease in receivables |
 | `change_in_receivables` | HK | 应收账款减少 |
 | `cip` | CN | construction in progress |
@@ -223,7 +234,6 @@
 | `depreciation_amortization` | CN | depreciation and amortization |
 | `depreciation_amortization` | CN | depreciation |
 | `depreciation_amortization` | CN | amortization |
-| `depreciation_amortization` | CN | 折旧及摊销 |
 | `depreciation_amortization` | HK | 折旧及摊销 |
 | `dividend_plan` | CN | dividend plan |
 | `dividend_plan` | CN | dividend policy |
@@ -290,7 +300,6 @@
 | `fv_value_chg_gain` | CN | fair value change |
 | `fv_value_chg_gain` | HK | 公允价值变动收益 |
 | `gross_profit` | CN | gross profit |
-| `gross_profit` | HK | 毛利 |
 | `interest_bearing_debt_parent_company` | CN | 母公司短期借款 |
 | `interest_bearing_debt_parent_company` | CN | 母公司长期借款 |
 | `interest_bearing_debt_parent_company` | CN | 母公司应付债券 |
@@ -328,11 +337,11 @@
 | `invest_income` | CN | investment and others |
 | `invest_income` | HK | share of profits of associated companies |
 | `investing_cash_flow` | CN | investing cash flow |
-| `investing_cash_flow` | HK | investing cash flow |
 | `lease_liability_maturity` | CN | lease liabilities maturity |
 | `lease_liability_maturity` | CN | lease liability analysis |
 | `lease_liability_maturity` | CN | minimum lease payments |
 | `lease_liability_maturity` | CN | 租赁负债到期 |
+| `lease_liability_maturity` | CN | undiscounted |
 | `lease_liability_maturity` | HK | lease liabilities maturity |
 | `lease_liability_maturity` | HK | lease liability analysis |
 | `lease_liability_maturity` | HK | 租赁负债到期 |
@@ -345,11 +354,11 @@
 | `lt_eqt_invest` | CN | investments in associates |
 | `lt_eqt_invest` | CN | investments in joint ventures |
 | `lt_eqt_invest` | CN | investment in an associate |
+| `lt_eqt_invest` | CN | investments in the associates |
 | `lt_eqt_invest` | HK | 长期股权投资 |
 | `minority_int` | CN | non-controlling interests |
 | `minority_int` | CN | minority interest |
 | `minority_int` | CN | non-controlling interest |
-| `minority_int` | HK | minority interest |
 | `minority_int` | HK | 少数股东权益 |
 | `money_cap` | CN | cash and cash equivalents |
 | `money_cap` | CN | bank balances and deposits |
@@ -370,6 +379,8 @@
 | `non_recurring_items_breakdown` | CN | exceptional items |
 | `non_recurring_items_breakdown` | CN | items affecting comparability |
 | `non_recurring_items_breakdown` | CN | one-off items |
+| `non_recurring_items_breakdown` | CN | one-time |
+| `non_recurring_items_breakdown` | CN | one-off |
 | `non_recurring_items_breakdown` | HK | 非经常性损益 |
 | `non_recurring_items_breakdown` | HK | 非经常性损益项目 |
 | `non_recurring_items_breakdown` | HK | 非经常性损益明细 |
@@ -381,6 +392,7 @@
 | `operating_cash_flow` | HK | 经营活动产生的现金流量净额 |
 | `operating_cost` | CN | operating costs |
 | `operating_cost` | CN | cost of revenue |
+| `operating_cost` | CN | operating cost |
 | `operating_cost` | HK | cost of revenue |
 | `operating_cost` | HK | 营业成本 |
 | `operating_profit` | CN | operating profit |
@@ -405,6 +417,7 @@
 | `receivables_aging` | CN | aging analysis of receivables |
 | `receivables_aging` | CN | trade receivables aging |
 | `receivables_aging` | CN | trade receivables ageing |
+| `receivables_aging` | CN | ageing analysis of the trade receivables |
 | `receivables_aging` | HK | ageing analysis of trade and notes receivables |
 | `receivables_aging` | HK | ageing analysis of receivables |
 | `receivables_aging` | HK | aging analysis of receivables |
@@ -414,6 +427,7 @@
 | `related_party_receivables_payables` | CN | related party transactions |
 | `related_party_receivables_payables` | CN | amounts due from related parties |
 | `related_party_receivables_payables` | CN | amounts due to related parties |
+| `related_party_receivables_payables` | CN | amounts due to the related parties |
 | `related_party_receivables_payables` | HK | 关联方 |
 | `repurchase_of_stock` | CN | repurchase of capital stock |
 | `repurchase_of_stock` | CN | share buyback |
@@ -427,24 +441,19 @@
 | `restricted_cash` | CN | cash held as collateral |
 | `restricted_cash` | CN | 受限制现金 |
 | `restricted_cash` | CN | 受限制存款 |
-| `restricted_cash` | HK | pledged deposits |
 | `restricted_cash` | HK | cash held as collateral |
 | `restricted_cash` | HK | 受限制现金 |
-| `restricted_cash` | HK | 受限制存款 |
 | `revenue` | CN | revenue |
 | `revenue` | HK | 营业收入 |
 | `segment_revenue_profit` | CN | operating segment information |
 | `segment_revenue_profit` | CN | segment revenue |
 | `segment_revenue_profit` | CN | segment profit |
 | `segment_revenue_profit` | CN | operating segments |
-| `segment_revenue_profit` | CN | 分部信息 |
 | `segment_revenue_profit` | CN | operating segment |
-| `segment_revenue_profit` | HK | segment profit |
 | `segment_revenue_profit` | HK | 分部信息 |
 | `selling_general_administrative` | CN | selling general and administrative |
 | `selling_general_administrative` | CN | management expenses |
 | `selling_general_administrative` | HK | selling general and administrative |
-| `selling_general_administrative` | HK | management expenses |
 | `selling_general_administrative` | HK | 销售费用 |
 | `selling_general_administrative` | HK | 管理费用 |
 | `st_borr` | CN | short-term borrowings |
@@ -473,35 +482,13 @@
 
 | Field | Market | Companies |
 |---|---|---|
-| `bond_payable` | CN | 300750, 600519 |
-| `buyback_cancellation_progress` | HK | 00001, 01113, 02498, 06862, 09987 |
-| `c_pay_to_staff` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `capitalized_interest` | CN | 300750, 600519 |
-| `capitalized_rd` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `change_in_inventory` | CN | 300750, 600519 |
-| `change_in_payables` | CN | 300750, 600519 |
-| `change_in_receivables` | CN | 300750, 600519 |
-| `cip` | CN | 300750, 600519 |
-| `defer_tax_assets` | CN | 300750, 600519 |
-| `defer_tax_liab` | CN | 300750, 600519 |
-| `depreciation_amortization` | CN | 300750, 600519 |
-| `dps` | CN | 300750, 600519 |
-| `equity_attributable_to_owners` | CN | 300750, 600519 |
-| `financing_cash_flow` | CN | 300750, 600519 |
-| `gross_profit` | HK | 00001, 01113, 06862, 09987 |
-| `invest_income` | CN | 300750, 600519 |
-| `investing_cash_flow` | CN | 300750, 600519 |
-| `lease_liability_maturity` | CN | 300750, 600519 |
-| `lease_liability_maturity` | HK | 00001, 02498, 06862 |
-| `non_oper_exp` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `non_oper_income` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `non_recurring_items_breakdown` | HK | 01113, 02498, 06862 |
-| `other_cur_assets` | HK | 01810, 06862 |
-| `rd_exp` | HK | 01113, 06862 |
-| `receiv_tax_refund` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `receivables_aging` | HK | 01113, 06862, 09987 |
-| `restricted_cash` | CN | 300750, 600519 |
-| `restricted_cash` | HK | 00001, 01113, 06862 |
+| `c_pay_to_staff` | HK | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `capitalized_interest` | CN | 300750, 600519, 601919, 688008 |
+| `capitalized_rd` | HK | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `depreciation_amortization` | CN | 300750, 600519, 601919 |
+| `dps` | CN | 300750, 600519, 601919, 688008 |
+| `lease_liability_maturity` | CN | 300750, 600519, 601919, 688008 |
+| `receiv_tax_refund` | HK | 00001, 00392, 01113, 01810, 02498, 02669, 03320, 06862, 09987 |
+| `restricted_cash` | CN | 300750, 600519, 601919, 688008 |
 | `segment_revenue_profit` | CN | 300750, 600519 |
-| `selling_general_administrative` | HK | 00001, 01113, 01810, 02498, 06862, 09987 |
-| `time_deposits_or_wealth_products` | HK | 00001, 01113 |
+| `selling_general_administrative` | HK | 00001, 00392, 01113, 01810, 02498, 03320, 06862, 09987 |

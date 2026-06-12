@@ -295,11 +295,10 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
     real FY2025 00001 phrasings. Catalog alias edits to the asserted
     fields are EXPECTED to trip this test — that is its job.
 
-    Fixture decoys p0059/p0076/p0007 (pledged-as-security, treasury
-    shares, one-time loss) hit no catalog alias and are deliberately
-    unasserted; restricted_cash's "pledged deposits" alias shares no
-    full-token window with "pledged as security" (synonym, not
-    normalization-reachable).
+    The gap-closure alias batch (one-time/treasury shares/pledged as
+    security/undiscounted/tax paid) means the former decoy blocks
+    p0059/p0076/p0007 now hit their fields by design; they stay
+    unasserted here (covered by per-field assertions where relevant).
     """
     from financial_report_llm_extractor.field_metadata import (
         load_field_taxonomy,
@@ -325,14 +324,17 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
         pdf_path=Path("00001_2025_mini.pdf"),
     )
 
-    # class ② wrong-page: the ONLY hit is 'taxes paid' exact on p56,
-    # which is not a cash-flow anchor page -> prose_only. p141's real
-    # line 'Tax paid' matches no alias at all, not even normalized
-    # (naive es-strip: taxes->taxe != tax).
-    assert r.fields["c_paid_for_taxes"].status == "prose_only_hit"
-    # class ① alias gap healed by normalization, suggestion recovered
+    # class ② CLOSED by the gap-closure alias batch: 'tax paid' now
+    # exact-matches the p141 statement line inside the cash-flow section
+    # (the p56 prose hit no longer dominates classification).
+    assert r.fields["c_paid_for_taxes"].status == "exact_hit"
+    # class ① CLOSED by promotion batch 2: the ledger-evidenced phrase
+    # "ageing analysis of the trade receivables" (00001+00392) is now a
+    # catalog alias, so the original motivating miss is an exact hit.
+    # The remaining no-"the" aliases still normalized-match, keeping the
+    # suggestion visible in diagnostics.
     aging = r.fields["receivables_aging"]
-    assert aging.status == "normalized_only_hit"
+    assert aging.status == "exact_hit"
     assert any(
         "ageing analysis of the trade receivables" in s
         for s in aging.suggested_aliases
@@ -342,6 +344,12 @@ def test_acceptance_00001_known_states_with_real_catalog() -> None:
     # class ⑤ genuinely absent
     assert r.fields["rd_exp"].status == "no_hit"
     assert r.fields["time_deposits_or_wealth_products"].status == "no_hit"
+    # GUARD (PR-18 review): p0059 "pledged as security" is ASSET pledging,
+    # not a restricted-cash balance — a generic pledged alias would rank
+    # the wrong-concept chunk into the LLM's input (misattribution risk:
+    # 1,571 of pledged assets read as restricted cash). restricted_cash
+    # must NOT hit this fixture.
+    assert r.fields["restricted_cash"].status == "no_hit"
     # healthy field stays exact
     assert r.fields["revenue"].status == "exact_hit"
 
@@ -398,8 +406,27 @@ def test_cli_audit_alias_normalization_flag(tmp_path: Path) -> None:
 
 
 def test_cli_audit_alias_normalization_off(tmp_path: Path) -> None:
+    """--alias-normalization off must disable normalized selection. Uses an
+    inline catalog (alias WITHOUT "the") so the off/on discrimination stays
+    pinned regardless of real-catalog alias promotions (batch 2 promoted
+    the "the"-variant into the real catalog, which would exact-match)."""
     from financial_report_llm_extractor.cli import main
 
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(_json.dumps({
+        "catalog_id": "t", "version": "1",
+        "priorities": [{"priority": "P0", "fields": ["receivables_aging"]}],
+        "source_mappings": {
+            "receivables_aging": {
+                "value_type": "text", "statement_type": "notes",
+                "currency_requirement": "not_applicable",
+                "unit_requirement": "not_applicable",
+                "source_aliases": {"yahoo": ["X"]},
+                "pdf_aliases": ["ageing analysis of trade receivables",
+                                 "zzz_dummy_1", "zzz_dummy_2"],
+            }
+        },
+    }))
     out = tmp_path / "audit_off"
     ingest = out / "ingest"
     ingest.mkdir(parents=True)
@@ -409,6 +436,7 @@ def test_cli_audit_alias_normalization_off(tmp_path: Path) -> None:
 
     rc = main([
         "audit-pdf-aliases", "--pdf", "x.pdf", "--out", str(out),
+        "--catalog", str(catalog_path),
         "--alias-normalization", "off",
     ])
     assert rc == 0

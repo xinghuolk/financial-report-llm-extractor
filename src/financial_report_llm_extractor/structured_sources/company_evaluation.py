@@ -90,6 +90,21 @@ def classify_field(
     stays `source_unavailable` — this is a reason-refinement only, not a new
     bucket. Other buckets are unaffected.
     """
+    # Bucket 0 (Phase VG): structurally-NA terminalization. A field whose
+    # ONLY "conflict" is having no source candidate anywhere, on a market
+    # the catalog declares it structurally absent for, is not a gap — it
+    # is out of scope. Requires the missing-only shape so real conflicts
+    # and partial data are never masked.
+    if (
+        export_item.conflict_classifications
+        and set(export_item.conflict_classifications)
+        == {"missing_source_candidate"}
+        and export_item.status != "present"
+    ):
+        for spec in mapping_entry.industry_not_applicable:
+            if spec.matches(market, company_id):
+                return ("not_in_scope", spec.reason)
+
     # Bucket 1: explicit conflict from policy report.
     if export_item.conflict_classifications:
         return ("unresolved_conflict", ",".join(export_item.conflict_classifications))

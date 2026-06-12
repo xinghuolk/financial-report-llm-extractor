@@ -144,3 +144,28 @@
 - 有息债务和净现金相关信号已经恢复。
 
 剩余最关键的问题不是基础三表，而是回购、承诺派息率、受限现金、应收质量等价值投资附注数据，以及最终自然语言结论与结构化数据之间的一致性控制。
+
+---
+
+## 2026-06-11 更新：extractor 侧进展（alias lifecycle 落地后）
+
+> 本节为 extractor 侧补记；上文为 2026-06-04 下游快照，保留原貌。下游升级
+> extractor（含 alias-lifecycle 三件套 + 转正 batch 1/2）并重跑后，下列缺口
+> 状态将改变。00001 三年重评估（`gpt-5.5` relay 通道）：FY2025 覆盖
+> **50/68**（snapshot 时代 DS 基线 47）。
+
+| 上文缺口 | 现状 | 说明 |
+|---|---|---|
+| `repurchase_of_stock`（P0） | **已解决** | `absence_means_zero` 合成零（2024/2025 = 0，provider 历史跟踪 + 本期省略） |
+| `receivables_aging`（P1） | **已解决** | 别名转正 batch 2（`ageing analysis of the trade receivables`）→ 完整账龄表 @p229 |
+| `related_party_receivables_payables`（P1） | **已解决** | p269 关联方注释文本进入 present |
+| `non_oper_exp`（P2） | **已解决** | gpt-5.5 抽出 12,327 @利润表 |
+| `dps` 跨抽取器冲突 | **已裁决** | gpt-5.5 = 1.602 @p17（与历史 Codex 一致；DS 2.312 为误） |
+| `buyback_cancellation_progress`（P0） | **已解决** | `treasury shares` 别名已入 catalog → "no treasury shares" 文本 @p89 进入 present |
+| `c_paid_for_taxes`（P2） | **已解决** | `tax paid` 别名已入 → (5,571) @p141（含括号负数解析修复） |
+| `lease_liability_maturity`（P1） | **已解决** | `undiscounted` 别名已入 → 完整到期表 @p280 |
+| `restricted_cash`（P1） | **判定为非缺口** | p59 实为质押资产非受限现金，"pledged as security" 别名经 review 撤销（语义错配）；00001 大概率无受限现金披露 |
+| `non_recurring_items_breakdown`（P2） | 检索已修，抽取待调 | `one-time`/`one-off` 别名已入（chunks 到位），gpt-5.5 判 highlights 页不构成结构化 breakdown → 仍 not_found；owner_earnings 正常化的剩余阻碍 |
+| `c_pay_to_staff` / `capitalized_rd` / `receiv_tax_refund`（P2） | **已终态化** | HK market-wide 结构性 NA（not_in_scope），停止假性缺口与 LLM 空转 |
+| `time_deposits_or_wealth_products`（P1） | 真不披露 | 维持缺失（00001 不披露） |
+| `gross_profit` 冲突 / SGA 终态 | 未变 | 口径仲裁/PDF 佐证仍待决 |

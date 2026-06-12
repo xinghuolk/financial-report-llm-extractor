@@ -113,14 +113,22 @@ class SourcePolicy:
 class IndustryNotApplicableSpec:
     """Per-(market, ticker) declaration that a field is structurally NA for
     that issuer (e.g., real-estate developers have no SGA single-line). Refines
-    `source_unavailable` reason without introducing a new bucket."""
+    `source_unavailable` reason, and — for missing-only fields — terminalizes
+    the bucket to `not_in_scope` (see company_evaluation.classify_field).
+
+    ticker "*" declares the field structurally NA for the WHOLE market
+    (e.g., CN cash-flow concepts HK reporters never disclose). Evidence
+    threshold for "*": ledger no_hit across every audited company in the
+    market plus a full-text scan of at least one issuer."""
 
     market: str
     ticker: str
     reason: str
 
     def matches(self, market: str | None, company_id: str | None) -> bool:
-        return self.market == market and self.ticker == company_id
+        if self.market != market:
+            return False
+        return self.ticker == "*" or self.ticker == company_id
 
 
 @dataclass(frozen=True)
