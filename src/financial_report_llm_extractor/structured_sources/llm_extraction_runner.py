@@ -333,6 +333,38 @@ class LlmExtractionRunResult:
     items: dict[str, FieldExtractionResult] = field(default_factory=dict)
 
 
+def _normalized_text_offsets(text: str) -> tuple[str, list[int]]:
+    """Lowercase + collapse whitespace runs, tracking raw offsets.
+
+    Returns (normalized_text, offsets) where offsets[i] is the raw-text
+    index that produced normalized character i — so a match found in the
+    normalized text maps back to its raw position even when the alias is
+    wrapped across a pdftotext line break ("one-off\\nitem"). Characters
+    whose lowercase form changes length (e.g. "İ") are kept as-is to
+    preserve the 1:1 offset map.
+    """
+    norm_chars: list[str] = []
+    offsets: list[int] = []
+    prev_space = False
+    for i, ch in enumerate(text):
+        if ch.isspace():
+            if prev_space:
+                continue
+            norm_chars.append(" ")
+            offsets.append(i)
+            prev_space = True
+        else:
+            low = ch.lower()
+            norm_chars.append(low if len(low) == 1 else ch)
+            offsets.append(i)
+            prev_space = False
+    return "".join(norm_chars), offsets
+
+
+_TRIM_MAX_SITES = 8
+_TRIM_MAX_OFFSETS_PER_ALIAS = 16
+
+
 def _trim_chunk_text(
     chunk: dict[str, object],
     max_chars: int,
@@ -345,6 +377,20 @@ def _trim_chunk_text(
     page-text chunk, so the LLM never received it. When the text
     overflows, excerpt windows around alias matches instead; texts with
     no alias match keep the historical head-truncate behavior.
+
+    Window construction (2026-06-12 review hardening):
+    - alias matching is whitespace-normalized (same class of matching as
+      select_chunks), so a line-wrapped alias still anchors a window;
+    - match offsets are capped PER ALIAS, so one generic alias cannot
+      exhaust the budget before a later, more specific alias is scanned;
+    - when there are more sites than windows, sites are picked evenly
+      across the sorted span (head AND tail), not earliest-first;
+    - leftover budget after overlap-merging is redistributed by growing
+      the merged windows, so clustered matches don't shrink the output
+      far below max_chars;
+    - a head slice is always prepended when no window covers the text
+      start (period headers live there), and gaps carry explicit
+      "[...skipped N chars...]" markers instead of a bare ellipsis.
     """
     text = str(chunk.get("text", "") or "")
     out = dict(chunk)
@@ -352,49 +398,95 @@ def _trim_chunk_text(
         out["text"] = text
         return out
 
-    lower = text.lower()
-    offsets: list[int] = []
+    norm_text, norm_offsets = _normalized_text_offsets(text)
+    raw_sites: list[int] = []
     for alias in aliases:
-        needle = alias.lower()
+        needle = _normalize_whitespace(alias.lower())
         if not needle:
             continue
         start = 0
-        while len(offsets) < 32:
-            i = lower.find(needle, start)
+        found = 0
+        while found < _TRIM_MAX_OFFSETS_PER_ALIAS:
+            i = norm_text.find(needle, start)
             if i < 0:
                 break
-            offsets.append(i)
+            raw_sites.append(norm_offsets[i])
+            found += 1
             start = i + 1
 
-    if not offsets:
+    if not raw_sites:
         out["text"] = text[:max_chars] + "...[truncated]"
         return out
 
-    # Budget windows across (up to 8) match sites, merging overlaps so a
-    # dense cluster of matches becomes one excerpt.
-    sites = sorted(set(offsets))[:8]
-    per = max(max_chars // len(sites), 200)
-    spans: list[tuple[int, int]] = []
-    for i in sites:
-        s = max(0, i - per // 3)
-        e = min(len(text), i + per)
-        if spans and s <= spans[-1][1]:
-            spans[-1] = (spans[-1][0], max(spans[-1][1], e))
-        else:
-            spans.append((s, e))
+    sites = sorted(set(raw_sites))
+    if len(sites) > _TRIM_MAX_SITES:
+        # Even spread across the sorted sites keeps both head and tail
+        # anchors — earliest-first selection re-created the motivating
+        # bug whenever a generic alias was dense in the page's prose.
+        step = (len(sites) - 1) / (_TRIM_MAX_SITES - 1)
+        sites = sorted({sites[round(i * step)] for i in range(_TRIM_MAX_SITES)})
+
+    head_reserve = 200 if sites[0] > 0 else 0
+    budget = max(max_chars - head_reserve, 200)
+
+    def _build_spans(per: int) -> list[tuple[int, int]]:
+        spans: list[tuple[int, int]] = []
+        for i in sites:
+            s = max(0, i - per // 3)
+            e = min(len(text), i + per)
+            if spans and s <= spans[-1][1]:
+                spans[-1] = (spans[-1][0], max(spans[-1][1], e))
+            else:
+                spans.append((s, e))
+        return spans
+
+    per = max(budget // len(sites), 200)
+    spans = _build_spans(per)
+    # Redistribute the budget freed by overlap-merging: grow the per-site
+    # window until the merged spans use the budget (or stop shrinking the
+    # gap). Loop is bounded — `per` grows geometrically.
+    for _ in range(6):
+        total = sum(e - s for s, e in spans)
+        if total >= budget or total >= len(text):
+            break
+        grown = _build_spans(max(per + 1, per * budget // max(total, 1)))
+        if sum(e - s for s, e in grown) <= total:
+            break
+        per = max(per + 1, per * budget // max(total, 1))
+        spans = grown
 
     pieces: list[str] = []
     total = 0
+    if head_reserve and spans[0][0] > 0:
+        # Keep the top-of-page header (statement title / period labels) —
+        # period misattribution is a known LLM failure mode when the
+        # header is cut away from the matched rows.
+        head_end = min(head_reserve, spans[0][0])
+        pieces.append(text[:head_end])
+        total += head_end
+        last_end = head_end
+    else:
+        last_end = 0
     for s, e in spans:
+        if s < last_end:
+            s = last_end
+        if s >= e:
+            continue
         seg = text[s:e]
         if total + len(seg) > max_chars:
             seg = seg[: max(0, max_chars - total)]
-        if seg:
-            pieces.append(("" if s == 0 else "...") + seg)
-            total += len(seg)
+        if not seg:
+            break
+        if s > last_end:
+            pieces.append(f"\n[...skipped {s - last_end} chars...]\n")
+        pieces.append(seg)
+        total += len(seg)
+        last_end = s + len(seg)
         if total >= max_chars:
             break
-    out["text"] = "".join(pieces) + "...[truncated]"
+    if last_end < len(text):
+        pieces.append(f"\n[...skipped {len(text) - last_end} chars...]")
+    out["text"] = "".join(pieces)
     return out
 
 

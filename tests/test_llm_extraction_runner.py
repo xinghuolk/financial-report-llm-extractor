@@ -1201,3 +1201,54 @@ def test_parent_scope_blocks_absence_zero_section_fallback(
         out_dir=tmp_path,
     )
     assert "interest_bearing_debt_parent_company" in result.fields_not_found
+
+
+def test_trim_budget_utilization_with_clustered_matches() -> None:
+    """2026-06-12 review B1: per-site budget was computed before overlap
+    merging and never redistributed — a dense early cluster of matches
+    yielded a 427-char excerpt out of a 2,000 budget (less evidence than
+    the head-truncation it replaced). Merged windows must grow back to
+    use the budget."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = ("Revenue from contracts with customers... revenue ... revenue\n" * 10
+            + "filler line of prose about segments and operations\n" * 120)
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("revenue",))
+    assert len(str(out["text"])) >= 1600  # ≥ 0.8 × budget
+
+
+def test_trim_tail_survives_generic_alias_flood() -> None:
+    """2026-06-12 review B2: the offset cap was global across aliases and
+    site selection kept the EARLIEST 8 — a generic alias dense in early
+    prose exhausted both, re-dropping the tail itemization (the exact
+    failure the trim exists to fix). Per-alias caps + even-spread site
+    selection must keep the tail anchor."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = ("one-time " * 40 + "\n" + "prose " * 1200
+            + "\nreal one-off item table 4,444 end")
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("one-time", "one-off item"))
+    assert "4,444" in str(out["text"])
+
+
+def test_trim_matches_line_wrapped_alias() -> None:
+    """2026-06-12 review: trim used raw `str.find` while select_chunks
+    matches whitespace-normalized — an alias wrapped across a pdftotext
+    line break selected the chunk but anchored no window, silently
+    falling back to head-truncation (Phase I-C.1 bug class)."""
+    from financial_report_llm_extractor.structured_sources.llm_extraction_runner import (
+        _trim_chunk_text,
+    )
+    text = "HEADER FY2024\n" + "z " * 3000 + "one-off\nitem disposal gain 7,777\n"
+    out = _trim_chunk_text({"chunk_id": "c", "text": text}, 2000,
+                            aliases=("one-off item",))
+    t = str(out["text"])
+    assert "7,777" in t
+    # head slice keeps the period header (period-misattribution guard)
+    assert t.startswith("HEADER FY2024")
+    # interior gaps are explicit, not a bare ellipsis
+    assert "[...skipped" in t
