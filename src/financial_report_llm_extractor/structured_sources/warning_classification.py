@@ -22,6 +22,7 @@ from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy imp
 
 WarningCategory = Literal[
     "yahoo_pdf_verified",
+    "standardized_derivation_accepted",
     "yahoo_definition_unverified",
     "pdf_required",
     "source_policy_resolvable",
@@ -32,6 +33,7 @@ WarningCategory = Literal[
 
 ALL_WARNING_CATEGORIES: tuple[WarningCategory, ...] = (
     "yahoo_pdf_verified",
+    "standardized_derivation_accepted",
     "yahoo_definition_unverified",
     "pdf_required",
     "source_policy_resolvable",
@@ -229,6 +231,8 @@ def _hk_yahoo_category(
     if rule is not None:
         if rule.classification == "yahoo_pdf_verified":
             return "yahoo_pdf_verified"
+        if rule.classification == "yahoo_standardized_accepted":
+            return "standardized_derivation_accepted"
         if rule.classification == "yahoo_definition_unverified":
             return "yahoo_definition_unverified"
     if item.status in {"present", "ambiguous", "conflict", "needs_pdf_evidence"}:

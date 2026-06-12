@@ -268,6 +268,37 @@ def _resolve_field(
     if (
         candidate is not None
         and market_policy is not None
+        and market_policy.on_conflict == "select_primary_standardized"
+    ):
+        # Operator-adjudicated standardized derivation (e.g. gross_profit
+        # for issuers that do not disclose the line): select the primary
+        # provider's standardized value as USABLE — conflict
+        # classifications are cleared so the bucket cascade can land
+        # clean_present — while the warning labels the provenance and the
+        # reconciliation report retains the divergence for audit.
+        return _apply_trust_policies(
+            SourcePolicyItem(
+                field_id=field.field_id,
+                selection_status="selected_primary",
+                selected_candidate=candidate,
+                verification_required=False,
+                warnings=(
+                    "source policy accepted primary candidate as a "
+                    "standardized derivation (issuer does not disclose "
+                    "this line); provider divergence retained in the "
+                    "reconciliation report",
+                ),
+                reconciliation_status=reconciliation_status,
+            ),
+            market=market,
+            company_id=company_id,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+            provider_semantics_catalog=provider_semantics_catalog,
+        )
+
+    if (
+        candidate is not None
+        and market_policy is not None
         and market_policy.on_conflict == "select_primary_require_pdf"
     ):
         return _apply_trust_policies(
