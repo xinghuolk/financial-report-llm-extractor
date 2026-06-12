@@ -269,13 +269,24 @@ def _resolve_field(
         candidate is not None
         and market_policy is not None
         and market_policy.on_conflict == "select_primary_standardized"
+        and _can_apply_standardized_acceptance(
+            field.field_id,
+            candidate,
+            market=market,
+            company_id=company_id,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+        )
     ):
         # Operator-adjudicated standardized derivation (e.g. gross_profit
         # for issuers that do not disclose the line): select the primary
         # provider's standardized value as USABLE — conflict
         # classifications are cleared so the bucket cascade can land
         # clean_present — while the warning labels the provenance and the
-        # reconciliation report retains the divergence for audit.
+        # reconciliation report retains the divergence for audit. The
+        # acceptance is gated on the paired yahoo_standardized_accepted
+        # trust rule (raw field / currency / unit / company allowlist) so
+        # the catalog flag alone cannot bless an unvetted candidate; gate
+        # failure falls through to normal conflict handling below.
         return _apply_trust_policies(
             SourcePolicyItem(
                 field_id=field.field_id,
@@ -339,8 +350,22 @@ def _resolve_single_source(
 ) -> SourcePolicyItem:
     candidate = field.candidates[0]
     market_policy = _market_policy(entry, market)
+    # single_source_requires_pdf=false waives PDF verification for the
+    # PRIMARY route's provider only — the per-market waiver was adjudicated
+    # against that provider's semantics. A lone candidate from a
+    # cross-check source (e.g. AKShare when the HK primary route is yahoo)
+    # keeps the single_source_unverified classification.
+    primary_source = (
+        _source_from_route(market_policy.primary_route)
+        if market_policy is not None
+        else None
+    )
     requires_pdf = bool(
-        market_policy is not None and market_policy.single_source_requires_pdf
+        market_policy is not None
+        and (
+            market_policy.single_source_requires_pdf
+            or candidate.source != primary_source
+        )
     )
     metadata_classifications = _metadata_classifications(entry, market, candidate)
     if metadata_classifications:
@@ -521,6 +546,44 @@ def _can_apply_hk_yahoo_trust_policy(
         semantics_rule is not None
         and semantics_rule.allowed_as_primary
         and semantics_rule.classification == "provider_semantics_sample_verified"
+    )
+
+
+def _can_apply_standardized_acceptance(
+    field_id: str,
+    candidate: TurtleMappingCandidate | None,
+    *,
+    market: str | None,
+    company_id: str | None = None,
+    hk_yahoo_trust_policy: HkYahooTrustPolicy | None,
+) -> bool:
+    """Gate for the `select_primary_standardized` conflict policy.
+
+    The catalog flag expresses the operator's *intent*; the paired
+    yahoo_standardized_accepted trust rule carries the *vetting* (which raw
+    field, which currencies, which unit shape, optionally which companies).
+    Unlike yahoo_pdf_verified, no provider-semantics sample proof is
+    required — standardized acceptance exists precisely for lines the
+    issuer does not disclose, where sample verification is impossible and
+    the operator adjudication (recorded in definition_status_reason)
+    replaces it.
+    """
+    if market != "HK" or hk_yahoo_trust_policy is None or candidate is None:
+        return False
+    if candidate.source != "yahoo":
+        return False
+    rule = hk_yahoo_trust_policy.rule_for_field(field_id)
+    if rule is None or rule.classification != "yahoo_standardized_accepted":
+        return False
+    accepted_currencies = rule.accepted_currencies()
+    return (
+        bool(candidate.raw_field_name)
+        and candidate.raw_field_name in rule.allowed_yahoo_raw_fields
+        and candidate.currency in accepted_currencies
+        and candidate.unit == rule.trusted_unit
+        and candidate.canonical_unit in accepted_currencies
+        and candidate.unit_multiplier == rule.trusted_unit_multiplier
+        and rule.applies_to_company(company_id)
     )
 
 

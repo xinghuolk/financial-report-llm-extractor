@@ -604,7 +604,11 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     # (EXACT-matches PDF for 600519/2024 sample) — clean_present 36 → 37.
     # Phase G1a: +3 new P2 fields (c_pay_to_staff / c_paid_for_taxes / lt_eqt_invest)
     # all clean in 2025 baseline fixture for 600519 → 37 → 40.
-    assert maotai_combined["clean_present_count"] == 40
+    # 2026-06-12 single-source primary gate: gross_profit demoted to
+    # single_source_unverified (its only candidate is Yahoo; CN primary
+    # route is akshare_direct, and the single_source_requires_pdf=false
+    # waiver now applies to the primary route's source only) → 40 → 39.
+    assert maotai_combined["clean_present_count"] == 39
     assert {
         "bond_payable",
         "st_borr",

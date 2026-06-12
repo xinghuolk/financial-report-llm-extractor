@@ -1166,6 +1166,27 @@ def _mapping(
     )
 
 
+def _single_source_mapping(
+    field_id: str,
+    candidate: TurtleMappingCandidate,
+) -> TurtleMappingResult:
+    """A status='present' mapping with exactly one candidate — routes into
+    `_resolve_single_source` (the `_mapping` helper's status='ambiguous'
+    models the multi-candidate conflict path instead)."""
+    return TurtleMappingResult(
+        catalog_id="test",
+        catalog_version="1",
+        fields={
+            field_id: MappedTurtleField(
+                field_id=field_id,
+                status="present",
+                candidates=(candidate,),
+                errors=(),
+            )
+        },
+    )
+
+
 def _field(
     field_id: str,
     akshare_value: Decimal,
@@ -1384,3 +1405,282 @@ def _trust_sample(field_id: str, raw_field_name: str) -> HkYahooTrustSample:
         yahoo_raw_field=raw_field_name,
         match_basis="fixture arithmetic",
     )
+
+
+def test_source_policy_standardized_branch_requires_matching_trust_rule() -> None:
+    """select_primary_standardized must NOT fire on the catalog flag alone:
+    without a paired yahoo_standardized_accepted trust rule the conflict
+    falls through to normal handling (2026-06-12 review hardening)."""
+    catalog = _catalog(
+        "gross_profit",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_standardized",
+                    single_source_requires_pdf=False,
+                )
+            },
+        ),
+    )
+    mapping = _mapping(
+        "gross_profit",
+        (
+            _candidate(
+                "akshare",
+                "毛利",
+                "GROSS_PROFIT",
+                Decimal("200"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                statement_metadata_proven=True,
+            ),
+            _candidate(
+                "yahoo",
+                "Gross Profit",
+                None,
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                unit_multiplier=Decimal("1"),
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    # default _trust_policy() carries gross_profit as
+    # yahoo_definition_unverified — NOT yahoo_standardized_accepted.
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=_trust_policy(),
+        provider_semantics_catalog=_provider_semantics(),
+    )
+
+    item = report.items["gross_profit"]
+    assert item.verification_required is True
+    assert item.selection_status != "selected_primary"
+
+
+def test_source_policy_standardized_branch_rejects_unaccepted_currency() -> None:
+    """The standardized acceptance honors the trust rule's currency gate:
+    a candidate outside accepted_currencies() falls through to normal
+    conflict handling instead of landing clean (2026-06-12 review)."""
+    catalog = _catalog(
+        "gross_profit",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_standardized",
+                    single_source_requires_pdf=False,
+                )
+            },
+        ),
+    )
+    mapping = _mapping(
+        "gross_profit",
+        (
+            _candidate(
+                "akshare",
+                "毛利",
+                "GROSS_PROFIT",
+                Decimal("200"),
+                currency="CNY",
+                unit="raw",
+                canonical_unit="CNY",
+                statement_metadata_proven=True,
+            ),
+            _candidate(
+                "yahoo",
+                "Gross Profit",
+                None,
+                Decimal("100"),
+                # trusted_currency on the rule is HKD with no
+                # additional_trusted_currencies in _trust_rule().
+                currency="CNY",
+                unit="raw",
+                canonical_unit="CNY",
+                unit_multiplier=Decimal("1"),
+                statement_metadata_proven=True,
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    standardized_policy = HkYahooTrustPolicy(
+        version=1,
+        market="HK",
+        provider="yahoo",
+        rules=(
+            _trust_rule("gross_profit", "Gross Profit", "yahoo_standardized_accepted"),
+        ),
+    )
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=standardized_policy,
+        provider_semantics_catalog=_provider_semantics(),
+    )
+
+    item = report.items["gross_profit"]
+    assert item.verification_required is True
+    assert item.selection_status != "selected_primary"
+
+
+def test_source_policy_standardized_branch_accepts_gated_candidate() -> None:
+    """Positive control: flag + matching yahoo_standardized_accepted rule
+    (raw field, currency, unit shape) → selected_primary, usable."""
+    catalog = _catalog(
+        "gross_profit",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "HK": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_standardized",
+                    single_source_requires_pdf=False,
+                )
+            },
+        ),
+    )
+    mapping = _mapping(
+        "gross_profit",
+        (
+            _candidate(
+                "akshare",
+                "毛利",
+                "GROSS_PROFIT",
+                Decimal("200"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                statement_metadata_proven=True,
+            ),
+            _candidate(
+                "yahoo",
+                "Gross Profit",
+                None,
+                Decimal("100"),
+                currency="HKD",
+                unit="raw",
+                canonical_unit="HKD",
+                unit_multiplier=Decimal("1"),
+                statement_metadata_proven=True,
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    standardized_policy = HkYahooTrustPolicy(
+        version=1,
+        market="HK",
+        provider="yahoo",
+        rules=(
+            _trust_rule("gross_profit", "Gross Profit", "yahoo_standardized_accepted"),
+        ),
+    )
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="HK",
+        company_id="00001",
+        hk_yahoo_trust_policy=standardized_policy,
+        provider_semantics_catalog=_provider_semantics(),
+    )
+
+    item = report.items["gross_profit"]
+    assert item.selection_status == "selected_primary"
+    assert item.selected_candidate is not None
+    assert item.selected_candidate.source == "yahoo"
+    assert item.verification_required is False
+    assert item.conflict_classifications == ()
+
+
+def test_source_policy_single_source_waiver_applies_to_primary_source_only() -> None:
+    """single_source_requires_pdf=false waives PDF for the PRIMARY route's
+    provider only; a lone cross-check-source candidate keeps
+    single_source_unverified (2026-06-12 review hardening — previously a
+    lone non-primary candidate was silently blessed)."""
+    policy = SourcePolicy(
+        semantic_concept="reported statement line",
+        market_policies={
+            "CN": MarketSourcePolicy(
+                primary_route="akshare_direct",
+                cross_check_routes=("yahoo_direct",),
+                on_conflict="preserve_conflict",
+                single_source_requires_pdf=False,
+            )
+        },
+    )
+    yahoo_only = _single_source_mapping(
+        "gross_profit",
+        _candidate(
+            "yahoo",
+            "Gross Profit",
+            None,
+            Decimal("100"),
+            currency="CNY",
+            unit="raw",
+            canonical_unit="CNY",
+            unit_multiplier=Decimal("1"),
+            statement_metadata_proven=True,
+        ),
+    )
+    report = build_source_policy_report(
+        _catalog("gross_profit", policy),
+        yahoo_only,
+        reconcile_mapped_fields(yahoo_only),
+        market="CN",
+        company_id="600519",
+        hk_yahoo_trust_policy=None,
+        provider_semantics_catalog=None,
+    )
+    item = report.items["gross_profit"]
+    assert item.selection_status == "selected_single_source"
+    assert item.conflict_classifications == ("single_source_unverified",)
+    assert item.verification_required is True
+
+    akshare_only = _single_source_mapping(
+        "gross_profit",
+        _candidate(
+            "akshare",
+            "毛利",
+            "GROSS_PROFIT",
+            Decimal("100"),
+            currency="CNY",
+            unit="raw",
+            canonical_unit="CNY",
+            statement_metadata_proven=True,
+        ),
+    )
+    report = build_source_policy_report(
+        _catalog("gross_profit", policy),
+        akshare_only,
+        reconcile_mapped_fields(akshare_only),
+        market="CN",
+        company_id="600519",
+        hk_yahoo_trust_policy=None,
+        provider_semantics_catalog=None,
+    )
+    item = report.items["gross_profit"]
+    assert item.selection_status == "selected_single_source"
+    assert item.conflict_classifications == ()
+    assert item.verification_required is False
