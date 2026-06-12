@@ -31,13 +31,16 @@ def test_provider_field_capture_targets_cover_expected_matrix() -> None:
         "yuan",
         "SH",
     ) in actual
+    # AKShare HK targets carry CNY — the EastMoney feed's actual currency
+    # for every issuer (docs/gates/2026-06-12-gross-profit-divergence-
+    # investigation.md); the Yahoo HK targets below keep the issuer label.
     assert (
         "akshare",
         "00001",
         "00001",
         "HK",
         "income_statement",
-        "HKD",
+        "CNY",
         "raw",
         None,
     ) in actual
@@ -47,7 +50,7 @@ def test_provider_field_capture_targets_cover_expected_matrix() -> None:
         "01113",
         "HK",
         "cash_flow",
-        "HKD",
+        "CNY",
         "raw",
         None,
     ) in actual

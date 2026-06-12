@@ -67,6 +67,7 @@ _TERMINAL_UNVERIFIED_CATEGORIES: frozenset[WarningCategory] = frozenset({
 
 _BENIGN_WARNING_CATEGORIES: frozenset[WarningCategory] = frozenset({
     "yahoo_pdf_verified",
+    "standardized_derivation_accepted",
     "source_policy_resolvable",
 })
 

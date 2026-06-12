@@ -356,8 +356,17 @@ def test_minimal_source_mapping_statement_line_market_policies(
         else "yahoo_direct"
     )
     assert hk_policy.cross_check_routes == (expected_cross_check_route,)
-    assert hk_policy.on_conflict == "select_primary_require_pdf"
-    assert hk_policy.single_source_requires_pdf is (field_id == "gross_profit")
+    # Operator decision 2026-06-12: gross_profit is a standardized
+    # derivation for by-nature HK reporters (no PDF line exists) — Yahoo's
+    # derivation is accepted (01810 three-way EXACT evidence) instead of
+    # demanding an impossible PDF verification.
+    expected_on_conflict = (
+        "select_primary_standardized"
+        if field_id == "gross_profit"
+        else "select_primary_require_pdf"
+    )
+    assert hk_policy.on_conflict == expected_on_conflict
+    assert hk_policy.single_source_requires_pdf is False
 
     cn_policy = policy.market_policies["CN"]
     assert cn_policy.primary_route == "akshare_direct"

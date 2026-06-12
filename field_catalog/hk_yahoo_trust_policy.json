@@ -740,16 +740,20 @@
       ]
     },
     {
-      "policy_id": "hk_yahoo_raw_hkd_definition_unverified:gross_profit",
+      "policy_id": "hk_yahoo_standardized_accepted:gross_profit",
       "field_id": "gross_profit",
-      "classification": "yahoo_definition_unverified",
+      "classification": "yahoo_standardized_accepted",
       "trusted_currency": "HKD",
+      "additional_trusted_currencies": [
+        "CNY",
+        "USD"
+      ],
       "trusted_unit": "raw",
       "trusted_unit_multiplier": 1,
       "allowed_yahoo_raw_fields": [
         "Gross Profit"
       ],
-      "definition_status_reason": "HK formal income statements do not contain a gross profit row; sampled 00001 (page 134) and 01113 (page 70) both use non-standard cost structures that prevent direct or derivation-based verification of Yahoo Gross Profit",
+      "definition_status_reason": "Operator decision 2026-06-12: by-nature HK reporters (e.g. 00001) disclose no gross-profit line, so the value is necessarily a standardized derivation; Yahoo's derivation is accepted because it matches the PDF-disclosed Gross profit where the issuer discloses the line (01810 FY2024: PDF 76,560,194 thousand RMB = AKShare = Yahoo); where the issuer does not disclose it the value carries standardized-derivation provenance, not PDF proof (see docs/gates/2026-06-12-gross-profit-divergence-investigation.md — 00001 retains a ~12.7% real definitional gap vs AKShare's raw-materials derivation after currency correction). Divergence vs AKShare stays visible in the reconciliation report. additional_trusted_currencies covers CNY/USD issuer reporting currencies stamped by the Phase HK-B.5.1 issuer map.",
       "required_proof": "HK issuer with standard gross profit row, or verified revenue-minus-COGS derivation formula",
       "samples": []
     },

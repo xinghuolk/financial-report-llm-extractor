@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from financial_report_llm_extractor.cache.db import init_db
 from financial_report_llm_extractor.cache.db_query import query_extraction
@@ -99,17 +99,18 @@ def run_pipeline(
     )
     from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
         fetch_source_inventory,
-        hk_issuer_financial_currency,
     )
 
     cache_root: Path | None = None if no_cache else Path("tmp/.cache")
     providers: tuple[str, ...] = ("akshare", "yahoo")
 
-    # Construct provider clients (mirrors _run_fetch_source_inventory in cli.py).
-    # HK AKShare records get stamped with the issuer's financial-reporting
-    # currency (Phase HK-B.5.1); CN stays "unknown".
-    akshare_hk_currency = (
-        hk_issuer_financial_currency(company) if market == "HK" else "unknown"
+    # Construct provider clients (mirrors _run_fetch_source_inventory in
+    # cli.py). AKShare HK records are stamped CNY — the EastMoney feed's
+    # actual currency for every issuer (see docs/gates/2026-06-12-gross-
+    # profit-divergence-investigation.md); the issuer reporting-currency
+    # map applies to the Yahoo path only. CN stays "unknown".
+    akshare_hk_currency: Literal["CNY", "unknown"] = (
+        "CNY" if market == "HK" else "unknown"
     )
     akshare_client = PandasAkshareClient(hk_default_currency=akshare_hk_currency)
     yahoo_client = YFinanceStatementClient()

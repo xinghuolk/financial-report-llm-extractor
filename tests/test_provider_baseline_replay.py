@@ -92,7 +92,9 @@ EXPECTED_HK_YAHOO_VERIFIED_FIELDS = frozenset(
         "total_liabilities",
     }
 )
-EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS = frozenset({"gross_profit"})
+# 2026-06-12: gross_profit reclassified yahoo_standardized_accepted
+# (operator decision; see test_phase_hk_b_gross_profit).
+EXPECTED_HK_YAHOO_DEFINITION_UNVERIFIED_FIELDS: frozenset[str] = frozenset()
 EXPECTED_HK_PDF_VERIFICATION_FIELDS = frozenset(
     {
         "gross_profit",
@@ -253,16 +255,21 @@ def _assert_hk_warning_classification(
         }
         assert set(
             closure_payload["fields_by_category"]["yahoo_definition_unverified"]
-        ) == {
-            "gross_profit"
-        }
+        ) == set()
+        assert set(
+            closure_payload["fields_by_category"][
+                "standardized_derivation_accepted"
+            ]
+        ) == {"gross_profit"}
         assert set(closure_payload["fields_by_category"]["pdf_required"]) == set()
         assert closure_payload["items"]["net_profit"]["category"] == "clean_present"
         assert "net_profit" in closure_payload["sampled_pdf_policy_proof_fields"]
         assert closure_payload["final_pdf_evidence_fields"] == []
+        # 2026-06-12: gross_profit left the unverified list when its trust
+        # rule became yahoo_standardized_accepted.
         assert (
             "gross_profit"
-            in closure_payload["provider_semantics_unverified_fields"]
+            not in closure_payload["provider_semantics_unverified_fields"]
         )
 
         trust_policy_path = Path(
@@ -597,7 +604,11 @@ def test_provider_baseline_replay_reports_policy_selected_and_clean_counts(
     # (EXACT-matches PDF for 600519/2024 sample) — clean_present 36 → 37.
     # Phase G1a: +3 new P2 fields (c_pay_to_staff / c_paid_for_taxes / lt_eqt_invest)
     # all clean in 2025 baseline fixture for 600519 → 37 → 40.
-    assert maotai_combined["clean_present_count"] == 40
+    # 2026-06-12 single-source primary gate: gross_profit demoted to
+    # single_source_unverified (its only candidate is Yahoo; CN primary
+    # route is akshare_direct, and the single_source_requires_pdf=false
+    # waiver now applies to the primary route's source only) → 40 → 39.
+    assert maotai_combined["clean_present_count"] == 39
     assert {
         "bond_payable",
         "st_borr",
@@ -830,6 +841,8 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
     # Phase G1a: +1 cell per HK company (lt_eqt_invest clean via Yahoo
     # "Long Term Equity Investment"); c_pay_to_staff / c_paid_for_taxes both
     # unresolved_conflict on HK (no provider data on either AKShare HK or Yahoo HK).
+    # gross_profit stays OUT of this zero-caveat clean list: the
+    # standardized-derivation provenance warning is load-bearing.
     expected_clean_count_by_company = {"00001": 30, "01113": 32}
 
     for company_id in HK_COMPANY_IDS:
@@ -840,9 +853,7 @@ def test_checked_in_hk_replay_reports_exact_42_field_closure_buckets(
         assert set(combined["clean_present_fields"]) == expected_clean_by_company[company_id]
         assert combined["clean_present_count"] == expected_clean_count_by_company[company_id]
         assert combined["total_fields"] == EXPECTED_TOTAL_FIELDS
-        assert set(review["yahoo_definition_unverified_fields"]) == {
-            "gross_profit",
-        }
+        assert set(review["yahoo_definition_unverified_fields"]) == set()
         expected_mapping_expansion = EXPECTED_HK_MAPPING_EXPANSION_FIELDS_BY_COMPANY.get(
             company_id, []
         )

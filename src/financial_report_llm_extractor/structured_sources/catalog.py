@@ -31,7 +31,11 @@ REFERENCED_REQUIRED_METADATA = (
     "fallback_policy",
 )
 
-SOURCE_POLICY_CONFLICT_POLICIES = ("preserve_conflict", "select_primary_require_pdf")
+SOURCE_POLICY_CONFLICT_POLICIES = (
+    "preserve_conflict",
+    "select_primary_require_pdf",
+    "select_primary_standardized",
+)
 SOURCE_POLICY_VERIFICATION_REQUIREMENTS = ("none", "pdf_required_on_conflict")
 
 

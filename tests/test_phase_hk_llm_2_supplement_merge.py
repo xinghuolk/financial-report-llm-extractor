@@ -75,11 +75,18 @@ CASES = [
     # (cl_non_current via Yahoo "Non Current Deferred Revenue").
     # 00001/01113/06862: no change (cl_current/cl_non_current land in
     # unresolved_conflict or source_unavailable).
+    # 2026-06-12 single-source primary gate: gross_profit CN drops from
+    # clean (-1). Its only candidate is Yahoo while the CN primary route is
+    # akshare_direct — the per-market single_source_requires_pdf=false
+    # waiver no longer applies to a cross-check-source-only candidate, so
+    # it lands single_source_unverified (honest: the Yahoo standardized
+    # derivation was never adjudicated for CN; the HK acceptance rides the
+    # yahoo_standardized_accepted trust rule, which is HK-scoped).
     (
         "600519", "CN", date(2024, 12, 31),
         REPO / "tmp" / "runs" / "600519_2024-12-31" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "600519_2024-12-31_llm" / "llm_evidence_supplement.json",
-        42, 47,
+        41, 46,
         ("buyback_cancellation_progress", "capitalized_rd",
          "contingent_liabilities_commitments", "dividend_plan",
          "related_party_receivables_payables"),
@@ -89,7 +96,7 @@ CASES = [
         REPO / "tmp" / "runs" / "h2_2_after" / "00001" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "00001"
             / "llm_evidence_supplement.json",
-        32, 37,  # +lt_eqt_invest (G1a) +1
+        33, 38,  # +lt_eqt_invest (G1a) +1, +gross_profit standardized +1
         ("capitalized_interest", "contingent_liabilities_commitments",
          "dividend_plan", "dps", "segment_revenue_profit"),
     ),
@@ -98,7 +105,7 @@ CASES = [
         REPO / "tmp" / "runs" / "h2_2_after" / "01113" / "source_inventory.jsonl",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "01113"
             / "llm_evidence_supplement.json",
-        33, 37,  # +lt_eqt_invest (G1a) +1
+        34, 38,  # +lt_eqt_invest (G1a) +1, +gross_profit standardized +1
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "dps"),
     ),
@@ -107,7 +114,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "01810" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "01810"
             / "llm_evidence_supplement.json",
-        35, 42,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1
+        36, 43,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1, +gross_profit standardized +1
         ("bad_debt_provision", "buyback_cancellation_progress",
          "contingent_liabilities_commitments", "dividend_plan",
          "lease_liability_maturity", "receivables_aging",
@@ -118,7 +125,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "02498" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "02498"
             / "llm_evidence_supplement.json",
-        35, 40,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1
+        36, 41,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1, +gross_profit standardized +1
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "related_party_receivables_payables",
          "time_deposits_or_wealth_products"),
@@ -128,7 +135,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "06862" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "06862"
             / "llm_evidence_supplement.json",
-        35, 40,  # +lt_eqt_invest (G1a) +1
+        36, 41,  # +lt_eqt_invest (G1a) +1, +gross_profit standardized +1
         ("bad_debt_provision", "contingent_liabilities_commitments",
          "dividend_plan", "related_party_receivables_payables",
          "time_deposits_or_wealth_products"),
@@ -138,7 +145,7 @@ CASES = [
         HK_LLM_6_EXTENSION_FIXTURE / "09987" / "source_inventory.jsonl.gz",
         REPO / "tmp" / "runs" / "phase_i_c_validation_v2" / "09987"
             / "llm_evidence_supplement.json",
-        34, 37,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1
+        35, 38,  # +lt_eqt_invest (G1a) +1, +contract_liabilities_non_current (G1b) +1, +gross_profit standardized +1
         ("lease_liability_maturity", "segment_revenue_profit",
          "time_deposits_or_wealth_products"),
     ),

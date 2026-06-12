@@ -6,6 +6,7 @@ import argparse
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import Literal
 
 from financial_report_llm_extractor.chunking import build_chunk_store
 from financial_report_llm_extractor.coverage_budget import (
@@ -464,7 +465,6 @@ def _run_fetch_source_inventory(
     )
     from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
         fetch_source_inventory,
-        hk_issuer_financial_currency,
     )
 
     cache_root: Path | None = None if no_cache else Path("tmp/.cache")
@@ -487,13 +487,17 @@ def _run_fetch_source_inventory(
         if all_fresh:
             return {"skipped": True, "providers": list(providers)}
 
-    # Phase HK-B.5.1: HK AKShare records get stamped with the issuer's
-    # financial-reporting currency (not the HK trading-market currency).
-    # CN companies stay "unknown" — `_fetch_akshare_for_company` uses the
-    # explicit "yuan" unit for CN, so currency stamping for CN AKShare comes
-    # from a different code path.
-    akshare_hk_currency = (
-        hk_issuer_financial_currency(company) if market == "HK" else "unknown"
+    # AKShare HK feed currency: the EastMoney source delivers CNY-converted
+    # values for EVERY issuer regardless of reporting currency (full-cohort
+    # verification in docs/gates/2026-06-12-gross-profit-divergence-
+    # investigation.md: 6 CNY reporters digit-identical to Yahoo; 00001 HKD
+    # at exactly CNY/HKD 0.9032 on two metrics; 09987 USD at CNY/USD 7.10).
+    # The issuer financial-currency map (Phase HK-B.5.1) applies to the
+    # YAHOO path only — stamping it here mislabeled every AKShare candidate
+    # for non-CNY reporters. CN companies stay "unknown" (currency comes
+    # from the explicit "yuan" unit path).
+    akshare_hk_currency: Literal["CNY", "unknown"] = (
+        "CNY" if market == "HK" else "unknown"
     )
     akshare_client = (
         PandasAkshareClient(hk_default_currency=akshare_hk_currency)
