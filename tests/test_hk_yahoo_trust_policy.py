@@ -81,7 +81,11 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
     assert policy.is_pdf_verified("gross_profit") is False
     assert policy.is_pdf_verified("net_profit") is True
     assert gross_profit_rule is not None
-    assert gross_profit_rule.classification == "yahoo_definition_unverified"
+    # Operator decision 2026-06-12: gross_profit reclassified from
+    # yahoo_definition_unverified to yahoo_standardized_accepted (no PDF
+    # line exists for by-nature reporters; Yahoo derivation matches the
+    # disclosed Gross profit EXACTLY where checkable — 01810 FY2024).
+    assert gross_profit_rule.classification == "yahoo_standardized_accepted"
     assert net_profit_rule is not None
     assert net_profit_rule.classification == "yahoo_pdf_verified"
     assert net_profit_rule.allowed_yahoo_raw_fields == (
@@ -92,16 +96,11 @@ def test_hk_yahoo_trust_policy_exposes_verified_and_unverified_classifications()
     gross_evidence = policy.build_policy_evidence("gross_profit")
     net_evidence = policy.build_policy_evidence("net_profit")
 
-    assert gross_evidence["definition_status_reason"] == (
-        "HK formal income statements do not contain a gross profit row; "
-        "sampled 00001 (page 134) and 01113 (page 70) both use non-standard "
-        "cost structures that prevent direct or derivation-based verification "
-        "of Yahoo Gross Profit"
-    )
-    assert gross_evidence["required_proof"] == (
-        "HK issuer with standard gross profit row, or verified "
-        "revenue-minus-COGS derivation formula"
-    )
+    assert "01810" in str(gross_evidence["definition_status_reason"])
+    assert "standardized" in str(gross_evidence["definition_status_reason"])
+    # required_proof carried over from the superseded rule for audit trail;
+    # the 01810 three-way EXACT sample is exactly that proof.
+    assert gross_evidence["required_proof"]
     # Phase HK-B.5.3: net_profit extended with 4 non-HKD samples
     # (01810/02498/06862/09987) to recover honest coverage post-HK-B.5.2.
     # Phase HK-B.9: +00392 + 03320 (utilities + pharma new HK cohort) PDF-verified.
@@ -155,9 +154,15 @@ def test_hk_yahoo_trust_policy_requires_proof_for_definition_unverified_rule(
     tmp_path: Path,
 ) -> None:
     payload = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    # gross_profit is yahoo_standardized_accepted since 2026-06-12; forge a
+    # definition_unverified rule to exercise the validation.
+    forged = False
     for rule in payload["rules"]:
         if rule["field_id"] == "gross_profit":
+            rule["classification"] = "yahoo_definition_unverified"
             rule.pop("required_proof", None)
+            forged = True
+    assert forged
     policy_path = tmp_path / "bad_policy.json"
     policy_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2),
