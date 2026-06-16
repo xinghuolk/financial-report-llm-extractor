@@ -78,8 +78,11 @@ CASES = [
     # 2026-06-12 (evening) CN standardized acceptance: gross_profit CN
     # primary route flipped to yahoo_direct (operator decision — CN GAAP
     # statements disclose no gross-profit line; AKShare has no 毛利 row for
-    # 600519), so the lone Yahoo candidate is the PRIMARY single source and
-    # the requires-pdf waiver applies again: clean stays 42 / with-LLM 47.
+    # 600519), so the lone Yahoo candidate is the PRIMARY single source. The
+    # requires-pdf waiver only proposes clean; the single-source path then
+    # enforces the same standardized-acceptance gate as the conflict branch
+    # (rule covers CN via applies_to_markets + raw field / currency / unit
+    # match), so the vetted Yahoo "Gross Profit" stays clean 42 / with-LLM 47.
     (
         "600519", "CN", date(2024, 12, 31),
         REPO / "tmp" / "runs" / "600519_2024-12-31" / "source_inventory.jsonl",

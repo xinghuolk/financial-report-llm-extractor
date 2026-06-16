@@ -367,6 +367,30 @@ def _resolve_single_source(
             or candidate.source != primary_source
         )
     )
+    # 2026-06-12 review: the CN gross_profit route flip (akshare->yahoo
+    # primary) makes a lone Yahoo candidate the PRIMARY single source, so
+    # the requires-pdf waiver above would bless it clean WITHOUT consulting
+    # the standardized-acceptance trust rule — the gate the conflict branch
+    # enforces (_resolve_field's select_primary_standardized path). Apply
+    # the same gate here: a candidate accepted as clean under
+    # select_primary_standardized must pass _can_apply_standardized_acceptance
+    # (raw field / currency / unit / market coverage). Gate failure (rule
+    # absent, market not covered, mismatched candidate) downgrades to
+    # single_source_unverified — the honest fallback, consistent with the
+    # cross-check-source waiver carve-out above.
+    if (
+        not requires_pdf
+        and market_policy is not None
+        and market_policy.on_conflict == "select_primary_standardized"
+        and not _can_apply_standardized_acceptance(
+            field.field_id,
+            candidate,
+            market=market,
+            company_id=company_id,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+        )
+    ):
+        requires_pdf = True
     metadata_classifications = _metadata_classifications(entry, market, candidate)
     if metadata_classifications:
         if not _can_apply_hk_yahoo_trust_policy(
