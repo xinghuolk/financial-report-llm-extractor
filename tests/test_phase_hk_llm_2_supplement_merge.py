@@ -21,8 +21,10 @@ a no-op and pre-placing the captured supplement file in out_dir.
 
 from __future__ import annotations
 
+import json
 import shutil
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Iterator
 
@@ -31,6 +33,12 @@ import pytest
 from financial_report_llm_extractor.structured_sources import company_evaluation
 from financial_report_llm_extractor.structured_sources.company_evaluation import (
     run_company_evaluation,
+)
+from financial_report_llm_extractor.structured_sources.export import (
+    SourceFirstExportResult,
+)
+from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+    _merge_llm_evidence_supplement,
 )
 from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
     PeriodSpec,
@@ -226,19 +234,9 @@ def test_hk_llm_2_supplement_merge_delta(
 # Task 3: normalized_value / canonical_unit at LLM merge funnel
 # ---------------------------------------------------------------------------
 
-import json as _json
-from decimal import Decimal as _Decimal
 
-from financial_report_llm_extractor.structured_sources.export import (
-    SourceFirstExportResult as _SourceFirstExportResult,
-)
-from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
-    _merge_llm_evidence_supplement,
-)
-
-
-def _empty_export() -> _SourceFirstExportResult:
-    return _SourceFirstExportResult(
+def _empty_export() -> SourceFirstExportResult:
+    return SourceFirstExportResult(
         items={}, profile="source_only",
         catalog_id="test", catalog_version="0.0",
     )
@@ -246,7 +244,7 @@ def _empty_export() -> _SourceFirstExportResult:
 
 def _write_supplement(tmp_path: Path, items: dict) -> Path:
     p = tmp_path / "llm_evidence_supplement.json"
-    p.write_text(_json.dumps({
+    p.write_text(json.dumps({
         "schema_version": "llm-evidence-supplement-v1",
         "items": items,
     }), encoding="utf-8")
@@ -261,8 +259,8 @@ def test_llm_merge_normalizes_wan_yuan(tmp_path: Path) -> None:
         }})
     merged = _merge_llm_evidence_supplement(_empty_export(), supp)
     item = merged.items["stock_based_compensation"]
-    assert item.value == _Decimal("10080.83")
-    assert item.normalized_value == _Decimal("100808300.0")
+    assert item.value == Decimal("10080.83")
+    assert item.normalized_value == Decimal("100808300.0")
     assert item.canonical_unit == "CNY"
 
 
@@ -287,5 +285,19 @@ def test_llm_merge_yuan_multiplier_one(tmp_path: Path) -> None:
         }})
     merged = _merge_llm_evidence_supplement(_empty_export(), supp)
     item = merged.items["dividends_paid"]
-    assert item.normalized_value == _Decimal("929784589.68")
+    assert item.normalized_value == Decimal("929784589.68")
     assert item.canonical_unit == "CNY"
+
+
+def test_llm_merge_missing_unit_degrades_with_warning(tmp_path: Path) -> None:
+    supp = _write_supplement(tmp_path, {
+        "net_profit": {
+            "status": "present", "parsed_numeric_value": 50000000,
+            "currency": "CNY", "unit": None,
+        }})
+    merged = _merge_llm_evidence_supplement(_empty_export(), supp)
+    item = merged.items["net_profit"]
+    assert item.value == Decimal("50000000")
+    assert item.normalized_value is None
+    assert item.canonical_unit is None
+    assert "normalize_money_failed" in item.warnings

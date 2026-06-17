@@ -707,6 +707,7 @@ def _merge_llm_evidence_supplement(
         # base-unit value (e.g. 10080.83 万元 → normalized_value=100808300.0).
         normalized_value: Decimal | None = None
         canonical_unit: Currency | None = None
+        warnings_out: tuple[str, ...] = ()
         if value is not None:
             try:
                 money = normalize_money(
@@ -719,6 +720,7 @@ def _merge_llm_evidence_supplement(
             except (MoneyNormalizationError, ValueError, InvalidOperation):
                 normalized_value = None
                 canonical_unit = None
+                warnings_out = ("normalize_money_failed",)
 
         # selected_source="llm" is intentionally distinct from SourceName
         # ("akshare" | "yahoo" | "fixture"). Downstream consumers should
@@ -734,6 +736,7 @@ def _merge_llm_evidence_supplement(
             canonical_unit=canonical_unit,
             period=str(llm_item.get("period")) if llm_item.get("period") else None,
             review_notes=("llm_supplemented",),
+            warnings=warnings_out,
             verification_required=True,
             selected_source="llm",
         )
