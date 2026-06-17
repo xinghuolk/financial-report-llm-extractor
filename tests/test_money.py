@@ -76,8 +76,17 @@ def test_resolve_multiplier_yi() -> None:
 
 def test_resolve_multiplier_baiwan_not_confused_by_wan() -> None:
     assert _resolve_multiplier("百万元") == Decimal("1000000")
+    assert _resolve_multiplier("百万") == Decimal("1000000")
 
 
 def test_resolve_multiplier_shiyi_not_confused_by_yi() -> None:
     assert _resolve_multiplier("十亿") == Decimal("1000000000")
     assert _resolve_multiplier("十亿元") == Decimal("1000000000")
+
+
+def test_resolve_multiplier_baiyi_qianyi_wanyi() -> None:
+    assert _resolve_multiplier("百亿") == Decimal("10000000000")
+    assert _resolve_multiplier("千亿") == Decimal("100000000000")
+    assert _resolve_multiplier("万亿") == Decimal("1000000000000")
+    # 子串安全：不被「亿」误判为 1e8
+    assert _resolve_multiplier("百亿元") == Decimal("10000000000")

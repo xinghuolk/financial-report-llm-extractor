@@ -74,6 +74,12 @@ def _resolve_multiplier(unit: str) -> Decimal:
     normalized = unit.lower()
     if "billion" in normalized or "十亿元" in unit or "十亿" in unit:
         return Decimal("1000000000")
+    if "万亿" in unit:
+        return Decimal("1000000000000")
+    if "千亿" in unit:
+        return Decimal("100000000000")
+    if "百亿" in unit:
+        return Decimal("10000000000")
     if "亿元" in unit or "亿" in unit:
         return Decimal("100000000")
     if "million" in normalized or "百万元" in unit or "百万" in unit:
