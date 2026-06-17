@@ -4,6 +4,7 @@ import pytest
 
 from financial_report_llm_extractor.money import (
     MoneyNormalizationError,
+    _resolve_multiplier,
     normalize_money,
     parse_numeric_value,
     resolve_money_unit,
@@ -61,3 +62,22 @@ def test_normalize_money_returns_valid_money_amount() -> None:
 def test_normalize_money_requires_unambiguous_currency() -> None:
     with pytest.raises(MoneyNormalizationError, match="currency is ambiguous"):
         normalize_money("100", unit_context="million")
+
+
+def test_resolve_multiplier_wan() -> None:
+    assert _resolve_multiplier("万元") == Decimal("10000")
+    assert _resolve_multiplier("万") == Decimal("10000")
+
+
+def test_resolve_multiplier_yi() -> None:
+    assert _resolve_multiplier("亿元") == Decimal("100000000")
+    assert _resolve_multiplier("亿") == Decimal("100000000")
+
+
+def test_resolve_multiplier_baiwan_not_confused_by_wan() -> None:
+    assert _resolve_multiplier("百万元") == Decimal("1000000")
+
+
+def test_resolve_multiplier_shiyi_not_confused_by_yi() -> None:
+    assert _resolve_multiplier("十亿") == Decimal("1000000000")
+    assert _resolve_multiplier("十亿元") == Decimal("1000000000")
