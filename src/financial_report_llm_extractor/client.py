@@ -115,6 +115,8 @@ class FieldValue:
     evidence_page: int | None
     raw_bucket: str
     reason: str | None = None
+    normalized_value: Decimal | None = None
+    canonical_unit: str | None = None
 
     @property
     def is_reliable(self) -> bool:
@@ -698,6 +700,11 @@ def build_field_value(
     if currency == "unknown":
         currency = None
 
+    normalized_raw = db_row.get("normalized_value")
+    normalized_value = (
+        Decimal(str(normalized_raw)) if normalized_raw is not None else None
+    )
+
     return FieldValue(
         field_id=field_id,
         value=value,
@@ -708,4 +715,6 @@ def build_field_value(
         evidence_page=db_row.get("evidence_page"),
         raw_bucket=raw_bucket,
         reason=db_row.get("reason"),
+        normalized_value=normalized_value,
+        canonical_unit=db_row.get("canonical_unit"),
     )
