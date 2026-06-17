@@ -206,10 +206,21 @@ def test_v2_to_v3_migration_adds_normalized_columns(tmp_path: Path) -> None:
     conn.commit()
     conn.close()
 
+    # Seed a v2 row before migration to verify it is dropped
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "INSERT INTO field_values (company, period_end, market, field_id, bucket)"
+        " VALUES ('x','2024-12-31','CN','revenue','clean_present')"
+    )
+    conn.commit()
+    conn.close()
+
     init_db(db)
 
     conn = sqlite3.connect(db)
     cols = {r[1] for r in conn.execute("PRAGMA table_info(field_values)")}
+    count = conn.execute("SELECT COUNT(*) FROM field_values").fetchone()[0]
     conn.close()
     assert "normalized_value" in cols
     assert "canonical_unit" in cols
+    assert count == 0  # 迁移 drop 旧数据；tmp/runs 是 source of truth，须重 index

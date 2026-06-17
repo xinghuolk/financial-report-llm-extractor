@@ -24,6 +24,7 @@ Schema notes:
   collision. `init_db()` detects v1 schema via `PRAGMA table_info` and
   rebuilds tables (drop + recreate). `tmp/runs/*` artifacts remain the
   source of truth; operator re-runs `index --rebuild` to repopulate.
+- Schema v3 (2026-06-17): field_values adds normalized_value + canonical_unit.
 """
 
 CREATE_EXTRACTIONS_TABLE_SQL = """
