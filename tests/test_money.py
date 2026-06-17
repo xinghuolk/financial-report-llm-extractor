@@ -90,3 +90,20 @@ def test_resolve_multiplier_baiyi_qianyi_wanyi() -> None:
     assert _resolve_multiplier("万亿") == Decimal("1000000000000")
     # 子串安全：不被「亿」误判为 1e8
     assert _resolve_multiplier("百亿元") == Decimal("10000000000")
+
+
+def test_normalize_money_currency_hint_fills_when_unit_has_no_currency():
+    m = normalize_money("100", unit_context="thousand", currency_hint="CNY")
+    assert m.currency == "CNY"
+    assert m.normalized_value == Decimal("100000")
+
+
+def test_normalize_money_unit_currency_overrides_hint():
+    m = normalize_money("5", unit_context="万元", currency_hint="USD")
+    assert m.currency == "CNY"
+    assert m.normalized_value == Decimal("50000")
+
+
+def test_normalize_money_still_raises_without_hint():
+    with pytest.raises(MoneyNormalizationError):
+        normalize_money("100", unit_context="thousand")

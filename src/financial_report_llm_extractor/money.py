@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from typing import cast
 
 from financial_report_llm_extractor.models import Currency, MoneyAmount
 
@@ -34,18 +35,29 @@ def parse_numeric_value(raw_value: str) -> Decimal:
 
 def resolve_money_unit(
     unit_context: str,
+    *,
+    currency_hint: str | None = None,
 ) -> tuple[Currency, str, Decimal, Currency]:
     unit = unit_context.strip()
     currency = _resolve_currency(unit)
+    if currency in {"unknown", "ambiguous"} and currency_hint in {"CNY", "HKD", "USD"}:
+        currency = cast(Currency, currency_hint)
     if currency in {"unknown", "ambiguous"}:
         raise MoneyNormalizationError("currency is ambiguous")
     multiplier = _resolve_multiplier(unit)
     return currency, unit, multiplier, currency
 
 
-def normalize_money(raw_value: str, *, unit_context: str) -> MoneyAmount:
+def normalize_money(
+    raw_value: str,
+    *,
+    unit_context: str,
+    currency_hint: str | None = None,
+) -> MoneyAmount:
     value = parse_numeric_value(raw_value)
-    currency, unit, multiplier, normalized_unit = resolve_money_unit(unit_context)
+    currency, unit, multiplier, normalized_unit = resolve_money_unit(
+        unit_context, currency_hint=currency_hint
+    )
     money = MoneyAmount(
         value_raw=raw_value,
         value=value,
