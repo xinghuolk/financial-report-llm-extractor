@@ -156,7 +156,9 @@ def _is_legacy_schema(db_path: Path) -> bool:
     return "market" not in column_names or "normalized_value" not in column_names
 ```
 
-沿用 R5 先例：检测到旧 schema → drop + recreate。operator 须 `rm data/extracted.db && financial-report-llm-extractor index --runs tmp/runs ...` 全量重 index。重读 tmp/runs 无 LLM 成本。
+沿用 R5 先例：检测到旧 schema → drop + recreate。
+
+**关键迁移注意（PR-25 Codex P1）**：仅 `rm data/extracted.db && index --runs tmp/runs` **不足以**修复历史数据。本 PR 之前生成的 `evaluation.json` 没有 `normalized_value`/`canonical_unit` 键，indexer **不做归一化兜底**（归一化是 pipeline 单一收口点，DB 须忠实索引 evaluation.json，不引入第二触发点），所以 re-index 旧 run 只会写 NULL。正确迁移：**重跑 pipeline regenerate `evaluation.json`**（LLM cache 命中近乎免费），再 index。indexer 在检测到 `llm_supplement_present` 行缺 `normalized_value` 时会向 stderr 打 warning 提示 operator 重跑，避免静默残留 NULL。
 
 ## 7. 测试策略（TDD）
 

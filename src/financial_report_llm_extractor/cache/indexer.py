@@ -12,6 +12,7 @@ We join by field_id and pick the right source per bucket.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -101,8 +102,21 @@ def index_run(
         )
 
         written = 0
+        # P1 (PR-25): re-indexing a pre-v3 evaluation.json (no normalized_value
+        # key) leaves LLM money rows with NULL normalized values. Indexer does
+        # NOT backfill — normalization is a single pipeline-stage funnel and the
+        # DB must stay a faithful index of evaluation.json. Instead, surface a
+        # warning so the operator knows to regenerate (re-run pipeline, LLM cache
+        # makes this near-free) rather than silently shipping stale NULLs.
+        stale_normalized: list[str] = []
         for field_id, eval_info in fields.items():
             bucket = str(eval_info.get("bucket", ""))
+            if (
+                bucket == "llm_supplement_present"
+                and eval_info.get("value") is not None
+                and eval_info.get("normalized_value") is None
+            ):
+                stale_normalized.append(field_id)
             supp = supplement_items.get(field_id, {})
             row = _merge_field_row(
                 bucket=bucket,
@@ -136,6 +150,16 @@ def index_run(
             )
             written += 1
         conn.commit()
+        if stale_normalized:
+            print(
+                f"WARNING [{run_dir}]: {len(stale_normalized)} LLM money field(s) "
+                f"lack normalized_value (pre-v3 evaluation.json): "
+                f"{', '.join(sorted(stale_normalized)[:8])}"
+                f"{' ...' if len(stale_normalized) > 8 else ''}. "
+                "Re-run the pipeline to regenerate evaluation.json (LLM cache "
+                "makes this near-free); re-indexing alone will not backfill them.",
+                file=sys.stderr,
+            )
         return written
     finally:
         conn.close()

@@ -416,3 +416,47 @@ def test_index_run_missing_supplement_does_not_break(tmp_path: Path) -> None:
     finally:
         conn.close()
     assert row == (None, None)
+
+
+def test_index_run_warns_on_pre_v3_missing_normalized(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Re-indexing a pre-v3 evaluation.json (LLM money row without
+    normalized_value) emits a stderr warning and does NOT backfill."""
+    import json
+
+    run_dir = tmp_path / "old_run"
+    run_dir.mkdir()
+    (run_dir / "evaluation.json").write_text(
+        json.dumps({
+            "company": "603345", "period_end": "2024-12-31", "market": "CN",
+            "report_type": "annual", "schema_version": "company-evaluation-v1",
+            "generated_at": "2026-06-16T00:00:00+00:00",
+            "fields": {
+                "stock_based_compensation": {
+                    "bucket": "llm_supplement_present",
+                    "value": "10080.83", "currency": "CNY", "unit": "万元",
+                    "selected_source": "llm", "reason": None,
+                    # NOTE: no normalized_value/canonical_unit (pre-v3)
+                },
+            },
+        }),
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "extracted.db"
+    init_db(db_path)
+    index_run(
+        run_dir=run_dir, db_path=db_path,
+        catalog_version="2026-05-02",
+        priority_map={"stock_based_compensation": "P2"},
+    )
+    err = capsys.readouterr().err
+    assert "normalized_value" in err
+    assert "stock_based_compensation" in err
+    # Indexer does not backfill: DB normalized_value stays NULL.
+    row = query_field(
+        db_path=db_path, company="603345", period_end="2024-12-31",
+        market="CN", field_id="stock_based_compensation",
+    )
+    assert row is not None
+    assert row["normalized_value"] is None
