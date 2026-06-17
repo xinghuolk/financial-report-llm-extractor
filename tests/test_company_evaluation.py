@@ -708,3 +708,23 @@ def test_classify_llm_present_unaffected_by_na() -> None:
         company_id="00001",
     )
     assert bucket == "llm_supplement_present"
+
+
+def test_company_field_evaluation_has_normalized_fields():
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        CompanyFieldEvaluation,
+    )
+
+    f = CompanyFieldEvaluation(
+        field_id="x",
+        bucket="llm_supplement_present",
+        selected_source="llm",
+        value=None,
+        currency="CNY",
+        unit="万元",
+        reason=None,
+        normalized_value=None,
+        canonical_unit="CNY",
+    )
+    assert f.canonical_unit == "CNY"
+    assert f.normalized_value is None
