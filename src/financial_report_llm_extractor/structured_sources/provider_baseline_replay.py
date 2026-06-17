@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Any, Literal
 
 from financial_report_llm_extractor.models import Currency
+from financial_report_llm_extractor.money import (
+    MoneyNormalizationError,
+    normalize_money,
+)
 from financial_report_llm_extractor.field_metadata import (
     FieldTaxonomyCatalog,
     load_field_taxonomy,
@@ -699,6 +703,23 @@ def _merge_llm_evidence_supplement(
 
         currency = _normalize_llm_currency(llm_item.get("currency"))
 
+        # Normalize money units so downstream consumers get a canonical
+        # base-unit value (e.g. 10080.83 万元 → normalized_value=100808300.0).
+        normalized_value: Decimal | None = None
+        canonical_unit: Currency | None = None
+        if value is not None:
+            try:
+                money = normalize_money(
+                    str(value),
+                    unit_context=str(llm_item.get("unit") or ""),
+                    currency_hint=currency if currency in {"CNY", "HKD", "USD"} else None,
+                )
+                normalized_value = money.normalized_value
+                canonical_unit = money.normalized_unit
+            except (MoneyNormalizationError, ValueError, InvalidOperation):
+                normalized_value = None
+                canonical_unit = None
+
         # selected_source="llm" is intentionally distinct from SourceName
         # ("akshare" | "yahoo" | "fixture"). Downstream consumers should
         # treat it as a non-provider evidence source (cf. review_notes=
@@ -707,8 +728,10 @@ def _merge_llm_evidence_supplement(
             field_id=field_id,
             status="present",
             value=value,
+            normalized_value=normalized_value,
             currency=currency,
             unit=str(llm_item.get("unit")) if llm_item.get("unit") else None,
+            canonical_unit=canonical_unit,
             period=str(llm_item.get("period")) if llm_item.get("period") else None,
             review_notes=("llm_supplemented",),
             verification_required=True,

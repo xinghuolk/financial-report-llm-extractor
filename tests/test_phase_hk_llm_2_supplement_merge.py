@@ -220,3 +220,72 @@ def test_hk_llm_2_supplement_merge_delta(
         f"  expected: {expected_supplement_fields}\n"
         f"  actual:   {actual_supp_fields}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Task 3: normalized_value / canonical_unit at LLM merge funnel
+# ---------------------------------------------------------------------------
+
+import json as _json
+from decimal import Decimal as _Decimal
+
+from financial_report_llm_extractor.structured_sources.export import (
+    SourceFirstExportResult as _SourceFirstExportResult,
+)
+from financial_report_llm_extractor.structured_sources.provider_baseline_replay import (
+    _merge_llm_evidence_supplement,
+)
+
+
+def _empty_export() -> _SourceFirstExportResult:
+    return _SourceFirstExportResult(
+        items={}, profile="source_only",
+        catalog_id="test", catalog_version="0.0",
+    )
+
+
+def _write_supplement(tmp_path: Path, items: dict) -> Path:
+    p = tmp_path / "llm_evidence_supplement.json"
+    p.write_text(_json.dumps({
+        "schema_version": "llm-evidence-supplement-v1",
+        "items": items,
+    }), encoding="utf-8")
+    return p
+
+
+def test_llm_merge_normalizes_wan_yuan(tmp_path: Path) -> None:
+    supp = _write_supplement(tmp_path, {
+        "stock_based_compensation": {
+            "status": "present", "parsed_numeric_value": 10080.83,
+            "currency": "人民币", "unit": "万元",
+        }})
+    merged = _merge_llm_evidence_supplement(_empty_export(), supp)
+    item = merged.items["stock_based_compensation"]
+    assert item.value == _Decimal("10080.83")
+    assert item.normalized_value == _Decimal("100808300.0")
+    assert item.canonical_unit == "CNY"
+
+
+def test_llm_merge_text_field_does_not_crash(tmp_path: Path) -> None:
+    supp = _write_supplement(tmp_path, {
+        "audit_opinion": {
+            "status": "present", "parsed_numeric_value": None,
+            "value": "标准无保留意见", "currency": None, "unit": None,
+        }})
+    merged = _merge_llm_evidence_supplement(_empty_export(), supp)
+    item = merged.items["audit_opinion"]
+    assert item.value is None
+    assert item.normalized_value is None
+    assert item.canonical_unit is None
+
+
+def test_llm_merge_yuan_multiplier_one(tmp_path: Path) -> None:
+    supp = _write_supplement(tmp_path, {
+        "dividends_paid": {
+            "status": "present", "parsed_numeric_value": 929784589.68,
+            "currency": "人民币", "unit": "元",
+        }})
+    merged = _merge_llm_evidence_supplement(_empty_export(), supp)
+    item = merged.items["dividends_paid"]
+    assert item.normalized_value == _Decimal("929784589.68")
+    assert item.canonical_unit == "CNY"
