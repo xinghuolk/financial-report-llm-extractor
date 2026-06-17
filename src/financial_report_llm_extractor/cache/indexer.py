@@ -114,8 +114,9 @@ def index_run(
                 INSERT INTO field_values (
                   company, period_end, market, field_id, priority, bucket, value,
                   currency, unit, selected_source, reason,
-                  evidence_page, llm_confidence, llm_reasoning_short
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  evidence_page, llm_confidence, llm_reasoning_short,
+                  normalized_value, canonical_unit
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     company, period_end, market, field_id,
@@ -129,6 +130,8 @@ def index_run(
                     row["evidence_page"],
                     row["llm_confidence"],
                     row["llm_reasoning_short"],
+                    row["normalized_value"],
+                    row["canonical_unit"],
                 ),
             )
             written += 1
@@ -183,6 +186,8 @@ def _merge_field_row(
             if isinstance(confidence, (int, float)) else None
         ),
         "llm_reasoning_short": _truncate(reasoning, 500),
+        "normalized_value": eval_info.get("normalized_value"),
+        "canonical_unit": eval_info.get("canonical_unit"),
     }
 
 
