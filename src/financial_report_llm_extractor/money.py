@@ -72,13 +72,16 @@ def normalize_money(
 
 
 def _resolve_currency(unit: str) -> Currency:
+    # Check HKD/USD before CNY: the CNY marker "元" is a substring of "港元"
+    # (HKD) and "美元" (USD), so a CNY-first order misclassifies those as CNY
+    # (PR-25 Codex P2). More specific currency words must win.
     normalized = unit.lower()
-    if any(marker in unit for marker in ("人民币", "元")) or "cny" in normalized or "rmb" in normalized:
-        return "CNY"
     if "hkd" in normalized or "hk$" in normalized or "港元" in unit or "港币" in unit:
         return "HKD"
     if "usd" in normalized or "us$" in normalized or "美元" in unit:
         return "USD"
+    if any(marker in unit for marker in ("人民币", "元")) or "cny" in normalized or "rmb" in normalized:
+        return "CNY"
     return "unknown"
 
 

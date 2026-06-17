@@ -92,6 +92,27 @@ def test_resolve_multiplier_baiyi_qianyi_wanyi() -> None:
     assert _resolve_multiplier("百亿元") == Decimal("10000000000")
 
 
+def test_resolve_currency_hkd_usd_not_swallowed_by_yuan() -> None:
+    # 「港元」「美元」含「元」子串，必须先判 HKD/USD 而非被 CNY 吞（PR-25 Codex P2）
+    from financial_report_llm_extractor.money import _resolve_currency
+
+    assert _resolve_currency("港元") == "HKD"
+    assert _resolve_currency("美元") == "USD"
+    assert _resolve_currency("港币") == "HKD"
+    assert _resolve_currency("元") == "CNY"
+    assert _resolve_currency("人民币") == "CNY"
+
+
+def test_normalize_money_hkd_usd_units_normalize_correctly() -> None:
+    # HKD/USD reporter 的 LLM money 字段：unit=港元/美元 应得正确 canonical_unit
+    m_hkd = normalize_money("5", unit_context="千港元")
+    assert m_hkd.currency == "HKD"
+    assert m_hkd.normalized_value == Decimal("5000")
+    m_usd = normalize_money("3", unit_context="百万美元")
+    assert m_usd.currency == "USD"
+    assert m_usd.normalized_value == Decimal("3000000")
+
+
 def test_normalize_money_dps_per_share_not_multiplied() -> None:
     # dps 是每股小数额（如 0.5 元/股），unit 含「元」→ CNY、乘数 1，不被乘万。
     m = normalize_money("0.5", unit_context="元")
