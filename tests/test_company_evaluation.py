@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -14,11 +15,16 @@ def _make_export_item(
     conflict_classifications: tuple[str, ...] = (),
     review_notes: tuple[str, ...] = (),
     value_decimal: str = "100",
+    normalized_value: Decimal | None = None,
+    canonical_unit: str | None = None,
 ) -> Any:
     """Construct minimal SourceFirstExportItem for tests.
 
     Note: SourceFirstExportItem.value is `Decimal | None`, not `str`. Tests use
     Decimal(value_decimal) for present items.
+
+    W2: optional normalized_value / canonical_unit are forwarded to
+    SourceFirstExportItem so serialization tests can inject normalized fields.
     """
     from decimal import Decimal
     from financial_report_llm_extractor.structured_sources.export import (
@@ -33,6 +39,8 @@ def _make_export_item(
         unit="raw",
         conflict_classifications=conflict_classifications,
         review_notes=review_notes,
+        normalized_value=normalized_value,
+        canonical_unit=canonical_unit,  # type: ignore[arg-type]
     )
 
 
@@ -728,3 +736,65 @@ def test_company_field_evaluation_has_normalized_fields():
     )
     assert f.canonical_unit == "CNY"
     assert f.normalized_value is None
+
+
+def test_evaluation_serialization_includes_normalized_value_and_canonical_unit() -> None:
+    """W1: normalized_value + canonical_unit must appear in _evaluation_to_dict
+    output with correct non-scientific-notation string values.
+
+    Regression guard: ensures commit 5f6cd5f's serialization path is exercised
+    end-to-end (CompanyEvaluation → _evaluation_to_dict → dict), not just the
+    dataclass field existence.
+    """
+    from decimal import Decimal
+
+    from financial_report_llm_extractor.structured_sources.company_evaluation import (
+        CompanyEvaluation,
+        CompanyFieldEvaluation,
+        _evaluation_to_dict,
+    )
+    from financial_report_llm_extractor.structured_sources.source_inventory_fetch import (
+        PeriodSpec,
+    )
+
+    field_id = "gross_profit"
+    evaluation = CompanyEvaluation(
+        company="600519",
+        period=PeriodSpec.from_year(2024),
+        market="CN",
+        generated_at="2026-06-17T00:00:00+00:00",
+        fields=(
+            CompanyFieldEvaluation(
+                field_id=field_id,
+                bucket="clean_present",
+                selected_source="akshare",
+                value=Decimal("100000000"),   # 1亿元（万元单位的原始值）
+                currency="CNY",
+                unit="万元",
+                reason=None,
+                normalized_value=Decimal("1000000000000"),  # 1兆 CNY yuan
+                canonical_unit="CNY",
+            ),
+        ),
+        by_bucket={
+            "clean_present": 1, "unresolved_conflict": 0,
+            "llm_supplement_present": 0, "terminal_unverified": 0,
+            "not_in_scope": 0, "source_unavailable": 0,
+        },
+        by_priority={"P1": {
+            "clean_present": 1, "unresolved_conflict": 0,
+            "llm_supplement_present": 0, "terminal_unverified": 0,
+            "not_in_scope": 0, "source_unavailable": 0,
+        }},
+    )
+
+    result = _evaluation_to_dict(evaluation, catalog_version="v-test")
+
+    field_dict = result["fields"][field_id]  # type: ignore[index]
+    # W1 core assertions: both keys present in serialized dict, value is
+    # plain decimal string (not scientific notation like "1E+12").
+    assert field_dict["normalized_value"] == "1000000000000"
+    assert field_dict["canonical_unit"] == "CNY"
+    # Sanity: raw unit/value still present
+    assert field_dict["unit"] == "万元"
+    assert field_dict["value"] == "100000000"
