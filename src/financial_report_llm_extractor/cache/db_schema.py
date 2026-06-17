@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS field_values (
   evidence_page       INTEGER,
   llm_confidence      REAL,
   llm_reasoning_short TEXT,
+  normalized_value    TEXT,
+  canonical_unit      TEXT,
   PRIMARY KEY (company, period_end, market, field_id)
 );
 """.strip()

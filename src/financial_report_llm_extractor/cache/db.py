@@ -16,10 +16,11 @@ def init_db(db_path: Path) -> None:
     Idempotent: safe to call against an already-initialized DB.
     Creates parent directories as needed.
 
-    R5 schema v2: if `field_values` table exists but lacks `market` column
-    (i.e., legacy v1 schema), drops the table and recreates with v2 schema.
-    Operator must re-run `financial-report-llm-extractor index ...` after
-    migration to repopulate. tmp/runs/* artifacts are unaffected.
+    Schema migration: if `field_values` table exists but lacks `market` column
+    (v1→v2) or lacks `normalized_value` column (v2→v3), drops the table and
+    recreates with the current schema. Operator must re-run
+    `financial-report-llm-extractor index ...` after migration to repopulate.
+    tmp/runs/* artifacts are unaffected.
     """
     db_path.parent.mkdir(parents=True, exist_ok=True)
     if db_path.exists() and _is_legacy_schema(db_path):
@@ -35,7 +36,13 @@ def init_db(db_path: Path) -> None:
 
 
 def _is_legacy_schema(db_path: Path) -> bool:
-    """Detect R1 v1 field_values schema (lacks market column)."""
+    """Detect legacy field_values schema (lacks market column or normalized_value).
+
+    Returns True for:
+    - R1 v1 schema: missing ``market`` column
+    - R5 v2 schema: has ``market`` but missing ``normalized_value`` (schema v3
+      added normalized_value + canonical_unit columns)
+    """
     conn = sqlite3.connect(db_path)
     try:
         rows = list(conn.execute("PRAGMA table_info(field_values)"))
@@ -46,7 +53,7 @@ def _is_legacy_schema(db_path: Path) -> bool:
     if not rows:
         return False  # table doesn't exist
     column_names = {r[1] for r in rows}  # PRAGMA returns (cid, name, type, ...)
-    return "market" not in column_names
+    return "market" not in column_names or "normalized_value" not in column_names
 
 
 def _drop_legacy_tables(db_path: Path) -> None:
