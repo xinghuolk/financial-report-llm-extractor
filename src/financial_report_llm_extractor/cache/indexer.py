@@ -186,6 +186,9 @@ def _merge_field_row(
             if isinstance(confidence, (int, float)) else None
         ),
         "llm_reasoning_short": _truncate(reasoning, 500),
+        # normalized_value/canonical_unit always come from eval_info: normalization
+        # happens upstream (LLM-merge funnel / provider) and is serialized into
+        # evaluation.json. The raw llm_evidence_supplement items carry no normalized fields.
         "normalized_value": eval_info.get("normalized_value"),
         "canonical_unit": eval_info.get("canonical_unit"),
     }
