@@ -67,6 +67,7 @@ def test_build_field_value_normalized_none_when_value_none() -> None:
         field_taxonomy={"value_type": "money"},
         include_llm_supplement=True,
     )
-    # value 缺失 → normalized_value 守护为 None
+    # value 缺失 → normalized_value 与 canonical_unit 对称守护为 None
     assert fv.value is None
     assert fv.normalized_value is None
+    assert fv.canonical_unit is None

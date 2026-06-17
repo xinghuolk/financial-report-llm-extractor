@@ -708,8 +708,11 @@ def build_field_value(
     normalized_value = (
         Decimal(str(normalized_raw)) if normalized_raw is not None else None
     )
+    canonical_unit = db_row.get("canonical_unit")
     if value is None:
+        # No primary value → normalized fields are meaningless; keep symmetric.
         normalized_value = None
+        canonical_unit = None
 
     return FieldValue(
         field_id=field_id,
@@ -722,5 +725,5 @@ def build_field_value(
         raw_bucket=raw_bucket,
         reason=db_row.get("reason"),
         normalized_value=normalized_value,
-        canonical_unit=db_row.get("canonical_unit"),
+        canonical_unit=canonical_unit,
     )

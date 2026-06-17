@@ -92,6 +92,13 @@ def test_resolve_multiplier_baiyi_qianyi_wanyi() -> None:
     assert _resolve_multiplier("百亿元") == Decimal("10000000000")
 
 
+def test_normalize_money_dps_per_share_not_multiplied() -> None:
+    # dps 是每股小数额（如 0.5 元/股），unit 含「元」→ CNY、乘数 1，不被乘万。
+    m = normalize_money("0.5", unit_context="元")
+    assert m.currency == "CNY"
+    assert m.normalized_value == Decimal("0.5")
+
+
 def test_normalize_money_currency_hint_fills_when_unit_has_no_currency() -> None:
     m = normalize_money("100", unit_context="thousand", currency_hint="CNY")
     assert m.currency == "CNY"
