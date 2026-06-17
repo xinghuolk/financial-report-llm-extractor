@@ -104,6 +104,10 @@ class FieldValue:
 
     `raw_bucket` preserves the source-first bucket name for audit; business
     logic should branch on `confidence` (ConfidenceLevel) instead.
+
+    `normalized_value` 是按基础货币单位（如 CNY 元）换算后的绝对值（value × 单位乘数），
+    text/boolean 字段或不可用时为 None；下游应优先消费此字段而非自行解析 raw unit。
+    `canonical_unit` 是基础单位/货币码（如 "CNY"），money 字段下与 currency 一致。
     """
 
     field_id: str
@@ -704,6 +708,8 @@ def build_field_value(
     normalized_value = (
         Decimal(str(normalized_raw)) if normalized_raw is not None else None
     )
+    if value is None:
+        normalized_value = None
 
     return FieldValue(
         field_id=field_id,
