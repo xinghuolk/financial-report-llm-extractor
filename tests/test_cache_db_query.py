@@ -207,5 +207,6 @@ def test_normalized_value_roundtrip(tmp_path: Path) -> None:
 
     row = query_field(db_path=db, company="603345", period_end="2024-12-31",
                       market="CN", field_id="sbc")
+    assert row is not None
     assert row["normalized_value"] == "100808300"
     assert row["canonical_unit"] == "CNY"

@@ -718,7 +718,7 @@ def test_classify_llm_present_unaffected_by_na() -> None:
     assert bucket == "llm_supplement_present"
 
 
-def test_company_field_evaluation_has_normalized_fields():
+def test_company_field_evaluation_has_normalized_fields() -> None:
     from financial_report_llm_extractor.structured_sources.company_evaluation import (
         CompanyFieldEvaluation,
     )
