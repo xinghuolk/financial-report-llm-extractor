@@ -104,6 +104,10 @@ class FieldValue:
 
     `raw_bucket` preserves the source-first bucket name for audit; business
     logic should branch on `confidence` (ConfidenceLevel) instead.
+
+    `normalized_value` 是按基础货币单位（如 CNY 元）换算后的绝对值（value × 单位乘数），
+    text/boolean 字段或不可用时为 None；下游应优先消费此字段而非自行解析 raw unit。
+    `canonical_unit` 是基础单位/货币码（如 "CNY"），money 字段下与 currency 一致。
     """
 
     field_id: str
@@ -115,6 +119,8 @@ class FieldValue:
     evidence_page: int | None
     raw_bucket: str
     reason: str | None = None
+    normalized_value: Decimal | None = None
+    canonical_unit: str | None = None
 
     @property
     def is_reliable(self) -> bool:
@@ -698,6 +704,16 @@ def build_field_value(
     if currency == "unknown":
         currency = None
 
+    normalized_raw = db_row.get("normalized_value")
+    normalized_value = (
+        Decimal(str(normalized_raw)) if normalized_raw is not None else None
+    )
+    canonical_unit = db_row.get("canonical_unit")
+    if value is None:
+        # No primary value → normalized fields are meaningless; keep symmetric.
+        normalized_value = None
+        canonical_unit = None
+
     return FieldValue(
         field_id=field_id,
         value=value,
@@ -708,4 +724,6 @@ def build_field_value(
         evidence_page=db_row.get("evidence_page"),
         raw_bucket=raw_bucket,
         reason=db_row.get("reason"),
+        normalized_value=normalized_value,
+        canonical_unit=canonical_unit,
     )

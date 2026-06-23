@@ -189,3 +189,38 @@ def test_init_db_idempotent_on_v2_schema(tmp_path: Path) -> None:
     finally:
         conn.close()
     assert count == 1, "v2 → v2 must not drop existing rows"
+
+
+def test_v2_to_v3_migration_adds_normalized_columns(tmp_path: Path) -> None:
+    db = tmp_path / "extracted.db"
+    # 建一个 v2 schema（有 market，无 normalized_value）
+    conn = sqlite3.connect(db)
+    conn.executescript(
+        "CREATE TABLE field_values ("
+        " company TEXT NOT NULL, period_end TEXT NOT NULL, market TEXT NOT NULL,"
+        " field_id TEXT NOT NULL, priority TEXT, bucket TEXT NOT NULL,"
+        " value TEXT, currency TEXT, unit TEXT, selected_source TEXT, reason TEXT,"
+        " evidence_page INTEGER, llm_confidence REAL, llm_reasoning_short TEXT,"
+        " PRIMARY KEY (company, period_end, market, field_id));"
+    )
+    conn.commit()
+    conn.close()
+
+    # Seed a v2 row before migration to verify it is dropped
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "INSERT INTO field_values (company, period_end, market, field_id, bucket)"
+        " VALUES ('x','2024-12-31','CN','revenue','clean_present')"
+    )
+    conn.commit()
+    conn.close()
+
+    init_db(db)
+
+    conn = sqlite3.connect(db)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(field_values)")}
+    count = conn.execute("SELECT COUNT(*) FROM field_values").fetchone()[0]
+    conn.close()
+    assert "normalized_value" in cols
+    assert "canonical_unit" in cols
+    assert count == 0  # 迁移 drop 旧数据；tmp/runs 是 source of truth，须重 index

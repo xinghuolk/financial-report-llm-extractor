@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from financial_report_llm_extractor.cache.db import init_db
+from financial_report_llm_extractor.cache.db_query import query_field
 from financial_report_llm_extractor.cache.indexer import index_run
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "cache_sample_run"
@@ -297,6 +298,99 @@ def test_index_run_cross_market_does_not_collide(tmp_path: Path) -> None:
     assert ext_count == 2, f"expected 2 extractions rows, got {ext_count}"
 
 
+def test_index_run_llm_supplement_present_persists_normalized_value_e2e(
+    tmp_path: Path,
+) -> None:
+    """W2: llm_supplement_present bucket preserves normalized_value in DB.
+
+    Verifies the data-flow invariant: normalization happens upstream in the
+    LLM-merge funnel and is serialized into evaluation.json before indexing.
+    So even for llm_supplement_present rows, evaluation.json already carries
+    normalized_value (not NULL), and the indexer must persist it faithfully.
+    """
+    db_path = tmp_path / "extracted.db"
+    init_db(db_path)
+
+    run_dir = tmp_path / "run_llm_normalized"
+    run_dir.mkdir()
+
+    # evaluation.json for a single llm_supplement_present field that already
+    # has normalized_value/canonical_unit filled in by the upstream funnel.
+    eval_payload: dict = {
+        "company": "603345",
+        "period_end": "2024-12-31",
+        "market": "CN",
+        "report_type": "annual",
+        "generated_at": "2026-06-17T00:00:00",
+        "schema_version": "evaluation_v1",
+        "catalog_version": "2026-06-17",
+        "fields": {
+            "gross_profit": {
+                "bucket": "llm_supplement_present",
+                "value": "10080.83",
+                "currency": "CNY",
+                "unit": "万元",
+                "selected_source": "llm",
+                "reason": None,
+                # normalization filled upstream before serialization
+                "normalized_value": "100808300",
+                "canonical_unit": "CNY",
+            }
+        },
+    }
+    (run_dir / "evaluation.json").write_text(
+        json.dumps(eval_payload, ensure_ascii=False), encoding="utf-8"
+    )
+
+    # llm_evidence_supplement.json provides the raw LLM evidence items;
+    # it does NOT carry normalized_value — that lives only in evaluation.json.
+    supp_payload: dict = {
+        "llm_provider": "deepseek",
+        "llm_model": "deepseek-chat",
+        "items": {
+            "gross_profit": {
+                "value": "10080.83",
+                "currency": "CNY",
+                "unit": "万元",
+                "page": 42,
+                "confidence": 0.95,
+                "reasoning": "毛利润直接取自利润表第3行",
+            }
+        },
+    }
+    (run_dir / "llm_evidence_supplement.json").write_text(
+        json.dumps(supp_payload, ensure_ascii=False), encoding="utf-8"
+    )
+
+    index_run(
+        run_dir=run_dir,
+        db_path=db_path,
+        catalog_version="2026-06-17",
+        priority_map={"gross_profit": "P1"},
+    )
+
+    row = query_field(
+        db_path=db_path,
+        company="603345",
+        period_end="2024-12-31",
+        market="CN",
+        field_id="gross_profit",
+    )
+
+    assert row is not None, "gross_profit row must exist after indexing"
+    assert row["bucket"] == "llm_supplement_present"
+    # Core invariant: normalized_value persisted from evaluation.json, NOT NULL
+    assert row["normalized_value"] == "100808300", (
+        f"expected '100808300', got {row['normalized_value']!r}"
+    )
+    assert row["canonical_unit"] == "CNY", (
+        f"expected 'CNY', got {row['canonical_unit']!r}"
+    )
+    # Sanity: LLM evidence metadata from supplement also present
+    assert row["evidence_page"] == 42
+    assert row["llm_confidence"] == pytest.approx(0.95)
+
+
 def test_index_run_missing_supplement_does_not_break(tmp_path: Path) -> None:
     """If llm_evidence_supplement.json is absent, LLM rows have null value but
     the row is still inserted with the bucket from evaluation.json."""
@@ -322,3 +416,47 @@ def test_index_run_missing_supplement_does_not_break(tmp_path: Path) -> None:
     finally:
         conn.close()
     assert row == (None, None)
+
+
+def test_index_run_warns_on_pre_v3_missing_normalized(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Re-indexing a pre-v3 evaluation.json (LLM money row without
+    normalized_value) emits a stderr warning and does NOT backfill."""
+    import json
+
+    run_dir = tmp_path / "old_run"
+    run_dir.mkdir()
+    (run_dir / "evaluation.json").write_text(
+        json.dumps({
+            "company": "603345", "period_end": "2024-12-31", "market": "CN",
+            "report_type": "annual", "schema_version": "company-evaluation-v1",
+            "generated_at": "2026-06-16T00:00:00+00:00",
+            "fields": {
+                "stock_based_compensation": {
+                    "bucket": "llm_supplement_present",
+                    "value": "10080.83", "currency": "CNY", "unit": "万元",
+                    "selected_source": "llm", "reason": None,
+                    # NOTE: no normalized_value/canonical_unit (pre-v3)
+                },
+            },
+        }),
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "extracted.db"
+    init_db(db_path)
+    index_run(
+        run_dir=run_dir, db_path=db_path,
+        catalog_version="2026-05-02",
+        priority_map={"stock_based_compensation": "P2"},
+    )
+    err = capsys.readouterr().err
+    assert "normalized_value" in err
+    assert "stock_based_compensation" in err
+    # Indexer does not backfill: DB normalized_value stays NULL.
+    row = query_field(
+        db_path=db_path, company="603345", period_end="2024-12-31",
+        market="CN", field_id="stock_based_compensation",
+    )
+    assert row is not None
+    assert row["normalized_value"] is None

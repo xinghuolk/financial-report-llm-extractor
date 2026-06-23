@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from typing import cast
 
 from financial_report_llm_extractor.models import Currency, MoneyAmount
 
@@ -34,18 +35,29 @@ def parse_numeric_value(raw_value: str) -> Decimal:
 
 def resolve_money_unit(
     unit_context: str,
+    *,
+    currency_hint: str | None = None,
 ) -> tuple[Currency, str, Decimal, Currency]:
     unit = unit_context.strip()
     currency = _resolve_currency(unit)
+    if currency in {"unknown", "ambiguous"} and currency_hint in {"CNY", "HKD", "USD"}:
+        currency = cast(Currency, currency_hint)
     if currency in {"unknown", "ambiguous"}:
         raise MoneyNormalizationError("currency is ambiguous")
     multiplier = _resolve_multiplier(unit)
     return currency, unit, multiplier, currency
 
 
-def normalize_money(raw_value: str, *, unit_context: str) -> MoneyAmount:
+def normalize_money(
+    raw_value: str,
+    *,
+    unit_context: str,
+    currency_hint: str | None = None,
+) -> MoneyAmount:
     value = parse_numeric_value(raw_value)
-    currency, unit, multiplier, normalized_unit = resolve_money_unit(unit_context)
+    currency, unit, multiplier, normalized_unit = resolve_money_unit(
+        unit_context, currency_hint=currency_hint
+    )
     money = MoneyAmount(
         value_raw=raw_value,
         value=value,
@@ -60,22 +72,35 @@ def normalize_money(raw_value: str, *, unit_context: str) -> MoneyAmount:
 
 
 def _resolve_currency(unit: str) -> Currency:
+    # Check HKD/USD before CNY: the CNY marker "元" is a substring of "港元"
+    # (HKD) and "美元" (USD), so a CNY-first order misclassifies those as CNY
+    # (PR-25 Codex P2). More specific currency words must win.
     normalized = unit.lower()
-    if any(marker in unit for marker in ("人民币", "元")) or "cny" in normalized or "rmb" in normalized:
-        return "CNY"
     if "hkd" in normalized or "hk$" in normalized or "港元" in unit or "港币" in unit:
         return "HKD"
     if "usd" in normalized or "us$" in normalized or "美元" in unit:
         return "USD"
+    if any(marker in unit for marker in ("人民币", "元")) or "cny" in normalized or "rmb" in normalized:
+        return "CNY"
     return "unknown"
 
 
 def _resolve_multiplier(unit: str) -> Decimal:
     normalized = unit.lower()
+    if "billion" in normalized or "十亿元" in unit or "十亿" in unit:
+        return Decimal("1000000000")
+    if "万亿" in unit:
+        return Decimal("1000000000000")
+    if "千亿" in unit:
+        return Decimal("100000000000")
+    if "百亿" in unit:
+        return Decimal("10000000000")
+    if "亿元" in unit or "亿" in unit:
+        return Decimal("100000000")
     if "million" in normalized or "百万元" in unit or "百万" in unit:
         return Decimal("1000000")
+    if "万元" in unit or "万" in unit:
+        return Decimal("10000")
     if "thousand" in normalized or "千元" in unit or "千" in unit:
         return Decimal("1000")
-    if "billion" in normalized or "十亿元" in unit:
-        return Decimal("1000000000")
     return Decimal("1")

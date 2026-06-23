@@ -186,3 +186,27 @@ def test_query_field_result_includes_market(tmp_path: Path) -> None:
     )
     assert result is not None
     assert result["market"] == "CN"
+
+
+def test_normalized_value_roundtrip(tmp_path: Path) -> None:
+    from financial_report_llm_extractor.cache.db import init_db, connect
+    from financial_report_llm_extractor.cache.db_query import query_field
+
+    db = tmp_path / "extracted.db"
+    init_db(db)
+    conn = connect(db)
+    conn.execute(
+        "INSERT INTO field_values (company, period_end, market, field_id, priority,"
+        " bucket, value, currency, unit, selected_source, reason, evidence_page,"
+        " llm_confidence, llm_reasoning_short, normalized_value, canonical_unit)"
+        " VALUES ('603345','2024-12-31','CN','sbc','P3','llm_supplement_present',"
+        " '\"10080.83\"','CNY','万元','llm',NULL,NULL,NULL,NULL,'100808300','CNY')"
+    )
+    conn.commit()
+    conn.close()
+
+    row = query_field(db_path=db, company="603345", period_end="2024-12-31",
+                      market="CN", field_id="sbc")
+    assert row is not None
+    assert row["normalized_value"] == "100808300"
+    assert row["canonical_unit"] == "CNY"

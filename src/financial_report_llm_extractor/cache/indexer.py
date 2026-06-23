@@ -12,6 +12,7 @@ We join by field_id and pick the right source per bucket.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -101,8 +102,21 @@ def index_run(
         )
 
         written = 0
+        # P1 (PR-25): re-indexing a pre-v3 evaluation.json (no normalized_value
+        # key) leaves LLM money rows with NULL normalized values. Indexer does
+        # NOT backfill — normalization is a single pipeline-stage funnel and the
+        # DB must stay a faithful index of evaluation.json. Instead, surface a
+        # warning so the operator knows to regenerate (re-run pipeline, LLM cache
+        # makes this near-free) rather than silently shipping stale NULLs.
+        stale_normalized: list[str] = []
         for field_id, eval_info in fields.items():
             bucket = str(eval_info.get("bucket", ""))
+            if (
+                bucket == "llm_supplement_present"
+                and eval_info.get("value") is not None
+                and eval_info.get("normalized_value") is None
+            ):
+                stale_normalized.append(field_id)
             supp = supplement_items.get(field_id, {})
             row = _merge_field_row(
                 bucket=bucket,
@@ -114,8 +128,9 @@ def index_run(
                 INSERT INTO field_values (
                   company, period_end, market, field_id, priority, bucket, value,
                   currency, unit, selected_source, reason,
-                  evidence_page, llm_confidence, llm_reasoning_short
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  evidence_page, llm_confidence, llm_reasoning_short,
+                  normalized_value, canonical_unit
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     company, period_end, market, field_id,
@@ -129,10 +144,22 @@ def index_run(
                     row["evidence_page"],
                     row["llm_confidence"],
                     row["llm_reasoning_short"],
+                    row["normalized_value"],
+                    row["canonical_unit"],
                 ),
             )
             written += 1
         conn.commit()
+        if stale_normalized:
+            print(
+                f"WARNING [{run_dir}]: {len(stale_normalized)} LLM money field(s) "
+                f"lack normalized_value (pre-v3 evaluation.json): "
+                f"{', '.join(sorted(stale_normalized)[:8])}"
+                f"{' ...' if len(stale_normalized) > 8 else ''}. "
+                "Re-run the pipeline to regenerate evaluation.json (LLM cache "
+                "makes this near-free); re-indexing alone will not backfill them.",
+                file=sys.stderr,
+            )
         return written
     finally:
         conn.close()
@@ -183,6 +210,11 @@ def _merge_field_row(
             if isinstance(confidence, (int, float)) else None
         ),
         "llm_reasoning_short": _truncate(reasoning, 500),
+        # normalized_value/canonical_unit always come from eval_info: normalization
+        # happens upstream (LLM-merge funnel / provider) and is serialized into
+        # evaluation.json. The raw llm_evidence_supplement items carry no normalized fields.
+        "normalized_value": eval_info.get("normalized_value"),
+        "canonical_unit": eval_info.get("canonical_unit"),
     }
 
 

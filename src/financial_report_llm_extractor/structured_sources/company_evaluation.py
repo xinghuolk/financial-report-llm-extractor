@@ -152,6 +152,8 @@ class CompanyFieldEvaluation:
     currency: str | None
     unit: str | None
     reason: str | None
+    normalized_value: Decimal | None = None
+    canonical_unit: str | None = None
     # Phase EC Tier 1: per-source candidate values for review of conflicts.
     # Tuple of (source_name, normalized_value_str). Populated for non-clean
     # rows where mapping_result was provided to build_company_evaluation.
@@ -235,6 +237,8 @@ def build_company_evaluation(
             currency=export_item.currency,
             unit=export_item.unit,
             reason=reason,
+            normalized_value=export_item.normalized_value,
+            canonical_unit=export_item.canonical_unit,
             candidate_values=candidate_values,
         ))
         by_bucket[bucket] += 1
@@ -570,8 +574,14 @@ def _evaluation_to_dict(
                 "bucket": f.bucket,
                 "selected_source": f.selected_source,
                 "value": _format_decimal_plain(f.value) if f.value is not None else None,
+                "normalized_value": (
+                    _format_decimal_plain(f.normalized_value)
+                    if f.normalized_value is not None
+                    else None
+                ),
                 "currency": f.currency,
                 "unit": f.unit,
+                "canonical_unit": f.canonical_unit,
                 "reason": f.reason,
             }
             for f in ev.fields

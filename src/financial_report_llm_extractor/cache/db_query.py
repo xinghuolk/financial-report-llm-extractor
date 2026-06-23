@@ -12,7 +12,7 @@ from financial_report_llm_extractor.cache.db import connect
 _FIELD_COLUMNS = (
     "bucket", "value", "currency", "unit", "selected_source",
     "reason", "evidence_page", "llm_confidence", "llm_reasoning_short",
-    "priority",
+    "priority", "normalized_value", "canonical_unit",
 )
 
 
@@ -120,7 +120,8 @@ def _decode_field_row(
     row: tuple[Any, ...],
 ) -> dict[str, Any]:
     (bucket, value_text, currency, unit, selected_source, reason,
-     evidence_page, llm_confidence, llm_reasoning_short, priority) = row
+     evidence_page, llm_confidence, llm_reasoning_short, priority,
+     normalized_value, canonical_unit) = row
     return {
         "company": company,
         "period_end": period_end,
@@ -136,4 +137,6 @@ def _decode_field_row(
         "evidence_page": evidence_page,
         "llm_confidence": llm_confidence,
         "llm_reasoning_short": llm_reasoning_short,
+        "normalized_value": normalized_value,
+        "canonical_unit": canonical_unit,
     }

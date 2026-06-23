@@ -4,6 +4,7 @@ import pytest
 
 from financial_report_llm_extractor.money import (
     MoneyNormalizationError,
+    _resolve_multiplier,
     normalize_money,
     parse_numeric_value,
     resolve_money_unit,
@@ -61,3 +62,76 @@ def test_normalize_money_returns_valid_money_amount() -> None:
 def test_normalize_money_requires_unambiguous_currency() -> None:
     with pytest.raises(MoneyNormalizationError, match="currency is ambiguous"):
         normalize_money("100", unit_context="million")
+
+
+def test_resolve_multiplier_wan() -> None:
+    assert _resolve_multiplier("万元") == Decimal("10000")
+    assert _resolve_multiplier("万") == Decimal("10000")
+
+
+def test_resolve_multiplier_yi() -> None:
+    assert _resolve_multiplier("亿元") == Decimal("100000000")
+    assert _resolve_multiplier("亿") == Decimal("100000000")
+
+
+def test_resolve_multiplier_baiwan_not_confused_by_wan() -> None:
+    assert _resolve_multiplier("百万元") == Decimal("1000000")
+    assert _resolve_multiplier("百万") == Decimal("1000000")
+
+
+def test_resolve_multiplier_shiyi_not_confused_by_yi() -> None:
+    assert _resolve_multiplier("十亿") == Decimal("1000000000")
+    assert _resolve_multiplier("十亿元") == Decimal("1000000000")
+
+
+def test_resolve_multiplier_baiyi_qianyi_wanyi() -> None:
+    assert _resolve_multiplier("百亿") == Decimal("10000000000")
+    assert _resolve_multiplier("千亿") == Decimal("100000000000")
+    assert _resolve_multiplier("万亿") == Decimal("1000000000000")
+    # 子串安全：不被「亿」误判为 1e8
+    assert _resolve_multiplier("百亿元") == Decimal("10000000000")
+
+
+def test_resolve_currency_hkd_usd_not_swallowed_by_yuan() -> None:
+    # 「港元」「美元」含「元」子串，必须先判 HKD/USD 而非被 CNY 吞（PR-25 Codex P2）
+    from financial_report_llm_extractor.money import _resolve_currency
+
+    assert _resolve_currency("港元") == "HKD"
+    assert _resolve_currency("美元") == "USD"
+    assert _resolve_currency("港币") == "HKD"
+    assert _resolve_currency("元") == "CNY"
+    assert _resolve_currency("人民币") == "CNY"
+
+
+def test_normalize_money_hkd_usd_units_normalize_correctly() -> None:
+    # HKD/USD reporter 的 LLM money 字段：unit=港元/美元 应得正确 canonical_unit
+    m_hkd = normalize_money("5", unit_context="千港元")
+    assert m_hkd.currency == "HKD"
+    assert m_hkd.normalized_value == Decimal("5000")
+    m_usd = normalize_money("3", unit_context="百万美元")
+    assert m_usd.currency == "USD"
+    assert m_usd.normalized_value == Decimal("3000000")
+
+
+def test_normalize_money_dps_per_share_not_multiplied() -> None:
+    # dps 是每股小数额（如 0.5 元/股），unit 含「元」→ CNY、乘数 1，不被乘万。
+    m = normalize_money("0.5", unit_context="元")
+    assert m.currency == "CNY"
+    assert m.normalized_value == Decimal("0.5")
+
+
+def test_normalize_money_currency_hint_fills_when_unit_has_no_currency() -> None:
+    m = normalize_money("100", unit_context="thousand", currency_hint="CNY")
+    assert m.currency == "CNY"
+    assert m.normalized_value == Decimal("100000")
+
+
+def test_normalize_money_unit_currency_overrides_hint() -> None:
+    m = normalize_money("5", unit_context="万元", currency_hint="USD")
+    assert m.currency == "CNY"
+    assert m.normalized_value == Decimal("50000")
+
+
+def test_normalize_money_still_raises_without_hint() -> None:
+    with pytest.raises(MoneyNormalizationError):
+        normalize_money("100", unit_context="thousand")
