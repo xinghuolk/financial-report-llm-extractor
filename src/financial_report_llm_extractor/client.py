@@ -20,6 +20,11 @@ from importlib.resources import files as _pkg_files
 from pathlib import Path
 from typing import Any, Callable
 
+from financial_report_llm_extractor.money import (
+    MoneyNormalizationError,
+    parse_numeric_value,
+)
+
 
 class ConfidenceLevel(Enum):
     """Bucket → runtime reliability translation.
@@ -605,12 +610,28 @@ class FinancialReportClient:
         fields: dict[str, FieldValue] = {}
         for field_id, db_row in hit.get("fields", {}).items():
             field_taxonomy = taxonomy_fields.get(field_id, {})
-            fv = build_field_value(
-                field_id=field_id,
-                db_row=db_row,
-                field_taxonomy=field_taxonomy,
-                include_llm_supplement=include_llm_supplement,
-            )
+            try:
+                fv = build_field_value(
+                    field_id=field_id,
+                    db_row=db_row,
+                    field_taxonomy=field_taxonomy,
+                    include_llm_supplement=include_llm_supplement,
+                )
+            except Exception:
+                # Defense-in-depth: a single malformed row must never sink the
+                # entire extraction (root cause of the HK 00001 crash). Degrade
+                # that field to UNAVAILABLE; all other fields return normally.
+                fv = FieldValue(
+                    field_id=field_id,
+                    value=None,
+                    currency=None,
+                    unit=None,
+                    confidence=ConfidenceLevel.UNAVAILABLE,
+                    source=None,
+                    evidence_page=None,
+                    raw_bucket=str(db_row.get("bucket", "")),
+                    reason="field_decode_error",
+                )
             fields[field_id] = fv
 
         return ExtractionResult(
@@ -692,8 +713,15 @@ def build_field_value(
     if raw_value is None:
         value = None
     elif value_type in {"money", "number"}:
-        # Decimal(str(...)) detour preserves precision (Task 7 invariant).
-        value = Decimal(str(raw_value))
+        # Use parse_numeric_value (not bare Decimal): HK statements report
+        # negatives as accounting parentheses "(4652)" = -4652, and values may
+        # carry thousands separators "1,234". Bare Decimal(str(...)) raises
+        # InvalidOperation on these and crashed the whole extraction. Truly
+        # non-numeric junk ("N/A", "") degrades to None instead of crashing.
+        try:
+            value = parse_numeric_value(str(raw_value))
+        except MoneyNormalizationError:
+            value = None
     elif value_type == "boolean":
         value = bool(raw_value)
     else:  # text
@@ -705,9 +733,13 @@ def build_field_value(
         currency = None
 
     normalized_raw = db_row.get("normalized_value")
-    normalized_value = (
-        Decimal(str(normalized_raw)) if normalized_raw is not None else None
-    )
+    if normalized_raw is None:
+        normalized_value = None
+    else:
+        try:
+            normalized_value = parse_numeric_value(str(normalized_raw))
+        except MoneyNormalizationError:
+            normalized_value = None
     canonical_unit = db_row.get("canonical_unit")
     if value is None:
         # No primary value → normalized fields are meaningless; keep symmetric.
