@@ -205,3 +205,60 @@ def test_hk_yahoo_trust_policy_defer_tax_liab_is_pdf_verified() -> None:
     evidence = policy.build_policy_evidence("defer_tax_liab")
     assert evidence["sample_companies"] == ["00001", "01113"]
     assert evidence["sample_count"] == 2
+
+
+def test_trust_rule_applies_to_markets_default_and_validation() -> None:
+    """2026-06-12 CN extension: applies_to_markets defaults to HK-only;
+    only yahoo_standardized_accepted rules may extend, and values are
+    restricted to known markets."""
+    from decimal import Decimal
+
+    from financial_report_llm_extractor.structured_sources.hk_yahoo_trust_policy import (
+        HkYahooTrustRule,
+    )
+
+    def _rule(
+        classification: str,
+        markets: tuple[str, ...] | None,
+        required_proof: str | None = None,
+    ) -> HkYahooTrustRule:
+        kwargs: dict[str, object] = {}
+        if markets is not None:
+            kwargs["applies_to_markets"] = markets
+        return HkYahooTrustRule(
+            policy_id="p:gross_profit",
+            field_id="gross_profit",
+            classification=classification,  # type: ignore[arg-type]
+            trusted_currency="HKD",
+            trusted_unit="raw",
+            trusted_unit_multiplier=Decimal("1"),
+            allowed_yahoo_raw_fields=("Gross Profit",),
+            definition_status_reason="operator decision (test)",
+            required_proof=required_proof,
+            **kwargs,  # type: ignore[arg-type]
+        )
+
+    default_rule = _rule("yahoo_standardized_accepted", None)
+    default_rule.validate()
+    assert default_rule.applies_to_markets == ("HK",)
+    assert default_rule.applies_to_market("HK") is True
+    assert default_rule.applies_to_market("CN") is False
+    assert default_rule.applies_to_market(None) is False
+
+    extended = _rule("yahoo_standardized_accepted", ("HK", "CN"))
+    extended.validate()
+    assert extended.applies_to_market("CN") is True
+
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError, match="unsupported market"):
+        _rule("yahoo_standardized_accepted", ("US",)).validate()
+
+    # Market extension is reserved for the operator-adjudicated
+    # standardized acceptance — verified rules are HK-proof-scoped.
+    with _pytest.raises(ValueError, match="standardized_accepted"):
+        _rule(
+            "yahoo_definition_unverified",
+            ("HK", "CN"),
+            required_proof="proof",
+        ).validate()

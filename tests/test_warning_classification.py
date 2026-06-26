@@ -405,3 +405,68 @@ def test_write_warning_classification_artifacts_writes_json_and_markdown(
     markdown = paths["markdown"].read_text(encoding="utf-8")
     assert "# Warning Classification" in markdown
     assert "- source_unavailable: 1 (bond_payable)" in markdown
+
+
+def test_warning_classification_standardized_category_extends_to_cn() -> None:
+    """2026-06-12 CN extension: a yahoo_standardized_accepted rule with
+    applies_to_markets including CN categorizes a CN yahoo-selected item
+    as standardized_derivation_accepted (benign); the HK-only default
+    must NOT cross the market boundary."""
+    export = SourceFirstExportResult(
+        profile="source_only",
+        catalog_id="test",
+        catalog_version="1",
+        items={
+            "gross_profit": _item(
+                "gross_profit",
+                status="present",
+                selected_source="yahoo",
+                warnings=(
+                    "source policy accepted primary candidate as a "
+                    "standardized derivation (issuer does not disclose "
+                    "this line); provider divergence retained in the "
+                    "reconciliation report",
+                ),
+            ),
+        },
+    )
+
+    def _policy(markets: tuple[str, ...]) -> HkYahooTrustPolicy:
+        return HkYahooTrustPolicy(
+            version=1,
+            market="HK",
+            provider="yahoo",
+            rules=(
+                HkYahooTrustRule(
+                    policy_id="p:gross_profit",
+                    field_id="gross_profit",
+                    classification="yahoo_standardized_accepted",
+                    trusted_currency="HKD",
+                    trusted_unit="raw",
+                    trusted_unit_multiplier=Decimal("1"),
+                    allowed_yahoo_raw_fields=("Gross Profit",),
+                    definition_status_reason="operator decision (test)",
+                    applies_to_markets=markets,
+                ),
+            ),
+        )
+
+    result = build_warning_classification(
+        export,
+        candidate_entries={},
+        market="CN",
+        hk_yahoo_trust_policy=_policy(("HK", "CN")),
+    )
+    assert result.items["gross_profit"].category == (
+        "standardized_derivation_accepted"
+    )
+
+    result_hk_only = build_warning_classification(
+        export,
+        candidate_entries={},
+        market="CN",
+        hk_yahoo_trust_policy=_policy(("HK",)),
+    )
+    assert result_hk_only.items["gross_profit"].category != (
+        "standardized_derivation_accepted"
+    )

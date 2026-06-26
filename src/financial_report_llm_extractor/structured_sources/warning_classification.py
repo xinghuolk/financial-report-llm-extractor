@@ -223,6 +223,18 @@ def _hk_yahoo_category(
         market=market,
         hk_yahoo_trust_policy=hk_yahoo_trust_policy,
     ):
+        # 2026-06-12 CN extension: standardized-acceptance rules may extend
+        # beyond HK via applies_to_markets (gross_profit on CN). Only that
+        # classification crosses the market boundary — verified/unverified
+        # categories (and the pdf_required fallback) stay HK-scoped.
+        if hk_yahoo_trust_policy is not None and item.selected_source == "yahoo":
+            rule = hk_yahoo_trust_policy.rule_for_field(field_id)
+            if (
+                rule is not None
+                and rule.classification == "yahoo_standardized_accepted"
+                and rule.applies_to_market(market)
+            ):
+                return "standardized_derivation_accepted"
         return None
     assert hk_yahoo_trust_policy is not None
     if item.selected_source != "yahoo":

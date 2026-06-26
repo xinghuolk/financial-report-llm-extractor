@@ -115,6 +115,12 @@ class HkYahooTrustRule:
     # issuers reporting in different currencies (e.g. `acct_payable` covers
     # Trade payables in HKD/CNY/USD reporters per PDF spot-check).
     additional_trusted_currencies: tuple[str, ...] | None = None
+    # 2026-06-12 CN extension: markets this rule applies to. Defaults to
+    # HK-only (the policy file's home market). yahoo_standardized_accepted
+    # rules may extend to CN when the operator adjudicates the same
+    # standardized derivation there (gross_profit: CN GAAP income
+    # statements disclose no gross-profit line either).
+    applies_to_markets: tuple[str, ...] = ("HK",)
 
     def validate(
         self,
@@ -152,6 +158,21 @@ class HkYahooTrustRule:
             # deliberate judgment: the rationale must be recorded.
             if not self.definition_status_reason:
                 raise ValueError("definition_status_reason is required")
+        if not self.applies_to_markets:
+            raise ValueError("applies_to_markets must not be empty")
+        for market in self.applies_to_markets:
+            if market not in {"HK", "CN"}:
+                raise ValueError("unsupported market in applies_to_markets")
+        if self.applies_to_markets != ("HK",) and (
+            self.classification != "yahoo_standardized_accepted"
+        ):
+            # Verified/unverified classifications are proven against HK
+            # Yahoo adapter labels specifically — only the operator-
+            # adjudicated standardized acceptance may extend markets.
+            raise ValueError(
+                "applies_to_markets extension requires "
+                "yahoo_standardized_accepted classification"
+            )
         for sample in self.samples:
             sample.validate(
                 allowed_yahoo_raw_fields=self.allowed_yahoo_raw_fields,
@@ -175,6 +196,10 @@ class HkYahooTrustRule:
         if company_id is None:
             return False
         return company_id in self.pdf_verified_company_ids
+
+    def applies_to_market(self, market: str | None) -> bool:
+        """2026-06-12 CN extension: True when the rule covers `market`."""
+        return market is not None and market.upper() in self.applies_to_markets
 
     def accepted_currencies(self) -> tuple[str, ...]:
         """Phase HK-B.5.2: tuple of all currencies this rule accepts.
@@ -295,6 +320,9 @@ def _parse_rule(payload: object) -> HkYahooTrustRule:
         ),
         additional_trusted_currencies=_optional_string_tuple(
             rule, "additional_trusted_currencies"
+        ),
+        applies_to_markets=(
+            _optional_string_tuple(rule, "applies_to_markets") or ("HK",)
         ),
     )
 

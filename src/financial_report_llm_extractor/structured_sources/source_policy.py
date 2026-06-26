@@ -367,6 +367,30 @@ def _resolve_single_source(
             or candidate.source != primary_source
         )
     )
+    # 2026-06-12 review: the CN gross_profit route flip (akshare->yahoo
+    # primary) makes a lone Yahoo candidate the PRIMARY single source, so
+    # the requires-pdf waiver above would bless it clean WITHOUT consulting
+    # the standardized-acceptance trust rule — the gate the conflict branch
+    # enforces (_resolve_field's select_primary_standardized path). Apply
+    # the same gate here: a candidate accepted as clean under
+    # select_primary_standardized must pass _can_apply_standardized_acceptance
+    # (raw field / currency / unit / market coverage). Gate failure (rule
+    # absent, market not covered, mismatched candidate) downgrades to
+    # single_source_unverified — the honest fallback, consistent with the
+    # cross-check-source waiver carve-out above.
+    if (
+        not requires_pdf
+        and market_policy is not None
+        and market_policy.on_conflict == "select_primary_standardized"
+        and not _can_apply_standardized_acceptance(
+            field.field_id,
+            candidate,
+            market=market,
+            company_id=company_id,
+            hk_yahoo_trust_policy=hk_yahoo_trust_policy,
+        )
+    ):
+        requires_pdf = True
     metadata_classifications = _metadata_classifications(entry, market, candidate)
     if metadata_classifications:
         if not _can_apply_hk_yahoo_trust_policy(
@@ -566,14 +590,19 @@ def _can_apply_standardized_acceptance(
     required — standardized acceptance exists precisely for lines the
     issuer does not disclose, where sample verification is impossible and
     the operator adjudication (recorded in definition_status_reason)
-    replaces it.
+    replaces it. Market coverage comes from the rule's applies_to_markets
+    (HK-only by default; gross_profit extends to CN per the 2026-06-12
+    operator decision — CN GAAP statements disclose no gross-profit line
+    either).
     """
-    if market != "HK" or hk_yahoo_trust_policy is None or candidate is None:
+    if hk_yahoo_trust_policy is None or candidate is None:
         return False
     if candidate.source != "yahoo":
         return False
     rule = hk_yahoo_trust_policy.rule_for_field(field_id)
     if rule is None or rule.classification != "yahoo_standardized_accepted":
+        return False
+    if not rule.applies_to_market(market):
         return False
     accepted_currencies = rule.accepted_currencies()
     return (

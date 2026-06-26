@@ -342,8 +342,29 @@ def evaluate_source_first_slice(
     llm_supplement_path: Path | None = None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    # The HK Yahoo trust policy is HK-scoped by default, so non-HK slices
+    # normally drop it. 2026-06-12 review: a yahoo_standardized_accepted rule
+    # may extend to CN via applies_to_markets (gross_profit — CN GAAP
+    # statements disclose no gross-profit line, so the lone Yahoo candidate
+    # is a standardized derivation just as in HK). Forward the policy when a
+    # rule explicitly covers this market so the single-source / conflict
+    # standardized-acceptance gate can vet the candidate. Every OTHER policy
+    # consumer (_can_apply_hk_yahoo_trust_policy, _is_hk_yahoo_policy_context,
+    # the HK-15 closure report) stays hardcoded HK-only, so HK behavior is
+    # unchanged and CN only ever reaches the applies_to_market-gated path.
     slice_hk_yahoo_trust_policy = (
-        hk_yahoo_trust_policy if market.upper() == "HK" else None
+        hk_yahoo_trust_policy
+        if (
+            hk_yahoo_trust_policy is not None
+            and (
+                market.upper() == "HK"
+                or any(
+                    rule.applies_to_market(market)
+                    for rule in hk_yahoo_trust_policy.rules
+                )
+            )
+        )
+        else None
     )
     write_source_inventory(output_dir / "source_inventory.jsonl", records)
     mapping = map_source_inventory(catalog, records)

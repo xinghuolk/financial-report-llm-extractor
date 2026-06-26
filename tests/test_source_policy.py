@@ -1684,3 +1684,261 @@ def test_source_policy_single_source_waiver_applies_to_primary_source_only() -> 
     assert item.selection_status == "selected_single_source"
     assert item.conflict_classifications == ()
     assert item.verification_required is False
+
+
+def test_source_policy_standardized_branch_extends_to_cn_when_rule_allows() -> None:
+    """2026-06-12 (evening) operator decision: gross_profit CN follows the
+    HK standardized acceptance. The trust rule's applies_to_markets
+    carries the market coverage — ["HK", "CN"] accepts a CN conflict's
+    Yahoo candidate; the default HK-only rule must NOT."""
+    catalog = _catalog(
+        "gross_profit",
+        SourcePolicy(
+            semantic_concept="reported statement line",
+            market_policies={
+                "CN": MarketSourcePolicy(
+                    primary_route="yahoo_direct",
+                    cross_check_routes=("akshare_direct",),
+                    on_conflict="select_primary_standardized",
+                    single_source_requires_pdf=False,
+                )
+            },
+        ),
+    )
+    mapping = _mapping(
+        "gross_profit",
+        (
+            _candidate(
+                "akshare",
+                "毛利",
+                "GROSS_PROFIT",
+                Decimal("200"),
+                currency="CNY",
+                unit="yuan",
+                canonical_unit="CNY",
+                statement_metadata_proven=True,
+            ),
+            _candidate(
+                "yahoo",
+                "Gross Profit",
+                None,
+                Decimal("100"),
+                currency="CNY",
+                unit="raw",
+                canonical_unit="CNY",
+                unit_multiplier=Decimal("1"),
+                statement_metadata_proven=True,
+            ),
+        ),
+        policy_evidence_candidates=(),
+    )
+    reconciliation = reconcile_mapped_fields(mapping)
+
+    cn_rule = HkYahooTrustRule(
+        policy_id="hk_yahoo_standardized_accepted:gross_profit",
+        field_id="gross_profit",
+        classification="yahoo_standardized_accepted",
+        trusted_currency="HKD",
+        trusted_unit="raw",
+        trusted_unit_multiplier=Decimal("1"),
+        allowed_yahoo_raw_fields=("Gross Profit",),
+        definition_status_reason="operator decision (test)",
+        additional_trusted_currencies=("CNY", "USD"),
+        applies_to_markets=("HK", "CN"),
+    )
+    policy_with_cn = HkYahooTrustPolicy(
+        version=1, market="HK", provider="yahoo", rules=(cn_rule,),
+    )
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="CN",
+        company_id="600519",
+        hk_yahoo_trust_policy=policy_with_cn,
+        provider_semantics_catalog=None,
+    )
+    item = report.items["gross_profit"]
+    assert item.selection_status == "selected_primary"
+    assert item.selected_candidate is not None
+    assert item.selected_candidate.source == "yahoo"
+    assert item.verification_required is False
+
+    # Default applies_to_markets=("HK",) must refuse the CN conflict.
+    hk_only_rule = HkYahooTrustRule(
+        policy_id="hk_yahoo_standardized_accepted:gross_profit",
+        field_id="gross_profit",
+        classification="yahoo_standardized_accepted",
+        trusted_currency="HKD",
+        trusted_unit="raw",
+        trusted_unit_multiplier=Decimal("1"),
+        allowed_yahoo_raw_fields=("Gross Profit",),
+        definition_status_reason="operator decision (test)",
+        additional_trusted_currencies=("CNY", "USD"),
+    )
+    policy_hk_only = HkYahooTrustPolicy(
+        version=1, market="HK", provider="yahoo", rules=(hk_only_rule,),
+    )
+    report = build_source_policy_report(
+        catalog,
+        mapping,
+        reconciliation,
+        market="CN",
+        company_id="600519",
+        hk_yahoo_trust_policy=policy_hk_only,
+        provider_semantics_catalog=None,
+    )
+    item = report.items["gross_profit"]
+    assert item.selection_status != "selected_primary"
+    assert item.verification_required is True
+
+
+def _cn_standardized_policy() -> SourcePolicy:
+    """CN gross_profit market policy after the route flip: the lone Yahoo
+    candidate becomes the PRIMARY single source under
+    select_primary_standardized."""
+    return SourcePolicy(
+        semantic_concept="reported statement line",
+        market_policies={
+            "CN": MarketSourcePolicy(
+                primary_route="yahoo_direct",
+                cross_check_routes=("akshare_direct",),
+                on_conflict="select_primary_standardized",
+                single_source_requires_pdf=False,
+            )
+        },
+    )
+
+
+def test_source_policy_single_source_standardized_gated_when_trust_rule_absent() -> None:
+    """2026-06-12 review: the single-source path must enforce the SAME
+    standardized-acceptance gate as the conflict branch. The CN route flip
+    (akshare->yahoo primary) makes the lone Yahoo candidate the primary
+    single source; the requires-pdf waiver alone must NOT bless it clean
+    when no yahoo_standardized_accepted rule authorizes the market — it
+    falls back to single_source_unverified (honest downgrade)."""
+    yahoo_only = _single_source_mapping(
+        "gross_profit",
+        _candidate(
+            "yahoo",
+            "Gross Profit",
+            None,
+            Decimal("100"),
+            currency="CNY",
+            unit="raw",
+            canonical_unit="CNY",
+            unit_multiplier=Decimal("1"),
+            statement_metadata_proven=True,
+        ),
+    )
+    report = build_source_policy_report(
+        _catalog("gross_profit", _cn_standardized_policy()),
+        yahoo_only,
+        reconcile_mapped_fields(yahoo_only),
+        market="CN",
+        company_id="600519",
+        # No trust policy → the standardized-acceptance gate cannot pass.
+        hk_yahoo_trust_policy=None,
+        provider_semantics_catalog=None,
+    )
+    item = report.items["gross_profit"]
+    assert item.selection_status == "selected_single_source"
+    assert item.conflict_classifications == ("single_source_unverified",)
+    assert item.verification_required is True
+
+
+def test_source_policy_single_source_standardized_gated_when_market_not_covered() -> None:
+    """Same single-source path, but the trust rule exists yet stays HK-only
+    (default applies_to_markets). The gate must still refuse the CN
+    candidate → single_source_unverified."""
+    yahoo_only = _single_source_mapping(
+        "gross_profit",
+        _candidate(
+            "yahoo",
+            "Gross Profit",
+            None,
+            Decimal("100"),
+            currency="CNY",
+            unit="raw",
+            canonical_unit="CNY",
+            unit_multiplier=Decimal("1"),
+            statement_metadata_proven=True,
+        ),
+    )
+    hk_only_rule = HkYahooTrustRule(
+        policy_id="hk_yahoo_standardized_accepted:gross_profit",
+        field_id="gross_profit",
+        classification="yahoo_standardized_accepted",
+        trusted_currency="HKD",
+        trusted_unit="raw",
+        trusted_unit_multiplier=Decimal("1"),
+        allowed_yahoo_raw_fields=("Gross Profit",),
+        definition_status_reason="operator decision (test)",
+        additional_trusted_currencies=("CNY", "USD"),
+        # applies_to_markets defaults to ("HK",) — does not cover CN.
+    )
+    policy_hk_only = HkYahooTrustPolicy(
+        version=1, market="HK", provider="yahoo", rules=(hk_only_rule,),
+    )
+    report = build_source_policy_report(
+        _catalog("gross_profit", _cn_standardized_policy()),
+        yahoo_only,
+        reconcile_mapped_fields(yahoo_only),
+        market="CN",
+        company_id="600519",
+        hk_yahoo_trust_policy=policy_hk_only,
+        provider_semantics_catalog=None,
+    )
+    item = report.items["gross_profit"]
+    assert item.selection_status == "selected_single_source"
+    assert item.conflict_classifications == ("single_source_unverified",)
+    assert item.verification_required is True
+
+
+def test_source_policy_single_source_standardized_clean_when_rule_covers_cn() -> None:
+    """Positive control (the live 600519 path): single Yahoo candidate +
+    a yahoo_standardized_accepted rule that covers CN → the gate passes and
+    the field stays clean selected_single_source. Guards against the fix
+    over-tightening and regressing the validated 42/47 baseline."""
+    yahoo_only = _single_source_mapping(
+        "gross_profit",
+        _candidate(
+            "yahoo",
+            "Gross Profit",
+            None,
+            Decimal("100"),
+            currency="CNY",
+            unit="raw",
+            canonical_unit="CNY",
+            unit_multiplier=Decimal("1"),
+            statement_metadata_proven=True,
+        ),
+    )
+    cn_rule = HkYahooTrustRule(
+        policy_id="hk_yahoo_standardized_accepted:gross_profit",
+        field_id="gross_profit",
+        classification="yahoo_standardized_accepted",
+        trusted_currency="HKD",
+        trusted_unit="raw",
+        trusted_unit_multiplier=Decimal("1"),
+        allowed_yahoo_raw_fields=("Gross Profit",),
+        definition_status_reason="operator decision (test)",
+        additional_trusted_currencies=("CNY", "USD"),
+        applies_to_markets=("HK", "CN"),
+    )
+    policy_with_cn = HkYahooTrustPolicy(
+        version=1, market="HK", provider="yahoo", rules=(cn_rule,),
+    )
+    report = build_source_policy_report(
+        _catalog("gross_profit", _cn_standardized_policy()),
+        yahoo_only,
+        reconcile_mapped_fields(yahoo_only),
+        market="CN",
+        company_id="600519",
+        hk_yahoo_trust_policy=policy_with_cn,
+        provider_semantics_catalog=None,
+    )
+    item = report.items["gross_profit"]
+    assert item.selection_status == "selected_single_source"
+    assert item.conflict_classifications == ()
+    assert item.verification_required is False
