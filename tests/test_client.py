@@ -105,8 +105,11 @@ def test_build_field_value_comma_and_paren_combined() -> None:
     assert fv.value == Decimal("-5571")
 
 
-def test_build_field_value_truly_invalid_degrades_to_none() -> None:
-    """真正非法的数值（N/A、空串）降级为 None，不抛异常。"""
+def test_build_field_value_truly_invalid_downgrades_to_unavailable() -> None:
+    """真正非法的数值（N/A、空串）整字段降级为 UNAVAILABLE，不抛异常，
+    且不留 is_reliable=True 但 value=None 的矛盾态（PR-26 Codex P2）。"""
+    from financial_report_llm_extractor.client import ConfidenceLevel
+
     for bad in ["N/A", "", "  "]:
         db_row = {
             "bucket": "clean_present", "value": bad, "currency": "CNY",
@@ -117,7 +120,10 @@ def test_build_field_value_truly_invalid_degrades_to_none() -> None:
             field_id="x", db_row=db_row,
             field_taxonomy={"value_type": "money"}, include_llm_supplement=True,
         )
-        assert fv.value is None, f"{bad!r} should degrade to None"
+        assert fv.value is None, f"{bad!r} should have no value"
+        assert fv.confidence == ConfidenceLevel.UNAVAILABLE, f"{bad!r} not downgraded"
+        assert fv.is_reliable is False, f"{bad!r} must not be reliable-but-empty"
+        assert fv.reason == "malformed_numeric_value"
 
 
 def test_build_field_value_normalized_value_paren_safe() -> None:

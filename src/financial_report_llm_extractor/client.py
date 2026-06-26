@@ -716,12 +716,26 @@ def build_field_value(
         # Use parse_numeric_value (not bare Decimal): HK statements report
         # negatives as accounting parentheses "(4652)" = -4652, and values may
         # carry thousands separators "1,234". Bare Decimal(str(...)) raises
-        # InvalidOperation on these and crashed the whole extraction. Truly
-        # non-numeric junk ("N/A", "") degrades to None instead of crashing.
+        # InvalidOperation on these and crashed the whole extraction.
         try:
             value = parse_numeric_value(str(raw_value))
         except MoneyNormalizationError:
-            value = None
+            # Truly non-numeric junk ("N/A", "") in a money/number field: do
+            # NOT keep value=None while preserving a VERIFIED/present bucket —
+            # that yields is_reliable=True with no value (PR-26 Codex P2).
+            # Downgrade the whole field to UNAVAILABLE so callers gating on
+            # is_reliable never see a reliable-but-empty value.
+            return FieldValue(
+                field_id=field_id,
+                value=None,
+                currency=None,
+                unit=None,
+                confidence=ConfidenceLevel.UNAVAILABLE,
+                source=None,
+                evidence_page=None,
+                raw_bucket=raw_bucket,
+                reason="malformed_numeric_value",
+            )
     elif value_type == "boolean":
         value = bool(raw_value)
     else:  # text
